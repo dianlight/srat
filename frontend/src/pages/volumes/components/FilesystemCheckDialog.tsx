@@ -306,7 +306,6 @@ export function FilesystemCheckDialog({
           verbose,
         },
       }).unwrap();
-      // toast.info("Filesystem check started.");
     } catch (err: unknown) {
       const typedErr = err as {
         data?: { detail?: string; message?: string };

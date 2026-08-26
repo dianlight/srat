@@ -1242,6 +1242,8 @@ export type SystemCapabilities = {
   has_kernel_module: boolean;
   /** Whether the lib SMART backend (libsmartmon_go.so) is available at runtime */
   lib_smart_available: boolean;
+  /** Reason why the lib SMART backend is unavailable (empty when lib_smart_available is true) */
+  lib_smart_unavailable_reason?: string;
   /** Installed Samba version */
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
@@ -1862,9 +1864,11 @@ export type Settings = {
   local_master?: boolean;
   mdns_registration?: boolean;
   multi_channel?: boolean;
-  smart_mode?: Smart_mode;
+  smart_mode: Smart_mode;
   smb_over_quic?: boolean;
-  telemetry_mode?: Telemetry_mode;
+  standard_share_names: Standard_share_names;
+  telemetry_mode: Telemetry_mode;
+  use_component_mdns_proxy?: boolean;
   workgroup?: string;
 };
 export type AppConfigData = {
@@ -1944,6 +1948,7 @@ export type MountPointData = {
 export type User = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  has_default_password?: boolean;
   is_admin?: boolean;
   is_valid?: boolean;
   password?: string;
@@ -1954,7 +1959,7 @@ export type User = {
 };
 export type SharedResourceStatus = {
   is_ha_mounted?: boolean;
-  is_valid?: boolean;
+  is_valid: boolean;
 };
 export type SharedResource = {
   /** A URL to the JSON Schema for this object. */
@@ -2132,6 +2137,11 @@ export enum Smart_mode {
   None = "none",
   Legacy = "legacy",
   Direct = "direct",
+}
+export enum Standard_share_names {
+  Old = "old",
+  New = "new",
+  Both = "both",
 }
 export enum Telemetry_mode {
   Ask = "Ask",

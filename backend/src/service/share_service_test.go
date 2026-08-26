@@ -46,9 +46,9 @@ func (suite *ShareServiceSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
-				sharedResources := dto.ContextState{}
-				sharedResources.DockerInterface = "hassio"
-				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources := dto.ContextState{
+					DockerInterface: "hassio",
+					DockerNet:       "172.30.32.0/23"}
 				var err error
 				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {
@@ -120,7 +120,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithMountedRWVolume() {
 	isWriteSupported := true
 	share := &dto.SharedResource{
 		Name:     "test-rw-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		Users: []dto.User{
 			{
 				Username: "testuser",
@@ -148,7 +148,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithMountedROVolume() {
 	isWriteSupported := false
 	share := &dto.SharedResource{
 		Name:     "test-ro-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		Users: []dto.User{
 			{
 				Username: "testuser",
@@ -183,7 +183,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithNotMountedVolume() {
 	isWriteSupported := true
 	share := &dto.SharedResource{
 		Name:     "test-unmounted-share",
-		Disabled: boolPtr(false), // Was active in DB
+		Disabled: new(false), // Was active in DB
 		Users: []dto.User{
 			{
 				Username: "testuser",
@@ -208,7 +208,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithNotMountedVolume() {
 func (suite *ShareServiceSuite) TestVerifyShareWithNonExistentVolume() {
 	share := &dto.SharedResource{
 		Name:     "test-nonexistent-share",
-		Disabled: boolPtr(false), // Was active in DB
+		Disabled: new(false), // Was active in DB
 		Users: []dto.User{
 			{
 				Username: "testuser",
@@ -233,7 +233,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithNonExistentVolume() {
 func (suite *ShareServiceSuite) TestVerifyShareWithNoMountPointData() {
 	share := &dto.SharedResource{
 		Name:           "test-no-mount",
-		Disabled:       boolPtr(false),
+		Disabled:       new(false),
 		MountPointData: nil, // No mount point
 	}
 
@@ -248,7 +248,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithNoMountPointData() {
 func (suite *ShareServiceSuite) TestVerifyShareWithEmptyPath() {
 	share := &dto.SharedResource{
 		Name:     "test-empty-path",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path: "", // Empty path
 		},
@@ -266,7 +266,7 @@ func (suite *ShareServiceSuite) TestVerifyShareWithNotHAMounted() {
 	isWriteSupported := true
 	share := &dto.SharedResource{
 		Name:     "test-ha-unmounted",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		Usage:    "backup", // Not internal or none
 		Status: &dto.SharedResourceStatus{
 			IsHAMounted: false,
@@ -292,7 +292,7 @@ func (suite *ShareServiceSuite) TestVerifyShareInternalUsageIgnoresHAMount() {
 	isWriteSupported := true
 	share := &dto.SharedResource{
 		Name:     "test-internal",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		Usage:    "internal", // Internal usage
 		Status: &dto.SharedResourceStatus{
 			IsHAMounted: false,
@@ -318,6 +318,117 @@ func (suite *ShareServiceSuite) TestVerifyShareNilShare() {
 
 	suite.Error(err)
 	suite.Contains(err.Error(), "share cannot be nil")
+}
+
+// TestVerifyShareStandardShareMissingDirectory tests that a standard share is
+// marked invalid when the directory it exposes does not exist (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareMissingDirectory() {
+	service.MockOsStat(func(string) (os.FileInfo, error) { return nil, os.ErrNotExist })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: new(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/local_apps",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err := suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.NotNil(share.Status)
+	suite.False(share.Status.IsValid, "Standard share with missing directory should be marked as invalid")
+}
+
+// TestVerifyShareStandardShareExistingDirectory tests that a standard share
+// stays valid when the directory it exposes exists (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareExistingDirectory() {
+	fi, err := os.Stat(suite.T().TempDir())
+	suite.Require().NoError(err)
+	service.MockOsStat(func(string) (os.FileInfo, error) { return fi, nil })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: new(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/local_apps",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err = suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.NotNil(share.Status)
+	suite.True(share.Status.IsValid, "Standard share with existing directory should stay valid")
+}
+
+// TestVerifyShareNonStandardShareSkipsStatCheck tests that the directory
+// existence check only applies to standard shares (issue #898).
+func (suite *ShareServiceSuite) TestVerifyShareNonStandardShareSkipsStatCheck() {
+	statCalls := 0
+	service.MockOsStat(func(string) (os.FileInfo, error) {
+		statCalls++
+		return nil, os.ErrNotExist
+	})
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "test-rw-share",
+		Disabled: new(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/mnt/test-rw",
+			IsMounted:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err := suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.True(share.Status.IsValid)
+	suite.Equal(0, statCalls, "os.Stat must not be called for non-standard shares")
+}
+
+// TestVerifyShareStandardShareValidDespiteInvalidMountData tests that a
+// standard share whose mount data is flagged invalid (e.g. the legacy
+// addons/addon_configs volumes) stays valid when the standard directory
+// exists, so it can be exported and reach the preexec deprecation warning
+// (issue #900).
+func (suite *ShareServiceSuite) TestVerifyShareStandardShareValidDespiteInvalidMountData() {
+	fi, err := os.Stat(suite.T().TempDir())
+	suite.Require().NoError(err)
+	service.MockOsStat(func(string) (os.FileInfo, error) { return fi, nil })
+	suite.T().Cleanup(func() { service.MockOsStat(os.Stat) })
+
+	isWriteSupported := true
+	share := &dto.SharedResource{
+		Name:     "addons",
+		Disabled: new(false),
+		Usage:    "internal",
+		MountPointData: &dto.MountPointData{
+			Path:             "/addons",
+			IsMounted:        false,
+			IsInvalid:        true,
+			IsWriteSupported: &isWriteSupported,
+		},
+	}
+
+	err = suite.shareService.VerifyShare(share)
+
+	suite.NoError(err)
+	suite.True(share.Status.IsValid, "Standard share with existing standard directory should stay valid despite invalid mount data")
 }
 
 // ============================================================================
@@ -346,10 +457,10 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 
 	newShare := dto.SharedResource{
 		Name:        "new-share",
-		Disabled:    boolPtr(false),
-		GuestOk:     boolPtr(true),
-		TimeMachine: boolPtr(false),
-		RecycleBin:  boolPtr(true),
+		Disabled:    new(false),
+		GuestOk:     new(true),
+		TimeMachine: new(false),
+		RecycleBin:  new(true),
 		Usage:       "media",
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/new",
@@ -375,6 +486,101 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	suite.Len(created.Users, 1)
 }
 
+// TestCreateShareMissingMountPointType asserts that a share without a mount
+// point type is rejected with a validation error instead of a DB constraint
+// failure (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingMountPointType() {
+	newShare := dto.SharedResource{
+		Name:     "missing-type-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			DeviceId: "some-device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareMissingDeviceId asserts that a share without a mount point
+// device id is rejected with a validation error (issue #901).
+func (suite *ShareServiceSuite) TestCreateShareMissingDeviceId() {
+	newShare := dto.SharedResource{
+		Name:     "missing-device-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path: "/mnt/x",
+			Type: "ADDON",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareWithoutMountPoint asserts that a path-less share is rejected
+// instead of being silently created as an unusable share (issue #902).
+func (suite *ShareServiceSuite) TestCreateShareWithoutMountPoint() {
+	newShare := dto.SharedResource{
+		Name:     "no-mount-share",
+		Disabled: new(false),
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareEmptyName asserts that an empty share name is rejected
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareEmptyName() {
+	newShare := dto.SharedResource{
+		Name:     "",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareNameTooLong asserts that a share name longer than 128 chars
+// is rejected, preventing shares that can never be deleted via the API
+// (issue #903).
+func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
+	newShare := dto.SharedResource{
+		Name:     string(make([]byte, 129)),
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:     "/mnt/x",
+			Type:     "ADDON",
+			DeviceId: "device",
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
 func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
 	// Setup: Mock GetAdmin to return the admin user
 	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
@@ -383,7 +589,7 @@ func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
 
 	newShare := dto.SharedResource{
 		Name:     "admin-auto-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/auto",
 			DeviceId: "auto123",
@@ -411,11 +617,11 @@ func (suite *ShareServiceSuite) TestCreateShareWithMultipleProperties() {
 
 	newShare := dto.SharedResource{
 		Name:               "feature-rich-share",
-		Disabled:           boolPtr(false),
-		GuestOk:            boolPtr(true),
-		TimeMachine:        boolPtr(true),
-		RecycleBin:         boolPtr(true),
-		TimeMachineMaxSize: stringPtr("500G"),
+		Disabled:           new(false),
+		GuestOk:            new(true),
+		TimeMachine:        new(true),
+		RecycleBin:         new(true),
+		TimeMachineMaxSize: new("500G"),
 		Usage:              "backup",
 		VetoFiles:          []string{"*.exe", "*.dll"},
 		MountPointData: &dto.MountPointData{
@@ -465,7 +671,7 @@ func (suite *ShareServiceSuite) TestUpdateShareNotFound() {
 	// Execute
 	updatedShare := dto.SharedResource{
 		Name:     "nonexistent-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/missing",
 			DeviceId: "missing123",
@@ -489,10 +695,10 @@ func (suite *ShareServiceSuite) TestUpdateShareSuccess() {
 
 	initialShare := dto.SharedResource{
 		Name:        "update-test-share",
-		Disabled:    boolPtr(false),
-		GuestOk:     boolPtr(false),
-		TimeMachine: boolPtr(false),
-		RecycleBin:  boolPtr(false),
+		Disabled:    new(false),
+		GuestOk:     new(false),
+		TimeMachine: new(false),
+		RecycleBin:  new(false),
 		Usage:       "media",
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/update-test",
@@ -511,11 +717,11 @@ func (suite *ShareServiceSuite) TestUpdateShareSuccess() {
 	// Execute: Update the share with new values
 	updatedShare := dto.SharedResource{
 		Name:        "update-test-share",
-		Disabled:    boolPtr(false),
-		GuestOk:     boolPtr(true), // Changed
-		TimeMachine: boolPtr(true), // Changed
-		RecycleBin:  boolPtr(true), // Changed
-		Usage:       "backup",      // Changed
+		Disabled:    new(false),
+		GuestOk:     new(true), // Changed
+		TimeMachine: new(true), // Changed
+		RecycleBin:  new(true), // Changed
+		Usage:       "backup",  // Changed
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/update-test",
 			DeviceId: "updatedev123",
@@ -546,7 +752,7 @@ func (suite *ShareServiceSuite) TestUpdateShareChangeUsers() {
 
 	initialShare := dto.SharedResource{
 		Name:     "user-update-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/user-update",
 			DeviceId: "userupdatedev",
@@ -564,7 +770,7 @@ func (suite *ShareServiceSuite) TestUpdateShareChangeUsers() {
 	// Execute: Update with different users
 	updatedShare := dto.SharedResource{
 		Name:     "user-update-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/user-update",
 			DeviceId: "userupdatedev",
@@ -596,7 +802,7 @@ func (suite *ShareServiceSuite) TestUpdateShareWithEmptyUsersAddsAdmin() {
 
 	initialShare := dto.SharedResource{
 		Name:     "empty-users-update-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/empty-users-update",
 			DeviceId: "emptyusersdev",
@@ -614,7 +820,7 @@ func (suite *ShareServiceSuite) TestUpdateShareWithEmptyUsersAddsAdmin() {
 	// Execute: Update with empty users - should auto-add admin
 	updatedShare := dto.SharedResource{
 		Name:     "empty-users-update-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/empty-users-update",
 			DeviceId: "emptyusersdev",
@@ -640,7 +846,7 @@ func (suite *ShareServiceSuite) TestUpdateShareVetoFiles() {
 
 	initialShare := dto.SharedResource{
 		Name:      "veto-update-share",
-		Disabled:  boolPtr(false),
+		Disabled:  new(false),
 		VetoFiles: []string{"*.tmp"},
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/veto-update",
@@ -660,7 +866,7 @@ func (suite *ShareServiceSuite) TestUpdateShareVetoFiles() {
 	// Execute: Update veto files
 	updatedShare := dto.SharedResource{
 		Name:      "veto-update-share",
-		Disabled:  boolPtr(false),
+		Disabled:  new(false),
 		VetoFiles: []string{"*.exe", "*.dll", "*.bat"},
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/veto-update",
@@ -695,7 +901,7 @@ func (suite *ShareServiceSuite) TestEnableShareSuccess() {
 
 	disabledShare := dto.SharedResource{
 		Name:     "enable-test-share",
-		Disabled: boolPtr(true), // Start disabled
+		Disabled: new(true), // Start disabled
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/enable-test",
 			DeviceId: "enabletestdev",
@@ -739,7 +945,7 @@ func (suite *ShareServiceSuite) TestEnableAlreadyEnabledShare() {
 
 	enabledShare := dto.SharedResource{
 		Name:     "already-enabled-share",
-		Disabled: boolPtr(false), // Already enabled
+		Disabled: new(false), // Already enabled
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/already-enabled",
 			DeviceId: "alreadyenableddev",
@@ -776,7 +982,7 @@ func (suite *ShareServiceSuite) TestDisableShareSuccess() {
 
 	enabledShare := dto.SharedResource{
 		Name:     "disable-test-share",
-		Disabled: boolPtr(false), // Start enabled
+		Disabled: new(false), // Start enabled
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/disable-test",
 			DeviceId: "disabletestdev",
@@ -820,7 +1026,7 @@ func (suite *ShareServiceSuite) TestDisableAlreadyDisabledShare() {
 
 	disabledShare := dto.SharedResource{
 		Name:     "already-disabled-share",
-		Disabled: boolPtr(true), // Already disabled
+		Disabled: new(true), // Already disabled
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/already-disabled",
 			DeviceId: "alreadydisableddev",
@@ -853,7 +1059,7 @@ func (suite *ShareServiceSuite) TestEnableDisableToggle() {
 
 	share := dto.SharedResource{
 		Name:     "toggle-share",
-		Disabled: boolPtr(false), // Start enabled
+		Disabled: new(false), // Start enabled
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/toggle",
 			DeviceId: "toggledev",
@@ -898,7 +1104,7 @@ func (suite *ShareServiceSuite) TestDeleteShareSuccess() {
 
 	share := dto.SharedResource{
 		Name:     "delete-test-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/delete-test",
 			DeviceId: "deletetestdev",
@@ -954,7 +1160,7 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 
 	share := dto.SharedResource{
 		Name:     "recreate-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/recreate",
 			DeviceId: "recreatedev",
@@ -997,7 +1203,7 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 	// Recreate the same share name should succeed after deletion without FK violations
 	recreateShare := dto.SharedResource{
 		Name:     "recreate-share",
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/recreate",
 			DeviceId: "recreatedev",
@@ -1048,16 +1254,16 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	// Create a share with numeric prefix (issue #416 scenario)
 	initialShare := dto.SharedResource{
 		Name:        "500G",
-		Disabled:    boolPtr(false),
-		GuestOk:     boolPtr(false),
-		TimeMachine: boolPtr(false),
-		RecycleBin:  boolPtr(false),
+		Disabled:    new(false),
+		GuestOk:     new(false),
+		TimeMachine: new(false),
+		RecycleBin:  new(false),
 		Usage:       "share",
 		MountPointData: &dto.MountPointData{
 			Path:             "/mnt/500G",
 			DeviceId:         "usb-500g-dev",
 			Type:             "ADDON",
-			IsWriteSupported: boolPtr(true),
+			IsWriteSupported: new(true),
 			IsMounted:        true,
 			IsInvalid:        false,
 		},
@@ -1089,16 +1295,16 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	// Execute: Update the share with different users (tests association clearing)
 	updatedShare := dto.SharedResource{
 		Name:        "500G",
-		Disabled:    boolPtr(false),
-		GuestOk:     boolPtr(true),
-		TimeMachine: boolPtr(false),
-		RecycleBin:  boolPtr(true),
+		Disabled:    new(false),
+		GuestOk:     new(true),
+		TimeMachine: new(false),
+		RecycleBin:  new(true),
 		Usage:       "backup",
 		MountPointData: &dto.MountPointData{
 			Path:             "/mnt/500G",
 			DeviceId:         "usb-500g-dev",
 			Type:             "ADDON",
-			IsWriteSupported: boolPtr(true),
+			IsWriteSupported: new(true),
 			IsMounted:        true,
 			IsInvalid:        false,
 		},
@@ -1136,16 +1342,16 @@ func (suite *ShareServiceSuite) TestCreateAndUpdateShareWithNumericPrefix() {
 	// Execute: Update again with different users to ensure multiple updates work
 	secondUpdate := dto.SharedResource{
 		Name:        "500G",
-		Disabled:    boolPtr(true),
-		GuestOk:     boolPtr(false),
-		TimeMachine: boolPtr(false),
-		RecycleBin:  boolPtr(false),
+		Disabled:    new(true),
+		GuestOk:     new(false),
+		TimeMachine: new(false),
+		RecycleBin:  new(false),
 		Usage:       "internal",
 		MountPointData: &dto.MountPointData{
 			Path:             "/mnt/500G",
 			DeviceId:         "usb-500g-dev",
 			Type:             "ADDON",
-			IsWriteSupported: boolPtr(true),
+			IsWriteSupported: new(true),
 			IsMounted:        true,
 			IsInvalid:        false,
 		},
@@ -1199,7 +1405,7 @@ func (suite *ShareServiceSuite) TestUpdateShareRenamePreservesRwAndRoAssociation
 
 	created, err := suite.shareService.CreateShare(dto.SharedResource{
 		Name:     oldName,
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/rename-share",
 			DeviceId: "rename-device",
@@ -1218,7 +1424,7 @@ func (suite *ShareServiceSuite) TestUpdateShareRenamePreservesRwAndRoAssociation
 
 	renamePayload := dto.SharedResource{
 		Name:     newName,
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/rename-share",
 			DeviceId: "rename-device",
@@ -1297,7 +1503,7 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 
 	firstCreated, firstErr := suite.shareService.CreateShare(dto.SharedResource{
 		Name:     firstShareName,
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/rename-conflict-first",
 			DeviceId: "rename-conflict-first-device",
@@ -1310,7 +1516,7 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 
 	secondCreated, secondErr := suite.shareService.CreateShare(dto.SharedResource{
 		Name:     secondShareName,
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/rename-conflict-second",
 			DeviceId: "rename-conflict-second-device",
@@ -1323,7 +1529,7 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 
 	_, err := suite.shareService.UpdateShare(firstShareName, dto.SharedResource{
 		Name:     secondShareName,
-		Disabled: boolPtr(false),
+		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
 			Path:     "/mnt/rename-conflict-first",
 			DeviceId: "rename-conflict-first-device",
@@ -1347,12 +1553,15 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 }
 
 // Helper functions
+//
+//go:fix inline
 func boolPtr(b bool) *bool {
-	return &b
+	return new(b)
 }
 
+//go:fix inline
 func stringPtr(s string) *string {
-	return &s
+	return new(s)
 }
 
 type ShareServiceStartupSeedingSuite struct {
@@ -1374,9 +1583,9 @@ func (suite *ShareServiceStartupSeedingSuite) buildShareServiceApp(dbPath string
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState {
-				sharedResources := dto.ContextState{}
-				sharedResources.DockerInterface = "hassio"
-				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources := dto.ContextState{
+					DockerInterface: "hassio",
+					DockerNet:       "172.30.32.0/23"}
 				var err error
 				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {
@@ -1420,14 +1629,14 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedsAllInternalShares(
 
 	shares, err := shareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(shares, 7)
+	suite.Len(shares, 9)
 
 	byName := map[string]dto.SharedResource{}
 	for _, share := range shares {
 		byName[share.Name] = share
 	}
 
-	expectedNames := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs"}
+	expectedNames := []string{"config", "addons", "ssl", "share", "backup", "media", "addon_configs", "local_apps", "app_configs"}
 	for _, name := range expectedNames {
 		share, ok := byName[name]
 		suite.True(ok, "expected startup seeded internal share %s", name)
@@ -1451,7 +1660,7 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcro
 	firstApp, firstShareService := suite.buildShareServiceApp(dbPath)
 	firstShares, err := firstShareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(firstShares, 7)
+	suite.Len(firstShares, 9)
 	firstApp.RequireStop()
 
 	secondApp, secondShareService := suite.buildShareServiceApp(dbPath)
@@ -1461,5 +1670,5 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcro
 
 	secondShares, err := secondShareService.ListShares()
 	suite.Require().NoError(err)
-	suite.Len(secondShares, 7)
+	suite.Len(secondShares, 9)
 }

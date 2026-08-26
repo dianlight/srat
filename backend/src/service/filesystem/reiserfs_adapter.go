@@ -203,8 +203,8 @@ func (a *ReiserfsAdapter) GetLabel(ctx context.Context, device string) (string, 
 	}
 
 	// Parse the output to find the label
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.Contains(line, "LABEL:") {
 			parts := strings.SplitN(line, ":", 2)
 			if len(parts) == 2 {

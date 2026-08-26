@@ -18,6 +18,6 @@ type SharedResource struct {
 }
 
 type SharedResourceStatus struct {
-	IsValid     bool `json:"is_valid,omitempty" default:"false" read-only:"true"`
+	IsValid     bool `json:"is_valid" default:"false" read-only:"true"`
 	IsHAMounted bool `json:"is_ha_mounted,omitempty" default:"false" read-only:"true"`
 }

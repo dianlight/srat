@@ -6,6 +6,8 @@
   - [Build Modes](#build-modes)
     - [Default Exec Mode (no `smartlib` tag)](#default-exec-mode-no-smartlib-tag)
     - [Lib mode (`smartlib` tag)](#lib-mode-smartlib-tag)
+  - [Default Variant Policy (Addon Consumption)](#default-variant-policy-addon-consumption)
+    - [Deploying to a remote addon (develop channel)](#deploying-to-a-remote-addon-develop-channel)
   - [Service Methods](#service-methods)
     - [GetHealthStatus(devicePath string)](#gethealthstatusdevicepath-string)
     - [StartSelfTest(devicePath string, testType SmartTestType)](#startselftestdevicepath-string-testtype-smarttesttype)
@@ -67,28 +69,132 @@ GNU/Linux systems using either glibc (Debian, Ubuntu) or musl (Alpine).
 
 When built with `-tags smartlib`, SRAT loads `libsmartmon_go.so` at runtime via
 `ebitengine/purego`, which enables direct SMART access without spawning child processes.
-Because `purego` uses `//go:cgo_import_dynamic` directives to wire `dlopen`/`dlsym`
-from `libdl.so.2`, this build path forces dynamic linking.
+With CGO enabled, `purego` resolves `dlopen`/`dlsym` through real C symbols
+(`internal/cgo/dlfcn_cgo_unix.go`), so the resulting binary **must be dynamically
+linked** — `dlopen()` is unavailable in fully-static executables (on musl it fails
+with `Dynamic loading not supported`).
 
-To build with lib mode enabled:
+Two dynamic build variants exist:
 
 ```bash
+# glibc dynamic build (system glibc cross-compilers): srat-server-glib
 mise run //backend:build --arch=aarch64 --version=... --cgo
+
+# musl dynamic build (zig musl cross-compiler): srat-server-musl
+mise run //backend:build --arch=aarch64 --version=... --zig
 ```
+
+> **Zig static-linking pitfall**: `zig cc -target x86_64-linux-musl` links musl
+> **statically by default**. The musl variant must pass `-dynamic` to zig (already
+> baked into the `--zig` task). Without it, the binary is fully static, `dlopen`
+> fails at startup, and the log shows
+> `SMART lib backend not available ... "Dynamic loading not supported"` while the
+> SMART service silently falls back to the exec backend.
 
 **Runtime requirement**: `libsmartmon_go.so` must be present at a known path (for example,
-`/usr/local/lib/libsmartmon_go.so`). Build it from the vendored source:
+`/usr/local/lib/libsmartmon_go.so` — see `defaultLibNames`/`defaultLibPaths` in the
+vendored bindings `backend/src/vendor/github.com/dianlight/smartmontools-sdk/bindings/go/v8/backends/lib/lib.go`).
 
-```bash
-cd backend/src/vendor/github.com/dianlight/smartmontools-go
-bash backends/lib/scripts/setup-lib-backend.sh
-```
+The wrapper library ships prebuilt in the `smartmontools-sdk` release tarball
+(`lib/libsmartmon_go.so`, built from the SDK's C sources and the Go bindings
+C-API). The bindings module is
+`github.com/dianlight/smartmontools-sdk/bindings/go/v8` (replacing the old
+`smartmontools-go` wrapper). On Alpine the prerequisites are
+`apk add build-base autoconf automake libtool git linux-headers` and
+`smartmon_config.h` must be copied next to the SDK headers
+(`/usr/local/include/smartmon/`).
 
 The Direct SMART mode is visible in the UI only when all three conditions are met:
 
 1. The binary was compiled with `-tags smartlib`, **and**
 2. `libsmartmon_go.so` is detected at startup (`ApiCtx.LibSmartAvailable == true`), **and**
 3. Experimental Lab Mode is enabled in Settings.
+
+## Default Variant Policy (Addon Consumption)
+
+The SambaNAS2 addon image is **Alpine Linux (musl)**. The default variant policy for
+addon consumption is therefore:
+
+- **`srat-server-musl` is the default variant** — the `upgrade_service`
+  `detectBestServerVariant` helper prefers it whenever the system has a musl
+  dynamic linker (`/lib/ld-musl-{x86_64,aarch64}.so.1`) and the binary ships in
+  the update package. This is the only variant that is both dynamically linked
+  (so `dlopen` works) and compatible with Alpine.
+- **`srat-server-glib`** is selected on glibc systems (Debian/Ubuntu/HAOS
+  containers) when a glibc dynamic linker is detected.
+- **`srat-server-static`** is the always-safe fallback when neither dynamic
+  linker is detected or the dynamic variants are absent from the update package.
+  It is built without the `smartlib` tag, so SMART access falls back to exec.
+
+CI enforces this policy in `.github/workflows/build.yaml`:
+
+- **Release zips always contain `srat-server-musl`** — the zip-creation step
+  fails the build if a release archive is missing the musl smartlib variant.
+- **C-ABI contract guard** — the `verify-smartlib-wrapper-abi` job (runs on
+  every push/PR) downloads the `smartmontools-sdk` musl tarball tagged with the
+  exact version of `github.com/dianlight/smartmontools-sdk/bindings/go/v8`
+  vendored in `backend/src/go.mod`, and asserts the tarball ships
+  `lib/libsmartmon_go.so` exposing the `smartmon_abi_version` symbol (checked
+  via `nm -D`; the bindings verify abiMajor=1, abiMinor>=0 at load time).
+  If the release tag does not match the vendored ref — a symbol/ABI drift risk
+  (formerly smartmontools-go#38) — the job fails.
+
+### Deploying to a remote addon (develop channel)
+
+The addon upgrades itself from files dropped into `/config/upgrade/` (mapped on the
+host to `/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/`). The
+`upgrade_service` watcher detects new/updated `srat-server-musl`/`srat-server-glib`/
+`srat-server-static`/`srat-cli`, installs them into `/usr/local/bin/`, repoints the
+`srat-server` symlink (prefers musl on Alpine), and restarts the service under s6.
+
+```bash
+# 1. build the musl (dynamic) smartlib variant locally, for the HOST architecture:
+#    (CC wrapper: zig cc -target x86_64-linux-musl -dynamic -fno-sanitize=all)
+mise run //backend:build --arch=x86_64 --version=... --zig
+
+# 2. copy to the host bind-mount (NOT via scp to /tmp or docker cp — see notes).
+#    Write to a temp file, set mode 0755, then atomically rename so the
+#    upgrade_service watcher never picks up a partially-transferred binary:
+cat dist/x86_64/srat-server-musl \
+  | ssh -p 22222 root@192.168.0.68 \
+      "cat > /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp && \
+       chmod 0755 /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp && \
+       mv /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl.tmp \
+          /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/srat-server-musl"
+```
+
+> **Note**: this binary-only transfer does **not** install `libsmartmon_go.so`. The
+> wrapper library must already be present in the addon image at a path from
+> `defaultLibPaths` (e.g. `/usr/local/lib/libsmartmon_go.so`); otherwise the lib
+> backend silently falls back to exec mode and `lib_smart_available` stays `false`.
+
+The watcher logs (`docker logs -f app_local_sambanas2`) will show
+`Installing update package` → `Updated srat-server symlink variant=srat-server-musl`
+→ `Triggering restart`.
+
+**Verification**:
+
+```bash
+curl http://192.168.0.68:3000/api/capabilities   # lib_smart_available: true
+curl http://192.168.0.68:3000/api/settings       # smart_mode: direct, experimental_lab_mode: true
+docker logs app_local_sambanas2 --since 5m | grep -i "SMART lib backend"
+# → "SMART lib backend loaded (direct mode available)"
+```
+
+The UI (Settings → General → SMART Mode) then exposes the `Direct (lib backend)`
+option. Set `smart_mode` to `direct` and `experimental_lab_mode` to `true` via
+`PUT /api/settings` (full-body update) to select it.
+
+**Remote-environment gotchas** (observed on the 192.168.0.68 HAOS host):
+
+- Host root fs (`/dev/root`, 253 MB) and zram `/tmp` (15 MB) can fill up; a partial
+  `scp` to `/tmp` alone can fill the zram and break `docker exec`
+  (`OCI runtime exec failed: write /tmp/runc-process...`). Remove stale files from
+  `/tmp` to recover. Prefer writing large files to the bind-mount path over
+  `/tmp`/`docker cp` (the container writable layer lives on the full root fs).
+- Musl static build symptom to watch for: the startup log line
+  `SMART lib backend not available ... "Dynamic loading not supported"` means the
+  binary was linked statically — rebuild with `-dynamic`.
 
 ## Service Methods
 

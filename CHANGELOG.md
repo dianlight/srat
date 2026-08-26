@@ -8,9 +8,121 @@
 
 ### 🐛 Bug Fixes
 
-- **Support disks without partitions**: Disks with no partition table (raw "superfloppy" whole-disk filesystems) and filesystems the Home Assistant Supervisor does not report are now visible and mountable. ([srat#849](https://github.com/dianlight/srat/issues/849), [hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716))
+### 🏗 Chore
+
+## 2026.8.0-rc13
+
+### ✨ Features
+
+- **Full mobile support**: the UI is now fully usable on phones (320–430px)
+  and small tablets. Dashboard metric tables compact their cells and hide the
+  sparkline charts on xs so they fit their containers, the SMART self-test
+  status row wraps instead of overflowing, the setup wizard goes full-screen
+  with a vertical stepper below `sm`, the notification center popover caps its
+  width to the viewport, the volumes left panel clamps to `min(45%, 180px)` on
+  phones, the NavBar hides the dev-inspector icon below `md`, and the
+  Shares/Partitions action menus now use their compact form on xs. The viewport
+  meta gains `viewport-fit=cover` and a `theme-color`. A 375px browser smoke
+  test walks every main tab asserting no horizontal document overflow.
+
+### 🐛 Bug Fixes
+
+- **Volume stack hardening — phantom volumes, stale state, and mount safety**:
+  stale-marking in the partition event handler is now scoped to the current
+  partition (it used to write every stale mount point across all disks into the
+  partition being processed, polluting it with phantom copies of other
+  partitions' volumes), and whole-disk synthesized volumes are reconciled via
+  provisional rechecks instead of lingering after their partition events
+  settle. Mount point settings (startup flag, flags, custom flags) survive
+  discovery re-persist instead of being wiped to defaults, and `PATCH` on a
+  mount point now returns the flags it actually stored. `MountVolume` and
+  `UmountVolume` enforce `ProtectedMode` and `ReadOnlyMode` and map the
+  protected-mode rejection to HTTP 403 instead of 500/406, and volume load
+  errors surface as a 500 instead of silently rendering an empty disk list.
+- **Volume cache correctness**: the volume cache is warmed at boot without
+  failing app start, partition maps are deep-copied before enrichment so
+  concurrent SMART/HDIdle updates cannot alias into live data, `getVolumesData`
+  no longer drops unmount/force-detach flag semantics, event-bus handler errors
+  (including DB-persist failures on the mount path) are logged and propagated
+  to emitters, and the SMART device-path lookup resolves partition IDs without
+  a nil-pointer panic.
+- **Automount resilience**: automount retry attempts are bounded with
+  exponential backoff, and the udev monitor channels are drained on shutdown so
+  the service exits cleanly without a lingering goroutine.
+- **Volumes page (frontend)**: the volumes list now derives from the SSE
+  payload once available (no more REST/SSE race emptying the list or showing
+  `undefined` on REST errors), the automount toggle aggregates all toggles with
+  `Promise.allSettled` and shows a single summary toast, volume label renames
+  update optimistically via the RTK cache, and the mount dialog follows the
+  standard `FormContainer` form pattern. The automount partition icon is now
+  colored when any of its mount points is set to mount at startup (the old
+  map-as-array lookup never matched), the SMART status panel respects
+  read-only mode, and a console warning is emitted when a volume falls back to
+  index-based identifiers.
+
+- **HA Supervisor nil device fields**: `GetHardwareInfo` no longer panics when
+  the HA Supervisor API returns a device with a non-nil `DevPath` but nil `Name`
+  or `ById`. The device-matching loop now skips such entries gracefully, and the
+  `ErrorNotFound` early-return path no longer dereferences a nil response.
 
 ### 🏗 Chore
+
+## 2026.8.0-rc12
+
+### ✨ Features
+
+- **mDNS settings simplified — master/proxy model**: `addon_mdns_registration`
+  is renamed to `mdns_registration` and becomes the **master switch** that
+  enables or disables mDNS registration entirely (no longer gated behind
+  `experimental_lab_mode`). The old `mdns_registration` is renamed to
+  `use_component_mdns_proxy` and now selects the implementation: the Home
+  Assistant custom component proxy (default) or SRAT's direct zeroconf
+  registration. The two switches are no longer mutually exclusive — the master
+  switch gates everything, and the proxy switch chooses the implementation.
+  A DB migration converts existing `addon_mdns_registration=true` installs to
+  `mdns_registration=true` + `use_component_mdns_proxy=false`.
+- **App-based shared directory migration**: legacy Supervisor directory names
+  (`addons` / `addon_configs`) are mapped to the new app-based layout
+  (`local_apps` / `app_configs`). A new `standard_share_names` setting
+  (`old` / `new` / `both`) selects which standard share names are exposed, the
+  dashboard shows a deprecation alert for old share names, and `VerifyShare`
+  marks a share unusable when its directory is missing. ([srat#898](https://github.com/dianlight/srat/issues/898))
+- **Resizable left panel on volumes page**: the volumes page left panel is now
+  drag-to-resize between 15–60 % (default 30 %) via a divider handle, with the
+  width preference persisted to `localStorage`.
+- **Visually coherent partition action icons**: `FontAwesomeSvgIcon` forwards
+  `SvgIconProps` for uniform icon sizing, and the compact-menu breakpoint was
+  widened so partition actions wrap cleanly instead of overflowing.
+
+### 🐛 Bug Fixes
+
+- **Support disks without partitions**: Disks with no partition table (raw "superfloppy" whole-disk filesystems) and filesystems the Home Assistant Supervisor does not report are now visible and mountable. ([srat#849](https://github.com/dianlight/srat/issues/849), [hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716))
+- **Share validation and user disable corrected**: unusable shares serialize
+  `is_valid:false`, standard directories are verified first with a reachable
+  pre-exec check, invalid share data returns 422 instead of 500/201, and
+  disabling a user now persists `is_valid` while passwords are redacted.
+  ([srat#899](https://github.com/dianlight/srat/issues/899), [srat#900](https://github.com/dianlight/srat/issues/900), [srat#901](https://github.com/dianlight/srat/issues/901), [srat#902](https://github.com/dianlight/srat/issues/902), [srat#903](https://github.com/dianlight/srat/issues/903), [srat#904](https://github.com/dianlight/srat/issues/904))
+- **Partitions missing from supervisor filesystems synthesized**: a fallback
+  probe synthesizes missing child partitions from the parent disk, skipping
+  filesystems the Supervisor already reported to avoid duplicates.
+  ([srat#906](https://github.com/dianlight/srat/issues/906))
+- **Packed SMART attribute values decoded**: packed raw SMART attributes (e.g.
+  `power_on_time.hours` as 64-bit) are now decoded correctly from the smartlib
+  backend, and the top-level `smartctl` temperature takes precedence over the
+  ATA attribute health score.
+- **User API fixes**: `readOnly` / `writeOnly` auth fields are emitted for user
+  accounts, `has_default_password` is exposed for the admin user, the first-run
+  wizard validates users, and legacy standard shares stay valid in the UI.
+
+### 🏗 Chore
+
+- **Remove addon mDNS interface selection**: addon-side mDNS now requires
+  telemetry and smart modes and no longer exposes an interface whitelist.
+- **Clean up dead UI actions** in the volumes tree view.
+- **Dependency bumps**: complete go-github v90 migration, regenerate enums with
+  goenums v0.7.0, update golang.org/x/net to v0.57.0.
+- **Build fixes**: build the smartlib musl variant dynamically and disable the
+  sanitizer in the zig musl CC step.
 
 ## 2026.7.0-rc11
 
@@ -50,6 +162,24 @@
   - **readOnly threading**: the per-disk settings card now correctly propagates
     the `readOnly` flag from `VolumeDetailsPanel`.
 - **mDNS Registration**: Added optional mDNS registration of the SRAT service for local network discovery. When enabled, the backend registers a `_srat._tcp` service with the system mDNS responder, advertising the service name, port, and metadata. This allows compatible clients to discover the SRAT service on the local network without manual configuration. The feature is controlled by a new `MDNSRegistration` boolean setting in the advanced settings section.
+- **Addon-side Direct mDNS (Lab Mode feature)**: Added experimental addon-side
+  mDNS/Zeroconf registration for the SMB service (`_smb._tcp`, port 445), gated
+  behind Lab Mode (`experimental_lab_mode=true`). Key changes:
+  - **Mutual exclusivity**: enabling `addon_mdns_registration` automatically
+    disables the Home Assistant custom component `mdns_registration` setting
+    and vice versa; validation enforces this in `ValidateSettings`.
+  - **Instance name derivation**: the mDNS instance name is derived from the
+    Samba hostname using the same NetBIOS sanitization (uppercase, truncate to
+    15 characters, replace non-alphanumeric characters with `-`).
+  - **Interface filtering**: loopback, down, and container/virtual interfaces
+    (`docker*`, `veth*`, `hassio*`, `br-*`) are excluded from registration.
+    An optional `addon_mdns_interfaces` whitelist overrides the auto-detected
+    list; the frontend exposes the available interfaces from
+    `SystemCapabilities.available_mdns_interfaces`.
+  - **Lifecycle**: registration starts when settings change to enable the
+    feature and shuts down cleanly on setting disable or addon stop via fx
+    lifecycle hooks.
+  - **TXT records**: the service advertises `path=/`.
 
 ### 🐛 Bug Fixes
 
@@ -284,4 +414,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-07-12T09:33:29Z -->
+<!-- release-timestamp: 2026-08-24T10:44:46Z -->

@@ -507,9 +507,6 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		if share.Status != nil && !share.Status.IsValid {
 			continue
 		}
-		if share.MountPointData != nil && share.MountPointData.IsInvalid {
-			continue
-		}
 		dbs := dbom.ExportedShare{}
 		err = self.dbomConv.SharedResourceToExportedShare(share, &dbs)
 		if err != nil {
@@ -536,7 +533,43 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		}
 	}
 
+	// Issue #898: expose standard share names according to the configured
+	// mode (old, new, or both). Legacy names always resolve to the new
+	// application-based directories.
+	applyStandardShareNamesPolicy(&tconfig, settings.StandardShareNames)
+
 	return tconfig, nil
+}
+
+// applyStandardShareNamesPolicy adjusts the standard share names exposed by
+// Samba based on the configured mode (issue #898):
+//   - "old": expose only the legacy names (addons, addon_configs)
+//   - "new": expose only the new names (local_apps, app_configs)
+//   - "both" (or unset): expose both legacy and new names
+//
+// Legacy names always point to the new application-based directories, so the
+// old and new names resolve to the same location.
+func applyStandardShareNamesPolicy(tconfig *config.Config, mode dto.StandardShareNamesMode) {
+	for name, share := range tconfig.Shares {
+		switch name {
+		case "addons":
+			share.Path = "/local_apps"
+		case "addon_configs":
+			share.Path = "/app_configs"
+		default:
+			continue
+		}
+		tconfig.Shares[name] = share
+	}
+
+	switch mode {
+	case dto.StandardShareNamesModeOld:
+		delete(tconfig.Shares, "local_apps")
+		delete(tconfig.Shares, "app_configs")
+	case dto.StandardShareNamesModeNew:
+		delete(tconfig.Shares, "addons")
+		delete(tconfig.Shares, "addon_configs")
+	}
 }
 
 func (self *ServerService) GetServerProcesses() (*dto.ServerProcessStatus, errors.E) {
@@ -780,7 +813,7 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 		}
 
 		self.eventBus.EmitServerProcess(events.ServerProcessEvent{
-			Event:            events.Event{Type: events.EventTypes.CLEAN},
+			Type:             events.EventTypes.CLEAN,
 			DataDirtyTracker: dto.DataDirtyTracker{},
 		})
 	} else {

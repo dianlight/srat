@@ -4,8 +4,9 @@ auto = true
 [tools]
 air = '1.67.4'
 "go:github.com/securego/gosec/v2/cmd/gosec" = "v2.28.0"
-"npm:@redocly/cli" = "2.44.1"
+"npm:@redocly/cli" = "2.47.0"
 oapi-codegen = "2.8.0"
+zig = "0.15.2"
 
 [tasks]
 clean = "go -C src clean && rm -rf dist"
@@ -71,12 +72,25 @@ run = [
 
       if [ -n "$usage_zig" ]; then
         # Musl dynamic build: srat-server-musl (CGO + zig musl cross-compiler)
+        # NOTE: -dynamic is required. zig cc defaults to STATIC musl linking; a
+        # fully-static musl binary cannot dlopen() (musl returns "Dynamic loading
+        # not supported"), which breaks the purego/cgo libsmartmon_go.so load in
+        # smartlib builds. Without -dynamic the SMART lib backend silently falls
+        # back to the exec backend.
+        # NOTE: -fno-sanitize=all is required too. zig cc enables UBSan for musl
+        # targets by default; without it linking fails with undefined
+        # `__ubsan_handle_out_of_bounds` referenced from cgo (gcc_libinit.c).
         CGO_ENABLED=1
         GOTAGS="p${usage_pprof:+prof},embedallowed,smartlib"
-        CC="zig cc -target ${usage_arch?}-linux-musl"
+        CC="zig cc -target ${usage_arch?}-linux-musl -dynamic -fno-sanitize=all"
+        # -linkmode=external forces Go to use zig as the linker instead of its
+        # internal linker, which is required for CC flags like -dynamic to take
+        # effect on the final binary. Without it, Go's internal linker ignores
+        # the CC -dynamic flag and produces a fully-static binary that cannot
+        # dlopen() libsmartmon_go.so.
         export CC CGO_CFLAGS GOOS GOARCH CGO_ENABLED GOTAGS
-        echo "Building srat-server-musl (CGO + zig-musl)..."
-        go build -C src -tags="$GOTAGS" -ldflags="$LDFLAGS" -o ../dist/${usage_arch?}/srat-server-musl ./cmd/srat-server
+        echo "Building srat-server-musl (CGO + zig-musl, external linkmode)..."
+        go build -C src -tags="$GOTAGS" -ldflags="${LDFLAGS} -linkmode=external -extldflags='-dynamic'" -o ../dist/${usage_arch?}/srat-server-musl ./cmd/srat-server
       elif [ -n "$usage_cgo" ]; then
         # Glibc dynamic build: ensure aarch64 cross-compiler is available when needed
         if [ "$usage_arch" = "aarch64" ] && ! command -v aarch64-linux-gnu-gcc >/dev/null 2>&1; then

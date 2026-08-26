@@ -151,9 +151,9 @@ func (suite *AddonsServiceTestSuite) TestGetStats_NilJSONResponse() {
 func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_Success() {
 	desc := "Example app"
 	longDesc := "Example long description"
-	fieldLogLevel := map[string]interface{}{"log_level": "str"}
-	fieldEnabled := map[string]interface{}{"enabled": "bool"}
-	schema := []*map[string]interface{}{
+	fieldLogLevel := map[string]any{"log_level": "str"}
+	fieldEnabled := map[string]any{"enabled": "bool"}
+	schema := []*map[string]any{
 		&fieldLogLevel,
 		&fieldEnabled,
 	}
@@ -186,17 +186,17 @@ func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_Success() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_DescriptorItems() {
-	descriptorAutoUpdate := map[string]interface{}{
+	descriptorAutoUpdate := map[string]any{
 		"name":     "auto_update",
 		"type":     "bool",
 		"optional": true,
 	}
-	descriptorLogLevel := map[string]interface{}{
+	descriptorLogLevel := map[string]any{
 		"name":    "log_level",
 		"type":    "str",
-		"options": []interface{}{"trace", "debug", "info"},
+		"options": []any{"trace", "debug", "info"},
 	}
-	schema := []*map[string]interface{}{
+	schema := []*map[string]any{
 		&descriptorAutoUpdate,
 		&descriptorLogLevel,
 	}
@@ -238,16 +238,16 @@ func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_DescriptorItems() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetAppConfigSchema_FieldDescriptionsFromTranslations() {
-	fieldEnabled := map[string]interface{}{"enabled": "bool"}
-	fieldLogLevel := map[string]interface{}{"log_level": "str"}
-	schema := []*map[string]interface{}{
+	fieldEnabled := map[string]any{"enabled": "bool"}
+	fieldLogLevel := map[string]any{"log_level": "str"}
+	schema := []*map[string]any{
 		&fieldEnabled,
 		&fieldLogLevel,
 	}
 
-	translations := map[string]interface{}{
-		"en": map[string]interface{}{
-			"configuration": map[string]interface{}{
+	translations := map[string]any{
+		"en": map[string]any{
+			"configuration": map[string]any{
 				"enabled":   "Enable or disable the feature",
 				"log_level": "Application logging level",
 			},
@@ -292,7 +292,7 @@ func (suite *AddonsServiceTestSuite) TestSetAppConfig_Success() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetAppConfig_Success() {
-	options := map[string]interface{}{"log_level": "info"}
+	options := map[string]any{"log_level": "info"}
 	runtimeConfig := apps.AppOptionsConfigData{"log_level": "info"}
 
 	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).
@@ -320,7 +320,7 @@ func (suite *AddonsServiceTestSuite) TestGetAppConfig_Success() {
 }
 
 func (suite *AddonsServiceTestSuite) TestGetAppConfig_RequiresRestartWhenConfigDrifts() {
-	options := map[string]interface{}{"log_level": "info", "disable_ipv6": true}
+	options := map[string]any{"log_level": "info", "disable_ipv6": true}
 	runtimeConfig := apps.AppOptionsConfigData{"log_level": "debug", "disable_ipv6": true}
 
 	mock.When(suite.mockAddonsClient.GetAppInfoWithResponse(suite.ctx, "self")).

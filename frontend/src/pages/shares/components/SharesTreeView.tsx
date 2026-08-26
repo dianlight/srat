@@ -1,6 +1,7 @@
 import EditIcon from "@mui/icons-material/Edit";
 import FolderSharedIcon from "@mui/icons-material/FolderShared";
 import FolderSpecialIcon from "@mui/icons-material/FolderSpecial";
+import HistoryIcon from "@mui/icons-material/History";
 import StorageIcon from "@mui/icons-material/Storage";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { Box, Chip, Tooltip, Typography, useTheme } from "@mui/material";
@@ -20,6 +21,12 @@ import { useAppDispatch } from "../../../store/store";
 import { ShareActions } from "./ShareActions";
 
 const MAX_SHARE_NAME_LENGTH = 128;
+
+/** Legacy standard share names that are deprecated but still exposed
+ *  (issue #898). These render a "Legacy" badge and must not be treated
+ *  as invalid based on mount data, because VerifyShare keeps them valid
+ *  while the standard directory exists. */
+const LEGACY_STANDARD_SHARE_NAMES = new Set(["addons", "addon_configs"]);
 
 function extractErrorMessage(error: unknown): string {
   if (typeof error === "string") {
@@ -245,8 +252,14 @@ export function SharesTreeView({
               onShareSelect(shareKey, shareProps);
             }}
           >
-            {shareProps.mount_point_data?.invalid ? (
-              <Tooltip title={shareProps.mount_point_data?.invalid_error} arrow>
+            {shareProps.status?.is_valid === false ? (
+              <Tooltip
+                title={
+                  shareProps.mount_point_data?.invalid_error ??
+                  "Share directory is missing or not available"
+                }
+                arrow
+              >
                 <FolderSharedIcon color="error" sx={{ mr: 1 }} />
               </Tooltip>
             ) : (
@@ -289,6 +302,16 @@ export function SharesTreeView({
                     size="small"
                     variant="outlined"
                     color="secondary"
+                    sx={{ fontSize: "0.7rem", height: 16 }}
+                  />
+                )}
+                {LEGACY_STANDARD_SHARE_NAMES.has(shareName) && (
+                  <Chip
+                    size="small"
+                    icon={<HistoryIcon />}
+                    variant="outlined"
+                    color="warning"
+                    label="Legacy"
                     sx={{ fontSize: "0.7rem", height: 16 }}
                   />
                 )}

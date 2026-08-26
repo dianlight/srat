@@ -1,9 +1,11 @@
 package dto
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSharedResourceCreation(t *testing.T) {
@@ -21,8 +23,8 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with basic fields",
 			resource: SharedResource{
 				Name:     "media-share",
-				Disabled: boolPtr(false),
-				GuestOk:  boolPtr(true),
+				Disabled: new(false),
+				GuestOk:  new(true),
 			},
 		},
 		{
@@ -39,8 +41,8 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with time machine enabled",
 			resource: SharedResource{
 				Name:               "backup-share",
-				TimeMachine:        boolPtr(true),
-				TimeMachineMaxSize: stringPtr("1TB"),
+				TimeMachine:        new(true),
+				TimeMachineMaxSize: new("1TB"),
 			},
 		},
 		{
@@ -64,7 +66,7 @@ func TestSharedResourceCreation(t *testing.T) {
 			name: "Resource with recycle bin",
 			resource: SharedResource{
 				Name:       "recycled-share",
-				RecycleBin: boolPtr(true),
+				RecycleBin: new(true),
 			},
 		},
 		{
@@ -177,11 +179,29 @@ func TestSharedResourcePointerFields(t *testing.T) {
 	assert.Equal(t, "pointer-test", resource.Name)
 }
 
-// Helper functions
-func boolPtr(b bool) *bool {
-	return &b
+// TestSharedResourceStatusIsValidSerialized asserts that is_valid:false is
+// present in the JSON output (no omitempty) so the frontend can detect shares
+// that fail verification (issue #899).
+func TestSharedResourceStatusIsValidSerialized(t *testing.T) {
+	status := SharedResourceStatus{IsValid: false}
+	data, err := json.Marshal(status)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":false`)
+
+	valid := SharedResourceStatus{IsValid: true}
+	data, err = json.Marshal(valid)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"is_valid":true`)
 }
 
+// Helper functions
+//
+//go:fix inline
+func boolPtr(b bool) *bool {
+	return new(b)
+}
+
+//go:fix inline
 func stringPtr(s string) *string {
-	return &s
+	return new(s)
 }

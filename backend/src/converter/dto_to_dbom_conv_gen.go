@@ -224,7 +224,7 @@ func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser) (dto.Use
 	dtoSecret := stringToSecret(source.Password)
 	dtoUser.Password = &dtoSecret
 	dtoUser.IsAdmin = source.IsAdmin
-	dtoUser.IsValid = checkUserValid(source)
+	dtoUser.IsValid = checkUserValidStored(source)
 	if source.RwShares != nil {
 		dtoUser.RwShares = make([]string, len(source.RwShares))
 		for i := 0; i < len(source.RwShares); i++ {
@@ -320,6 +320,9 @@ func (c *DtoToDbomConverterImpl) UserToSambaUser(source dto.User, target *dbom.S
 	target.Password = c.pDtoSecretToString(source.Password)
 	if source.IsAdmin != false {
 		target.IsAdmin = source.IsAdmin
+	}
+	if source.IsValid != nil {
+		target.IsValid = source.IsValid
 	}
 	if source.RwShares != nil {
 		target.RwShares = make([]dbom.ExportedShare, len(source.RwShares))
@@ -601,6 +604,7 @@ func (c *DtoToDbomConverterImpl) userToSambaUser(source dto.User) (dbom.SambaUse
 	dbomSambaUser.Username = source.Username
 	dbomSambaUser.Password = c.pDtoSecretToString(source.Password)
 	dbomSambaUser.IsAdmin = source.IsAdmin
+	dbomSambaUser.IsValid = source.IsValid
 	if source.RwShares != nil {
 		dbomSambaUser.RwShares = make([]dbom.ExportedShare, len(source.RwShares))
 		for i := 0; i < len(source.RwShares); i++ {

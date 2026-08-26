@@ -1,7 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import {
   Box,
-  Grid,
   IconButton,
   Paper,
   Stack,
@@ -12,6 +11,7 @@ import { useConfirm } from "material-ui-confirm";
 import { useCallback, useEffect, useState } from "react";
 import { InView } from "react-intersection-observer";
 import { toast } from "react-toastify";
+import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { TabIDs } from "../../store/locationState";
 import {
   type SharedResource,
@@ -159,9 +159,12 @@ export function Users() {
         })
         .catch((err) => {
           console.error(err);
-          toast.error(`Error creating user ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error creating user ${data.username}: ${detail}`
+              : `Error creating user ${data.username}`,
+          );
         });
     } else if (data.is_admin) {
       userAdminUpdate({ user: data })
@@ -172,9 +175,12 @@ export function Users() {
           toast.success(`Admin ${data.username} updated successfully`);
         })
         .catch((err) => {
-          toast.error(`Error updating admin ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error updating admin ${data.username}: ${detail}`
+              : `Error updating admin ${data.username}`,
+          );
           console.error(err);
         });
     } else {
@@ -186,9 +192,12 @@ export function Users() {
           toast.success(`User ${data.username} updated successfully`);
         })
         .catch((err) => {
-          toast.error(`Error updating user ${data.username}`, {
-            data: { error: err.data },
-          });
+          const detail = err.data?.detail ?? err.message;
+          toast.error(
+            detail
+              ? `Error updating user ${data.username}: ${detail}`
+              : `Error updating user ${data.username}`,
+          );
           console.error(err);
         });
     }
@@ -221,9 +230,12 @@ export function Users() {
             toast.success(`User ${user.username} deleted successfully`);
           })
           .catch((err) => {
-            toast.error(`Error deleting user ${user.username}`, {
-              data: { error: err.data },
-            });
+            const detail = err.data?.detail ?? err.message;
+            toast.error(
+              detail
+                ? `Error deleting user ${user.username}: ${detail}`
+                : `Error deleting user ${user.username}`,
+            );
           });
       }
     });
@@ -271,15 +283,13 @@ export function Users() {
           }
         }}
       />
-      {/* Main Layout Grid */}
-      <Grid
-        container
-        spacing={2}
-        sx={{ minHeight: "calc(100vh - 200px)", mt: 1 }}
-        data-tutor={`reactour__tab${TabIDs.USERS}__step0`}
-      >
-        {/* Left Panel - Tree View */}
-        <Grid size={{ xs: 12, md: 4, lg: 3 }}>
+      {/* Main Layout */}
+      <ResizableSplitView
+        storageKey="users.leftPanelPct"
+        containerProps={{
+          "data-tutor": `reactour__tab${TabIDs.USERS}__step0`,
+        }}
+        leftPanel={
           <Paper
             sx={{ height: "100%", p: 1 }}
             data-tutor={`reactour__tab${TabIDs.USERS}__step1`}
@@ -327,10 +337,8 @@ export function Users() {
               onExpandedItemsChange={setExpandedGroups}
             />
           </Paper>
-        </Grid>
-
-        {/* Right Panel - Details and Edit Form */}
-        <Grid size={{ xs: 12, md: 8, lg: 9 }}>
+        }
+        rightPanel={
           <Paper sx={{ height: "100%", overflow: "hidden" }}>
             {selectedUser && selectedUserKey ? (
               <UserDetailsPanel
@@ -374,8 +382,8 @@ export function Users() {
               </Box>
             )}
           </Paper>
-        </Grid>
-      </Grid>
+        }
+      />
     </InView>
   );
 }

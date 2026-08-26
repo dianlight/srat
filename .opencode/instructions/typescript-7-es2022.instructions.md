@@ -343,8 +343,8 @@ cd frontend
 # Type check
 bun tsc --noEmit
 
-# Run tests
-bunx vitest run
+# Run tests (Bun 1.4 runtime — ~35-50% faster; do NOT add --coverage here)
+bunx --bun vitest run
 
 # Production build
 bun run build

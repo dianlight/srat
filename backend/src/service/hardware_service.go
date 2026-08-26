@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/converter"
@@ -28,6 +31,64 @@ const hwCacheKey = "hardware_info"
 // ("loop0") devices. Partition children like "sda1" never match.
 var wholeDiskNameRe = regexp.MustCompile(`^([a-z]+|nvme\d+n\d+|mmcblk\d+|loop\d+)$`)
 
+// partitionCountRecord captures the partition layout of one disk as observed
+// in a single hardware snapshot. Records persist across enumerations so
+// partition-count jumps can be detected even when the 30-minute hardware cache
+// is invalidated between snapshots (issue #990).
+type partitionCountRecord struct {
+	Serial     string   // drive serial as reported by the Supervisor (may be empty)
+	DiskID     string   // canonical disk id used as the result map key
+	LegacyName string   // kernel device name of the disk, e.g. "nvme0n1"
+	Count      int      // number of partitions in this snapshot
+	Partitions []string // sorted legacy device names of the partitions
+}
+
+// partitionIncrease describes one anomalous partition-count increase between
+// two consecutive published snapshots.
+type partitionIncrease struct {
+	Key          string
+	Serial       string
+	DiskID       string
+	Previous     int
+	Current      int
+	NewPartition []string // legacy names that appeared since the previous snapshot
+}
+
+// detectPartitionIncreases compares freshly built snapshot records against the
+// previously published ones and reports every drive whose partition count grew,
+// including which partition names appeared. Drives without a previous record are
+// treated as baseline (first sighting); decreases and stable counts are not
+// anomalous.
+func detectPartitionIncreases(prev, current map[string]partitionCountRecord) map[string]partitionIncrease {
+	increases := make(map[string]partitionIncrease)
+	for key, rec := range current {
+		before, ok := prev[key]
+		if !ok || rec.Count <= before.Count {
+			continue
+		}
+		prevParts := make(map[string]struct{}, len(before.Partitions))
+		for _, name := range before.Partitions {
+			prevParts[name] = struct{}{}
+		}
+		var added []string
+		for _, name := range rec.Partitions {
+			if _, seen := prevParts[name]; !seen {
+				added = append(added, name)
+			}
+		}
+		slices.Sort(added)
+		increases[key] = partitionIncrease{
+			Key:          key,
+			Serial:       rec.Serial,
+			DiskID:       rec.DiskID,
+			Previous:     before.Count,
+			Current:      rec.Count,
+			NewPartition: added,
+		}
+	}
+	return increases
+}
+
 // HardwareServiceInterface is the interface other services use.
 // It exposes a method that returns a neutral, internal representation
 // of hardware info (`hardware.HardwareInfo`) so other packages don't have
@@ -47,6 +108,12 @@ type hardwareService struct {
 	smartService  SmartServiceInterface
 	hdidleService HDIdleServiceInterface
 	cache         *cache.Cache
+	// Partition-count anomaly tracking (issue #990): lastPartitionCounts holds
+	// the per-drive records of the most recently PUBLISHED snapshot so the next
+	// build can warn about unexplained partition-count increases. It survives
+	// cache invalidation on purpose; guarded by partitionCountsMu.
+	partitionCountsMu   sync.Mutex
+	lastPartitionCounts map[string]partitionCountRecord
 	// readFile is os.ReadFile by default; tests override it to mock sysfs.
 	readFile func(string) ([]byte, error)
 	// sysBlockBasePath is "/sys/block" in production; tests override it
@@ -67,16 +134,17 @@ func NewHardwareService(
 	eventBus events.EventBusInterface,
 ) HardwareServiceInterface {
 	hs := &hardwareService{
-		ctx:              ctx,
-		haClient:         haClient,
-		conv:             converter.HaHardwareToDtoImpl{},
-		smartService:     smartServiceInstance,
-		hdidleService:    hdidleServiceInstance,
-		state:            state,
-		cache:            cache.New(30*time.Minute, 10*time.Minute),
-		readFile:         os.ReadFile,
-		sysBlockBasePath: "/sys/block",
-		fsProbeFunc:      mount.FSFromBlock,
+		ctx:                 ctx,
+		haClient:            haClient,
+		conv:                converter.HaHardwareToDtoImpl{},
+		smartService:        smartServiceInstance,
+		hdidleService:       hdidleServiceInstance,
+		state:               state,
+		cache:               cache.New(30*time.Minute, 10*time.Minute),
+		lastPartitionCounts: make(map[string]partitionCountRecord),
+		readFile:            os.ReadFile,
+		sysBlockBasePath:    "/sys/block",
+		fsProbeFunc:         mount.FSFromBlock,
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -113,16 +181,20 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 	}
 
 	ret := map[string]dto.Disk{}
+	// Per-drive partition layout of the snapshot being built, used right before
+	// the cache write to detect anomalous partition-count jumps (issue #990).
+	currentCounts := make(map[string]partitionCountRecord)
 	if !h.state.HACoreReady {
 		tlog.DebugContext(h.ctx, "HA Core not ready, cannot get hardware info", tlog.WithCaller(0)...)
 		return ret, nil
 	}
 	hwser, errHw := h.haClient.GetHardwareInfoWithResponse(h.ctx)
 	if errHw != nil || hwser == nil {
-		if !errors.Is(errHw, dto.ErrorNotFound) {
-			return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
+		if errors.Is(errHw, dto.ErrorNotFound) {
+			slog.DebugContext(h.ctx, "Hardware info not found, continuing with empty disk list")
+			return ret, nil
 		}
-		slog.DebugContext(h.ctx, "Hardware info not found, continuing with empty disk list")
+		return nil, errors.WithDetails(errHw, "message", "failed to get hardware info from HA Supervisor", "hwset", hwser)
 	}
 
 	if hwser.StatusCode() != 200 || hwser.JSON200 == nil || hwser.JSON200.Data == nil || hwser.JSON200.Data.Drives == nil {
@@ -161,12 +233,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		}
 	}
 
-	// Fallback probe: for drives with no filesystems, try to detect whole-disk filesystem
+	// Fallback probe: drives may have partitions without filesystem magic (e.g.
+	// sda6 on a system disk) that the Supervisor omits from drive.Filesystems.
+	// Synthesize the missing partition entries from the whole-disk device's
+	// children; for drives with no filesystems at all, try to detect a
+	// whole-disk filesystem instead.
 	for driveIdx := range *hwser.JSON200.Data.Drives {
 		drive := &(*hwser.JSON200.Data.Drives)[driveIdx]
-		if drive.Filesystems != nil && len(*drive.Filesystems) > 0 {
-			continue
-		}
 		if drive.Serial == nil || *drive.Serial == "" {
 			continue
 		}
@@ -174,15 +247,26 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		if !ok || device.DevPath == nil || *device.DevPath == "" || device.ById == nil || *device.ById == "" {
 			continue
 		}
-		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
 		if drive.Filesystems == nil {
 			drive.Filesystems = &[]hardware.Filesystem{}
+		}
+
+		// Collect the device paths already reported by the Supervisor so child
+		// synthesis does not duplicate filesystems that are already present.
+		reportedFsDevices := make(map[string]struct{}, len(*drive.Filesystems))
+		for _, fs := range *drive.Filesystems {
+			if fs.Device != nil {
+				reportedFsDevices[*fs.Device] = struct{}{}
+			}
 		}
 
 		// When the whole-disk device reports partition children, synthesize one
 		// real partition filesystem per child instead of a whole-disk filesystem.
 		// This keeps real partitions (e.g. sdc1 on a flash disk) visible while
-		// leaving the disk itself as a raw disk with no partitions.
+		// leaving the disk itself as a raw disk with no partitions. Children that
+		// already have a reported filesystem (e.g. sda1 on a system disk) are
+		// skipped; only the missing ones (e.g. sda6, no filesystem magic) are
+		// added so the volume listing matches the real partition table.
 		if device.Children != nil && len(*device.Children) > 0 {
 			addedChild := false
 			for _, childPath := range *device.Children {
@@ -193,6 +277,9 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				childDev, ok := devicesByName[childName]
 				if !ok || childDev.DevPath == nil || *childDev.DevPath == "" || childDev.ById == nil || *childDev.ById == "" {
 					tlog.DebugContext(h.ctx, "Skipping partition child without matching device entry", "drive_id", drive.Id, "child", childName)
+					continue
+				}
+				if _, already := reportedFsDevices[*childDev.DevPath]; already {
 					continue
 				}
 				childFsId := "by-id-" + strings.TrimPrefix(*childDev.ById, "/dev/disk/by-id/")
@@ -210,6 +297,13 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 				continue
 			}
 		}
+
+		// Whole-disk synthesis only applies when the drive still has no
+		// filesystems (none reported and no child produced one).
+		if len(*drive.Filesystems) > 0 {
+			continue
+		}
+		fstype, _, _ := h.fsProbeFunc(*device.DevPath)
 
 		// Create a synthetic filesystem for the whole disk even when no readable
 		// filesystem magic was found (e.g. an MBR with an unreadable partition):
@@ -243,8 +337,8 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		if hwser.JSON200.Data.Devices != nil {
 			for deviceIdx := range *hwser.JSON200.Data.Devices {
 				device := &(*hwser.JSON200.Data.Devices)[deviceIdx]
-				if device.DevPath == nil || *device.DevPath == "" {
-					tlog.DebugContext(h.ctx, "Skipping device with nil or empty name", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
+				if device.DevPath == nil || *device.DevPath == "" || device.Name == nil || *device.Name == "" || device.ById == nil || *device.ById == "" {
+					tlog.DebugContext(h.ctx, "Skipping device with nil or empty DevPath/Name/ById", "drive_index", i, "drive_id", drive.Id, "device_index", deviceIdx)
 					continue
 				}
 
@@ -363,9 +457,35 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 		}
 		tlog.TraceContext(h.ctx, "Adding disk DTO to result map", "disk_id", *diskDto.Id)
 		ret[*diskDto.Id] = diskDto
+
+		rec := partitionCountRecord{
+			DiskID: *diskDto.Id,
+		}
+		if drive.Serial != nil {
+			rec.Serial = *drive.Serial
+		}
+		if diskDto.LegacyDeviceName != nil {
+			rec.LegacyName = *diskDto.LegacyDeviceName
+		}
+		if diskDto.Partitions != nil {
+			rec.Count = len(*diskDto.Partitions)
+			for _, part := range *diskDto.Partitions {
+				if part.LegacyDeviceName != nil && *part.LegacyDeviceName != "" {
+					rec.Partitions = append(rec.Partitions, *part.LegacyDeviceName)
+				}
+			}
+			slices.Sort(rec.Partitions)
+		}
+		diffKey := rec.Serial
+		if diffKey == "" {
+			diffKey = rec.DiskID
+		}
+		currentCounts[diffKey] = rec
 	}
 
-	// populate cache
+	// Diff partition counts against the previous published snapshot and log any
+	// unexplained increase BEFORE publishing, then populate the cache.
+	h.recordPartitionCounts(currentCounts)
 	if h.cache != nil {
 		h.cache.SetDefault(hwCacheKey, ret)
 	}
@@ -380,6 +500,44 @@ func (h *hardwareService) InvalidateHardwareInfo() {
 	}
 	h.cache.Delete(hwCacheKey)
 	tlog.TraceContext(h.ctx, "Invalidated hardware info cache")
+}
+
+// recordPartitionCounts logs the per-drive serial/partition-count summary of a
+// freshly built snapshot and warns when any drive's count increased relative to
+// the previously published snapshot. Such increases never originate from SRAT
+// itself (no local code partitions disks) and are the fingerprint of the
+// phantom-partition defect tracked in issue #990: kernel partition rescans —
+// often triggered by side-effecting SG_IO probes — surfacing transient
+// partitions through Supervisor enumeration data. Records for drives absent
+// from the current snapshot are kept so a reappearing disk is still diffed
+// against its own history. Callers must invoke this exactly once per published
+// snapshot, immediately before the cache write.
+func (h *hardwareService) recordPartitionCounts(current map[string]partitionCountRecord) {
+	h.partitionCountsMu.Lock()
+	defer h.partitionCountsMu.Unlock()
+	if h.lastPartitionCounts == nil {
+		h.lastPartitionCounts = make(map[string]partitionCountRecord, len(current))
+	}
+	for key, rec := range current {
+		slog.DebugContext(h.ctx, "Hardware enumeration partition summary",
+			"disk_key", key,
+			"serial", rec.Serial,
+			"disk_id", rec.DiskID,
+			"legacy_device_name", rec.LegacyName,
+			"partition_count", rec.Count,
+		)
+	}
+	for key, inc := range detectPartitionIncreases(h.lastPartitionCounts, current) {
+		slog.WarnContext(h.ctx, "Anomalous partition count increase without local partitioning action",
+			"disk_key", key,
+			"serial", inc.Serial,
+			"disk_id", inc.DiskID,
+			"previous_partition_count", inc.Previous,
+			"current_partition_count", inc.Current,
+			"new_partitions", strings.Join(inc.NewPartition, ","),
+		)
+	}
+	maps.Copy(h.lastPartitionCounts, current)
 }
 
 // MockSetFSProbeFunc allows tests to override the filesystem probe used by the

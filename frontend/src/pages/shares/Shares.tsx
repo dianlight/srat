@@ -1,7 +1,6 @@
 import AddIcon from "@mui/icons-material/Add";
 import {
   Box,
-  Grid,
   IconButton,
   Paper,
   Stack,
@@ -13,6 +12,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
+import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { useShare } from "../../hooks/shareHook";
 import { useVolume } from "../../hooks/volumeHook";
 import { addMessage } from "../../store/errorSlice";
@@ -385,15 +385,13 @@ export function Shares() {
         }}
         onDeleteSubmit={onSubmitDeleteShare}
       />
-      {/* Main Layout Grid */}
-      <Grid
-        container
-        spacing={2}
-        sx={{ minHeight: "calc(100vh - 200px)" }}
-        data-tutor={`reactour__tab${TabIDs.SHARES}__step0`}
-      >
-        {/* Left Panel - Tree View */}
-        <Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
+      {/* Main Layout */}
+      <ResizableSplitView
+        storageKey="shares.leftPanelPct"
+        containerProps={{
+          "data-tutor": `reactour__tab${TabIDs.SHARES}__step0`,
+        }}
+        leftPanel={
           <Paper
             sx={{ height: "100%", p: 1 }}
             data-tutor={`reactour__tab${TabIDs.SHARES}__step3`}
@@ -456,10 +454,8 @@ export function Shares() {
               onExpandedItemsChange={setExpandedGroups}
             />
           </Paper>
-        </Grid>
-
-        {/* Right Panel - Details and Edit Form */}
-        <Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
+        }
+        rightPanel={
           <Paper sx={{ height: "100%", overflow: "hidden" }}>
             {selectedShare && selectedShareKey ? (
               <ShareDetailsPanel
@@ -502,8 +498,8 @@ export function Shares() {
               </Box>
             )}
           </Paper>
-        </Grid>
-      </Grid>
+        }
+      />
     </>
   );
 }

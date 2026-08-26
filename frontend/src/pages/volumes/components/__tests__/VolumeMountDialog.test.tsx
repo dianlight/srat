@@ -356,4 +356,53 @@ describe("VolumeMountDialog Component", () => {
         // Check for warning or chip elements for unsupported flags
         expect(container).toBeTruthy();
     });
+
+    it("disables the Mount button while submitting", async () => {
+        const React = await import("react");
+        const { render, screen, act, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumeMountDialog } = await import("../VolumeMountDialog");
+        const { createTestStore } = await import("/test/testing");
+
+        const store = await createTestStore();
+        let resolveClose: (() => void) | undefined;
+        const closePromise = new Promise<void>((resolve) => {
+            resolveClose = resolve;
+        });
+        const mockClose = vi.fn(() => closePromise);
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store, children: React.createElement(VolumeMountDialog as any, {
+                        open: true,
+                        onClose: mockClose,
+                        objectToEdit: {
+                            id: "test-id",
+                            name: "Test Partition",
+                            mount_point_data: []
+                        }
+                    })
+                }
+            )
+        );
+
+        const user = userEvent.setup();
+        const mountButton = screen.getByRole("button", { name: "Mount" });
+        await user.click(mountButton);
+
+        // While the parent handles the submission, the submit button must stay disabled
+        expect(mockClose).toHaveBeenCalledTimes(1);
+        expect(mountButton).toBeDisabled();
+
+        // Once the parent finishes, the button re-enables
+        await act(async () => {
+            resolveClose?.();
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("button", { name: "Mount" })).toBeEnabled();
+        });
+    });
 });

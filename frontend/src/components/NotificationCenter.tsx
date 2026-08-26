@@ -142,21 +142,10 @@ export function NotificationCenter() {
     return formatProblemValue(content) ?? null;
   }
 
-  /*
-	useEffect(() => {
-		toast.error("Error message!");
-		toast.warn("Warning message!");
-		toast.dark("Dark mode message molto ma molto lungo pure troppo cosa possiamo fare con questo lunghissimo messaggio?");
-		toast.success("Success message!");
-		toast.warning("Warning message!");
-		toast.info("Info message!");
-	}, []);
-	*/
-
   return (
     <>
       <IconButton aria-describedby={id} onClick={handleClick}>
-        <Tooltip title="Report issue!" arrow>
+        <Tooltip title="Notifications" arrow>
           <Badge color="secondary" badgeContent={unreadCount} max={999}>
             <NotificationsIcon sx={{ color: "white" }} />
           </Badge>
@@ -176,7 +165,10 @@ export function NotificationCenter() {
           horizontal: "right",
         }}
       >
-        <Card variant="outlined" sx={{ minWidth: "22em" }}>
+        <Card
+          variant="outlined"
+          sx={{ minWidth: { xs: "min(22em, calc(100vw - 2rem))", sm: "22em" } }}
+        >
           <CardContent>
             <Toolbar variant="dense">
               <Box sx={{ flexGrow: 1, display: { xs: "none", md: "flex" } }}>
@@ -201,7 +193,7 @@ export function NotificationCenter() {
                       onChange={(e) => setShowRead(e.target.checked)}
                     />
                   }
-                  label={showRead ? "All" : "Not readed"}
+                  label={showRead ? "All" : "Unread"}
                   labelPlacement="end"
                 />
               </Box>
@@ -247,7 +239,6 @@ export function NotificationCenter() {
                               aria-label="close"
                               color="inherit"
                               size="small"
-                              onClick={() => {}}
                             >
                               <CloseIcon fontSize="inherit" />
                             </IconButton>
@@ -261,7 +252,6 @@ export function NotificationCenter() {
                                 aria-label="close"
                                 color="inherit"
                                 size="small"
-                                onClick={() => {}}
                               >
                                 <CheckIcon fontSize="inherit" />
                               </IconButton>

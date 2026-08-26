@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ import (
 	"github.com/dianlight/srat/internal/urlutil"
 	"github.com/dianlight/tlog"
 	"github.com/fsnotify/fsnotify"
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/vvair/selfupdate"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -905,6 +906,16 @@ func (self *UpgradeService) updateServerSymlink(targetDir string, updatePkg *Upd
 // It only considers variants that are present in the UpdatePackage to avoid selecting
 // stale binaries from previous installations.
 func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string {
+	return detectBestServerVariantWithLinkerCheck(targetDir, updatePkg, func(path string) bool {
+		_, err := os.Stat(path)
+		return err == nil
+	})
+}
+
+// detectBestServerVariantWithLinkerCheck is detectBestServerVariant with an injectable
+// linker probe so unit tests can simulate musl/glibc systems without relying on the
+// linker layout of the test machine.
+func detectBestServerVariantWithLinkerCheck(targetDir string, updatePkg *UpdatePackage, linkerExists func(string) bool) string {
 	arch := runtime.GOARCH
 
 	// Build a set of variant names present in the update package
@@ -928,10 +939,8 @@ func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string 
 			case "arm64":
 				muslLinker = "/lib/ld-musl-aarch64.so.1"
 			}
-			if muslLinker != "" {
-				if _, err := os.Stat(muslLinker); err == nil {
-					return "srat-server-musl"
-				}
+			if muslLinker != "" && linkerExists(muslLinker) {
+				return "srat-server-musl"
 			}
 		}
 	}
@@ -945,10 +954,8 @@ func detectBestServerVariant(targetDir string, updatePkg *UpdatePackage) string 
 				"/lib/x86_64-linux-gnu/libc.so.6",  // Debian/Ubuntu x86_64
 				"/lib/aarch64-linux-gnu/libc.so.6", // Debian/Ubuntu aarch64
 			}
-			for _, indicator := range glibcIndicators {
-				if _, err := os.Stat(indicator); err == nil {
-					return "srat-server-glib"
-				}
+			if slices.ContainsFunc(glibcIndicators, linkerExists) {
+				return "srat-server-glib"
 			}
 		}
 	}

@@ -2,8 +2,6 @@ package service_test
 
 import (
 	"context"
-	"maps"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -56,7 +54,7 @@ func (suite *BroadcasterServiceTestSuite) SetupTest() {
 			service.NewBroadcasterService,
 			mock.Mock[service.HomeAssistantServiceInterface],
 			mock.Mock[service.HaRootServiceInterface],
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			mock.Mock[service.ShareServiceInterface],
 		),
 		fx.Populate(&suite.ctx, &suite.cancel),
@@ -110,7 +108,7 @@ func (suite *BroadcasterServiceTestSuite) TestFilesystemTaskEvent_IsBroadcastToW
 
 emitFilesystemTask:
 	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
-		Event: events.Event{Type: events.EventTypes.STOP},
+		Type: events.EventTypes.STOP,
 		Task: &dto.FilesystemTask{
 			Device:         "/dev/test",
 			Operation:      "check",
@@ -228,7 +226,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) SetupTest() {
 	suite.ctx, suite.cancel = context.WithCancel(context.Background())
 	suite.eventBus = events.NewEventBus(suite.ctx)
 	suite.relay = broadcast.NewRelay[broadcastEventForTesting]()
-	suite.testDisks = &dto.DiskMap{}
+	suite.testDisks = dto.NewDiskMap()
 }
 
 func (suite *BroadcasterServiceEventMappingTestSuite) TearDownTest() {
@@ -244,7 +242,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) setupEventListeners() {
 
 	// Listen for disk events
 	suite.unsubs = append(suite.unsubs, suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
-		suite.relay.Broadcast(broadcastEventForTesting{Message: slices.Collect(maps.Values(*suite.testDisks))})
+		suite.relay.Broadcast(broadcastEventForTesting{Message: suite.testDisks.All()})
 		return nil
 	}))
 
@@ -258,7 +256,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) setupEventListeners() {
 
 	// Listen for mount point events
 	suite.unsubs = append(suite.unsubs, suite.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
-		suite.relay.Broadcast(broadcastEventForTesting{Message: slices.Collect(maps.Values(*suite.testDisks))})
+		suite.relay.Broadcast(broadcastEventForTesting{Message: suite.testDisks.All()})
 		return nil
 	}))
 }
@@ -280,7 +278,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) recv() (any, bool) {
 func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVolumesData() {
 	expectedDiskID := "expected-disk"
 	expectedDisk := &dto.Disk{Id: &expectedDiskID}
-	(*suite.testDisks)[expectedDiskID] = expectedDisk
+	suite.testDisks.AddOrUpdate(expectedDisk)
 
 	suite.setupEventListeners()
 	listener := suite.relay.Listener(10)
@@ -288,8 +286,8 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestDiskEvent_BroadcastsVo
 
 	// Emit disk event
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
-		Disk:  &dto.Disk{Id: new("d1")},
+		Type: events.EventTypes.ADD,
+		Disk: &dto.Disk{Id: new("d1")},
 	})
 
 	select {
@@ -311,7 +309,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 	// Emit share event
 	share := &dto.SharedResource{Name: "share-1"}
 	_ = suite.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type:  events.EventTypes.ADD,
 		Share: share,
 	})
 
@@ -328,7 +326,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestShareEvent_BroadcastsS
 func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_BroadcastsVolumesData() {
 	expectedDiskID := "expected-disk"
 	expectedDisk := &dto.Disk{Id: &expectedDiskID}
-	(*suite.testDisks)[expectedDiskID] = expectedDisk
+	suite.testDisks.AddOrUpdate(expectedDisk)
 
 	suite.setupEventListeners()
 	listener := suite.relay.Listener(10)
@@ -337,7 +335,7 @@ func (suite *BroadcasterServiceEventMappingTestSuite) TestMountPointEvent_Broadc
 	// Emit mount point event
 	mp := &dto.MountPointData{Path: "/mnt/x", IsMounted: true}
 	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event:      events.Event{Type: events.EventTypes.UPDATE},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: mp,
 	})
 

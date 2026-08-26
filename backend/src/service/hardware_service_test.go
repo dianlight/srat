@@ -1,7 +1,10 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -485,6 +488,198 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithChildrenSynthes
 	}
 }
 
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DriveWithFilesystemsSynthesizesMissingChildPartitions() {
+	// A drive that already has filesystems reported by the Supervisor (e.g. the
+	// KINGSTON system disk) must still synthesize missing partition children.
+	// Partitions without filesystem magic (e.g. sda6, an 8M partition) are absent
+	// from drive.Filesystems but present in device.Children; they must be added
+	// so the volume listing matches the real partition table (issue #906).
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive1"),
+						Serial: new("SERIAL123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-ata-KINGSTON_50026B77560145CF-part1"),
+								Device:      new("/dev/sda1"),
+								MountPoints: &[]string{},
+							},
+							{
+								Id:          new("by-id-ata-KINGSTON_50026B77560145CF-part8"),
+								Device:      new("/dev/sda8"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sda"),
+						DevPath: new("/dev/sda"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("SERIAL123"),
+						},
+						Children: &[]string{
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda1",
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda6",
+							"/sys/devices/pci0000:00/0000:00:14.0/ata1/host0/target0:0:0/0:0:0:0/block/sda/sda8",
+						},
+					},
+					{
+						Name:    new("sda1"),
+						DevPath: new("/dev/sda1"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part1"),
+					},
+					{
+						Name:    new("sda6"),
+						DevPath: new("/dev/sda6"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part6"),
+					},
+					{
+						Name:    new("sda8"),
+						DevPath: new("/dev/sda8"),
+						ById:    new("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part8"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sda"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sda"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		return "", 0, nil
+	})
+
+	// Execute
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	// Assert
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1, "Drive should be kept")
+
+	disk, ok := disks["ata-KINGSTON_50026B77560145CF"]
+	suite.True(ok, "Disk should be present by by-id name")
+	suite.NotNil(disk.Partitions, "Missing child partition should be synthesized")
+	suite.Len(*disk.Partitions, 3, "Two reported filesystems plus one synthesized missing child")
+
+	var foundSda6 *dto.Partition
+	for _, part := range *disk.Partitions {
+		if part.LegacyDeviceName != nil && *part.LegacyDeviceName == "sda6" {
+			partCopy := part
+			foundSda6 = &partCopy
+		}
+	}
+	suite.Require().NotNil(foundSda6, "sda6 partition should be synthesized from child devices")
+	suite.Equal("/dev/sda6", *foundSda6.LegacyDevicePath)
+	suite.Equal("/dev/disk/by-id/ata-KINGSTON_50026B77560145CF-part6", *foundSda6.DevicePath)
+	suite.Nil(foundSda6.FsType, "Partition with unknown filesystem keeps FsType nil")
+}
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithNilByIdDoesNotPanic() {
+	// Regression test for hassio-addons#729: HA Supervisor started returning
+	// devices where ById is nil but DevPath is non-nil. Before the fix the
+	// device-matching loop dereferenced device.ById without a nil check,
+	// causing a panic.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id: new("drive1"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Device:      new("/dev/sda1"),
+								Name:        new("filesystem1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						// DevPath is set but ById is nil — triggers the crash.
+						Name:    new("sda"),
+						DevPath: new("/dev/sda"),
+						ById:    nil,
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	// Execute — must not panic
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+}
+
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithNilNameDoesNotPanic() {
+	// Regression test for hassio-addons#729: device with nil Name must be
+	// skipped gracefully instead of causing a nil pointer dereference.
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id: new("drive1"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Device:      new("/dev/sda1"),
+								Name:        new("filesystem1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						// Name is nil — triggers the crash at line 274.
+						Name:    nil,
+						DevPath: new("/dev/sda"),
+						ById:    new("/dev/disk/by-id/ata-some-disk"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	// Execute — must not panic
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+}
+
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleUdevFsType() {
 	// A raw whole-disk device (no children) with a stale udev ID_FS_TYPE must
 	// stay raw when the probe finds no filesystem magic. The stale udev value
@@ -551,4 +746,100 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleU
 		suite.Equal("/dev/disk/by-id/usb-TESTRAW_456", *part.DevicePath)
 		suite.Nil(part.FsType, "Raw whole-disk partition must not use stale udev FsType")
 	}
+}
+
+// sn740SupervisorResponse builds a Supervisor /hardware/info response modeling
+// the WD PC SN740 layout from issue #990: one NVMe drive matched by serial to a
+// whole-disk device exposing `childCount` partition children and no reported
+// filesystems, so the fallback synthesis turns every child into a partition.
+func sn740SupervisorResponse(childCount int) *hardware.GetHardwareInfoResponse {
+	children := make([]string, 0, childCount)
+	devices := []hardware.Device{
+		{
+			Name:     new("nvme0n1"),
+			DevPath:  new("/dev/nvme0n1"),
+			ById:     new("/dev/disk/by-id/nvme-SN740"),
+			Children: &children,
+			Attributes: &hardware.Attributes{
+				IDSERIALSHORT: new("SN740TEST"),
+			},
+		},
+	}
+	for i := 1; i <= childCount; i++ {
+		partName := fmt.Sprintf("nvme0n1p%d", i)
+		children = append(children, "/sys/devices/virtual/block/"+partName)
+		devices = append(devices, hardware.Device{
+			Name:    new(partName),
+			DevPath: new("/dev/" + partName),
+			ById:    new("/dev/disk/by-id/" + partName),
+		})
+	}
+	return &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-sn740"),
+						Serial: new("SN740TEST"),
+					},
+				},
+				Devices: &devices,
+			},
+		},
+	}
+}
+
+// TestGetHardwareInfo_WarnsOnPhantomPartitionCountIncrease reproduces the
+// issue #990 fingerprint: an unchanged NVMe drive whose partition count grows
+// (2→3) between two enumerations without any local partitioning action. The
+// first published snapshot is the silent baseline; the growth must surface as
+// a slog warning carrying serial, previous/current counts and the appeared
+// partition name so operators can correlate it with probe/udev activity.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_WarnsOnPhantomPartitionCountIncrease() {
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(oldDefault)
+
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "nvme0n1"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "nvme0n1"))
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).
+		ThenReturn(sn740SupervisorResponse(2), nil).
+		ThenReturn(sn740SupervisorResponse(3), nil)
+
+	// Baseline enumeration: two partitions, no anomaly expected.
+	disks, err := suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	disk, ok := disks["nvme-SN740"]
+	suite.Require().True(ok, "drive should be keyed by its by-id name")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Len(*disk.Partitions, 2)
+	suite.NotContains(buf.String(), "Anomalous partition count increase",
+		"the first published snapshot is the diff baseline and must not warn")
+
+	// Second enumeration observing the phantom third partition.
+	suite.hardwareService.InvalidateHardwareInfo()
+	buf.Reset()
+
+	disks, err = suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	disk, ok = disks["nvme-SN740"]
+	suite.Require().True(ok)
+	suite.Require().NotNil(disk.Partitions)
+	suite.Len(*disk.Partitions, 3)
+
+	logs := buf.String()
+	suite.Contains(logs, "Anomalous partition count increase without local partitioning action")
+	suite.Contains(logs, "serial=SN740TEST")
+	suite.Contains(logs, "disk_id=nvme-SN740")
+	suite.Contains(logs, "previous_partition_count=2")
+	suite.Contains(logs, "current_partition_count=3")
+	suite.Contains(logs, "new_partitions=nvme0n1p3")
 }

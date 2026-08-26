@@ -57,8 +57,8 @@ func (suite *UserHandlerSuite) TearDownTest() {
 
 func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	expectedUsers := []dto.User{
-		{Username: "user1", Password: new(dto.NewSecret("usrpwd1")), IsAdmin: true},
-		{Username: "user2", Password: new(dto.NewSecret("usrpwd2")), IsAdmin: false},
+		{Username: "user1", Password: new(dto.NewSecret("usrpwd1")), IsAdmin: true, HasDefaultPassword: true},
+		{Username: "user2", Password: new(dto.NewSecret("usrpwd2")), IsAdmin: false, HasDefaultPassword: false},
 	}
 
 	// Configure mock expectations
@@ -82,8 +82,13 @@ func (suite *UserHandlerSuite) TestListUsersSuccess() {
 	for i, single := range result {
 		suite.Equal(single.Username, expectedUsers[i].Username, "username at index %d should match", i)
 		suite.Equal(single.IsAdmin, expectedUsers[i].IsAdmin, "isAdmin at index %d should match", i)
+		suite.Equal(single.HasDefaultPassword, expectedUsers[i].HasDefaultPassword, "has_default_password at index %d should match", i)
 		suite.NotEqual(single.Password, expectedUsers[i].Password, "password at index %d should match", i)
 	}
+	// The password field is write-only: its Secret value must never be
+	// serialized in responses (Secret marshals to null).
+	suite.NotContains(resp.Body.String(), "usrpwd1", "ListUsers response must not expose the password value")
+	suite.NotContains(resp.Body.String(), "usrpwd2", "ListUsers response must not expose the password value")
 	// Assert
 	//suite.Equal(expectedUsers, result, "listed users %#v should match expected users %#v", result, expectedUsers)
 }
@@ -126,6 +131,33 @@ func (suite *UserHandlerSuite) TestCreateUserSuccess() {
 	// Assert
 	suite.Equal(expectedUser.Username, result.Username)
 	suite.Equal(expectedUser.IsAdmin, result.IsAdmin)
+}
+
+func (suite *UserHandlerSuite) TestCreateUserIgnoresClientSuppliedDefaultPassword() {
+	// has_default_password is read-only: a client-supplied value must be
+	// ignored, and the response must carry the server-computed flag.
+	input := dto.User{Username: "newuser", Password: new(dto.NewSecret("password123")), HasDefaultPassword: true}
+	expectedUser := &dto.User{Username: "newuser", IsAdmin: false, HasDefaultPassword: false}
+
+	// Configure mock expectations
+	mock.When(suite.mockUserService.CreateUser(mock.Any[dto.User]())).ThenReturn(expectedUser, nil)
+
+	// Setup humatest
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterUserHandler(api)
+
+	// Make HTTP request
+	resp := api.Post("/user", input)
+	suite.Require().Equal(http.StatusCreated, resp.Code)
+
+	// Parse response
+	var result dto.User
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+
+	// Assert: the response reflects the server state, not the request value.
+	suite.Equal(expectedUser.Username, result.Username)
+	suite.False(result.HasDefaultPassword, "has_default_password must reflect server state, not the client-supplied value")
 }
 
 func (suite *UserHandlerSuite) TestCreateUserAlreadyExists() {

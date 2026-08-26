@@ -1,7 +1,8 @@
+import type { SvgIconProps } from "@mui/material/SvgIcon";
 import SvgIcon from "@mui/material/SvgIcon";
 import * as React from "react";
 
-type FontAwesomeSvgIconProps = {
+type FontAwesomeSvgIconProps = SvgIconProps & {
   icon: { icon: [number, number, unknown, unknown, string | string[]] };
 };
 
@@ -9,14 +10,14 @@ export const FontAwesomeSvgIcon = React.forwardRef<
   SVGSVGElement,
   FontAwesomeSvgIconProps
 >((props, ref) => {
-  const { icon } = props;
+  const { icon, ...rest } = props;
 
   const {
     icon: [width, height, , , svgPathData],
   } = icon;
 
   return (
-    <SvgIcon ref={ref} viewBox={`0 0 ${width} ${height}`}>
+    <SvgIcon ref={ref} {...rest} viewBox={`0 0 ${width} ${height}`}>
       {typeof svgPathData === "string" ? (
         <path d={svgPathData} />
       ) : (

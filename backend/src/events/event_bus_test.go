@@ -363,9 +363,7 @@ func TestEventBusUUIDGeneration(t *testing.T) {
 		Name: "test-share",
 	}
 	_ = bus.EmitShare(ShareEvent{
-		Event: Event{
-			Type: EventTypes.ADD,
-		},
+		Type:  EventTypes.ADD,
 		Share: share,
 	})
 
@@ -411,9 +409,7 @@ func TestEventBusUUIDNotOverwritten(t *testing.T) {
 		Name: "test-share",
 	}
 	_ = bus.EmitShare(ShareEvent{
-		Event: Event{
-			Type: EventTypes.ADD,
-		},
+		Type:  EventTypes.ADD,
 		Share: share,
 	})
 
@@ -469,9 +465,7 @@ func TestEventBusMultipleListenersGetSameUUID(t *testing.T) {
 		Name: "test-share",
 	}
 	_ = bus.EmitShare(ShareEvent{
-		Event: Event{
-			Type: EventTypes.ADD,
-		},
+		Type:  EventTypes.ADD,
 		Share: share,
 	})
 
@@ -505,7 +499,7 @@ func TestEventBusConcurrentEmits(t *testing.T) {
 	wg.Add(numListeners * numEmits)
 
 	// Register multiple listeners
-	for i := 0; i < numListeners; i++ {
+	for range numListeners {
 		unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
 			counter.Add(1)
 			wg.Done()
@@ -515,7 +509,7 @@ func TestEventBusConcurrentEmits(t *testing.T) {
 	}
 
 	// Emit events concurrently
-	for i := 0; i < numEmits; i++ {
+	for i := range numEmits {
 		go func(i int) {
 			disk := &dto.Disk{
 				Id: new("sda" + fmt.Sprint(i)),
@@ -565,8 +559,8 @@ func TestEventBusFilesystemTask(t *testing.T) {
 		Message:        "Starting format operation",
 	}
 	bus.EmitFilesystemTask(FilesystemTaskEvent{
-		Event: Event{Type: EventTypes.START},
-		Task:  task,
+		Type: EventTypes.START,
+		Task: task,
 	})
 
 	// Wait for event
@@ -606,9 +600,9 @@ func TestEventBusAppConfigChanged(t *testing.T) {
 	defer unsubscribe()
 
 	bus.EmitAppConfig(AppConfigEvent{
-		Event: Event{Type: EventTypes.UPDATE},
-		Path:  "/data/options.json",
-		Hash:  "abc123",
+		Type: EventTypes.UPDATE,
+		Path: "/data/options.json",
+		Hash: "abc123",
 	})
 
 	done := make(chan struct{})
@@ -626,4 +620,39 @@ func TestEventBusAppConfigChanged(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("timeout waiting for app config changed event")
 	}
+}
+
+func TestEmitDisk_ReturnsHandlerError(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	unsubscribe := bus.OnDisk(func(ctx context.Context, event DiskEvent) errors.E {
+		return errors.New("disk handler boom")
+	})
+	defer unsubscribe()
+
+	err := bus.EmitDisk(DiskEvent{Disk: &dto.Disk{Id: new("sda")}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "disk handler boom")
+}
+
+func TestEmitPartition_ReturnsHandlerError(t *testing.T) {
+	ctx := context.Background()
+	bus := NewEventBus(ctx)
+
+	unsubscribe := bus.OnPartition(func(ctx context.Context, event PartitionEvent) errors.E {
+		return errors.New("partition handler boom")
+	})
+	defer unsubscribe()
+
+	partition := &dto.Partition{
+		Name:       new("sda1"),
+		DevicePath: new("/dev/sda1"),
+	}
+	disk := &dto.Disk{
+		Id: new("sda"),
+	}
+	err := bus.EmitPartition(PartitionEvent{Partition: partition, Disk: disk})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "partition handler boom")
 }

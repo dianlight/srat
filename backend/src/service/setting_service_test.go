@@ -49,9 +49,9 @@ func (suite *SettingServiceSuite) SetupTest() {
 			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
 			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
 			func() *dto.ContextState {
-				sharedResources := dto.ContextState{}
-				sharedResources.DockerInterface = "hassio"
-				sharedResources.DockerNet = "172.30.32.0/23"
+				sharedResources := dto.ContextState{
+					DockerInterface: "hassio",
+					DockerNet:       "172.30.32.0/23"}
 				var err error
 				sharedResources.Template, err = os.ReadFile("../templates/smb.gtpl")
 				if err != nil {
@@ -334,6 +334,60 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
 				suite.Equal([]string{"eth0", "eth1"}, loaded.Interfaces)
+			},
+		},
+		{
+			name: "MDNSRegistration_True_ComponentProxy",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{
+					MDNSRegistration:      new(true),
+					UseComponentMDNSProxy: new(true),
+				}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.True(*loaded.MDNSRegistration)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.True(*loaded.UseComponentMDNSProxy)
+			},
+		},
+		{
+			name: "MDNSRegistration_True_DirectMode",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{
+					MDNSRegistration:      new(true),
+					UseComponentMDNSProxy: new(false),
+				}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.True(*loaded.MDNSRegistration)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.False(*loaded.UseComponentMDNSProxy, "direct mode must survive a save/load round-trip")
+			},
+		},
+		{
+			name: "MDNSRegistration_False",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{MDNSRegistration: new(false)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.MDNSRegistration)
+				suite.False(*loaded.MDNSRegistration)
+			},
+		},
+		{
+			name: "UseComponentMDNSProxy_Nil_DefaultsToTrue",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{MDNSRegistration: new(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.Require().NotNil(loaded.UseComponentMDNSProxy)
+				suite.True(*loaded.UseComponentMDNSProxy, "nil proxy must default to component proxy on load")
 			},
 		},
 	}

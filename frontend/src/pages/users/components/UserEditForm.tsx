@@ -50,11 +50,6 @@ export function UserEditForm({
     values: userData,
     mode: "onChange",
   });
-  /*
-        useEffect(() => {
-            reset(userData);
-        }, [userData, reset]);
-    */
   const selectedRwShares = watch("rw_shares") || [];
   const selectedRoShares = watch("ro_shares") || [];
 

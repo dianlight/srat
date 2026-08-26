@@ -93,7 +93,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 					DatabasePath: "file::memory:?cache=shared&_pragma=foreign_keys(1)",
 				}
 			},
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			dbom.NewDB,
 			events.NewEventBus,
 			NewDirtyDataService,
@@ -171,7 +171,7 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 				},
 			}
 			if vs.disks == nil {
-				vs.disks = &dto.DiskMap{}
+				vs.disks = dto.NewDiskMap()
 			}
 			vs.disks.Add(&fakeDisk)
 		*/
@@ -180,6 +180,18 @@ func (suite *EventPropagationTestSuite) SetupTest() {
 	suite.sambaMock = unixsamba.NewMockSystem()
 	unixsamba.SetCommandExecutor(suite.sambaMock)
 	unixsamba.SetOSUserLookuper(suite.sambaMock)
+	// Seed the admin user. In production it is autocreated by NewUserService's
+	// OnStart hook, but this suite never calls RequireStart(), so CreateShare
+	// (which assigns the admin to shares without an explicit owner) would fail
+	// with ErrorUserNotFound otherwise. The DB is a shared in-memory instance
+	// that persists across tests, so delete any leftover users first.
+	suite.sambaMock.AddUser("admin", "changeme!")
+	suite.Require().NoError(suite.db.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&dbom.SambaUser{}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.SambaUser{
+		Username: "admin",
+		Password: "changeme!",
+		IsAdmin:  true,
+	}).Error)
 	// Setup global mock for share repo to avoid nil pointer errors when mount point events trigger share lookups
 	//mock.When(suite.mockShareRepo.FindByMountPath(mock.Any[string]())).ThenReturn(nil, errors.WithStack(gorm.ErrRecordNotFound))
 }
@@ -319,9 +331,7 @@ func (suite *EventPropagationTestSuite) TestMountPointEventPropagation() {
 		IsMounted: true,
 	}
 	_ = suite.eventBus.EmitMountPoint(events.MountPointEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:       events.EventTypes.UPDATE,
 		MountPoint: mountPoint,
 	})
 
@@ -362,9 +372,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventPropagation() {
 		Model: new("Test Disk"),
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		Disk: disk,
 	})
 
@@ -419,9 +427,7 @@ func (suite *EventPropagationTestSuite) TestMultipleListenersReceiveSameEvent() 
 		Name: "broadcast-test",
 	}
 	_ = suite.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type:  events.EventTypes.ADD,
 		Share: share,
 	})
 
@@ -534,7 +540,7 @@ func (suite *EventPropagationTestSuite) TestConcurrentEventPropagation() {
 	defer unsubscribe3()
 
 	// Action: Emit multiple events concurrently
-	for i := 0; i < numEmissions; i++ {
+	for i := range numEmissions {
 		go func(idx int) {
 			_ = suite.eventBus.EmitShare(events.ShareEvent{
 				Share: &dto.SharedResource{Name: "share-" + string(rune(idx))},
@@ -643,9 +649,7 @@ func (suite *EventPropagationTestSuite) TestDiskEventEmits() {
 		Partitions: &partitions,
 	}
 	suite.eventBus.EmitDisk(events.DiskEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		Disk: disk,
 	})
 
@@ -681,9 +685,7 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 
 	// Action: Emit a setting event
 	suite.eventBus.EmitSetting(events.SettingEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type:    events.EventTypes.UPDATE,
 		Setting: &dto.Settings{},
 	})
 

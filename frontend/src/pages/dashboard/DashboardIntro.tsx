@@ -17,6 +17,10 @@ import {
 } from "@mui/material";
 import { useEffect, useRef } from "react";
 import type { NewsItem } from "../../hooks/githubNewsHook";
+import {
+  Standard_share_names,
+  useGetApiSettingsQuery,
+} from "../../store/sratApi";
 
 interface DashboardIntroProps {
   isCollapsed: boolean;
@@ -34,6 +38,7 @@ export function DashboardIntro({
   error,
 }: DashboardIntroProps) {
   const initialCheckDone = useRef(false);
+  const { data: settings } = useGetApiSettingsQuery();
 
   useEffect(() => {
     // Once news has loaded, if there are news items, expand the intro panel.
@@ -166,6 +171,16 @@ export function DashboardIntro({
                 quick overview of your system's storage health and perform
                 common actions.
               </Typography>
+              {settings &&
+                "standard_share_names" in settings &&
+                settings.standard_share_names === Standard_share_names.Old && (
+                  <Alert severity="warning" sx={{ mt: 2 }}>
+                    You are using the legacy share names (addons,
+                    addon_configs). These names are deprecated and will be
+                    removed in a future release. Switch to the new names
+                    (local_apps, app_configs) in the Settings page.
+                  </Alert>
+                )}
               <Box sx={{ flexGrow: 1 }} />{" "}
               {/* Pushes "Latest News" to the bottom */}
               {renderNews()}

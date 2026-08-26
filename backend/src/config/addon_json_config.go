@@ -89,7 +89,10 @@ type Config struct {
 	HAUseNFS        *bool `json:"ha_use_nfs,omitempty" default:"false"`
 	ExportStatsToHA bool  `json:"export_stats_to_ha,omitempty" default:"false"`
 	SMBoverQUIC     bool  `json:"smb_over_quic,omitempty" default:"false"`
-	MDNSRegistration              bool   `json:"mdns_registration,omitempty" default:"false"`
+	// MDNSRegistration is the master switch enabling mDNS registration of the
+	// Samba service. UseComponentMDNSProxy selects the implementation.
+	MDNSRegistration      bool `json:"mdns_registration,omitempty" default:"false"`
+	UseComponentMDNSProxy bool `json:"use_component_mdns_proxy,omitempty" default:"true"`
 }
 
 // ReadConfigBuffer reads and parses a configuration file.

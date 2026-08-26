@@ -197,9 +197,9 @@ func (a *ExfatAdapter) GetLabel(ctx context.Context, device string) (string, err
 
 	// exfatlabel outputs the label directly but search the output line with label: prefix to be more robust
 	var label string
-	for _, line := range strings.Split(output, "\n") {
-		if strings.HasPrefix(line, "label:") {
-			label = strings.TrimSpace(strings.TrimPrefix(line, "label:"))
+	for line := range strings.SplitSeq(output, "\n") {
+		if after, ok := strings.CutPrefix(line, "label:"); ok {
+			label = strings.TrimSpace(after)
 			break
 		}
 	}

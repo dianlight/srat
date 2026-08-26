@@ -220,6 +220,7 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 	// Report lib SMART backend availability from runtime context
 	if handler.apiCtx != nil {
 		capabilities.LibSmartAvailable = handler.apiCtx.LibSmartAvailable
+		capabilities.LibSmartUnavailableReason = handler.apiCtx.LibSmartUnavailableReason
 	}
 
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil

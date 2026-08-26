@@ -5,7 +5,7 @@ import "time"
 type ManagedRepair struct {
 	RepairID      string                  `json:"repair_id"`
 	LastCommandID string                  `json:"last_command_id,omitempty"`
-	LastAction    RepairCommandAction     `json:"last_action,omitempty"`
+	LastAction    RepairCommandAction     `json:"last_action"`
 	Status        RepairLifecycleStatus   `json:"status"`
 	LastError     *string                 `json:"last_error,omitempty"`
 	UpdatedAt     time.Time               `json:"updated_at"`

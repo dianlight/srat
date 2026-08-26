@@ -4,7 +4,7 @@
 package converter
 
 import (
-	types "github.com/dianlight/smartmontools-go/types"
+	types "github.com/dianlight/smartmontools-sdk/bindings/go/v8/types"
 	dto "github.com/dianlight/srat/dto"
 )
 

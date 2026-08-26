@@ -1,7 +1,6 @@
 import {
   Box,
   FormControlLabel,
-  Grid,
   Paper,
   Stack,
   Switch,
@@ -12,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
+import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { useVolume } from "../../hooks/volumeHook";
 import { type LocationState, TabIDs } from "../../store/locationState";
 import {
@@ -20,10 +20,12 @@ import {
   type MountPointData,
   type Partition,
   type PerPartitionInfo,
+  sratApi,
   useDeleteApiVolumeMutation,
   usePatchApiVolumeSettingsMutation,
   usePostApiVolumeMountMutation,
 } from "../../store/sratApi";
+import { useAppDispatch } from "../../store/store";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import {
@@ -93,19 +95,18 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const location = useLocation();
 
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const [hideSystemPartitions, setHideSystemPartitions] = useState<boolean>(
     localStorage.getItem("volumes.hideSystemPartitions") === "true",
-  ); // Default to hide system partitions
+  );
   const volumeHook = useVolume();
   const sourceDisks = initialDisks ?? volumeHook.disks;
   const isLoading = initialDisks ? false : volumeHook.isLoading;
   const error = initialDisks ? null : volumeHook.error;
-  const [disks, setDisks] = useState<Disk[]>(sourceDisks ?? []);
   const [selectedDisk, setSelectedDisk] = useState<Disk | undefined>(undefined);
   const [selectedPartition, setSelectedPartition] = useState<
     Partition | undefined
   >(undefined);
-  // Note: this id can refer to either a disk or a partition
   const [selectedPartitionId, setSelectedPartitionId] = useState<
     string | undefined
   >(() => localStorage.getItem("volumes.selectedPartitionId") || undefined);
@@ -125,9 +126,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   const [patchMountSettings] = usePatchApiVolumeSettingsMutation();
   const loggedLoadErrorRef = useRef<string>("");
 
-  useEffect(() => {
-    setDisks(sourceDisks ?? []);
-  }, [sourceDisks]);
   const perPartitionInfo = evdata?.heartbeat?.disk_health?.per_partition_info;
   const filesystemStateByPartitionId = useMemo<
     Record<string, FilesystemState>
@@ -148,28 +146,25 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     return result;
   }, [perPartitionInfo]);
 
-  // Handle disk selection (top-level)
   const handleDiskSelect = useCallback(
     (disk: Disk) => {
       setSelectedDisk(disk);
       setSelectedPartition(undefined);
-      const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+      const diskIdx = Math.max(sourceDisks?.indexOf(disk) ?? -1, 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       setSelectedPartitionId(diskIdentifier);
-      // Ensure the disk is expanded and persisted
       setExpandedDisks((prev) =>
         prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier],
       );
     },
-    [disks],
+    [sourceDisks],
   );
 
-  // Handle partition selection
   const handlePartitionSelect = useCallback(
     (disk: Disk, partition: Partition) => {
       setSelectedDisk(disk);
       setSelectedPartition(partition);
-      const diskIdx = Math.max(disks?.indexOf(disk) ?? -1, 0);
+      const diskIdx = Math.max(sourceDisks?.indexOf(disk) ?? -1, 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       const partitionEntries = Object.entries(disk.partitions || {});
       const partitionEntry = partitionEntries.find(
@@ -187,19 +182,22 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         partIdx,
       );
       setSelectedPartitionId(partitionId);
-      // Ensure the containing disk is expanded and persisted
       setExpandedDisks((prev) => {
         if (prev.includes(diskIdentifier)) return prev;
         return [...prev, diskIdentifier];
       });
     },
-    [disks],
+    [sourceDisks],
   );
 
   const handlePartitionLabelUpdated = useCallback(
     (partitionId: string, label: string) => {
-      setDisks((currentDisks) =>
-        updatePartitionLabelInDisks(currentDisks, partitionId, label),
+      dispatch(
+        sratApi.util.updateQueryData("getApiVolumes", undefined, (draft) => {
+          if (Array.isArray(draft)) {
+            updatePartitionLabelInDisks(draft, partitionId, label);
+          }
+        }),
       );
       setSelectedPartition((currentPartition) => {
         if (!currentPartition || currentPartition.id !== partitionId) {
@@ -208,7 +206,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         return { ...currentPartition, name: label };
       });
     },
-    [],
+    [dispatch],
   );
 
   const openDialogForPartition = useCallback(
@@ -223,7 +221,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     [],
   );
 
-  // Persist selection and expanded disks to localStorage
   useEffect(() => {
     try {
       if (selectedPartitionId) {
@@ -265,16 +262,19 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     }
   }, [hideSystemPartitions]);
 
-  // Effect to handle navigation state for opening mount settings for a specific volume
   useEffect(() => {
     const state = location.state as LocationState | undefined;
     const mountPathFromState = state?.mountPathToView;
 
-    if (mountPathFromState && Array.isArray(disks) && disks.length > 0) {
+    if (
+      mountPathFromState &&
+      Array.isArray(sourceDisks) &&
+      sourceDisks.length > 0
+    ) {
       let foundPartition: Partition | undefined;
       let foundDisk: Disk | undefined;
 
-      for (const disk of disks) {
+      for (const disk of sourceDisks) {
         const partitions = Object.values(disk.partitions || {});
         if (partitions.length > 0) {
           for (const partition of partitions) {
@@ -300,26 +300,23 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       }
     }
   }, [
-    disks,
+    sourceDisks,
     location.state,
     navigate,
     location.pathname,
     handlePartitionSelect,
   ]);
 
-  // When disks data is available and there's a selectedPartitionId (restored or new), find and select it so details show
   useEffect(() => {
-    if (!disks || disks.length === 0) return;
+    if (!sourceDisks || sourceDisks.length === 0) return;
     if (!selectedPartitionId) return;
 
-    // Try to locate the partition or disk corresponding to selectedPartitionId
-    for (const disk of disks) {
-      const diskIdx = Math.max(disks.indexOf(disk), 0);
+    for (const disk of sourceDisks) {
+      const diskIdx = Math.max(sourceDisks.indexOf(disk), 0);
       const diskIdentifier = getDiskIdentifier(disk, diskIdx);
       if (diskIdentifier === selectedPartitionId) {
         setSelectedDisk(disk);
         setSelectedPartition(undefined);
-        // Make sure it's expanded
         setExpandedDisks((prev) =>
           prev.includes(diskIdentifier) ? prev : [...prev, diskIdentifier],
         );
@@ -346,34 +343,27 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       }
     }
 
-    // If not found, clear selection
     setSelectedPartition(undefined);
     setSelectedDisk(undefined);
     setSelectedPartitionId(undefined);
-  }, [disks, selectedPartitionId]);
+  }, [sourceDisks, selectedPartitionId]);
 
-  function onSubmitMountVolume(data?: MountPointData) {
-    console.trace("Mount Request Data:", data);
-
+  function onSubmitMountVolume(data?: MountPointData): Promise<void> {
     if (!selectedPartition || !data?.path || !data.root) {
       toast.error("Cannot mount: Invalid selection or missing data.");
       console.error("Mount validation failed:", {
         selectedPartition,
         data,
       });
-      return;
+      return Promise.resolve();
     }
 
-    // Ensure device is included in submitData if required by API
     const submitData: MountPointData = {
       ...data,
       device_id: selectedPartition.id,
     };
 
-    // Normalize root path to avoid double slashes when root is "/"
-    //const normalizedRoot = data.root === "/" ? "" : data.root;
-
-    mountVolume({
+    return mountVolume({
       mountPointData: submitData,
     })
       .unwrap()
@@ -396,10 +386,10 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         });
       })
       .finally(() => {
-        setSelectedPartition(undefined); // Clear selection after successful mount
+        setSelectedPartition(undefined);
         setSelectedDisk(undefined);
         setSelectedPartitionId(undefined);
-        setShowMount(false); // Close the mount dialog
+        setShowMount(false);
       });
   }
 
@@ -408,7 +398,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       partition.mount_point_data || {},
     )[0];
     if (firstMountPointData?.path) {
-      // Ensure path exists for preselection
       navigate("/", {
         state: {
           tabId: TabIDs.SHARES,
@@ -423,21 +412,18 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
   }
 
   function handleGoToShare(partition: Partition) {
-    //console.log("Go to share for:", partition);
     const mountData = Object.values(partition.mount_point_data || {})[0];
-    const share = mountData?.share; // Get the first share associated with this mount point
+    const share = mountData?.share;
 
     if (share?.name) {
-      // Navigate to the shares page and pass the share name as state
       navigate("/", {
         state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
-      }); // Navigate to root, NavBar handles tab
+      });
     }
   }
 
   function onSubmitUmountVolume(partition: Partition, force = false) {
     console.debug("Umount Request", partition, "Force:", force);
-    // Ensure mount_point_data exists and has at least one entry with a path
     const mountData = Object.values(partition.mount_point_data || {})[0];
     if (!mountData?.path) {
       toast.error("Cannot unmount: Missing mount point path.");
@@ -445,7 +431,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       return;
     }
 
-    // Use partition label or name for confirmation dialog
     const displayName = decodeEscapeSequence(partition.name || "this volume");
 
     confirm({
@@ -456,7 +441,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       confirmationButtonProps: { color: force ? "error" : "primary" },
       acknowledgement: `Please confirm this action carefully. Unmounting may lead to data loss or corruption if the volume is in use. ${force ? "NOTE:Configured shares will be disabled!" : ""}`,
     }).then(({ reason }) => {
-      // Only proceed if confirmed
       if (reason === "confirm") {
         console.debug(
           `Proceeding with ${force ? "forced " : ""}unmount for:`,
@@ -469,7 +453,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           .unwrap()
           .then(() => {
             toast.info(`Volume ${displayName} unmounted successfully.`);
-            // Optionally clear selection if the unmounted item was selected
             if (selectedPartition?.id === partition.id) {
               setSelectedPartition(undefined);
               setSelectedDisk(undefined);
@@ -494,20 +477,19 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
     console.debug("Toggling automount for partition:", partition);
 
-    for (const [path, mountData] of Object.entries(
-      partition.mount_point_data || {},
-    )) {
+    const partitionName = decodeEscapeSequence(partition.name || "this volume");
+    const mountEntries = Object.entries(partition.mount_point_data || {});
+    if (mountEntries.length === 0) return;
+
+    // Fire one PATCH per mount point and aggregate the results so a
+    // multi-mount partition produces a single summary toast instead of
+    // N interleaved toasts and uncoordinated failure handling.
+    const patchPromises = mountEntries.map(async ([path, mountData]) => {
       if (!mountData.path) {
-        toast.error(`Cannot toggle automount: ${path} Missing point data.`);
-        console.error("Missing mount data for mount point:", mountData);
-        continue;
+        throw new Error(`Cannot toggle automount: ${path} Missing point data.`);
       }
 
       const newAutomountState = !mountData.is_to_mount_at_startup;
-      const actionText = newAutomountState ? "enable" : "disable";
-      const partitionName = decodeEscapeSequence(
-        partition.name || "this volume",
-      );
 
       console.debug(
         partition,
@@ -516,28 +498,43 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         newAutomountState,
       );
 
-      patchMountSettings({
+      await patchMountSettings({
         patchMountPointData: {
           ...mountData,
           is_to_mount_at_startup: newAutomountState,
           share: undefined,
         },
-      })
-        .unwrap()
-        .then(() => {
-          toast.info(`Automount ${actionText}d for ${partitionName}.`);
-        })
-        .catch((err: unknown) => {
-          console.error(`Error toggling automount for ${partitionName}:`, err);
-          const typedErr = err as {
-            data?: { detail?: string };
-            message?: string;
-          };
-          toast.error(
-            `Failed to ${actionText} automount for ${partitionName}: ${typedErr.data?.detail || typedErr.message || "Unknown error"}`,
+      }).unwrap();
+    });
+
+    void Promise.allSettled(patchPromises).then((settled) => {
+      const fulfilledCount = settled.filter(
+        (result) => result.status === "fulfilled",
+      ).length;
+      const rejectedCount = settled.length - fulfilledCount;
+
+      settled.forEach((result, index) => {
+        if (result.status === "rejected") {
+          const [path] = mountEntries[index];
+          console.error(
+            `Error toggling automount for ${partitionName} (${path}):`,
+            result.reason,
           );
-        });
-    }
+        }
+      });
+
+      if (rejectedCount === 0) {
+        toast.info(`Automount updated for ${partitionName}.`);
+      } else if (fulfilledCount === 0) {
+        toast.error(
+          `Failed to update automount for ${partitionName} (${rejectedCount} mount point${rejectedCount === 1 ? "" : "s"}).`,
+        );
+      } else {
+        toast.warn(
+          `Automount partially updated for ${partitionName}: ${fulfilledCount} ok, ${rejectedCount} failed.`,
+        );
+      }
+    });
   }
 
   useEffect(() => {
@@ -557,7 +554,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
 
   useEffect(() => {
     const selectTourVolume = () => {
-      const target = getTourVolumeSelection(disks, hideSystemPartitions);
+      const target = getTourVolumeSelection(sourceDisks, hideSystemPartitions);
       if (!target) return;
 
       if (target.partition) {
@@ -586,9 +583,13 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       disposeVolumesStep4();
       disposeVolumesStep5();
     };
-  }, [disks, hideSystemPartitions, handleDiskSelect, handlePartitionSelect]);
+  }, [
+    sourceDisks,
+    hideSystemPartitions,
+    handleDiskSelect,
+    handlePartitionSelect,
+  ]);
 
-  // Handle loading and error states
   if (isLoading) {
     return <Typography>Loading volumes...</Typography>;
   }
@@ -601,9 +602,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     );
   }
 
-  // Get the related share for the selected partition
-  //const selectedShare = Object.values(selectedPartition?.mount_point_data || {})[0]?.share;
-
   return (
     <>
       <VolumeMountDialog
@@ -612,17 +610,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         readOnlyView={false}
         onClose={(data) => {
           if (showMount) {
-            // If it was open for mounting
             if (data) {
-              onSubmitMountVolume(data);
-            } else {
-              // Cancelled mount dialog or no data returned
-              setSelectedPartition(undefined);
-              setSelectedDisk(undefined);
-              setSelectedPartitionId(undefined);
-              setShowMount(false);
+              return onSubmitMountVolume(data);
             }
+            setSelectedPartition(undefined);
+            setSelectedDisk(undefined);
+            setSelectedPartitionId(undefined);
+            setShowMount(false);
           }
+          return;
         }}
       />
       {showFilesystemCheckDialog && (
@@ -647,7 +643,6 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           onClose={() => setShowFilesystemFormatDialog(false)}
         />
       )}
-      {/* PreviewDialog can show details for both disks and partitions */}
       <PreviewDialog
         title={
           selectedDisk && selectedPartition
@@ -665,19 +660,16 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
           setShowPreview(false);
         }}
       />
-      {/* Main Layout Grid */}
-      <Grid
-        container
-        spacing={2}
-        sx={{ minHeight: "calc(100vh - 200px)" }}
-        data-tutor={`reactour__tab${TabIDs.VOLUMES}__step0`}
-      >
-        {/* Left Panel - Tree View */}
-        <Grid size={{ xs: 12, sm: 5, md: 4, lg: 3 }}>
-          <Paper
-            sx={{ height: "100%", p: 1 }}
-            data-tutor={`reactour__tab${TabIDs.VOLUMES}__step3`}
-          >
+      <ResizableSplitView
+        storageKey="volumes.leftPanelPct"
+        containerProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step0`,
+        }}
+        leftPanelProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step3`,
+        }}
+        leftPanel={
+          <Paper sx={{ height: "100%", p: 1 }}>
             <Stack
               direction="row"
               sx={{
@@ -724,7 +716,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               </Typography>
             ) : (
               <VolumesTreeView
-                disks={disks}
+                disks={sourceDisks}
                 selectedItemId={selectedPartitionId}
                 expandedItems={expandedDisks}
                 onExpandedItemsChange={setExpandedDisks}
@@ -763,14 +755,12 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               />
             )}
           </Paper>
-        </Grid>
-
-        {/* Right Panel - Details */}
-        <Grid size={{ xs: 12, sm: 7, md: 8, lg: 9 }}>
-          <Paper
-            sx={{ height: "100%", overflow: "hidden" }}
-            data-tutor={`reactour__tab${TabIDs.VOLUMES}__step4`}
-          >
+        }
+        rightPanelProps={{
+          "data-tutor": `reactour__tab${TabIDs.VOLUMES}__step4`,
+        }}
+        rightPanel={
+          <Paper sx={{ height: "100%", overflow: "hidden" }}>
             <Box data-tutor={`reactour__tab${TabIDs.VOLUMES}__step5`}>
               <VolumeDetailsPanel
                 disk={selectedDisk}
@@ -786,12 +776,11 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
                 onCreateShare={handleCreateShare}
                 onGoToShare={handleGoToShare}
                 onLabelUpdated={handlePartitionLabelUpdated}
-                //share={selectedShare}
               />
             </Box>
           </Paper>
-        </Grid>
-      </Grid>
+        }
+      />
     </>
   );
 }

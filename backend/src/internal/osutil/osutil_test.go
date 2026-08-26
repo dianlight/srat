@@ -262,7 +262,7 @@ func (suite *OsutilSuite) TestGenerateSecurePassword() {
 
 	// Test uniqueness - generate multiple passwords and ensure they're different
 	passwords := make(map[string]bool)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		pwd, err := GenerateSecurePassword()
 		require.NoError(t, err)
 		passwords[pwd] = true

@@ -13,7 +13,8 @@ import "./css/style.css";
 import "./img/favicon.ico";
 // DevInspector from the `/next` export is a plain `useEffect`-based React component
 // that works in any React 19 app regardless of bundler. Only loaded in dev/remote
-// modes to avoid any runtime cost in production bundles.
+// modes to avoid any runtime cost in production bundles. It is mounted at the
+// bottom of this file with the same dev/remote gating.
 import { DevInspector } from "@mcpc-tech/unplugin-dev-inspector-mcp/next";
 //import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { TourProvider } from "@reactour/tour";
@@ -171,7 +172,9 @@ root.render(
               >
                 <App />
                 {/* DevInspector connects to the in-process MCP server (port 6137 by default).
-                    Only mounted in dev/remote modes to guarantee zero overhead in production. */}
+                    Mounted in development and remote modes to guarantee zero overhead in
+                    production. The MCP server binds to localhost, so remote mode is safe:
+                    the inspector still connects to the local 6137 endpoint. */}
                 {(getCurrentEnv() === "development" ||
                   getCurrentEnv() === "remote") && (
                   <DevInspector

@@ -207,8 +207,8 @@ func (a *XfsAdapter) GetLabel(ctx context.Context, device string) (string, error
 
 	// Parse the output to find the label
 	// Format: label = "mylabel"
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(output, "\n")
+	for line := range lines {
 		if strings.Contains(line, "label = ") {
 			parts := strings.SplitN(line, "=", 2)
 			if len(parts) == 2 {

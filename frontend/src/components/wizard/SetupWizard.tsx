@@ -6,6 +6,8 @@ import {
   StepLabel,
   Stepper,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import {
   createContext,
@@ -26,6 +28,8 @@ import {
   type InterfaceStat,
   type MountPointData,
   type Settings,
+  Smart_mode,
+  Standard_share_names,
   Telemetry_mode,
   Type,
   Usage,
@@ -104,6 +108,8 @@ export function SetupWizard({
   const [isFinishing, setIsFinishing] = useState(false);
   const [isWaitingForClean, setIsWaitingForClean] = useState(false);
   const [finishError, setFinishError] = useState<string | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const { data: settings } = useGetApiSettingsQuery();
   const { data: users } = useGetApiUsersQuery();
@@ -342,7 +348,13 @@ export function SetupWizard({
 
     try {
       const updatedSettings: Settings = {
-        ...(isValidSettings(settings) ? settings : {}),
+        ...(isValidSettings(settings)
+          ? settings
+          : {
+              smart_mode: Smart_mode.None,
+              standard_share_names: Standard_share_names.Both,
+              telemetry_mode: Telemetry_mode.Errors,
+            }),
         ...(allData.security?.hostname !== undefined && {
           hostname: allData.security.hostname,
         }),
@@ -424,12 +436,6 @@ export function SetupWizard({
           console.debug(
             "All settings applied successfully, waiting for clean state",
           );
-          //setIsWaitingForClean(true);
-          //          setTimeout(() => {
-          //            if (isDirtyTrackingClean(health?.dirty_tracking)) {
-          //              setIsWaitingForClean(false);
-          //            }
-          //         }, 3000);
         })
         .catch((error) => {
           console.error("Error applying settings in wizard:", error);
@@ -465,6 +471,7 @@ export function SetupWizard({
       }}
       maxWidth="sm"
       fullWidth
+      fullScreen={isMobile}
     >
       <DialogTitle id={WIZARD_TITLE_ID}>
         Setup Wizard
@@ -478,6 +485,7 @@ export function SetupWizard({
       </DialogTitle>
       <Stepper
         activeStep={activeStep}
+        orientation={isMobile ? "vertical" : "horizontal"}
         sx={{ px: 3, py: 2 }}
         aria-label="Setup wizard progress"
       >

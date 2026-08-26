@@ -15,6 +15,7 @@ import {
 import { type Key, useEffect, useState } from "react";
 import {
   AutocompleteElement,
+  FormContainer,
   SwitchElement,
   TextFieldElement,
   useFieldArray,
@@ -37,20 +38,13 @@ interface xMountPointData extends MountPointData {
 
 interface VolumeMountDialogProps {
   open: boolean;
-  onClose: (data?: MountPointData) => void;
+  onClose: (data?: MountPointData) => void | Promise<void>;
   objectToEdit?: Partition;
   readOnlyView?: boolean;
 }
 
 export function VolumeMountDialog(props: VolumeMountDialogProps) {
-  const {
-    control,
-    handleSubmit,
-    watch,
-    reset,
-    //	formState: { errors },
-    setValue,
-  } = useForm<xMountPointData>({
+  const formContext = useForm<xMountPointData>({
     defaultValues: {
       path: "",
       fstype: "",
@@ -60,6 +54,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
       is_to_mount_at_startup: false,
     }, // Default values for the form
   });
+  const { control, watch, reset, setValue, formState } = formContext;
   const { fields, replace } = useFieldArray({
     control, // control props comes from useForm (optional: if you are using FormProvider)
     name: "custom_flags_values", // unique name for your Field Array
@@ -71,8 +66,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
     error: fsError,
   } = useGetApiFilesystemsQuery(undefined, { skip: !props.open });
   // Ensure we always have an array to avoid runtime errors when the query is skipped
-
-  const [mounting, setMounting] = useState(false);
 
   const [unsupported_flags, setUnsupportedFlags] = useState<MountFlag[]>([]); // Array of unsupported flags (string) for display only
   const [unsupported_custom_flags, setUnsupportedCustomFlags] = useState<
@@ -162,8 +155,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
           existingMountData?.is_to_mount_at_startup || false, // Initialize the switch state
       });
 
-      setMounting(false);
-
       const valueFlags = ([] as MountFlag[]).concat(
         existingMountData?.custom_flags || [],
         existingMountData?.flags || [],
@@ -174,7 +165,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
     } else if (!props.open) {
       setUnsupportedCustomFlags([]);
       setUnsupportedFlags([]);
-      setMounting(false);
       reset({
         path: "",
         fstype: "",
@@ -235,8 +225,9 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
       type: Type.Addon,
     };
     //console.debug("Submitting Mount Data:", submitData);
-    setMounting(true);
-    props.onClose(submitData);
+    // Keep the submit button disabled (formState.isSubmitting) until the
+    // parent has finished handling the submission.
+    await props.onClose(submitData);
   }
 
   function handleCancel() {
@@ -314,11 +305,7 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
         {props.readOnlyView ? "View Mount Settings: " : "Mount Volume: "}{" "}
         {partitionNameDecoded} ({partitionId})
       </DialogTitle>
-      <form
-        id="mountvolumeform"
-        onSubmit={handleSubmit(async (data) => await handleCloseSubmit(data))}
-        noValidate
-      >
+      <FormContainer formContext={formContext} onSuccess={handleCloseSubmit}>
         <DialogContent>
           <Stack spacing={2} sx={{ pt: 1 }}>
             <DialogContentText>
@@ -561,19 +548,16 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
               </Button>
               <Button
                 type="submit"
-                form="mountvolumeform"
-                loading={mounting}
-                disabled={mounting}
+                disabled={formState.isSubmitting}
                 variant="outlined"
                 color="success"
               >
                 Mount
-              </Button>{" "}
-              {/* Corrected disabled prop */}
+              </Button>
             </>
           )}
         </DialogActions>
-      </form>
+      </FormContainer>
     </Dialog>
   );
 }

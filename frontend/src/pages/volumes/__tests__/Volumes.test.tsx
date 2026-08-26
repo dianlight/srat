@@ -1,5 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithTestStore } from "/test/testing";
+import { renderWithTestStore, withTestHandlers } from "/test/testing";
+
+const { toastInfoMock, toastErrorMock, toastWarnMock } = vi.hoisted(() => {
+    const toastInfoMock = vi.fn((..._args: unknown[]) => undefined);
+    const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
+    const toastWarnMock = vi.fn((..._args: unknown[]) => undefined);
+    return { toastInfoMock, toastErrorMock, toastWarnMock };
+});
+
+vi.mock("react-toastify", () => ({
+    ToastContainer: () => null,
+    Slide: () => null,
+    toast: {
+        info: (...args: unknown[]) => toastInfoMock(...args),
+        error: (...args: unknown[]) => toastErrorMock(...args),
+        warn: (...args: unknown[]) => toastWarnMock(...args),
+    },
+}));
 
 async function renderVolumesPage(
     props?: Record<string, unknown>,
@@ -361,5 +378,334 @@ describe("Volumes component", () => {
 
         // Check that responsive grid is used
         expect(container).toBeTruthy();
+    });
+
+    it("writes partition label rename into the RTK volumes cache and keeps it across refetch", async () => {
+        const React = await import("react");
+        const { screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { MemoryRouter } = await import("react-router");
+        const { Volumes } = await import("../Volumes");
+        const { http, HttpResponse } = await import("msw");
+
+        const volumesUrl = /.*\/api\/volumes(?:\?.*)?$/;
+        const supportUrl = /.*\/api\/filesystem\/support(?:\?.*)?$/;
+        const labelUrl = /.*\/api\/filesystem\/label(?:\?.*)?$/;
+
+        const disks = [
+            {
+                id: "disk-f3-test",
+                name: "sda",
+                size: 1000000000,
+                partitions: {
+                    part1: {
+                        id: "part-f3-1",
+                        name: "old-label",
+                        device_path: "/dev/sda1",
+                        fs_type: "ext4",
+                        filesystem_info: {
+                            support: {
+                                canCheck: true,
+                                canSetLabel: true,
+                                canFormat: true,
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+        // Stateful fixture: the PUT handler applies the rename to the served data,
+        // mirroring the backend so a post-mutation refetch returns the new label.
+        const servedDisks = structuredClone(disks);
+
+        await withTestHandlers(
+            [
+                http.get(volumesUrl, () => HttpResponse.json(servedDisks)),
+                http.options(supportUrl, () => HttpResponse.json({})),
+                http.get(supportUrl, () =>
+                    HttpResponse.json({
+                        canMount: true,
+                        canFormat: true,
+                        canCheck: true,
+                        canSetLabel: true,
+                        canGetState: true,
+                        labelRule: "^.{1,16}$",
+                        alpinePackage: "e2fsprogs",
+                        missingTools: [],
+                        isExportable: false,
+                        isCheckReportProgress: false,
+                        isFormatReportProgress: false,
+                    }),
+                ),
+                http.options(labelUrl, () => HttpResponse.json({})),
+                http.put(labelUrl, async ({ request }) => {
+                    const body = (await request.json()) as {
+                        partitionId?: string;
+                        label?: string;
+                    };
+                    if (body.partitionId && body.label) {
+                        const partitions = Object.values(servedDisks[0].partitions);
+                        const target = partitions.find(
+                            (partition: any) => partition.id === body.partitionId,
+                        );
+                        if (target) {
+                            target.name = body.label;
+                        }
+                    }
+                    return HttpResponse.json({ success: true });
+                }),
+            ],
+            async () => {
+                // Pre-expand the disk row so the partition actions are visible
+                // (the MUI X v9 tree has no expand buttons; the item row toggles).
+                localStorage.setItem(
+                    "volumes.expandedDisks",
+                    JSON.stringify(["disk-f3-test"]),
+                );
+
+                const result = await renderWithTestStore(
+                    React.createElement(
+                        MemoryRouter,
+                        null,
+                        React.createElement(Volumes as any),
+                    ),
+                );
+
+                // Open the Set Label dialog from the partition action overflow
+                // menu (available on any breakpoint).
+                const moreActionsButton = await screen.findByRole("button", {
+                    name: "more actions",
+                });
+                const user = userEvent.setup();
+                await user.click(moreActionsButton);
+
+                const setLabelItem = await screen.findByRole("menuitem", {
+                    name: /set label/i,
+                });
+                await user.click(setLabelItem);
+
+                const input = await screen.findByRole("textbox", { name: /label/i });
+                await user.clear(input);
+                await user.type(input, "NEW-LABEL");
+
+                const submitButton = await screen.findByRole("button", {
+                    name: /^set label$/i,
+                });
+                await user.click(submitButton);
+
+                // The tree reflects the new label (rendered from the RTK cache).
+                const newLabelNodes = await screen.findAllByText("NEW-LABEL");
+                // The new label appears both in the tree partition row and in
+                // the volume details panel header (selected-partition optimism).
+                expect(newLabelNodes.length).toBeGreaterThanOrEqual(2);
+                await waitFor(() => {
+                    expect(screen.queryByText("old-label")).not.toBeInTheDocument();
+                });
+
+                // The RTK volumes cache holds the new label (no local-state fork).
+                const state = result.store.getState() as any;
+                const cached = state.api?.queries?.["getApiVolumes(undefined)"]?.data as
+                    | Array<{
+                          partitions?: Record<string, { id?: string; name?: string }>;
+                      }>
+                    | null
+                    | undefined;
+                const cachedPartitions = Array.isArray(cached)
+                    ? Object.values(cached[0]?.partitions ?? {})
+                    : [];
+                expect(
+                    cachedPartitions.find((partition) => partition.id === "part-f3-1")
+                        ?.name,
+                ).toBe("NEW-LABEL");
+            },
+        );
+    });
+
+    it("toggles automount for a single-mount partition with one summary toast", async () => {
+        const React = await import("react");
+        const { screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { MemoryRouter } = await import("react-router");
+        const { Volumes } = await import("../Volumes");
+        const { http, HttpResponse } = await import("msw");
+
+        const volumesUrl = /.*\/api\/volumes(?:\?.*)?$/;
+        const settingsUrl = /.*\/api\/volume\/settings(?:\?.*)?$/;
+
+        const disks = [
+            {
+                id: "disk-f4-test",
+                name: "sdb",
+                size: 2000000000,
+                partitions: {
+                    part1: {
+                        id: "part-f4-1",
+                        name: "data-vol",
+                        device_path: "/dev/sdb1",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/data": {
+                                path: "/mnt/data",
+                                type: "HOST",
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                is_to_mount_at_startup: false,
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        let patchCount = 0;
+        const patchBodies: unknown[] = [];
+
+        await withTestHandlers(
+            [
+                http.get(volumesUrl, () => HttpResponse.json(disks)),
+                http.patch(settingsUrl, async ({ request }) => {
+                    patchCount += 1;
+                    patchBodies.push(await request.json());
+                    return HttpResponse.json({
+                        path: "/mnt/data",
+                        type: "HOST",
+                    });
+                }),
+            ],
+            async () => {
+                toastInfoMock.mockClear();
+                toastErrorMock.mockClear();
+                toastWarnMock.mockClear();
+
+                localStorage.setItem(
+                    "volumes.expandedDisks",
+                    JSON.stringify(["disk-f4-test"]),
+                );
+
+                await renderWithTestStore(
+                    React.createElement(
+                        MemoryRouter,
+                        null,
+                        React.createElement(Volumes as any),
+                    ),
+                );
+
+                const moreActionsButton = await screen.findByRole("button", {
+                    name: "more actions",
+                });
+                const user = userEvent.setup();
+                await user.click(moreActionsButton);
+
+                const enableItem = await screen.findByRole("menuitem", {
+                    name: /enable automatic mount/i,
+                });
+                await user.click(enableItem);
+
+                await waitFor(() => {
+                    expect(patchCount).toBe(1);
+                });
+
+                // One summary toast instead of one per mount point.
+                expect(toastInfoMock.mock.calls.length).toBe(1);
+                expect(toastInfoMock.mock.calls[0][0]).toBe(
+                    "Automount updated for data-vol.",
+                );
+                expect(toastErrorMock).not.toHaveBeenCalled();
+
+                // The PATCH flips is_to_mount_at_startup and clears the share.
+                const body = patchBodies[0] as {
+                    is_to_mount_at_startup?: boolean;
+                    path?: string;
+                };
+                expect(body.is_to_mount_at_startup).toBe(true);
+                expect(body.path).toBe("/mnt/data");
+            },
+        );
+    });
+
+    it("shows a single error toast when the automount PATCH fails", async () => {
+        const React = await import("react");
+        const { screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { MemoryRouter } = await import("react-router");
+        const { Volumes } = await import("../Volumes");
+        const { http, HttpResponse } = await import("msw");
+
+        const volumesUrl = /.*\/api\/volumes(?:\?.*)?$/;
+        const settingsUrl = /.*\/api\/volume\/settings(?:\?.*)?$/;
+
+        const disks = [
+            {
+                id: "disk-f4-test",
+                name: "sdb",
+                size: 2000000000,
+                partitions: {
+                    part1: {
+                        id: "part-f4-1",
+                        name: "data-vol",
+                        device_path: "/dev/sdb1",
+                        fs_type: "ext4",
+                        mount_point_data: {
+                            "/mnt/data": {
+                                path: "/mnt/data",
+                                type: "HOST",
+                                is_mounted: false,
+                                is_write_supported: true,
+                                fstype: "ext4",
+                                is_to_mount_at_startup: false,
+                            },
+                        },
+                    },
+                },
+            },
+        ];
+
+        await withTestHandlers(
+            [
+                http.get(volumesUrl, () => HttpResponse.json(disks)),
+                http.patch(settingsUrl, () =>
+                    HttpResponse.json({ detail: "boom" }, { status: 500 }),
+                ),
+            ],
+            async () => {
+                toastInfoMock.mockClear();
+                toastErrorMock.mockClear();
+                toastWarnMock.mockClear();
+
+                localStorage.setItem(
+                    "volumes.expandedDisks",
+                    JSON.stringify(["disk-f4-test"]),
+                );
+
+                await renderWithTestStore(
+                    React.createElement(
+                        MemoryRouter,
+                        null,
+                        React.createElement(Volumes as any),
+                    ),
+                );
+
+                const moreActionsButton = await screen.findByRole("button", {
+                    name: "more actions",
+                });
+                const user = userEvent.setup();
+                await user.click(moreActionsButton);
+
+                const enableItem = await screen.findByRole("menuitem", {
+                    name: /enable automatic mount/i,
+                });
+                await user.click(enableItem);
+
+                await waitFor(() => {
+                    expect(toastErrorMock.mock.calls.length).toBe(1);
+                });
+
+                expect(toastErrorMock.mock.calls[0][0]).toContain(
+                    "Failed to update automount for data-vol",
+                );
+                expect(toastInfoMock).not.toHaveBeenCalled();
+            },
+        );
     });
 });

@@ -90,7 +90,7 @@ func TestIssueSeverity_MarshalText(t *testing.T) {
 	severity := dto.IssueSeverities.ISSUESEVERITYWARNING
 	data, err := severity.MarshalText()
 	assert.NoError(t, err)
-	assert.Equal(t, `"warning"`, string(data))
+	assert.Equal(t, `warning`, string(data))
 }
 
 func TestIssueSeverity_UnmarshalText(t *testing.T) {
@@ -345,7 +345,7 @@ func TestEventType_MarshalText(t *testing.T) {
 	event := dto.WebEventTypes.EVENTVOLUMES
 	data, err := event.MarshalText()
 	assert.NoError(t, err)
-	assert.Equal(t, `"volumes"`, string(data))
+	assert.Equal(t, `volumes`, string(data))
 }
 
 func TestEventType_UnmarshalText(t *testing.T) {
@@ -516,7 +516,7 @@ func TestUpdateProcessState_MarshalText(t *testing.T) {
 	state := dto.UpdateProcessStates.UPDATESTATUSEXTRACTCOMPLETE
 	data, err := state.MarshalText()
 	assert.NoError(t, err)
-	assert.Equal(t, `"UpdateStatusExtractComplete"`, string(data))
+	assert.Equal(t, `UpdateStatusExtractComplete`, string(data))
 }
 
 func TestUpdateProcessState_UnmarshalText(t *testing.T) {
@@ -668,7 +668,7 @@ func TestSmartAttributeCode_MarshalText(t *testing.T) {
 	attr := dto.SmartAttributeCodes.SMARTATTRPOWERCYCLECOUNT
 	data, err := attr.MarshalText()
 	assert.NoError(t, err)
-	assert.Equal(t, `"PowerCycleCount"`, string(data))
+	assert.Equal(t, `PowerCycleCount`, string(data))
 }
 
 func TestSmartAttributeCode_UnmarshalText(t *testing.T) {

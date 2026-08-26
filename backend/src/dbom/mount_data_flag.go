@@ -23,7 +23,7 @@ func (self *MounDataFlags) Scan(value any) error {
 	if !ok {
 		return fmt.Errorf("invalid value type for MounDataFlags: %T", value)
 	}
-	for _, flag := range strings.Split(svalue, ",") {
+	for flag := range strings.SplitSeq(svalue, ",") {
 		if strings.Contains(flag, "=") {
 			// Extract the value after the '='
 			parts := strings.SplitN(flag, "=", 2)

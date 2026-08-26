@@ -19,7 +19,7 @@ import (
 
 	"aead.dev/minisign"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/jarcoal/httpmock"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -442,17 +442,18 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NoSignat
 
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_ContainDir() {
 
-	asset := dto.BinaryAsset{
-		Name:               "test_asset.zip",
-		BrowserDownloadURL: "https://github.com/test_asset.zip",
-		Digest:             "sha256:f6e9d067648b3b21359dd9988650ffa8ab340f0d8579ba0c4c4e6c2ae2048556",
-	}
-
 	zipContents := map[string]string{
 		"config/data.txt": "some config data",
 	}
 	zipBuffer, err := createDummyZip(zipContents, 0, nil)
 	suite.Require().NoError(err)
+	// Digest computed from the generated zip so the test stays independent of
+	// compress/flate encoder changes across Go versions (output bytes changed in Go 1.27).
+	asset := dto.BinaryAsset{
+		Name:               "test_asset.zip",
+		BrowserDownloadURL: "https://github.com/test_asset.zip",
+		Digest:             fmt.Sprintf("sha256:%x", sha256.Sum256(zipBuffer.Bytes())),
+	}
 	asset.Size = zipBuffer.Len()
 
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
@@ -598,11 +599,6 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_NotAZipF
 func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_BlocksZipTraversal() {
 	//suite.T().Skip("Skipping TestDownloadAndExtractBinaryAsset_BlocksZipTraversal because it is flaky on Windows")
 	// Create a zip containing a file that attempts path traversal
-	asset := dto.BinaryAsset{
-		Name:               "evil.zip",
-		BrowserDownloadURL: "https://github.com/evil.zip",
-		Digest:             "sha256:c6916950785c7fb08682a9cf26d4d28d5cc091666fbc82da16957522dde2e577",
-	}
 	buf := new(bytes.Buffer)
 	zw := zip.NewWriter(buf)
 	// File tries to escape extraction dir
@@ -610,6 +606,14 @@ func (suite *UpgradeServiceTestSuite) TestDownloadAndExtractBinaryAsset_BlocksZi
 	_, err := zw.CreateHeader(header)
 	suite.Require().NoError(err)
 	suite.Require().NoError(zw.Close())
+
+	asset := dto.BinaryAsset{
+		Name:               "evil.zip",
+		BrowserDownloadURL: "https://github.com/evil.zip",
+		// Digest computed from the generated zip so the test stays independent of
+		// compress/flate encoder changes across Go versions (output bytes changed in Go 1.27).
+		Digest: fmt.Sprintf("sha256:%x", sha256.Sum256(buf.Bytes())),
+	}
 
 	httpmock.RegisterResponder("GET", asset.BrowserDownloadURL,
 		func(req *http.Request) (*http.Response, error) {

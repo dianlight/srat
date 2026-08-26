@@ -37,7 +37,7 @@ export function ShareActions({
   onDelete,
 }: ShareActionsProps) {
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -61,7 +61,7 @@ export function ShareActions({
   }[] = [];
 
   if (
-    !shareProps.mount_point_data?.invalid &&
+    shareProps.status?.is_valid !== false &&
     shareProps.usage !== Usage.Internal &&
     shareProps.mount_point_data?.path
   ) {
@@ -73,7 +73,7 @@ export function ShareActions({
     });
   }
 
-  if (shareProps.mount_point_data?.invalid) {
+  if (shareProps.status?.is_valid === false) {
     actionItems.push({
       key: "delete",
       title: "Delete share",

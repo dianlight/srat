@@ -5,7 +5,7 @@ package service
 import (
 	"log/slog"
 
-	"github.com/dianlight/smartmontools-go"
+	"github.com/dianlight/smartmontools-sdk/bindings/go/v8"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 )
@@ -17,7 +17,8 @@ import (
 //
 // To enable the lib backend (purego, requires libsmartmon_go.so), build with
 // the "smartlib" tag: go build -tags smartlib ...
-func initSmartClient(_ *dto.ContextState) smartmontools.SmartClient {
+func initSmartClient(apiCtx *dto.ContextState) smartmontools.SmartClient {
+	recordLibSmartBackendOutcome(apiCtx, false, "static build: lib backend disabled, build with -tags smartlib to enable direct mode")
 	slog.Info("SMART exec backend active (static build — lib backend disabled; build with -tags smartlib to enable)")
 	client, _ := smartmontools.NewClient(smartmontools.WithTLogHandler(tlog.NewLoggerWithLevel(tlog.LevelInfo)))
 	return client

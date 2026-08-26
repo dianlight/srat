@@ -48,6 +48,30 @@ var internalShares = map[string]dto.SharedResource{
 		Name:  "addon_configs",
 		Usage: dto.UsageAsInternal,
 	},
+	"/local_apps": {
+		Name:  "local_apps",
+		Usage: dto.UsageAsInternal,
+	},
+	"/app_configs": {
+		Name:  "app_configs",
+		Usage: dto.UsageAsInternal,
+	},
+}
+
+// legacyInternalShareDirs maps legacy standard share names to the new
+// application-based directories they expose (issue #898). The old and new
+// names point to the same directory.
+var legacyInternalShareDirs = map[string]string{
+	"addons":        "/local_apps",
+	"addon_configs": "/app_configs",
+}
+
+// osStat is mockable so tests can simulate missing directories.
+var osStat = os.Stat
+
+// MockOsStat allows overriding os.Stat in tests.
+func MockOsStat(fn func(string) (os.FileInfo, error)) {
+	osStat = fn
 }
 
 /*
@@ -130,7 +154,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			return nil
 		}
 		_ = s.eventBus.EmitShare(events.ShareEvent{
-			Event: events.Event{Type: events.EventTypes.UPDATE},
+			Type:  events.EventTypes.UPDATE,
 			Share: share, // Let subscribers fetch the share if needed
 		})
 		return nil
@@ -263,7 +287,7 @@ func validateSubfolder(subfolder string) error {
 		return errors.New("subfolder must be a relative path")
 	}
 	cleaned := filepath.Clean(subfolder)
-	if strings.HasPrefix(cleaned, "..") {
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
 		return errors.New("subfolder must not traverse above mount root")
 	}
 	return nil
@@ -280,7 +304,32 @@ func ensureSubfolder(root string, subfolder string) errors.E {
 	return nil
 }
 
+// validateShareData validates a share payload before it reaches the database,
+// turning DB constraint failures into a clean client error (issues #901-#903).
+// requireMountData enforces that a share must carry a mount point with a path
+// (used on create; updates may keep the existing mount point).
+func validateShareData(share dto.SharedResource, requireMountData bool) errors.E {
+	if requireMountData && share.Name == "" {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if share.Name != "" && len(share.Name) > 128 {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if requireMountData && (share.MountPointData == nil || share.MountPointData.Path == "") {
+		return errors.WithStack(dto.ErrorShareValidation)
+	}
+	if share.MountPointData != nil && share.MountPointData.Path != "" {
+		if share.MountPointData.Type == "" || share.MountPointData.DeviceId == "" {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
+	}
+	return nil
+}
+
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateShareData(share, true); err != nil {
+		return nil, err
+	}
 	if err := validateSubfolder(share.Subfolder); err != nil {
 		return nil, errors.Wrap(err, "invalid subfolder")
 	}
@@ -336,7 +385,7 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.ADD},
+		Type:  events.EventTypes.ADD,
 		Share: &dtoShare,
 	})
 
@@ -344,6 +393,9 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 }
 
 func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.SharedResource, errors.E) {
+	if err := validateShareData(share, false); err != nil {
+		return nil, err
+	}
 	if err := validateSubfolder(share.Subfolder); err != nil {
 		return nil, errors.Wrap(err, "invalid subfolder")
 	}
@@ -446,12 +498,19 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		return nil, errors.Wrapf(errS, "failed to convert created dbom.ExportedShare back to dto.SharedResource for share '%s'", updatedDbShare.Name)
 	}
 
+	// Ensure subfolder exists on disk after successful update
+	if share.Subfolder != "" && createdDtoShare.MountPointData != nil {
+		if err := ensureSubfolder(createdDtoShare.MountPointData.Path, share.Subfolder); err != nil {
+			slog.Warn("Failed to create subfolder", "share", createdDtoShare.Name, "subfolder", share.Subfolder, "err", err)
+		}
+	}
+
 	if err := s.VerifyShare(&createdDtoShare); err != nil {
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &createdDtoShare,
 	})
 
@@ -466,7 +525,7 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 		return err
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.REMOVE},
+		Type:  events.EventTypes.REMOVE,
 		Share: ashare,
 	})
 
@@ -565,7 +624,7 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
 	})
 
@@ -596,7 +655,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
 	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Event: events.Event{Type: events.EventTypes.UPDATE},
+		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
 	})
 	return &dtoShare, nil
@@ -608,6 +667,19 @@ func (s *ShareService) DisableShare(name string) (*dto.SharedResource, errors.E)
 
 func (s *ShareService) EnableShare(name string) (*dto.SharedResource, errors.E) {
 	return s.setShareEnabled(name, true)
+}
+
+// standardShareDir returns the directory exposed by a standard share name,
+// resolving legacy names to the new application-based directories (issue #898).
+func standardShareDir(name string) (string, bool) {
+	if dir, ok := legacyInternalShareDirs[name]; ok {
+		return dir, true
+	}
+	switch name {
+	case "local_apps", "app_configs":
+		return "/" + name, true
+	}
+	return "", false
 }
 
 // VerifyShare checks the validity of a share and disables it if invalid
@@ -624,33 +696,50 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 		share.Status = &dto.SharedResourceStatus{}
 	}
 
-	// Case 4: Check if MountPointData exists and has a valid path
-	if share.MountPointData == nil || share.MountPointData.Path == "" {
-		slog.Warn("Share has no valid MountPointData", "share", share.Name)
-		share.Status.IsValid = false
-		return nil
-	}
+	// Issue #898/#900: standard share names (legacy and new) expose the new
+	// application-based directories. Check directory existence FIRST for
+	// standard shares so that legacy shares whose new directory exists stay
+	// valid (making the smb.gtpl preexec deprecation warning reachable).
+	if dir, ok := standardShareDir(share.Name); ok {
+		info, err := osStat(dir)
+		if err != nil || !info.IsDir() {
+			slog.Warn("Standard share directory does not exist",
+				"share", share.Name,
+				"path", dir)
+			share.Status.IsValid = false
+			return nil
+		}
+		// Standard directory exists: skip the mount-data checks below and
+		// fall through to the write-support handling.
+	} else {
+		// Case 4: Check if MountPointData exists and has a valid path
+		if share.MountPointData == nil || share.MountPointData.Path == "" {
+			slog.Warn("Share has no valid MountPointData", "share", share.Name)
+			share.Status.IsValid = false
+			return nil
+		}
 
-	// Case 4: Volume doesn't exist (marked as invalid in mount point)
-	if share.MountPointData.IsInvalid {
-		slog.Warn("Share volume does not exist",
-			"share", share.Name,
-			"path", share.MountPointData.Path)
-		share.Status.IsValid = false
-		return nil
-	}
+		// Case 4: Volume doesn't exist (marked as invalid in mount point)
+		if share.MountPointData.IsInvalid {
+			slog.Warn("Share volume does not exist",
+				"share", share.Name,
+				"path", share.MountPointData.Path)
+			share.Status.IsValid = false
+			return nil
+		}
 
-	// Case 3: Volume exists but is not mounted
-	if !share.MountPointData.IsMounted {
-		slog.Warn("Share volume is not mounted",
-			"share", share.Name,
-			"path", share.MountPointData.Path)
-		share.Status.IsValid = false
-		return nil
+		// Case 3: Volume exists but is not mounted
+		if !share.MountPointData.IsMounted {
+			slog.Warn("Share volume is not mounted",
+				"share", share.Name,
+				"path", share.MountPointData.Path)
+			share.Status.IsValid = false
+			return nil
+		}
 	}
 
 	// Cases 1 & 2: Volume is mounted - validate write support vs user permissions
-	if share.MountPointData.IsWriteSupported != nil {
+	if share.MountPointData != nil && share.MountPointData.IsWriteSupported != nil {
 		if !*share.MountPointData.IsWriteSupported {
 			// Case 2: Read-only volume - ensure no RW users
 			for i := range share.Users {

@@ -24,6 +24,7 @@ docs/refactors/
 docs/tasks/
 frontend/node_modules/
 node_modules/
+memories/
 
 # Tool-specific file exclusions
 CHANGELOG.md # tools:vale

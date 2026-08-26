@@ -1,0 +1,189 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [bindings/go/v8.0.2-pre] — Unreleased
+
+This module has never been published under any version before the entries
+below — the `v0.5.0` heading this replaces was aspirational, not a real
+release (`git tag -l 'bindings/go/*'` was empty before `v8.0.0`). That made it
+free to adopt the core's versioning scheme outright instead of continuing a
+Go-only `v0.x` line.
+
+### Retraction notice
+
+`v8.0.0` was published 2026-08-11 as a **final** release while upstream
+smartmontools 8.0 was (and still is) unreleased. It is retracted — along with
+its own self-retracting `v8.0.1` tombstone — via a `retract` block in
+`go.mod`, so that `go get`'s `@latest` query falls through to the newest
+`v8.0.2-pre.<revs>` prerelease instead. Everything below this notice that was
+originally written for the `v8.0.0` heading describes what actually shipped
+in that release and still applies unchanged to `v8.0.2-pre.<revs>` — only the
+version number was wrong, not the content. See
+[docs/development/release-process.md](../../docs/development/release-process.md#the-v800--v801-tombstone)
+for the full mechanism and
+[docs/migration/compatibility-matrix.md](../../docs/migration/compatibility-matrix.md)
+for the version-by-version history.
+
+### Breaking Changes
+- **Module path change**: this module moved from the standalone `smartmontools-go`
+  repository into the `smartmontools-sdk` monorepo, at `bindings/go/`. The module
+  path is now `github.com/dianlight/smartmontools-sdk/bindings/go/v8`. Consumers must
+  update all import paths; see
+  [docs/migration/import-path-migration.md](../../docs/migration/import-path-migration.md).
+- **Relicensed from GPL-3.0-only to GPL-2.0-or-later**, matching the license of the
+  `smartmontools-sdk` native core. See the [COPYING](../../COPYING) file at the
+  repository root.
+- **Tagging scheme change**: releases are now tagged `bindings/go/vX.Y.Z` instead of
+  a bare `vX.Y.Z`, since the tag namespace is shared with the native core's
+  `vX.Y.Z` releases in the same monorepo.
+- **Version numbering now mirrors the native core.** A core release always
+  produces a paired bindings release at the identical version — even with zero
+  Go source changes — via `release-core.yml`'s `dispatch-bindings` job. The
+  `/v8` suffix will move to `/v9` on the core's next major bump; see
+  [docs/development/release-process.md](../../docs/development/release-process.md).
+
+### Added
+- `smartmon_abi_version()` ABI-version check in `LibBackend.New`: refuses to load a
+  wrapper library built before the ABI-versioning symbol existed, and enforces
+  major/minor compatibility with the native `native/capi/` C ABI boundary.
+
+### Changed
+- `LibBackend` now resolves and builds the smartmon wrapper library **in-tree**
+  from `native/` via `scripts/build-wrapper.sh`, rather than depending on a
+  pre-built artifact downloaded from a separate repository's release.
+- `backends/exec/drivedb.h` and `backends/exec/drivedb_version.go` are now
+  generated from `native/drivedb/drivedb.h` (the monorepo's single source of
+  truth) by `scripts/sync-drivedb-go.sh`, replacing the standalone-repo
+  Renovate/`drivedb-fetch.yml` update path. See
+  [docs/drivedb.md](docs/drivedb.md#updating-the-database).
+
+## [0.4.1] — 2025-05-28
+- **Hotfix release**: Moved `internal/types` to `types` for public access. This was an oversight in the v0.4.0 refactor and the `internal` package prevented access to key types like `SMARTInfo` and `DiscoveryResult`. The v0.4.0 release is unaffected and remains available for users who don't need the new features.
+
+## [0.4.0] — 2025-05-21
+
+### Breaking Changes
+- `ExecBackend`, `ExecBackendOption`, `NewExecBackend`, and related `WithExec*` options are now implemented by the `backends/exec` package. The root package keeps backward-compatible aliases and wrappers.
+- `Commander.Command()` now accepts the exported `LogAdapter` type, making the interface implementable outside this module.
+
+### Added
+- `backends/exec/` package containing the `ExecBackend` implementation
+- `internal/types/` shared type hub for domain types, interfaces, constants, and helpers
+- `ExecBackend.SmartctlPath()` accessor
+- `ExecBackend.SetDeviceTypeHint(path, deviceType string)` cache seeding helper
+- `ExecBackend.DeviceTypeHint(path string) (string, bool)` cache inspection helper
+- `backends/exec.WithLogHandler(logger LogAdapter) Option`
+- Exported `LogAdapter` type in the root package
+- `backends/exec/drivedb_version.go`: generated file exposing `DrivedbUpstreamCommit` and `DrivedbUpstreamDate` constants tracking the embedded `drivedb.h` upstream provenance
+- Root-package re-exports `DrivedbUpstreamCommit` and `DrivedbUpstreamDate` for easy access
+- `.github/workflows/drivedb-update.yml`: daily GitHub Actions workflow that detects upstream `drivedb.h` changes and opens automated PRs
+- `.github/workflows/drivedb-fetch.yml`: companion workflow that downloads `drivedb.h` when Renovate updates `drivedb_version.go` in a PR
+- `.github/renovate.json` custom datasource and regex manager for Renovate-based drivedb tracking
+
+### Changed
+- The root package is now a thin facade over `internal/types` and `backends/exec`
+- Exec-specific helpers and drivedb parsing moved out of the root package
+
+##  [v0.3.1] — 2025-05-16
+
+### Added
+
+- **Multi-path `smartctl` resolution** (`helpers.go`): `NewClient` now searches 11
+  platform-specific locations when `smartctl` is not found in `PATH` — including
+  Synology DSM, SynoCommunity QPKG, QNAP Entware/QPKG, macOS Homebrew (Intel &
+  Apple Silicon), MacPorts, FreeBSD/TrueNAS CORE, and NixOS. An actionable error
+  message with per-platform install instructions is returned when no binary is found.
+  The `WithSmartctlPath` option continues to take full precedence and bypasses the
+  search entirely.
+
+- **SAT protocol automatic fallback** (`client.go`): When `GetSMARTInfo` encounters
+  execution-failure exit bits (bits 0–2) and no device type is cached, the library
+  automatically retries with `-d sat`. On success the detected type is written to
+  the device type cache so subsequent calls skip the re-probe. This transparently
+  handles many USB-to-SATA bridges, Synology `/dev/sata*` paths, and RAID passthrough
+  devices where auto-detection fails.
+
+- **Full exit code bit decomposition** (`types.go`, `client.go`): `SMARTInfo` now
+  carries an `ExitCodeInfo *ExitCodeInfo` field that is populated whenever the
+  `smartctl` exit status is non-zero. The struct exposes two fields:
+  - `ExecBits int` — bits 0–2 (mask `0x07`): execution failures (device open
+    failed, command parse error, SMART command failed).
+  - `HealthBits int` — bits 3–7 (mask `0xF8`): SMART health flags (disk failing,
+    pre-failure attributes, past-threshold prefail, error log, self-test log).
+
+  This lets consumers programmatically distinguish "device could not be queried"
+  from "device is reporting degraded health" without parsing error strings.
+
+- **Per-device health-bit deduplication logging** (`client.go`): An internal
+  `healthBitsCache` (keyed by device path) records the last-seen `HealthBits` value
+  per device. A `WARN` log line with per-bit structured fields (`diskFailing`,
+  `prefailAttr`, `pastPrefail`, `errorLog`, `selfTestLog`) is emitted only when the
+  health-bit pattern changes, preventing log flooding for drives in a stable degraded
+  state.
+
+- **`--scan-open` → `--scan` fallback in `ScanDevices`** (`client.go`): `ScanDevices`
+  now automatically falls back to plain `--scan --json` when `--scan-open --json`
+  fails. This ensures device enumeration works in container sandboxes, on older
+  kernels, and in environments where the caller lacks the privileges required by
+  `--scan-open`.
+
+- **`DiscoverDevices` method** (`client.go`, `types.go`): New
+  `DiscoverDevices(ctx context.Context) ([]DiscoveryResult, error)` method added to
+  the `SmartClient` interface. It scans all drives, probes each with its
+  auto-detected protocol, and automatically attempts an explicit SAT fallback per
+  drive when the initial read fails. Each `DiscoveryResult` carries:
+  - `DevicePath string` — kernel device path (e.g. `/dev/sda`)
+  - `DetectedProtocol string` — protocol used for a successful read (`ata`, `sat`, …)
+  - `SMARTReadable bool` — whether SMART data could be read at all
+  - `SATFallbackRequired bool` — whether the SAT fallback was needed
+  - `Model string` — model name or model family (whichever is available)
+  - `Serial string` — serial number
+
+  Useful for diagnosing protocol-detection issues and generating device override
+  configurations without writing application code.
+
+- **`WearLevelPercent` method on `SMARTInfo`** (`types.go`): New
+  `WearLevelPercent() *int` method returns the percentage of drive life *used*
+  (0 = new, 100 = worn out) for SSDs and NVMe drives, or `nil` for HDDs and
+  unknown types. Sources by drive type:
+  - NVMe: `nvme_smart_health_information_log.percentage_used`
+  - ATA SSD: SMART attributes in priority order — 231 (SSD Life Left),
+    177 (Wear Leveling Count), 173 (SSD Life Used)
+  - HDD / Unknown: `nil`
+
+  The returned value is always clamped to [0, 100]. New package constants
+  `SmartAttrSSDLifeUsed = 173` and `SmartAttrWearLevelingCount = 177` are
+  exported alongside the existing SSD detection constants.
+
+### Changed
+
+- `ScanDevices` now logs a `WARN` and retries with `--scan` instead of returning an
+  error immediately when `--scan-open` is unavailable or fails.
+- `NewClient` uses the new `resolveSmartctlPath` helper (multi-path search) instead
+  of `exec.LookPath` when no explicit path is provided.
+
+---
+
+## [v0.2.7] — 2025-04-16
+
+See [GitHub release](https://github.com/dianlight/smartmontools-sdk/bindings/go/v8/releases/tag/v0.2.7).
+
+## [v0.2.6] — 2025-04-07
+
+See [GitHub release](https://github.com/dianlight/smartmontools-sdk/bindings/go/v8/releases/tag/v0.2.6).
+
+## [v0.2.5] — 2025-03-28
+
+See [GitHub release](https://github.com/dianlight/smartmontools-sdk/bindings/go/v8/releases/tag/v0.2.5).
+
+## [v0.2.4] — 2025-03-21
+
+See [GitHub release](https://github.com/dianlight/smartmontools-sdk/bindings/go/v8/releases/tag/v0.2.4).
+
+## [v0.2.3] — 2025-03-14
+
+See [GitHub release](https://github.com/dianlight/smartmontools-sdk/bindings/go/v8/releases/tag/v0.2.3).

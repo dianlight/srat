@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
@@ -135,4 +137,101 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h4.RegisterVolumeHandlers(apiInst4)
 	resp4 := apiInst4.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusInternalServerError, resp4.Code)
+}
+
+// TestMutatingEndpoints_ForbiddenInReadOnlyMode verifies that all three mutating
+// volume endpoints (mount, umount, patch) reject requests with 403 when the
+// handler runs in ReadOnlyMode, without touching the service layer.
+func (suite *VolumeHandlerSuite) TestMutatingEndpoints_ForbiddenInReadOnlyMode() {
+	readOnlyHandler := api.NewVolumeHandler(
+		suite.mockVolumeSvc,
+		suite.mockShareSvc,
+		&dto.ContextState{ReadOnlyMode: true},
+	)
+
+	_, apiInst := humatest.New(suite.T())
+	readOnlyHandler.RegisterVolumeHandlers(apiInst)
+
+	mountBody := dto.MountPointData{Path: "/mnt/testvol", Root: "/", Type: "HOST"}
+
+	testCases := []struct {
+		name    string
+		perform func() *httptest.ResponseRecorder
+	}{
+		{
+			name: "mount volume",
+			perform: func() *httptest.ResponseRecorder {
+				return apiInst.Post("/volume/mount", mountBody)
+			},
+		},
+		{
+			name: "umount volume",
+			perform: func() *httptest.ResponseRecorder {
+				return apiInst.Delete("/volume?mount_path=/mnt/testvol")
+			},
+		},
+		{
+			name: "patch mount settings",
+			perform: func() *httptest.ResponseRecorder {
+				return apiInst.Patch("/volume/settings", mountBody)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			resp := tc.perform()
+			suite.Require().Equal(http.StatusForbidden, resp.Code, "body: %s", resp.Body.String())
+		})
+	}
+
+	_ = mock.Verify(suite.mockVolumeSvc, matchers.Times(0)).MountVolume(mock.Any[*dto.MountPointData]())
+	_ = mock.Verify(suite.mockVolumeSvc, matchers.Times(0)).UnmountVolume(mock.Any[string](), mock.Any[bool]())
+	_, _ = mock.Verify(suite.mockVolumeSvc, matchers.Times(0)).PatchMountPointSettings(mock.Any[string](), mock.Any[string](), mock.Any[dto.MountPointData]())
+}
+
+// TestMutatingEndpoints_ForbiddenInProtectedMode verifies that the mount and
+// umount endpoints map the service-level ProtectedMode error to HTTP 403.
+func (suite *VolumeHandlerSuite) TestMutatingEndpoints_ForbiddenInProtectedMode() {
+	ctrl := mock.NewMockController(suite.T())
+
+	protectedErr := errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
+		"Operation", "MountVolume",
+		"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
+	)
+
+	vmock := mock.Mock[service.VolumeServiceInterface](ctrl)
+	mock.When(vmock.MountVolume(mock.Any[*dto.MountPointData]())).ThenReturn(protectedErr)
+	mock.When(vmock.UnmountVolume(mock.Any[string](), mock.Any[bool]())).ThenReturn(protectedErr)
+
+	h := api.NewVolumeHandler(vmock, suite.mockShareSvc, &dto.ContextState{})
+	_, apiInst := humatest.New(suite.T())
+	h.RegisterVolumeHandlers(apiInst)
+
+	mountBody := dto.MountPointData{Path: "/mnt/testvol", Root: "/", Type: "HOST"}
+
+	testCases := []struct {
+		name    string
+		perform func() *httptest.ResponseRecorder
+	}{
+		{
+			name: "mount volume",
+			perform: func() *httptest.ResponseRecorder {
+				return apiInst.Post("/volume/mount", mountBody)
+			},
+		},
+		{
+			name: "umount volume",
+			perform: func() *httptest.ResponseRecorder {
+				return apiInst.Delete("/volume?mount_path=/mnt/testvol")
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		suite.T().Run(tc.name, func(t *testing.T) {
+			resp := tc.perform()
+			suite.Require().Equal(http.StatusForbidden, resp.Code, "body: %s", resp.Body.String())
+		})
+	}
 }

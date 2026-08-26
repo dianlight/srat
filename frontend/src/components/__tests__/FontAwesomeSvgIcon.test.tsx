@@ -7,10 +7,10 @@ type FaIcon = {
 };
 
 describe("FontAwesomeSvgIcon Component", () => {
-    async function renderIcon(icon: FaIcon, ref?: React.Ref<SVGSVGElement>) {
+    async function renderIcon(icon: FaIcon, props?: Record<string, unknown>) {
         const { FontAwesomeSvgIcon } = await import("../FontAwesomeSvgIcon");
         return renderWithTestStore(
-            React.createElement(FontAwesomeSvgIcon, { icon, ref })
+            React.createElement(FontAwesomeSvgIcon, { icon, ...props })
         );
     }
 
@@ -94,7 +94,7 @@ describe("FontAwesomeSvgIcon Component", () => {
 
         const ref = React.createRef<SVGSVGElement>();
 
-        await renderIcon(singlePathIcon, ref);
+        await renderIcon(singlePathIcon, { ref });
 
         // Check that the ref is properly forwarded to the SVG element
         expect(ref.current).toBeTruthy();
@@ -144,5 +144,28 @@ describe("FontAwesomeSvgIcon Component", () => {
         // All other paths should have 100% opacity
         expect(pathElements?.[1]?.style.opacity).toBe('1');
         expect(pathElements?.[2]?.style.opacity).toBe('1');
+    });
+
+    it("defaults to medium size when no fontSize prop is passed", async () => {
+        const singlePathIcon: FaIcon = {
+            icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
+        };
+
+        const { container } = await renderIcon(singlePathIcon);
+
+        const svgElement = container.firstChild as SVGSVGElement;
+        expect(svgElement?.getAttribute('class')).toContain('MuiSvgIcon-fontSizeMedium');
+    });
+
+    it("applies the small size class when fontSize='small' is passed", async () => {
+        const singlePathIcon: FaIcon = {
+            icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
+        };
+
+        const { container } = await renderIcon(singlePathIcon, { fontSize: "small" });
+
+        const svgElement = container.firstChild as SVGSVGElement;
+        expect(svgElement?.getAttribute('class')).toContain('MuiSvgIcon-fontSizeSmall');
+        expect(svgElement?.getAttribute('class')).not.toContain('MuiSvgIcon-fontSizeMedium');
     });
 });

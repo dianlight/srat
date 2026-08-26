@@ -149,22 +149,33 @@ func (s *UserService) ListUsers() ([]dto.User, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert db users to dto")
 	}
+	for i := range users {
+		users[i].HasDefaultPassword = users[i].IsAdmin &&
+			users[i].Password != nil &&
+			users[i].Password.Expose() == defaultAdminPassword
+	}
 	return users, nil
 }
 
 func (s *UserService) GetAdmin() (*dto.User, error) {
 	dbuser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, dto.ErrorUserNotFound
-		}
 		return nil, errors.Wrap(err, "failed to get admin user from repository")
+	}
+	if dbuser.Username == "" {
+		// The generated raw query Scan returns a zero-value row (nil error)
+		// when no admin exists; translate that into the API contract error.
+		// (Raw Scan never raises gorm.ErrRecordNotFound, so no special case.)
+		return nil, dto.ErrorUserNotFound
 	}
 	var conv converter.DtoToDbomConverterImpl
 	user, errS := conv.SambaUserToUser(dbuser)
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert admin db user to dto")
 	}
+	user.HasDefaultPassword = user.IsAdmin &&
+		user.Password != nil &&
+		user.Password.Expose() == defaultAdminPassword
 	return &user, nil
 }
 
@@ -224,9 +235,7 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.ADD,
-		},
+		Type: events.EventTypes.ADD,
 		User: &createdUserDto,
 	})
 
@@ -234,8 +243,9 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 }
 
 func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto.User, error) {
-	if userDto.Password != nil && userDto.Password.Expose() == "" {
-		return nil, dto.ErrorPasswordRequired
+	// Treat nil or empty password as "keep existing password" on update.
+	if userDto.Password == nil || userDto.Password.Expose() == "" {
+		userDto.Password = nil
 	}
 
 	dbUser, err := gorm.G[dbom.SambaUser](s.db).Where(g.SambaUser.Username.Eq(currentUsername)).First(s.ctx)
@@ -267,9 +277,7 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type: events.EventTypes.UPDATE,
 		User: &updatedUserDto,
 	})
 
@@ -318,8 +326,9 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 }
 
 func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
-	if userDto.Password != nil && userDto.Password.Expose() == "" {
-		return nil, dto.ErrorPasswordRequired
+	// Treat nil or empty password as "keep existing password" on update.
+	if userDto.Password == nil || userDto.Password.Expose() == "" {
+		userDto.Password = nil
 	}
 
 	dbUser, err := query.SambaUserQuery[dbom.SambaUser](s.db).GetAdmin(s.ctx)
@@ -345,9 +354,7 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 		return nil, errors.Wrap(err, "failed to convert updated admin DBOM to DTO")
 	}
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.UPDATE,
-		},
+		Type: events.EventTypes.UPDATE,
 		User: &updatedAdminDto,
 	})
 	return &updatedAdminDto, nil
@@ -368,9 +375,7 @@ func (s *UserService) DeleteUser(username string) error {
 	}
 
 	s.eventBus.EmitUser(events.UserEvent{
-		Event: events.Event{
-			Type: events.EventTypes.REMOVE,
-		},
+		Type: events.EventTypes.REMOVE,
 		User: &dto.User{Username: username},
 	})
 	return nil

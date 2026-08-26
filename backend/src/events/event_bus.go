@@ -17,11 +17,11 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-var keyCounter uint64
+var keyCounter atomic.Uint64
 
 // generateKey generates a unique key for event listeners
 func generateKey() string {
-	return fmt.Sprintf("listener_%d", atomic.AddUint64(&keyCounter, 1))
+	return fmt.Sprintf("listener_%d", keyCounter.Add(1))
 }
 
 // formatWithoutPointerAddresses returns a human-readable string of v where:
@@ -93,7 +93,7 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 		b.WriteString("{")
 		n := rv.NumField()
 		first := true
-		for i := 0; i < n; i++ {
+		for i := range n {
 			tf := rv.Type().Field(i)
 			// Skip unexported fields we can't safely interface
 			if tf.PkgPath != "" { // unexported
@@ -114,7 +114,7 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 		b.WriteString(rv.Type().String())
 		b.WriteString("{")
 		l := rv.Len()
-		for i := 0; i < l; i++ {
+		for i := range l {
 			if i > 0 {
 				b.WriteString(", ")
 			}
@@ -196,11 +196,11 @@ func writeValue(b *strings.Builder, rv reflect.Value, seen map[uintptr]bool, dep
 // EventBusInterface defines the interface for the event bus
 type EventBusInterface interface {
 	// Disk events
-	EmitDisk(event DiskEvent)
+	EmitDisk(event DiskEvent) errors.E
 	OnDisk(handler func(context.Context, DiskEvent) errors.E) func()
 
 	// Partition events
-	EmitPartition(event PartitionEvent)
+	EmitPartition(event PartitionEvent) errors.E
 	OnPartition(handler func(context.Context, PartitionEvent) errors.E) func()
 
 	// Share events
@@ -349,8 +349,8 @@ func emitEvent[T any](signal signals.SyncSignal[T], ctx context.Context, event T
 }
 
 // Disk event methods
-func (eb *EventBus) EmitDisk(event DiskEvent) {
-	_ = emitEvent(eb.disk, eb.ctx, event)
+func (eb *EventBus) EmitDisk(event DiskEvent) errors.E {
+	return emitEvent(eb.disk, eb.ctx, event)
 }
 
 func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) func() {
@@ -358,8 +358,8 @@ func (eb *EventBus) OnDisk(handler func(context.Context, DiskEvent) errors.E) fu
 }
 
 // Partition event methods
-func (eb *EventBus) EmitPartition(event PartitionEvent) {
-	_ = emitEvent(eb.partition, eb.ctx, event)
+func (eb *EventBus) EmitPartition(event PartitionEvent) errors.E {
+	return emitEvent(eb.partition, eb.ctx, event)
 }
 
 func (eb *EventBus) OnPartition(handler func(context.Context, PartitionEvent) errors.E) func() {

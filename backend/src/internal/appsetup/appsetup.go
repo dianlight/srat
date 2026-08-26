@@ -29,7 +29,7 @@ import (
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v89/github"
+	"github.com/google/go-github/v90/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -63,7 +63,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			func() *slog.Logger { return slog.Default() },
 			func() (context.Context, context.CancelFunc) { return params.Ctx, params.CancelFn },
 			func() *dto.ContextState { return params.StaticConfig },
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			func() *github.Client {
 				rateLimiter := github_ratelimit.New(nil)

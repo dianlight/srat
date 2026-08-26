@@ -49,7 +49,7 @@ func (suite *FilesystemHandlerSuite) SetupTest() {
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			api.NewFilesystemHandler,
 			mock.Mock[service.FilesystemServiceInterface],
-			func() *dto.DiskMap { return &dto.DiskMap{} },
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 		),
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.mockFsService),
@@ -280,7 +280,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	}
 
 	// Populate disk map with test disk
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	// Mock filesystem service to format
 	formatResult := &dto.CheckResult{
@@ -295,7 +295,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 		mock.Any[dto.FormatOptions](),
 	)).ThenReturn(formatResult, nil)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    partitionID,
 		"filesystemType": fsType,
 		"label":          label,
@@ -313,7 +313,7 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
 	// diskMap is empty by default (no partitions found)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    "non-existent",
 		"filesystemType": "ext4",
 	})
@@ -349,9 +349,9 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_UnsupportedFilesystem()
 	)).ThenReturn(nil, errors.New("unsupported filesystem"))
 
 	// Populate disk map with test disk
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
-	resp := suite.testAPI.Post("/filesystem/format", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
 		"partitionId":    partitionID,
 		"filesystemType": "unknown-fs",
 	})
@@ -379,7 +379,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	checkResult := &dto.CheckResult{
 		Success:     true,
@@ -395,7 +395,7 @@ func (suite *FilesystemHandlerSuite) TestCheckPartition_Success() {
 		mock.Any[dto.CheckOptions](),
 	)).ThenReturn(checkResult, nil)
 
-	resp := suite.testAPI.Post("/filesystem/check", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/check", map[string]any{
 		"partitionId": partitionID,
 		"autoFix":     true,
 	})
@@ -428,14 +428,14 @@ func (suite *FilesystemHandlerSuite) TestAbortCheckPartition_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.AbortCheckPartition(
 		mock.Any[context.Context](),
 		mock.Any[string](),
 	)).ThenReturn(nil)
 
-	resp := suite.testAPI.Post("/filesystem/check/abort", map[string]interface{}{
+	resp := suite.testAPI.Post("/filesystem/check/abort", map[string]any{
 		"partitionId": partitionID,
 	})
 
@@ -469,7 +469,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionState_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	state := &dto.FilesystemState{
 		IsClean:          true,
@@ -515,7 +515,7 @@ func (suite *FilesystemHandlerSuite) TestGetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.GetPartitionLabel(
 		mock.Any[context.Context](),
@@ -558,7 +558,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 		Partitions: &partitions,
 	}
 
-	(*suite.diskMap)[diskID] = disk
+	suite.diskMap.AddOrUpdate(disk)
 
 	mock.When(suite.mockFsService.SetPartitionLabel(
 		mock.Any[context.Context](),
@@ -574,7 +574,7 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	})
 	defer unsubscribe()
 
-	resp := suite.testAPI.Put("/filesystem/label", map[string]interface{}{
+	resp := suite.testAPI.Put("/filesystem/label", map[string]any{
 		"partitionId": partitionID,
 		"label":       newLabel,
 	})
@@ -604,4 +604,66 @@ func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_Success() {
 	case <-time.After(time.Second):
 		suite.Fail("expected disk update event after relabel")
 	}
+}
+
+// TestSetPartitionLabel_EmitDiskErrorStillSucceeds is a regression guard for
+// the event-emission failure path: when EmitDisk returns an error, the endpoint
+// must still succeed and the cached partition label must already be updated.
+func (suite *FilesystemHandlerSuite) TestSetPartitionLabel_EmitDiskErrorStillSucceeds() {
+	partitionID := "test-partition-id"
+	devicePath := "/dev/sdb1"
+	fsType := "ext4"
+	newLabel := "NewLabel"
+	oldLabel := "OldLabel"
+	diskID := "test-disk-id"
+
+	partition := dto.Partition{
+		Id:               &partitionID,
+		LegacyDevicePath: &devicePath,
+		FsType:           &fsType,
+		Name:             &oldLabel,
+	}
+
+	partitions := make(map[string]dto.Partition)
+	partitions[partitionID] = partition
+	disk := &dto.Disk{
+		Id:         &diskID,
+		Partitions: &partitions,
+	}
+	suite.diskMap.AddOrUpdate(disk)
+
+	mock.When(suite.mockFsService.SetPartitionLabel(
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[string](),
+	)).ThenReturn(nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	mockEventBus := mock.Mock[events.EventBusInterface](ctrl)
+	mock.When(mockEventBus.EmitDisk(mock.Any[events.DiskEvent]())).ThenReturn(errors.New("emit failed"))
+
+	handler := api.NewFilesystemHandler(suite.mockFsService, suite.diskMap, mockEventBus)
+	_, testAPI := humatest.New(suite.T())
+	handler.RegisterFilesystemHandler(testAPI)
+
+	resp := testAPI.Put("/filesystem/label", map[string]interface{}{
+		"partitionId": partitionID,
+		"label":       newLabel,
+	})
+
+	suite.Equal(http.StatusOK, resp.Code)
+
+	var result struct {
+		Success bool `json:"success"`
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &result)
+	suite.Require().NoError(err)
+	suite.True(result.Success)
+
+	updatedPartition, _, found := suite.diskMap.GetPartitionByID(partitionID)
+	suite.True(found)
+	suite.Require().NotNil(updatedPartition)
+	suite.Require().NotNil(updatedPartition.Name)
+	suite.Equal(newLabel, *updatedPartition.Name)
 }

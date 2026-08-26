@@ -58,10 +58,17 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" ]]; then
             COMMIT_MSG=$(git log -1 --format=%s HEAD)
             if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ (.+)$ ]]; then
-              VERSION="${BASH_REMATCH[1]}"
-              echo "Release commit detected. Using version from commit: $VERSION"
-              echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-              exit 0
+              CANDIDATE="${BASH_REMATCH[1]}"
+              # Only trust it when the captured text is an actual version (YYYY.M.PATCH with optional suffix).
+              # Non-version subjects such as "reset changelog for next development cycle"
+              # must fall through to the dev-build version calculation instead of being used as a tag.
+              if [[ "$CANDIDATE" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?$ ]]; then
+                VERSION="$CANDIDATE"
+                echo "Release commit detected. Using version from commit: $VERSION"
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Commit subject matched chore(release) but is not a valid version: $CANDIDATE. Falling back to dev build versioning."
             fi
           fi
 
@@ -185,6 +192,60 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  verify-smartlib-wrapper-abi:
+    name: Verify SMART lib wrapper ABI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Extract vendored smartmontools-sdk bindings ref
+        id: vendored
+        run: |
+          REF=$(awk '$1 == "github.com/dianlight/smartmontools-sdk/bindings/go/v8" {print $2}' backend/src/go.mod)
+          if [ -z "$REF" ]; then
+            echo "❌ github.com/dianlight/smartmontools-sdk/bindings/go/v8 not found in backend/src/go.mod"
+            exit 1
+          fi
+          echo "ref=${REF}" >> "$GITHUB_OUTPUT"
+          echo "Vendored smartmontools-sdk bindings ref: ${REF}"
+
+      - name: Verify SDK release tarball ships the ABI-checked wrapper
+        env:
+          VENDORED_REF: ${{ steps.vendored.outputs.ref }}
+        run: |
+          set -euo pipefail
+          # The SambaNAS2 addon runs Alpine (musl), so the musl tarball is the
+          # contract we must validate. The SDK release tag must match the vendored
+          # bindings ref exactly — the wrapper was built from that same source, so
+          # any drift means a symbol/ABI mismatch (formerly smartmontools-go#38).
+          RELEASE=$(curl -fsSL https://api.github.com/repos/dianlight/smartmontools-sdk/releases/tags/${VENDORED_REF})
+          TAG=$(echo "$RELEASE" | jq -r '.tag_name')
+          if [ "$TAG" != "$VENDORED_REF" ]; then
+            echo "❌ SDK release tag ${TAG} does not match vendored bindings ref ${VENDORED_REF}"
+            echo "   Bump the vendored bindings version in backend/src/go.mod to a released smartmontools-sdk tag."
+            exit 1
+          fi
+          ASSET_URL=$(echo "$RELEASE" | jq -r '.assets[] | select(.name | endswith("linux-amd64-musl.tar.gz")) | .browser_download_url' | head -1)
+          if [ -z "$ASSET_URL" ]; then
+            echo "❌ No linux-amd64-musl tarball in smartmontools-sdk release ${VENDORED_REF}"
+            exit 1
+          fi
+          echo "SDK asset: ${ASSET_URL}"
+          curl -fsSL -o /tmp/sdk-musl.tar.gz "$ASSET_URL"
+          rm -rf /tmp/sdk-lib && mkdir -p /tmp/sdk-lib
+          tar -xzf /tmp/sdk-musl.tar.gz -C /tmp/sdk-lib
+          SO_FILE=$(find /tmp/sdk-lib -name libsmartmon_go.so 2>/dev/null | head -1)
+          if [ -z "$SO_FILE" ]; then
+            echo "❌ libsmartmon_go.so missing from smartmontools-sdk ${VENDORED_REF} musl tarball"
+            exit 1
+          fi
+          if ! nm -D "$SO_FILE" | grep -q 'smartmon_abi_version'; then
+            echo "❌ libsmartmon_go.so does not export the smartmon_abi_version symbol (C-ABI contract)"
+            exit 1
+          fi
+          echo "✅ SDK wrapper ${TAG} ships libsmartmon_go.so with smartmon_abi_version symbol"
+
   test-backend:
     name: Test Backend
     runs-on: ubuntu-latest
@@ -204,9 +265,9 @@ jobs:
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
-          version: "2026.8.0"
+          version: "2026.8.10"
           install: true
           experimental: true
 
@@ -258,9 +319,9 @@ jobs:
       #          bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
-          version: "2026.8.0"
+          version: "2026.8.10"
           install: true
           experimental: true
 
@@ -316,9 +377,9 @@ jobs:
           python-version: "3.14"
 
       - name: Setup mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
-          version: "2026.8.0"
+          version: "2026.8.10"
           install: true
           experimental: true
 
@@ -423,9 +484,9 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@7e36c90d9ab29c415a2384db3006f3ec8a8cc654 # v4.2.4
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
         with:
-          version: "2026.8.0"
+          version: "2026.8.10"
           install: true
           experimental: true
 
@@ -640,6 +701,16 @@ jobs:
             echo "Successfully created ${zip_file_path}"
             echo "Archive contents:"
             unzip -l "$zip_file_path"
+
+            # Assertion (a): every release zip must contain the musl smartlib variant.
+            # The SambaNAS2 addon runs on Alpine (musl) and selects srat-server-musl via
+            # detectBestServerVariant; a release without it would silently degrade SMART
+            # access to the exec backend on the addon.
+            if ! unzip -l "$zip_file_path" | grep -q "srat-server-musl"; then
+              echo "❌ Release zip ${zip_file_path} is missing srat-server-musl (musl smartlib variant required for the Alpine addon)"
+              exit 1
+            fi
+            echo "✅ ${zip_file_path} contains srat-server-musl (musl smartlib variant)"
           done
 
       - name: Upload binaries as artifact
