@@ -31,7 +31,7 @@ local linters = new Mapping<String, Step> {
         glob = "**/*.go"
         exclude = "vendor/**/*.go"
         dir = "backend/src"
-        check = "go vet ./..."
+        check = "test -f config/metadata_constants.go || mise run //backend:metadata --version dev && go vet ./..."
     }
     ["golangci-lint"] = (Builtins.golangci_lint) {
         glob = "**/*.go"
