@@ -24,7 +24,7 @@ import type {
   Direction,
   RcloneTask,
 } from "../../../../store/sratApi";
-import { usePostApiRcloneLinkByTargetKindAndTargetIdAbortMutation } from "../../../../store/sratApi";
+import { usePostApiRcloneLinkAbortMutation } from "../../../../store/sratApi";
 import { useGetServerEventsQuery } from "../../../../store/wsApi";
 import { extractApiErrorMessage } from "./apiErrors";
 
@@ -69,7 +69,7 @@ export function CloudSyncProgressDialog({
 }: CloudSyncProgressDialogProps) {
   const { data: eventData } = useGetServerEventsQuery();
   const [abortSync, { isLoading: isAborting }] =
-    usePostApiRcloneLinkByTargetKindAndTargetIdAbortMutation();
+    usePostApiRcloneLinkAbortMutation();
 
   const lastNotesRef = useRef<string[]>([]);
   const nextLogTimestampRef = useRef<number>(Date.now());

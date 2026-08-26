@@ -400,86 +400,118 @@ const injectedRtkApi = api
         }),
         invalidatesTags: ["Problems"],
       }),
-      deleteApiRcloneLinkByTargetKindAndTargetId: build.mutation<
-        DeleteApiRcloneLinkByTargetKindAndTargetIdApiResponse,
-        DeleteApiRcloneLinkByTargetKindAndTargetIdApiArg
+      deleteApiRcloneLink: build.mutation<
+        DeleteApiRcloneLinkApiResponse,
+        DeleteApiRcloneLinkApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          url: `/api/rclone/link`,
           method: "DELETE",
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      getApiRcloneLinkByTargetKindAndTargetId: build.query<
-        GetApiRcloneLinkByTargetKindAndTargetIdApiResponse,
-        GetApiRcloneLinkByTargetKindAndTargetIdApiArg
+      getApiRcloneLink: build.query<
+        GetApiRcloneLinkApiResponse,
+        GetApiRcloneLinkApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          url: `/api/rclone/link`,
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         providesTags: ["volume", "rclone"],
       }),
-      patchApiRcloneLinkByTargetKindAndTargetId: build.mutation<
-        PatchApiRcloneLinkByTargetKindAndTargetIdApiResponse,
-        PatchApiRcloneLinkByTargetKindAndTargetIdApiArg
+      patchApiRcloneLink: build.mutation<
+        PatchApiRcloneLinkApiResponse,
+        PatchApiRcloneLinkApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          url: `/api/rclone/link`,
           method: "PATCH",
           body: queryArg.body,
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      putApiRcloneLinkByTargetKindAndTargetId: build.mutation<
-        PutApiRcloneLinkByTargetKindAndTargetIdApiResponse,
-        PutApiRcloneLinkByTargetKindAndTargetIdApiArg
+      putApiRcloneLink: build.mutation<
+        PutApiRcloneLinkApiResponse,
+        PutApiRcloneLinkApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}`,
+          url: `/api/rclone/link`,
           method: "PUT",
           body: queryArg.rcloneLinkRequest,
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      postApiRcloneLinkByTargetKindAndTargetIdAbort: build.mutation<
-        PostApiRcloneLinkByTargetKindAndTargetIdAbortApiResponse,
-        PostApiRcloneLinkByTargetKindAndTargetIdAbortApiArg
+      postApiRcloneLinkAbort: build.mutation<
+        PostApiRcloneLinkAbortApiResponse,
+        PostApiRcloneLinkAbortApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/abort`,
+          url: `/api/rclone/link/abort`,
           method: "POST",
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      postApiRcloneLinkByTargetKindAndTargetIdAuthStart: build.mutation<
-        PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiResponse,
-        PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiArg
+      postApiRcloneLinkAuthStart: build.mutation<
+        PostApiRcloneLinkAuthStartApiResponse,
+        PostApiRcloneLinkAuthStartApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/auth/start`,
+          url: `/api/rclone/link/auth/start`,
           method: "POST",
           body: queryArg.startRcloneAuthInputBody,
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      postApiRcloneLinkByTargetKindAndTargetIdDiff: build.mutation<
-        PostApiRcloneLinkByTargetKindAndTargetIdDiffApiResponse,
-        PostApiRcloneLinkByTargetKindAndTargetIdDiffApiArg
+      postApiRcloneLinkDiff: build.mutation<
+        PostApiRcloneLinkDiffApiResponse,
+        PostApiRcloneLinkDiffApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/diff`,
+          url: `/api/rclone/link/diff`,
           method: "POST",
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
-      postApiRcloneLinkByTargetKindAndTargetIdSync: build.mutation<
-        PostApiRcloneLinkByTargetKindAndTargetIdSyncApiResponse,
-        PostApiRcloneLinkByTargetKindAndTargetIdSyncApiArg
+      postApiRcloneLinkSync: build.mutation<
+        PostApiRcloneLinkSyncApiResponse,
+        PostApiRcloneLinkSyncApiArg
       >({
         query: (queryArg) => ({
-          url: `/api/rclone/link/${queryArg.targetKind}/${queryArg.targetId}/sync`,
+          url: `/api/rclone/link/sync`,
           method: "POST",
           body: queryArg.rcloneSyncRequest,
+          params: {
+            target_kind: queryArg.targetKind,
+            target_id: queryArg.targetId,
+          },
         }),
         invalidatesTags: ["volume", "rclone"],
       }),
@@ -1113,75 +1145,76 @@ export type PostApiProblemsByProblemKeyActionsAndActionKeyApiArg = {
   problemKey: string;
   actionKey: string;
 };
-export type DeleteApiRcloneLinkByTargetKindAndTargetIdApiResponse =
+export type DeleteApiRcloneLinkApiResponse =
   /** status default Error */ ErrorModel;
-export type DeleteApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+export type DeleteApiRcloneLinkApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
 };
-export type GetApiRcloneLinkByTargetKindAndTargetIdApiResponse =
-  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
-export type GetApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+export type GetApiRcloneLinkApiResponse = /** status 200 OK */
+  | RcloneLink
+  | /** status default Error */ ErrorModel;
+export type GetApiRcloneLinkApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
 };
-export type PatchApiRcloneLinkByTargetKindAndTargetIdApiResponse =
-  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
-export type PatchApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+export type PatchApiRcloneLinkApiResponse = /** status 200 OK */
+  | RcloneLink
+  | /** status default Error */ ErrorModel;
+export type PatchApiRcloneLinkApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
   body: JsonPatchOp[] | null;
 };
-export type PutApiRcloneLinkByTargetKindAndTargetIdApiResponse =
-  /** status 200 OK */ RcloneLink | /** status default Error */ ErrorModel;
-export type PutApiRcloneLinkByTargetKindAndTargetIdApiArg = {
+export type PutApiRcloneLinkApiResponse = /** status 200 OK */
+  | RcloneLink
+  | /** status default Error */ ErrorModel;
+export type PutApiRcloneLinkApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
   rcloneLinkRequest: RcloneLinkRequest;
 };
-export type PostApiRcloneLinkByTargetKindAndTargetIdAbortApiResponse =
+export type PostApiRcloneLinkAbortApiResponse =
   /** status default Error */ ErrorModel;
-export type PostApiRcloneLinkByTargetKindAndTargetIdAbortApiArg = {
+export type PostApiRcloneLinkAbortApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
 };
-export type PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiResponse =
-  /** status 200 OK */
-    | RcloneAuthStartResponse
-    | /** status default Error */ ErrorModel;
-export type PostApiRcloneLinkByTargetKindAndTargetIdAuthStartApiArg = {
+export type PostApiRcloneLinkAuthStartApiResponse = /** status 200 OK */
+  | RcloneAuthStartResponse
+  | /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkAuthStartApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
   startRcloneAuthInputBody: StartRcloneAuthInputBody;
 };
-export type PostApiRcloneLinkByTargetKindAndTargetIdDiffApiResponse =
-  /** status 200 OK */
-    | RcloneDiffResult
-    | /** status default Error */ ErrorModel;
-export type PostApiRcloneLinkByTargetKindAndTargetIdDiffApiArg = {
+export type PostApiRcloneLinkDiffApiResponse = /** status 200 OK */
+  | RcloneDiffResult
+  | /** status default Error */ ErrorModel;
+export type PostApiRcloneLinkDiffApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
 };
-export type PostApiRcloneLinkByTargetKindAndTargetIdSyncApiResponse =
+export type PostApiRcloneLinkSyncApiResponse =
   /** status default Error */ ErrorModel;
-export type PostApiRcloneLinkByTargetKindAndTargetIdSyncApiArg = {
+export type PostApiRcloneLinkSyncApiArg = {
   /** Link target kind (volume or hassos_data) */
   targetKind: string;
-  /** Link target id (volume path or hassos-data) */
+  /** Link target id (volume path or hassos-data); may contain slashes */
   targetId: string;
   rcloneSyncRequest: RcloneSyncRequest;
 };
@@ -2073,6 +2106,8 @@ export type RcloneAuthStartResponse = {
 export type StartRcloneAuthInputBody = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  auth_mode?: Auth_mode;
+  public_base_url?: string;
   settings: {
     [key: string]: string;
   };
@@ -2120,7 +2155,10 @@ export type RcloneProviderInfo = {
 export type RcloneProvidersResponse = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  broker_available: boolean;
+  ha_dropbox_available: boolean;
   library_available: boolean;
+  oauth_callback_path: string;
   providers: RcloneProviderInfo[] | null;
 };
 export type RcloneTask = {
@@ -2443,6 +2481,12 @@ export enum Disk_type {
   Scsi = "SCSI",
   Unknown = "Unknown",
 }
+export enum Auth_mode {
+  Auto = "auto",
+  CustomApp = "custom_app",
+  Broker = "broker",
+  HaDropbox = "ha_dropbox",
+}
 export enum Direction {
   Push = "push",
   Pull = "pull",
@@ -2561,14 +2605,14 @@ export const {
   usePatchApiProblemsByProblemKeyMutation,
   usePutApiProblemsByProblemKeyMutation,
   usePostApiProblemsByProblemKeyActionsAndActionKeyMutation,
-  useDeleteApiRcloneLinkByTargetKindAndTargetIdMutation,
-  useGetApiRcloneLinkByTargetKindAndTargetIdQuery,
-  usePatchApiRcloneLinkByTargetKindAndTargetIdMutation,
-  usePutApiRcloneLinkByTargetKindAndTargetIdMutation,
-  usePostApiRcloneLinkByTargetKindAndTargetIdAbortMutation,
-  usePostApiRcloneLinkByTargetKindAndTargetIdAuthStartMutation,
-  usePostApiRcloneLinkByTargetKindAndTargetIdDiffMutation,
-  usePostApiRcloneLinkByTargetKindAndTargetIdSyncMutation,
+  useDeleteApiRcloneLinkMutation,
+  useGetApiRcloneLinkQuery,
+  usePatchApiRcloneLinkMutation,
+  usePutApiRcloneLinkMutation,
+  usePostApiRcloneLinkAbortMutation,
+  usePostApiRcloneLinkAuthStartMutation,
+  usePostApiRcloneLinkDiffMutation,
+  usePostApiRcloneLinkSyncMutation,
   useGetApiRcloneLinksQuery,
   useGetApiRcloneOauthCallbackQuery,
   useGetApiRcloneProvidersQuery,

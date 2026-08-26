@@ -377,3 +377,29 @@ class SRATWebSocketClient:
         await self._ws_send_json(
             self._ws, {"event": "repair_lifecycle", "data": payload}
         )
+
+    async def async_send_ha_dropbox_token(
+        self,
+        *,
+        token_json: str,
+        client_id: str = "",
+        client_secret: str = "",
+        account_label: str = "",
+    ) -> None:
+        """Forward the HA Dropbox OAuth token to the backend (task 050)."""
+        if not self._connected or self._ws is None:
+            _LOGGER.debug("Skipping ha_dropbox_token send while disconnected")
+            return
+
+        payload: dict[str, Any] = {
+            "type": "ha_dropbox_token",
+            "token_json": token_json,
+        }
+        if client_id:
+            payload["client_id"] = client_id
+        if client_secret:
+            payload["client_secret"] = client_secret
+        if account_label:
+            payload["account_label"] = account_label
+
+        await self._ws_send_json(self._ws, payload)

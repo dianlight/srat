@@ -52,6 +52,14 @@ type Driver interface {
 
 There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver: status lives on the link row (`Status` field) and deauthorization is performed by `DeleteLink` via the `config/delete` RPC.
 
+### OAuth modes
+
+- **Custom app** (always available): the user creates their own provider app and enters `client_id`/`client_secret`; the driver builds the authorize URL directly and exchanges the code server-side. See driver `AuthStart`/`ExchangeCode` in `backend/src/service/rclone/driver_dropbox.go`.
+
+> Hosted OAuth broker (shared app, `SRAT_OAUTH_BROKER_URL`, `broker_available`) is **out of scope for this task** — spec, protocol and serverless TypeScript implementation are tracked in **issue #1002** (Cloudflare Workers / Render). The former Go reference module `oauth-broker/` has been removed. This doc no longer duplicates the broker contract.
+
+Third auth mode — **“Reuse Dropbox integration auth”** — is implemented in task `050_reuse-ha-dropbox-oauth.md` and reuses `hass.config_entries` via the custom component WebSocket.
+
 ### Data model
 
 - New table `rclone_links` (`dbom/rclone_link.go` + migration `00019_create_rclone_links.sql`):
@@ -63,14 +71,14 @@ There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver
 
 ### Backend API (huma; every route lab-gated except the OAuth callback — 403 with `dto.ErrorLabModeRequired`)
 
-- `GET /rclone/providers` — registered drivers (+ `library_available` flag from the RPC seam)
+- `GET /rclone/providers` — registered drivers (+ `library_available` flag from the RPC seam, + `oauth_callback_path` so the wizard can render the exact redirect URI to register, + `ha_dropbox_available` for HA reuse — see task 050; `broker_available` for the hosted broker lives in #1002)
 - `GET /rclone/links` — all configured links
-- `GET|PUT|DELETE /rclone/link/{target_kind}/{target_id}` — link CRUD (GET answers 404 when absent, including the service's `(nil, nil)` not-found contract)
-- `POST /rclone/link/{target_kind}/{target_id}/auth/start` — begin provider OAuth flow
-- `POST /rclone/link/{target_kind}/{target_id}/diff` — compare local vs remote (`warning` set when the remote listing failed but a partial result was produced)
-- `POST /rclone/link/{target_kind}/{target_id}/sync` `{direction: push|pull|bidi, dry_run}` + `POST .../abort` — mirrors CheckPartition/AbortCheckPartition semantics
+- `GET|PUT|DELETE /rclone/link?target_kind=&target_id=` — link CRUD (GET answers 404 when absent, including the service's `(nil, nil)` not-found contract). Identity travels as **query parameters**: volume target ids are mount paths containing slashes, which gorilla/mux path-cleaning mangled into 301 redirects that browsers follow as GET (breaking every wizard call — regression fixed post-Phase-1).
+- `POST /rclone/link/auth/start?target_kind=&target_id=` — begin provider OAuth flow; body `{settings, public_base_url?, auth_mode?}` where `public_base_url` is the browser-visible origin used to build the redirect URI (needed behind HA ingress) and `auth_mode` selects the flow (`custom_app` | `ha_dropbox` — `broker` is defined in #1002)
+- `POST /rclone/link/diff?target_kind=&target_id=` — compare local vs remote (`warning` set when the remote listing failed but a partial result was produced)
+- `POST /rclone/link/sync?target_kind=&target_id=` `{direction: push|pull|bidi, dry_run}` + `POST .../link/abort` — mirrors CheckPartition/AbortCheckPartition semantics
 - `GET /rclone/oauth/callback` — provider redirect target rendered as an auto-closing HTML page; **NOT lab-gated** because the provider redirect cannot carry settings headers; protected instead by the single-use, TTL-bounded OAuth state token
-- OpenAPI regen: `mise run //backend:gen && mise run //frontend:gen` (never hand-edit `sratApi.ts`)
+- OpenAPI regen: `mise run //backend:gen && mise run //frontend:gen` (never hand-edit `sratApi.ts`). Note: generated endpoint names derive from **paths**, not operationIds; after the query-param migration they are e.g. `putApiRcloneLink`, `postApiRcloneLinkAuthStart`.
 
 ### Events & problems
 
@@ -80,7 +88,7 @@ There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver
 ### Security/constraints
 
 - Whole feature no-op unless `experimental_lab_mode=true` (403 on API; hidden in UI). The OAuth callback is exempt by design (see Backend API) and is protected by the single-use `oauthStateTTL`-bounded state token instead.
-- Tokens never leave backend; never logged; command output sanitizer not applicable (no shell argv).
+- Tokens never leave backend; never logged; command output sanitizer not applicable (no shell argv). Tokens live only in the managed `rclone.conf` (see also broker token handover in #1002 and HA reuse in task 050).
 - CGO cross-build: librclone sits behind the `rclonelib` build tag so default static (CGO_ENABLED=0) builds keep working. The addon build workflow has been updated to include `rclonelib` in GOTAGS for both musl and glibc variants (Task 17).
 
 ## 📝 Task List
@@ -101,6 +109,7 @@ There is deliberately no `AuthComplete`/`AuthStatus`/`Deauthorize` on the driver
 
 ### Phase 2 — Follow-ups (tracked, out of scope here unless pulled forward)
 - [x] Task 13: Scheduled auto-sync worker (hdidle-style ticker) + conflict policy
+- [x] Task 18: Dual-mode OAuth core (custom-app flow; `broker_available`/`SRAT_OAUTH_BROKER_URL` plumbing) — full broker server implementation moved to **issue #1002**
 - [ ] Task 14: Second provider driver (GDrive) proving modularity end-to-end
 - [ ] Task 15: Extend linking to hassos-data partition target
 - [ ] Task 16: `rclone mount` of clouds as filesystems + serve FTP/S3 (issue #954 remaining bullets)
@@ -186,6 +195,7 @@ Rules: every control hidden when `experimental_lab_mode=false` (`watch()` patter
 
 - RPC seam: `backend/src/service/rclone/rpc.go` (+ `rpc_librclone.go` / `rpc_stub.go` build-tag pair)
 - Dropbox driver: `backend/src/service/rclone/driver_dropbox.go` (registry in `driver.go`)
+- OAuth broker client (spec in #1002): `backend/src/service/rclone/broker.go`
 - Service / handler / model: `backend/src/service/rclone_service.go`, `backend/src/api/rclone_handler.go`, `backend/src/dbom/rclone_link.go`
 - Frontend: `frontend/src/pages/volumes/components/rclone/` (panel, wizard, progress dialog, guards)
 - Pattern sources: `service/hdidle_service.go` (lab gate), `filesystem_service.go:CheckPartition` (async+abort+events), `pages/volumes/components/FilesystemCheckDialog.tsx` (progress UI), `043_zeroconf-mdns-addon-lab-feature.md` (lab checklist)

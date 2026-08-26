@@ -27,11 +27,11 @@ import { toast } from "react-toastify";
 import type { RcloneDiffResult } from "../../../../store/sratApi";
 import {
   Direction,
-  useDeleteApiRcloneLinkByTargetKindAndTargetIdMutation,
-  useGetApiRcloneLinkByTargetKindAndTargetIdQuery,
+  useDeleteApiRcloneLinkMutation,
+  useGetApiRcloneLinkQuery,
   useGetApiRcloneProvidersQuery,
-  usePostApiRcloneLinkByTargetKindAndTargetIdDiffMutation,
-  usePostApiRcloneLinkByTargetKindAndTargetIdSyncMutation,
+  usePostApiRcloneLinkDiffMutation,
+  usePostApiRcloneLinkSyncMutation,
 } from "../../../../store/sratApi";
 import { extractApiErrorMessage } from "./apiErrors";
 import { CloudLinkWizardDialog } from "./CloudLinkWizardDialog";
@@ -93,17 +93,16 @@ export function CloudSyncPanel({
   const [progressOpen, setProgressOpen] = useState(false);
   const [diffResult, setDiffResult] = useState<RcloneDiffResult | null>(null);
 
-  const linkQuery = useGetApiRcloneLinkByTargetKindAndTargetIdQuery({
+  const linkQuery = useGetApiRcloneLinkQuery({
     targetKind,
     targetId,
   });
   const providersQuery = useGetApiRcloneProvidersQuery();
   const [deleteLink, { isLoading: isDeleting }] =
-    useDeleteApiRcloneLinkByTargetKindAndTargetIdMutation();
-  const [diff, { isLoading: isDiffing }] =
-    usePostApiRcloneLinkByTargetKindAndTargetIdDiffMutation();
+    useDeleteApiRcloneLinkMutation();
+  const [diff, { isLoading: isDiffing }] = usePostApiRcloneLinkDiffMutation();
   const [startSync, { isLoading: isStarting }] =
-    usePostApiRcloneLinkByTargetKindAndTargetIdSyncMutation();
+    usePostApiRcloneLinkSyncMutation();
 
   // RTK Query exposes non-2xx via `error`, so any success-shaped data
   // present means linked.

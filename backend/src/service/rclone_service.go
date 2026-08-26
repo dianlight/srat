@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +51,11 @@ type RcloneServiceInterface interface {
 	DeleteLink(ctx context.Context, targetKind, targetID string) errors.E
 	// StartAuth prepares an OAuth flow: persists pending settings, builds
 	// the provider URL and returns it with the correlated state token.
-	StartAuth(ctx context.Context, targetKind, targetID string, settings map[string]string) (*dto.RcloneAuthStartResponse, errors.E)
+	// publicBaseURL (optional) is the browser-visible origin used to build
+	// the redirect URI; when empty the server-side configured base is used.
+	// authMode selects the flow explicitly ("custom_app", "broker", "ha_dropbox") or ""
+	// /"auto" to infer from credentials presence + broker configuration.
+	StartAuth(ctx context.Context, targetKind, targetID string, settings map[string]string, publicBaseURL string, authMode string) (*dto.RcloneAuthStartResponse, errors.E)
 	// HandleOAuthCallback validates state, exchanges code→token and writes
 	// the remote into the managed rclone.conf. Returns the linked target.
 	HandleOAuthCallback(ctx context.Context, code, state string) (*dto.RcloneLink, errors.E)
@@ -60,6 +65,11 @@ type RcloneServiceInterface interface {
 	Sync(targetKind, targetID, direction string, dryRun bool) errors.E
 	// AbortSync cancels the running job for a link, if any.
 	AbortSync(targetKind, targetID string) errors.E
+	// HaDropboxAvailable reports whether a reusable HA Dropbox token has been
+	// pushed by the custom component over WebSocket (task 050).
+	HaDropboxAvailable() bool
+	// SetHaDropboxToken stores the token forwarded by the HA custom component.
+	SetHaDropboxToken(msg dto.HaDropboxTokenMessage) errors.E
 }
 
 // RcloneService implements RcloneServiceInterface.
@@ -79,6 +89,9 @@ type RcloneService struct {
 	redirect  string                       // OAuth callback base URL
 
 	autoSyncStop chan struct{} // signals the auto-sync loop to exit; nil when stopped
+
+	haDropboxMu    sync.Mutex
+	haDropboxToken *dto.HaDropboxTokenMessage
 }
 
 type rcloneRunningJob struct {
@@ -241,6 +254,12 @@ func (s *RcloneService) SaveLink(link dto.RcloneLink) errors.E {
 	row.AutoSync = link.AutoSync
 	row.ScheduleMinutes = link.ScheduleMinutes
 	if err := s.db.Save(&row).Error; err != nil {
+		// Log the underlying driver error: tozd wraps hide the cause from
+		// the API response, and diagnosing persistence failures remotely
+		// requires the raw message.
+		slog.ErrorContext(s.ctx, "rclone link save failed",
+			"target_kind", link.TargetKind, "target_id", link.TargetID,
+			"error", err.Error())
 		return errors.Wrap(err, "save rclone link")
 	}
 	s.reconfigureAutoSync()
@@ -282,10 +301,14 @@ func (s *RcloneService) DeleteLink(ctx context.Context, targetKind, targetID str
 // ---------- OAuth flow ----------
 
 // callbackBaseURL derives the externally reachable base URL used to build
-// OAuth redirect URIs. It prefers the SRAT public port from context state so
-// links work behind Home Assistant ingress too (browser resolves relative
-// to the host it opened).
-func (s *RcloneService) callbackBaseURL() string {
+// OAuth redirect URIs. Precedence: the browser-supplied public base URL (so
+// links work behind Home Assistant ingress too), then the SRAT-configured
+// redirect override, then the SRAT public port. The browser resolves the
+// relative callback path against the host it opened.
+func (s *RcloneService) callbackBaseURL(publicBaseURL string) string {
+	if publicBaseURL != "" {
+		return strings.TrimSuffix(publicBaseURL, "/")
+	}
 	if s.redirect != "" {
 		return s.redirect
 	}
@@ -296,7 +319,7 @@ func (s *RcloneService) callbackBaseURL() string {
 	return "http://localhost:" + port
 }
 
-func (s *RcloneService) StartAuth(ctx context.Context, targetKind, targetID string, settings map[string]string) (*dto.RcloneAuthStartResponse, errors.E) {
+func (s *RcloneService) StartAuth(ctx context.Context, targetKind, targetID string, settings map[string]string, publicBaseURL string, authMode string) (*dto.RcloneAuthStartResponse, errors.E) {
 	var row dbom.RcloneLink
 	err := s.db.Where("target_kind = ? AND target_id = ?", targetKind, targetID).First(&row).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -308,17 +331,22 @@ func (s *RcloneService) StartAuth(ctx context.Context, targetKind, targetID stri
 	if !ok {
 		return nil, errors.Errorf("unknown provider %q", row.Provider)
 	}
+	// Task 050: ha_dropbox mode reuses the HA Dropbox integration token pushed
+	// via WebSocket. It completes server-side without a browser redirect.
+	if authMode == "ha_dropbox" {
+		return s.startHaDropboxAuth(ctx, &row, publicBaseURL)
+	}
 	state := uuid.New().String()
 	req := sr.AuthRequest{
-		RedirectURI: s.callbackBaseURL() + "/api/rclone/oauth/callback",
+		RedirectURI: s.callbackBaseURL(publicBaseURL) + "/api/rclone/oauth/callback",
 		State:       state,
 		Settings:    settings,
 		TargetKind:  targetKind,
 		TargetID:    targetID,
 	}
-	authURL, derr := driver.AuthStart(ctx, req)
-	if derr != nil {
-		return nil, errors.Wrap(derr, "build authorization url")
+	authURL, brokerSessionID, aerr := s.startAuthorization(ctx, driver, row.Provider, settings, req, authMode)
+	if aerr != nil {
+		return nil, aerr
 	}
 	row.OAuthState = state
 	row.Status = dto.RcloneStatusUnlinked
@@ -326,9 +354,100 @@ func (s *RcloneService) StartAuth(ctx context.Context, targetKind, targetID stri
 		return nil, errors.Wrap(serr, "save rclone link state")
 	}
 	s.pendingMu.Lock()
-	s.pending[state] = rclonePendingAuth{req: req, expires: time.Now().Add(oauthStateTTL)}
+	s.pending[state] = rclonePendingAuth{req: req, expires: time.Now().Add(oauthStateTTL), brokerSessionID: brokerSessionID}
 	s.pendingMu.Unlock()
 	return &dto.RcloneAuthStartResponse{AuthURL: authURL, State: state, RedirectURI: req.RedirectURI}, nil
+}
+
+// startHaDropboxAuth completes authorization by reusing the HA Dropbox token.
+// It is the third branch beside custom_app and broker (task 050).
+func (s *RcloneService) startHaDropboxAuth(ctx context.Context, row *dbom.RcloneLink, publicBaseURL string) (*dto.RcloneAuthStartResponse, errors.E) {
+	if row.Provider != "dropbox" {
+		return nil, errors.Errorf("ha_dropbox auth is only available for dropbox (provider is %q)", row.Provider)
+	}
+	msg, ok := s.consumeHaDropboxToken()
+	if !ok {
+		return nil, errors.New("no HA Dropbox token available; ensure the Home Assistant Dropbox integration is configured and the SRAT integration is connected")
+	}
+	// Persist the remote into the managed rclone.conf using the reused token.
+	name := remoteName(row)
+	params := map[string]any{
+		"name": name,
+		"parameters": map[string]string{
+			"type":          row.Provider,
+			"client_id":     msg.ClientID,
+			"client_secret": msg.ClientSecret,
+			"token":         msg.TokenJSON,
+		},
+	}
+	var createOut any
+	if cerr := sr.Call(ctx, s.rc, "config/create", params, &createOut); cerr != nil {
+		// Keep the link in error state so the wizard can surface the message.
+		row.Status = dto.RcloneStatusError
+		row.LastSyncMessage = cerr.Error()
+		_ = s.db.Save(row).Error
+		return nil, errors.Wrap(cerr, "persist remote configuration from HA token")
+	}
+	row.OAuthState = ""
+	row.Status = dto.RcloneStatusAuthorized
+	row.LastSyncMessage = ""
+	if err := s.db.Save(row).Error; err != nil {
+		return nil, errors.Wrap(err, "save rclone link status")
+	}
+	// Return a synthetic response: no browser AuthURL is needed, but we still
+	// echo the redirect URI so the wizard can display it. State is empty
+	// because no callback will arrive.
+	redirectURI := s.callbackBaseURL(publicBaseURL) + "/api/rclone/oauth/callback"
+	return &dto.RcloneAuthStartResponse{AuthURL: "", State: "", RedirectURI: redirectURI}, nil
+}
+
+// hasOwnCredentials reports whether the user supplied their own provider app
+// credentials; those always take precedence over the hosted broker flow.
+func hasOwnCredentials(settings map[string]string) bool {
+	return settings["client_id"] != "" || settings["client_secret"] != ""
+}
+
+// startAuthorization picks the auth mode for one flow. The wizard sends the
+// mode explicitly ("custom_app" or "broker"); empty means auto-detect:
+// custom app when the user brought credentials (which always take
+// precedence), otherwise the hosted OAuth broker when configured. In
+// custom-app mode the driver builds the provider URL directly; in broker
+// mode a centrally operated service owning per-provider app credentials
+// opens a session and the browser comes back to SRAT's callback carrying
+// SRAT's state parameter. The returned session id is empty outside broker
+// mode.
+func (s *RcloneService) startAuthorization(ctx context.Context, driver sr.Driver, provider string, settings map[string]string, req sr.AuthRequest, authMode string) (string, string, errors.E) {
+	switch authMode {
+	case "broker":
+		if !sr.BrokerAvailable() {
+			return "", "", errors.New("hosted OAuth broker is not available (no broker URL configured or it is disabled)")
+		}
+	case "", "auto":
+		if hasOwnCredentials(settings) || !sr.BrokerAvailable() {
+			authMode = "custom_app"
+		} else {
+			authMode = "broker"
+		}
+	case "custom_app":
+		// explicit user choice; falls through to the driver below
+	default:
+		return "", "", errors.Errorf("unknown auth mode %q", authMode)
+	}
+	if authMode == "broker" {
+		callback := req.RedirectURI + "?state=" + url.QueryEscape(req.State)
+		session, berr := sr.BrokerStart(ctx, sr.BrokerBaseURL(), provider, callback)
+		if berr != nil {
+			// Inline cause: tozd wraps hide inner errors from huma's
+			// ErrorModel and the wizard surfaces exactly this text.
+			return "", "", errors.Errorf("start hosted oauth session: %v", berr)
+		}
+		return session.AuthURL, session.SessionID, nil
+	}
+	authURL, derr := driver.AuthStart(ctx, req)
+	if derr != nil {
+		return "", "", errors.Errorf("build authorization url: %v", derr)
+	}
+	return authURL, "", nil
 }
 
 // rclonePendingAuth is one in-flight OAuth flow. The deadline enforces
@@ -337,6 +456,59 @@ func (s *RcloneService) StartAuth(ctx context.Context, targetKind, targetID stri
 type rclonePendingAuth struct {
 	req     sr.AuthRequest
 	expires time.Time
+	// brokerSessionID is set when the flow runs through the hosted OAuth
+	// broker (no custom app credentials); empty means custom-app mode where
+	// the driver exchanges the code itself.
+	brokerSessionID string
+}
+
+// HaDropboxAvailable reports whether a reusable HA Dropbox token has been
+// pushed by the custom component. Thread-safe.
+func (s *RcloneService) HaDropboxAvailable() bool {
+	s.haDropboxMu.Lock()
+	defer s.haDropboxMu.Unlock()
+	return s.haDropboxToken != nil && s.haDropboxToken.TokenJSON != ""
+}
+
+// SetHaDropboxToken stores the token forwarded by the HA custom component.
+// The token is kept in memory only (single-use per authorization) and never
+// persisted to SQLite. Thread-safe.
+func (s *RcloneService) SetHaDropboxToken(msg dto.HaDropboxTokenMessage) errors.E {
+	if err := msg.Validate(); err != nil {
+		return errors.Wrap(err, "invalid ha_dropbox_token")
+	}
+	s.haDropboxMu.Lock()
+	defer s.haDropboxMu.Unlock()
+	cpy := msg
+	s.haDropboxToken = &cpy
+	slog.InfoContext(s.ctx, "received HA Dropbox token",
+		"account_label", msg.AccountLabel, "has_client_secret", msg.ClientSecret != "")
+	return nil
+}
+
+// consumeHaDropboxToken returns the stored token if available. Caller must
+// hold no lock; this method locks internally and clears the stored token
+// after consumption so each authorization uses a fresh push (single-use).
+func (s *RcloneService) consumeHaDropboxToken() (dto.HaDropboxTokenMessage, bool) {
+	s.haDropboxMu.Lock()
+	defer s.haDropboxMu.Unlock()
+	if s.haDropboxToken == nil || s.haDropboxToken.TokenJSON == "" {
+		return dto.HaDropboxTokenMessage{}, false
+	}
+	msg := *s.haDropboxToken
+	s.haDropboxToken = nil
+	return msg, true
+}
+
+// peekHaDropboxToken returns the stored token without consuming it (for
+// availability checks). Thread-safe.
+func (s *RcloneService) peekHaDropboxToken() (dto.HaDropboxTokenMessage, bool) {
+	s.haDropboxMu.Lock()
+	defer s.haDropboxMu.Unlock()
+	if s.haDropboxToken == nil || s.haDropboxToken.TokenJSON == "" {
+		return dto.HaDropboxTokenMessage{}, false
+	}
+	return *s.haDropboxToken, true
 }
 
 // HandleOAuthCallback completes the flow started by StartAuth. States older
@@ -358,12 +530,41 @@ func (s *RcloneService) HandleOAuthCallback(ctx context.Context, code, state str
 	if !ok {
 		return nil, errors.Errorf("unknown provider %q", row.Provider)
 	}
-	token, derr := driver.ExchangeCode(ctx, req, code)
-	if derr != nil {
-		row.Status = dto.RcloneStatusError
-		row.LastSyncMessage = derr.Error()
-		_ = s.db.Save(&row).Error
-		return nil, errors.Wrap(derr, "exchange oauth code")
+	var (
+		token        *sr.TokenResult
+		clientID     string
+		clientSecret string
+	)
+	if pending.brokerSessionID != "" {
+		bt, berr := sr.BrokerFetchToken(ctx, sr.BrokerBaseURL(), pending.brokerSessionID)
+		if berr != nil {
+			row.Status = dto.RcloneStatusError
+			row.LastSyncMessage = berr.Error()
+			_ = s.db.Save(&row).Error
+			// Same as StartAuth: the callback page renders err.Error(), so the
+			// cause travels inside the message instead of a bare wrap label.
+			return nil, errors.Errorf("fetch oauth token from broker: %v", berr)
+		}
+		token = &sr.TokenResult{TokenJSON: bt.TokenJSON, AccountLabel: bt.AccountLabel}
+		// The broker exchanged the code with its own app credentials; the
+		// refresh token is bound to them, so librclone needs the matching
+		// client id/secret to keep refreshing offline. They transit once to
+		// this addon over TLS and are stored in rclone.conf only.
+		clientID = bt.ClientID
+		clientSecret = bt.ClientSecret
+	} else {
+		var derr error
+		token, derr = driver.ExchangeCode(ctx, req, code)
+		if derr != nil {
+			row.Status = dto.RcloneStatusError
+			row.LastSyncMessage = derr.Error()
+			_ = s.db.Save(&row).Error
+			// Same as StartAuth: the callback page renders err.Error(), so the
+			// cause travels inside the message instead of a bare wrap label.
+			return nil, errors.Errorf("exchange oauth code: %v", derr)
+		}
+		clientID = req.Settings["client_id"]
+		clientSecret = req.Settings["client_secret"]
 	}
 	// Persist the remote into the managed rclone.conf. Tokens live only there.
 	name := remoteName(&row)
@@ -371,8 +572,8 @@ func (s *RcloneService) HandleOAuthCallback(ctx context.Context, code, state str
 		"name": name,
 		"parameters": map[string]string{
 			"type":          row.Provider,
-			"client_id":     req.Settings["client_id"],
-			"client_secret": req.Settings["client_secret"],
+			"client_id":     clientID,
+			"client_secret": clientSecret,
 			"token":         token.TokenJSON,
 		},
 	}

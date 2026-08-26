@@ -8,6 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	sr "github.com/dianlight/srat/service/rclone"
 	"go.uber.org/fx"
 )
 
@@ -20,6 +21,11 @@ type RcloneHandler struct {
 	rcloneService  service.RcloneServiceInterface
 	settingService service.SettingServiceInterface
 }
+
+// oauthCallbackPath is the fixed backend path the provider redirects to;
+// it is exposed via /rclone/providers so the wizard can render the exact
+// redirect URI users must register in their provider app console.
+const oauthCallbackPath = "/api/rclone/oauth/callback"
 
 type RcloneHandlerParams struct {
 	fx.In
@@ -36,28 +42,37 @@ func NewRcloneHandler(params RcloneHandlerParams) *RcloneHandler {
 
 // RegisterRcloneHandler registers the HTTP handlers for rclone cloud sync.
 //
-// Routes (lab-gated unless noted):
-//   - GET    /rclone/providers                              — registered providers + library availability
-//   - GET    /rclone/links                                  — all configured links
-//   - GET    /rclone/link/{target_kind}/{target_id}         — one link (404 when absent)
-//   - PUT    /rclone/link/{target_kind}/{target_id}         — create/update link configuration
-//   - DELETE /rclone/link/{target_kind}/{target_id}         — unlink (removes managed rclone.conf remote)
-//   - POST   /rclone/link/{target_kind}/{target_id}/auth/start     — begin provider OAuth flow
-//   - POST   /rclone/link/{target_kind}/{target_id}/diff           — compare local vs remote
-//   - POST   /rclone/link/{target_kind}/{target_id}/sync           — start push/pull/bidi job
-//   - POST   /rclone/link/{target_kind}/{target_id}/abort          — abort running job
-//   - GET    /rclone/oauth/callback                         — provider redirect target (state-protected)
+// Routes (lab-gated unless noted). The link identity (target_kind/target_id)
+// travels as QUERY parameters instead of path segments: volume target ids are
+// mount paths containing slashes ("/mnt/usb1"), and unencoded slashes in a
+// path parameter made gorilla/mux answer 301 to a cleaned (mangled) URL that
+// browsers follow by downgrading POST/PUT to GET — breaking every wizard
+// call. Query parameters are percent-encoded by every HTTP client and proxy.
+//
+// OperationIDs are pinned to the legacy auto-generated values so the
+// OpenAPI→RTK-Query codegen keeps producing identical hook names.
+//
+//   - GET    /rclone/providers           — registered providers + library availability
+//   - GET    /rclone/links               — all configured links
+//   - GET    /rclone/link                — one link (404 when absent)
+//   - PUT    /rclone/link                — create/update link configuration
+//   - DELETE /rclone/link                — unlink (removes managed rclone.conf remote)
+//   - POST   /rclone/link/auth/start     — begin provider OAuth flow
+//   - POST   /rclone/link/diff           — compare local vs remote
+//   - POST   /rclone/link/sync           — start push/pull/bidi job
+//   - POST   /rclone/link/abort          — abort running job
+//   - GET    /rclone/oauth/callback      — provider redirect target (state-protected)
 func (h *RcloneHandler) RegisterRcloneHandler(api huma.API) {
 	tags := huma.OperationTags("volume", "rclone")
-	huma.Get(api, "/rclone/providers", h.getProviders, tags)
-	huma.Get(api, "/rclone/links", h.listLinks, tags)
-	huma.Get(api, "/rclone/link/{target_kind}/{target_id}", h.getLink, tags)
-	huma.Put(api, "/rclone/link/{target_kind}/{target_id}", h.putLink, tags)
-	huma.Delete(api, "/rclone/link/{target_kind}/{target_id}", h.deleteLink, tags)
-	huma.Post(api, "/rclone/link/{target_kind}/{target_id}/auth/start", h.startAuth, tags)
-	huma.Post(api, "/rclone/link/{target_kind}/{target_id}/diff", h.diff, tags)
-	huma.Post(api, "/rclone/link/{target_kind}/{target_id}/sync", h.sync, tags)
-	huma.Post(api, "/rclone/link/{target_kind}/{target_id}/abort", h.abortSync, tags)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "get-api-rclone-providers", Method: http.MethodGet, Path: "/rclone/providers", Summary: "Get rclone providers"}, h.getProviders)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "get-api-rclone-links", Method: http.MethodGet, Path: "/rclone/links", Summary: "Get rclone links"}, h.listLinks)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "get-api-rclone-link-by-target-kind-by-target-id", Method: http.MethodGet, Path: "/rclone/link", Summary: "Get a rclone link"}, h.getLink)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "put-api-rclone-link-by-target-kind-by-target-id", Method: http.MethodPut, Path: "/rclone/link", Summary: "Put a rclone link"}, h.putLink)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "delete-api-rclone-link-by-target-kind-by-target-id", Method: http.MethodDelete, Path: "/rclone/link", Summary: "Delete a rclone link"}, h.deleteLink)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "post-api-rclone-link-by-target-kind-by-target-id-auth-start", Method: http.MethodPost, Path: "/rclone/link/auth/start", Summary: "Start rclone authorization"}, h.startAuth)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "post-api-rclone-link-by-target-kind-by-target-id-diff", Method: http.MethodPost, Path: "/rclone/link/diff", Summary: "Diff a rclone link"}, h.diff)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "post-api-rclone-link-by-target-kind-by-target-id-sync", Method: http.MethodPost, Path: "/rclone/link/sync", Summary: "Sync a rclone link"}, h.sync)
+	registerRcloneRoute(api, tags, huma.Operation{OperationID: "post-api-rclone-link-by-target-kind-by-target-id-abort", Method: http.MethodPost, Path: "/rclone/link/abort", Summary: "Abort rclone synchronization"}, h.abortSync)
 
 	// The OAuth callback returns a tiny HTML auto-close page rendered inside
 	// the popup the wizard opened. It is NOT lab-gated: the provider browser
@@ -70,6 +85,14 @@ func (h *RcloneHandler) RegisterRcloneHandler(api huma.API) {
 		Summary:     "OAuth redirect target for cloud providers",
 		Tags:        []string{"volume", "rclone"},
 	}, h.oauthCallback)
+}
+
+// registerRcloneRoute registers one operation with pinned metadata. The
+// explicit OperationIDs keep the OpenAPI→RTK-Query codegen naming stable
+// across the query-parameter migration.
+func registerRcloneRoute[I, O any](api huma.API, tags func(*huma.Operation), op huma.Operation, handler func(context.Context, *I) (*O, error)) {
+	tags(&op)
+	huma.Register(api, op, handler)
 }
 
 // requireLabMode returns 403 unless settings.experimental_lab_mode is true.
@@ -98,8 +121,11 @@ func (h *RcloneHandler) getProviders(ctx context.Context, input *struct{}) (*Get
 		return nil, err
 	}
 	out := dto.RcloneProvidersResponse{
-		Providers:        h.rcloneService.ListProviders(),
-		LibraryAvailable: h.rcloneService.LibraryAvailable(),
+		Providers:          h.rcloneService.ListProviders(),
+		LibraryAvailable:   h.rcloneService.LibraryAvailable(),
+		OauthCallbackPath:  oauthCallbackPath,
+		BrokerAvailable:    sr.BrokerAvailable(),
+		HaDropboxAvailable: h.rcloneService.HaDropboxAvailable(),
 	}
 	if out.Providers == nil {
 		out.Providers = []dto.RcloneProviderInfo{}
@@ -134,8 +160,8 @@ type GetRcloneLinkOutput struct {
 }
 
 func (h *RcloneHandler) getLink(ctx context.Context, input *struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 }) (*GetRcloneLinkOutput, error) {
 	if err := h.requireLabMode(); err != nil {
 		return nil, err
@@ -150,8 +176,8 @@ func (h *RcloneHandler) getLink(ctx context.Context, input *struct {
 }
 
 type PutRcloneLinkInput struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 	Body       dto.RcloneLinkRequest
 }
 
@@ -182,8 +208,8 @@ func (h *RcloneHandler) putLink(ctx context.Context, input *PutRcloneLinkInput) 
 type DeleteRcloneLinkOutput struct{}
 
 func (h *RcloneHandler) deleteLink(ctx context.Context, input *struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 }) (*DeleteRcloneLinkOutput, error) {
 	if err := h.requireLabMode(); err != nil {
 		return nil, err
@@ -195,13 +221,26 @@ func (h *RcloneHandler) deleteLink(ctx context.Context, input *struct {
 }
 
 type StartRcloneAuthInput struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 	// Body carries the provider credentials collected by the wizard.
 	// They are forwarded to the driver and persisted ONLY in the managed
 	// rclone.conf, never in SQLite.
 	Body struct {
 		Settings map[string]string `json:"settings"`
+		// PublicBaseURL is the browser-visible origin of the SRAT UI
+		// (e.g. "http://homeassistant:8123/api/hassio_ingress/<token>" or
+		// "http://192.168.1.50:3000"). The OAuth redirect URI is built from
+		// it so provider consoles can register a URL that actually resolves
+		// for the user's browser, including behind Home Assistant ingress.
+		// Optional; falls back to the server-side configured base URL.
+		PublicBaseURL string `json:"public_base_url,omitempty"`
+		// AuthMode selects the flow explicitly: "custom_app" (user-supplied
+		// provider app credentials), "broker" (hosted SRAT OAuth broker),
+		// "ha_dropbox" (reuse HA Dropbox integration token, task 050) or
+		// ""/"auto" to infer (custom app when credentials are present, else
+		// broker when configured). The wizard sends the combobox choice.
+		AuthMode string `json:"auth_mode,omitempty" enum:"auto,custom_app,broker,ha_dropbox"`
 	}
 }
 
@@ -213,7 +252,7 @@ func (h *RcloneHandler) startAuth(ctx context.Context, input *StartRcloneAuthInp
 	if err := h.requireLabMode(); err != nil {
 		return nil, err
 	}
-	resp, err := h.rcloneService.StartAuth(ctx, input.TargetKind, input.TargetID, input.Body.Settings)
+	resp, err := h.rcloneService.StartAuth(ctx, input.TargetKind, input.TargetID, input.Body.Settings, input.Body.PublicBaseURL, input.Body.AuthMode)
 	if err != nil {
 		return nil, huma.Error400BadRequest("Failed to start authorization flow", err)
 	}
@@ -225,8 +264,8 @@ type RcloneDiffOutput struct {
 }
 
 func (h *RcloneHandler) diff(ctx context.Context, input *struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 }) (*RcloneDiffOutput, error) {
 	if err := h.requireLabMode(); err != nil {
 		return nil, err
@@ -243,8 +282,8 @@ func (h *RcloneHandler) diff(ctx context.Context, input *struct {
 type RcloneSyncOutput struct{}
 
 func (h *RcloneHandler) sync(ctx context.Context, input *struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 	Body       dto.RcloneSyncRequest
 }) (*RcloneSyncOutput, error) {
 	if err := h.requireLabMode(); err != nil {
@@ -264,8 +303,8 @@ func (h *RcloneHandler) sync(ctx context.Context, input *struct {
 type RcloneAbortOutput struct{}
 
 func (h *RcloneHandler) abortSync(ctx context.Context, input *struct {
-	TargetKind string `path:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
-	TargetID   string `path:"target_id" required:"true" doc:"Link target id (volume path or hassos-data)"`
+	TargetKind string `query:"target_kind" required:"true" doc:"Link target kind (volume or hassos_data)"`
+	TargetID   string `query:"target_id" required:"true" doc:"Link target id (volume path or hassos-data); may contain slashes"`
 }) (*RcloneAbortOutput, error) {
 	if err := h.requireLabMode(); err != nil {
 		return nil, err

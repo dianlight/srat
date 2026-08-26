@@ -384,22 +384,26 @@ export const customHandlers: RequestHandler[] = [
 		);
 	}),
 
-	// Rclone cloud-sync (lab feature) endpoint mocks
-	http.get(/.*\/api\/rclone\/providers(?:\?.*)?$/, () => {
+	// Rclone cloud-sync (lab feature) endpoint mocks.
+	// Link identity travels as query params (target_kind/target_id) since
+	// volume target ids contain slashes.
+	http.get("*/api/rclone/providers", () => {
 		return jsonResponse({
 			library_available: true,
+			broker_available: false,
+			oauth_callback_path: "/api/rclone/oauth/callback",
 			providers: [rcloneDropboxProvider],
 		});
 	}),
 
-	http.get(/.*\/api\/rclone\/link\/([^/]+)\/(.+)$/, () => {
+	http.get("*/api/rclone/link", () => {
 		if (!rcloneMockState.link) {
 			return jsonResponse({ detail: "rclone link not found" }, 404);
 		}
 		return jsonResponse(rcloneMockState.link);
 	}),
 
-	http.put(/.*\/api\/rclone\/link\/([^/]+)\/(.+)$/, async ({ request }) => {
+	http.put("*/api/rclone/link", async ({ request }) => {
 		const body = (await request.json()) as Record<string, unknown>;
 		rcloneMockState.link = {
 			target_kind: "volume",
@@ -412,12 +416,12 @@ export const customHandlers: RequestHandler[] = [
 		return jsonResponse(rcloneMockState.link);
 	}),
 
-	http.delete(/.*\/api\/rclone\/link\/([^/]+)\/(.+)$/, () => {
+	http.delete("*/api/rclone/link", () => {
 		rcloneMockState.link = null;
 		return new Response(null, { status: 204 });
 	}),
 
-	http.post(/.*\/api\/rclone\/link\/([^/]+)\/(.+)\/auth\/start$/, () => {
+	http.post("*/api/rclone/link/auth/start", () => {
 		return jsonResponse({
 			auth_url: "https://www.dropbox.com/oauth2/authorize?mock=1",
 			redirect_uri: "http://localhost/api/rclone/oauth/callback",
@@ -425,7 +429,7 @@ export const customHandlers: RequestHandler[] = [
 		});
 	}),
 
-	http.post(/.*\/api\/rclone\/link\/([^/]+)\/(.+)\/diff$/, () => {
+	http.post("*/api/rclone/link/diff", () => {
 		return jsonResponse({
 			local_only: 1,
 			remote_only: 1,
@@ -447,12 +451,12 @@ export const customHandlers: RequestHandler[] = [
 		});
 	}),
 
-	http.post(/.*\/api\/rclone\/link\/([^/]+)\/(.+)\/sync$/, async ({ request }) => {
+	http.post("*/api/rclone/link/sync", async ({ request }) => {
 		rcloneMockState.lastSyncBody = (await request.json()) as Record<string, unknown>;
 		return jsonResponse({});
 	}),
 
-	http.post(/.*\/api\/rclone\/link\/([^/]+)\/(.+)\/abort$/, () => {
+	http.post("*/api/rclone/link/abort", () => {
 		return jsonResponse({});
 	}),
 ];

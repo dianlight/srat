@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/api"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	sr "github.com/dianlight/srat/service/rclone"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -107,6 +108,25 @@ func (suite *RcloneHandlerSuite) TestProviders_OK() {
 	suite.Contains(resp.Body.String(), "providers")
 }
 
+// TestProviders_BrokerAvailableFlag verifies the providers payload reports
+// whether the hosted OAuth broker is configured, so the wizard can decide
+// whether credential fields are optional.
+func (suite *RcloneHandlerSuite) TestProviders_BrokerAvailableFlag() {
+	suite.T().Setenv(sr.BrokerBaseURLEnv, "https://oauth.example.com")
+	testAPI := suite.labMode(true)
+	mock.When(suite.rcloneSvc.ListProviders()).ThenReturn([]dto.RcloneProviderInfo{})
+	mock.When(suite.rcloneSvc.LibraryAvailable()).ThenReturn(true)
+
+	resp := testAPI.Get("/rclone/providers")
+	suite.Equal(http.StatusOK, resp.Code)
+	suite.Contains(resp.Body.String(), `"broker_available":true`)
+
+	suite.T().Setenv(sr.BrokerBaseURLEnv, "")
+	resp = testAPI.Get("/rclone/providers")
+	suite.Equal(http.StatusOK, resp.Code)
+	suite.Contains(resp.Body.String(), `"broker_available":false`)
+}
+
 func (suite *RcloneHandlerSuite) TestListLinks_NilNormalizedToEmptyArray() {
 	testAPI := suite.labMode(true)
 	mock.When(suite.rcloneSvc.ListLinks()).ThenReturn(nil, nil)
@@ -127,12 +147,19 @@ func (suite *RcloneHandlerSuite) TestGetLink_FoundAndMissing() {
 
 	link := new(dto.RcloneLink)
 	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("volx"))).ThenReturn(link, nil)
-	resp := testAPI.Get("/rclone/link/volume/volx")
+	resp := testAPI.Get("/rclone/link?target_kind=volume&target_id=volx")
+	suite.Equal(http.StatusOK, resp.Code)
+
+	// Regression (#954 follow-up): volume target ids are mount paths and
+	// contain slashes; they must survive the round-trip through the query
+	// string instead of being mangled by path cleaning.
+	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("/mnt/Carola"))).ThenReturn(link, nil)
+	resp = testAPI.Get("/rclone/link?target_kind=volume&target_id=%2Fmnt%2FCarola")
 	suite.Equal(http.StatusOK, resp.Code)
 
 	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("missing"))).
 		ThenReturn(nil, errors.New("not found"))
-	resp = testAPI.Get("/rclone/link/volume/missing")
+	resp = testAPI.Get("/rclone/link?target_kind=volume&target_id=missing")
 	suite.Equal(http.StatusNotFound, resp.Code)
 }
 
@@ -144,7 +171,7 @@ func (suite *RcloneHandlerSuite) TestGetLink_NilLinkNilErrorIs404() {
 	testAPI := suite.labMode(true)
 	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("absent"))).
 		ThenReturn(nil, nil)
-	resp := testAPI.Get("/rclone/link/volume/absent")
+	resp := testAPI.Get("/rclone/link?target_kind=volume&target_id=absent")
 	suite.Equal(http.StatusNotFound, resp.Code)
 }
 
@@ -152,54 +179,68 @@ func (suite *RcloneHandlerSuite) TestPutLink_OK() {
 	testAPI := suite.labMode(true)
 	mock.When(suite.rcloneSvc.SaveLink(mock.Any[dto.RcloneLink]())).ThenReturn(nil)
 	saved := new(dto.RcloneLink)
-	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("volx"))).ThenReturn(saved, nil)
-	resp := testAPI.Put("/rclone/link/volume/volx", strings.NewReader(`{"provider":"dropbox","remote_path":"bk","auto_sync":true,"schedule_minutes":10}`))
+	mock.When(suite.rcloneSvc.GetLink(mock.Exact("volume"), mock.Exact("/mnt/Carola"))).ThenReturn(saved, nil)
+	resp := testAPI.Put("/rclone/link?target_kind=volume&target_id=%2Fmnt%2FCarola", strings.NewReader(`{"provider":"dropbox","remote_path":"bk","auto_sync":true,"schedule_minutes":10}`))
 	suite.Equal(http.StatusOK, resp.Code)
 }
 
 func (suite *RcloneHandlerSuite) TestPutLink_InvalidMapsTo400() {
 	testAPI := suite.labMode(true)
 	mock.When(suite.rcloneSvc.SaveLink(mock.Any[dto.RcloneLink]())).ThenReturn(errors.New("invalid"))
-	resp := testAPI.Put("/rclone/link/volume/bad", strings.NewReader(`{"provider":"ghost","remote_path":"bk","auto_sync":false}`))
+	resp := testAPI.Put("/rclone/link?target_kind=volume&target_id=bad", strings.NewReader(`{"provider":"ghost","remote_path":"bk","auto_sync":false}`))
 	suite.Equal(http.StatusBadRequest, resp.Code)
 }
 
 func (suite *RcloneHandlerSuite) TestDeleteLink_OKAndError() {
 	testAPI := suite.labMode(true)
 
-	mock.When(suite.rcloneSvc.DeleteLink(mock.AnyContext(), mock.Exact("volume"), mock.Exact("volx"))).ThenReturn(nil)
-	resp := testAPI.Delete("/rclone/link/volume/volx")
+	mock.When(suite.rcloneSvc.DeleteLink(mock.AnyContext(), mock.Exact("volume"), mock.Exact("/mnt/Carola"))).ThenReturn(nil)
+	resp := testAPI.Delete("/rclone/link?target_kind=volume&target_id=%2Fmnt%2FCarola")
 	suite.Equal(http.StatusNoContent, resp.Code)
 
 	mock.When(suite.rcloneSvc.DeleteLink(mock.AnyContext(), mock.Any[string](), mock.Any[string]())).ThenReturn(errors.New("busy"))
-	resp = testAPI.Delete("/rclone/link/volume/stuck")
+	resp = testAPI.Delete("/rclone/link?target_kind=volume&target_id=stuck")
 	suite.Equal(http.StatusInternalServerError, resp.Code)
 }
 
 func (suite *RcloneHandlerSuite) TestStartAuth_OKAndError() {
 	testAPI := suite.labMode(true)
 
-	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Exact("volume"), mock.Exact("volx"), mock.Any[map[string]string]())).
+	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Exact("volume"), mock.Exact("/mnt/Carola"), mock.Any[map[string]string](), mock.Exact("http://192.168.1.50:3000"), mock.Any[string]())).
 		ThenReturn(new(dto.RcloneAuthStartResponse), nil)
-	resp := testAPI.Post("/rclone/link/volume/volx/auth/start", strings.NewReader(`{"settings":{"client_id":"cid"}}`))
+	resp := testAPI.Post("/rclone/link/auth/start?target_kind=volume&target_id=%2Fmnt%2FCarola",
+		strings.NewReader(`{"settings":{"client_id":"cid"},"public_base_url":"http://192.168.1.50:3000"}`))
 	suite.Equal(http.StatusOK, resp.Code)
 
-	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[map[string]string]())).
+	// Empty public_base_url falls back to the server-side base URL.
+	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[map[string]string](), mock.Exact(""), mock.Any[string]())).
+		ThenReturn(new(dto.RcloneAuthStartResponse), nil)
+	resp = testAPI.Post("/rclone/link/auth/start?target_kind=volume&target_id=volx", strings.NewReader(`{"settings":{"client_id":"cid"}}`))
+	suite.Equal(http.StatusOK, resp.Code)
+
+	// The wizard-selected auth mode is forwarded to the service.
+	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[map[string]string](), mock.Any[string](), mock.Exact("broker"))).
+		ThenReturn(new(dto.RcloneAuthStartResponse), nil)
+	resp = testAPI.Post("/rclone/link/auth/start?target_kind=volume&target_id=volx", strings.NewReader(`{"settings":{},"auth_mode":"broker"}`))
+	suite.Equal(http.StatusOK, resp.Code)
+
+	mock.When(suite.rcloneSvc.StartAuth(mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[map[string]string](), mock.Any[string](), mock.Any[string]())).
 		ThenReturn(nil, errors.New("link not found"))
-	resp = testAPI.Post("/rclone/link/volume/none/auth/start", strings.NewReader(`{"settings":{}}`))
+	resp = testAPI.Post("/rclone/link/auth/start?target_kind=volume&target_id=none",
+		strings.NewReader(`{"settings":{},"public_base_url":"http://fallback"}`))
 	suite.Equal(http.StatusBadRequest, resp.Code)
 }
 
 func (suite *RcloneHandlerSuite) TestDiff_OKAndError() {
 	testAPI := suite.labMode(true)
 
-	mock.When(suite.rcloneSvc.Diff(mock.AnyContext(), mock.Exact("volume"), mock.Exact("volx"))).
+	mock.When(suite.rcloneSvc.Diff(mock.AnyContext(), mock.Exact("volume"), mock.Exact("/mnt/Carola"))).
 		ThenReturn(new(dto.RcloneDiffResult), nil)
-	resp := testAPI.Post("/rclone/link/volume/volx/diff", strings.NewReader(`{}`))
+	resp := testAPI.Post("/rclone/link/diff?target_kind=volume&target_id=%2Fmnt%2FCarola", strings.NewReader(`{}`))
 	suite.Equal(http.StatusOK, resp.Code)
 
 	mock.When(suite.rcloneSvc.Diff(mock.AnyContext(), mock.Any[string](), mock.Any[string]())).ThenReturn(nil, errors.New("no link"))
-	resp = testAPI.Post("/rclone/link/volume/none/diff", strings.NewReader(`{}`))
+	resp = testAPI.Post("/rclone/link/diff?target_kind=volume&target_id=none", strings.NewReader(`{}`))
 	suite.Equal(http.StatusBadRequest, resp.Code)
 }
 
@@ -207,20 +248,20 @@ func (suite *RcloneHandlerSuite) TestSync_DirectionValidationAndConflict() {
 	testAPI := suite.labMode(true)
 
 	// Invalid direction is rejected by the OpenAPI enum before the handler.
-	resp := testAPI.Post("/rclone/link/volume/volx/sync", strings.NewReader(`{"direction":"sideways"}`))
+	resp := testAPI.Post("/rclone/link/sync?target_kind=volume&target_id=volx", strings.NewReader(`{"direction":"sideways"}`))
 	suite.Equal(http.StatusUnprocessableEntity, resp.Code)
 
 	mock.When(suite.rcloneSvc.Sync(mock.Exact("volume"), mock.Exact("volx"), mock.Exact("push"), mock.Exact(false))).ThenReturn(nil)
-	resp = testAPI.Post("/rclone/link/volume/volx/sync", strings.NewReader(`{"direction":"push"}`))
+	resp = testAPI.Post("/rclone/link/sync?target_kind=volume&target_id=volx", strings.NewReader(`{"direction":"push"}`))
 	suite.Equal(http.StatusNoContent, resp.Code)
 
 	// Dry-run flag is forwarded to the service untouched.
 	mock.When(suite.rcloneSvc.Sync(mock.Exact("volume"), mock.Exact("volx"), mock.Exact("push"), mock.Exact(true))).ThenReturn(nil)
-	resp = testAPI.Post("/rclone/link/volume/volx/sync", strings.NewReader(`{"direction":"push","dry_run":true}`))
+	resp = testAPI.Post("/rclone/link/sync?target_kind=volume&target_id=volx", strings.NewReader(`{"direction":"push","dry_run":true}`))
 	suite.Equal(http.StatusNoContent, resp.Code)
 
 	mock.When(suite.rcloneSvc.Sync(mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[bool]())).ThenReturn(errors.New("job already running"))
-	resp = testAPI.Post("/rclone/link/volume/volx/sync", strings.NewReader(`{"direction":"bidi"}`))
+	resp = testAPI.Post("/rclone/link/sync?target_kind=volume&target_id=volx", strings.NewReader(`{"direction":"bidi"}`))
 	suite.Equal(http.StatusConflict, resp.Code)
 }
 
@@ -228,11 +269,11 @@ func (suite *RcloneHandlerSuite) TestAbortSync_OKAndError() {
 	testAPI := suite.labMode(true)
 
 	mock.When(suite.rcloneSvc.AbortSync(mock.Exact("volume"), mock.Exact("volx"))).ThenReturn(nil)
-	resp := testAPI.Post("/rclone/link/volume/volx/abort", strings.NewReader(`{}`))
+	resp := testAPI.Post("/rclone/link/abort?target_kind=volume&target_id=volx", strings.NewReader(`{}`))
 	suite.Equal(http.StatusNoContent, resp.Code)
 
 	mock.When(suite.rcloneSvc.AbortSync(mock.Any[string](), mock.Any[string]())).ThenReturn(errors.New("idle"))
-	resp = testAPI.Post("/rclone/link/volume/idle/abort", strings.NewReader(`{}`))
+	resp = testAPI.Post("/rclone/link/abort?target_kind=volume&target_id=idle", strings.NewReader(`{}`))
 	suite.Equal(http.StatusConflict, resp.Code)
 }
 

@@ -57,7 +57,14 @@ func (d *dropboxDriver) ConfigFields() []ConfigField {
 func (d *dropboxDriver) AuthStart(ctx context.Context, req AuthRequest) (string, error) {
 	clientID := req.Settings[fieldClientID]
 	if clientID == "" || req.Settings[fieldClientSecret] == "" {
-		return "", fmt.Errorf("dropbox driver requires %s and %s settings", fieldClientID, fieldClientSecret)
+		// Unlike plain rclone (which can fall back to its own built-in app
+		// credentials with a 127.0.0.1 loopback redirect), SRAT completes the
+		// OAuth flow server-side on a custom redirect URI that Dropbox only
+		// accepts when it is registered for the app owning the credentials.
+		return "", fmt.Errorf(
+			"Dropbox App key and App secret are required: create an app at https://www.dropbox.com/developers/apps and register %q as a redirect URI (rclone's built-in default app cannot be reused because SRAT handles the OAuth callback server-side)",
+			req.RedirectURI,
+		)
 	}
 	values := url.Values{
 		"client_id":         {clientID},
