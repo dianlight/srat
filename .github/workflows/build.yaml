@@ -27,6 +27,8 @@ on:
       - "hacs.json"
       - ".github/workflows/build.yaml"
       - "CHANGELOG.md"
+    paths-ignore:
+      - "oauth_broker/**"
   release:
     types: ["published"]
   pull_request:

@@ -1,0 +1,27 @@
+name = "srat-oauth-broker"
+main = "src/index.ts"
+compatibility_date = "2025-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV namespace for session_id → {provider, callback, token_json, account_label}
+# Create with: wrangler kv namespace create "OAUTH_SESSIONS" [--env staging|production]
+# Then paste the IDs below per environment.
+
+[vars]
+# BROKER_PUBLIC_URL is set per environment (staging vs production) via vars or secrets
+# SESSION_TTL is in seconds (default 600 = 10m)
+SESSION_TTL = "600"
+
+[env.staging]
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.workers.dev", SESSION_TTL = "600" }
+# kv_namespaces = [{ binding = "OAUTH_SESSIONS", id = "<staging-kv-id>", preview_id = "<staging-preview-id>" }]
+
+[env.production]
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker.workers.dev", SESSION_TTL = "600" }
+# kv_namespaces = [{ binding = "OAUTH_SESSIONS", id = "<prod-kv-id>", preview_id = "<prod-preview-id>" }]
+
+# Secrets (never commit):
+# wrangler secret put BROKER_API_TOKEN --env staging|production
+# wrangler secret put DROPBOX_CLIENT_ID --env staging|production
+# wrangler secret put DROPBOX_CLIENT_SECRET --env staging|production
+# wrangler secret put BROKER_PROVIDERS_JSON --env staging|production  # optional generic providers JSON

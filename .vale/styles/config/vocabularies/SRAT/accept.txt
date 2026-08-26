@@ -410,3 +410,8 @@ validate_session
 passthrough
 gzip
 reinstalls
+OAuth
+serverless
+Hono
+rclone
+KV
