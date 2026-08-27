@@ -60,22 +60,22 @@ async function renderFooter() {
     });
 
     it("renders as a footer element with proper styling", async () => {
-        const { container } = await renderFooter();
+        await renderFooter();
 
         // Check that footer element exists (footer is a valid HTML5 semantic element)
-        const footerElement = container.getElementsByTagName('footer')[0];
+        const footerElement = screen.getByRole("contentinfo");
         expect(footerElement).toBeTruthy();
     });
 
     it("renders footer structure correctly", async () => {
-        const { container } = await renderFooter();
+        await renderFooter();
 
         // Check that footer renders with all essential content using semantic queries
         expect(screen.getByText(/Version/)).toBeTruthy();
         expect(screen.getByText(/Copyright/)).toBeTruthy();
 
         // Check that the footer has proper HTML structure (footer is HTML5 semantic)
-        const footerElement = container.getElementsByTagName('footer')[0];
+        const footerElement = screen.getByRole("contentinfo");
         expect(footerElement).toBeTruthy();
     });
 

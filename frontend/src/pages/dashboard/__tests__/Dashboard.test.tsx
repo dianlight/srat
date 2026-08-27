@@ -70,8 +70,8 @@ describe("Dashboard Component Basic Tests", () => {
     });
 
     it("renders dashboard container", async () => {
-        const { container } = await renderDashboard();
-        expect(container.firstChild).toBeTruthy();
+        await renderDashboard();
+        expect(await screen.findByText("Welcome to SRAT")).toBeTruthy();
     });
 
     it("shows expand button", async () => {
@@ -83,9 +83,9 @@ describe("Dashboard Component Basic Tests", () => {
     });
 
     it("has grid layout structure", async () => {
-        const { container } = await renderDashboard();
+        await renderDashboard();
 
         // Check that Dashboard renders with content (test behavior, not implementation)
-        expect(container.firstChild).toBeTruthy();
+        expect(await screen.findByText("Welcome to SRAT")).toBeTruthy();
     });
 });

@@ -182,7 +182,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         expect(container).toBeTruthy();
 
         // Look for logo image element
-        const logoElements = container.getElementsByTagName('img');
+        const logoElements = screen.queryAllByRole("img");
         expect(logoElements.length).toBeGreaterThanOrEqual(0);
 
         // Test hover functionality if logo elements are found
@@ -375,7 +375,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -397,13 +397,13 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Find github icon/button (look for img elements with github in src)
-        const githubButtons = container.getElementsByTagName('img');
-        const githubButton = Array.from(githubButtons).find(img =>
-            img.src && img.src.includes('github')
+        const githubButtons = screen.queryAllByRole("img");
+        const githubButton = githubButtons.find((img) =>
+            (img as HTMLImageElement).src && (img as HTMLImageElement).src.includes('github')
         );
 
-        if (githubButton && githubButton.parentElement) {
-            await user.click(githubButton.parentElement);
+        if (githubButton) {
+            await user.click(githubButton);
         }
     });
 
@@ -663,7 +663,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             await user.click(menuButton);
 
             // Menu should be open, look for menu items
-            const menu = document.getElementById('menu-appbar');
+            const menu = screen.queryByRole("menu");
             expect(menu).toBeTruthy();
 
             // Click outside to close (or find a menu item to click)
@@ -1241,13 +1241,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         const updateIcon = screen.getByTestId("DownloadIcon");
-        const updateButton = updateIcon.closest("button");
-        expect(updateButton).toBeTruthy();
-        if (!updateButton) {
-            return;
-        }
-
-        await user.click(updateButton);
+        await user.click(updateIcon);
         expect(confirmMock).toHaveBeenCalled();
         const calls = confirmMock.mock.calls as unknown[][];
         const firstCall = calls[0];

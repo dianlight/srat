@@ -315,6 +315,7 @@ export function DiskHealthMetrics({
                           arrow
                         >
                           <SmartIcon
+                            data-testid="disk-health-smart-icon"
                             color="info"
                             fontSize="small"
                             sx={{ verticalAlign: "middle" }}

@@ -62,7 +62,7 @@ describe("SharesTreeView component", () => {
     const onSelect = vi.fn(() => {});
     const store = await createTestStore();
 
-    const { getByLabelText } = render(
+    const { getByLabelText, getAllByRole } = render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -101,8 +101,10 @@ describe("SharesTreeView component", () => {
     );
 
     const clickShareAction = async (actionName: RegExp, shareText: string) => {
-      const shareNode = getByLabelText(shareText);
-      const shareContainer = shareNode.closest('[role="treeitem"]');
+      const treeItems = getAllByRole("treeitem");
+      const shareContainer = treeItems.find((item) =>
+        within(item).queryByText(shareText),
+      );
       if (!shareContainer) return;
 
       const shareScope = within(shareContainer as HTMLElement);

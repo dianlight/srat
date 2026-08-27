@@ -1,5 +1,5 @@
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Provider } from "react-redux";
@@ -32,12 +32,12 @@ async function clickTreeItemByLabel(
   user: ReturnType<typeof userEvent.setup>,
   label: string,
 ) {
-  const labels = await screen.findAllByText(label);
-  const treeItemLabel = labels.find((element) =>
-    element.closest('[role="treeitem"]'),
-  );
-  expect(treeItemLabel).toBeTruthy();
-  await user.click(treeItemLabel as HTMLElement);
+  const treeItems = await screen.findAllByRole("treeitem");
+  const treeItemText = treeItems
+    .map((item) => within(item).queryByText(label))
+    .find((el) => el != null);
+  expect(treeItemText).toBeTruthy();
+  await user.click(treeItemText as HTMLElement);
 }
 
 describe("Settings", () => {

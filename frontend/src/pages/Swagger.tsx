@@ -64,6 +64,7 @@ export function Swagger() {
     >
       {loaded ? (
         <OpenApiExplorer
+          data-testid="openapi-explorer"
           spec-url={normalizeUrl(`${apiUrl}/openapi.yaml`)}
           style={{ flex: 1, minHeight: 0 }}
         >

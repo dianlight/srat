@@ -51,6 +51,7 @@ export function SmbConfPage() {
         </Box>
 
         <SyntaxHighlighter
+          data-testid="smbconf-code-viewer"
           customStyle={{ fontSize: "0.7rem" }}
           language="ini"
           style={mode === "light" ? a11yLight : a11yDark}
