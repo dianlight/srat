@@ -180,6 +180,64 @@ The Dropbox app's `redirect_uri` **must** be `{BROKER_PUBLIC_URL}/v1/callback`:
 Create two Dropbox apps (or one with both URIs) at <https://www.dropbox.com/developers/apps>.
 Use the app key/secret as `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` (or in providers JSON).
 
+## Google Drive & Google Photos app registration
+
+Both use Google Cloud OAuth 2.0. Register a project at <https://console.cloud.google.com>:
+
+1. Create/select a Google Cloud project
+2. Enable **Google Drive API** and **Google Photos Library API** (for Photos)
+3. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+4. Application type: **Web application**
+5. Authorized redirect URIs: add `{BROKER_PUBLIC_URL}/v1/callback` for each environment
+   - Staging: `https://srat-oauth-broker-staging.workers.dev/v1/callback`
+   - Production: `https://srat-oauth-broker.workers.dev/v1/callback`
+6. Copy **Client ID** and **Client Secret**
+
+**Google Photos specifics:**
+- Uses the same OAuth credentials as Google Drive (same project)
+- Requires additional scope: `https://www.googleapis.com/auth/photoslibrary.readonly` (or `.appendonly`, `.sharing`, `.edit`)
+- The Photos Library API has stricter quota (10k requests/day default) — request increase if needed
+- `photoslibrary.readonly` scope allows listing albums/media but **not** downloading original files; use `photoslibrary` (full) for download access
+- Add scopes in providers JSON under `gdrive` entry:
+```json
+"gdrive": {
+  "client_id": "...",
+  "client_secret": "...",
+  "scopes": [
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/photoslibrary.readonly"
+  ]
+}
+```
+
+**Built-in fallback**: rclone ships with a default Google client ID/secret, but it's shared and rate-limited. Register your own for production.
+
+## OneDrive (Microsoft Graph) app registration
+
+Register at <https://portal.azure.com> → **App registrations**:
+
+1. **New registration** → name it, select "Accounts in any organizational directory and personal Microsoft accounts"
+2. Redirect URI: **Web** → `{BROKER_PUBLIC_URL}/v1/callback`
+3. **Certificates & secrets** → New client secret
+4. **API permissions** → Add permission → Microsoft Graph → Delegated → `Files.ReadWrite.All`, `offline_access`
+5. Grant admin consent if required by tenant
+
+Use **Application (client) ID** and **Client secret** as `ONEDRIVE_CLIENT_ID` / `ONEDRIVE_CLIENT_SECRET`.
+
+**Built-in fallback**: rclone includes a default Microsoft client ID, but register your own for production.
+
+## iCloud (CloudKit) — different auth model
+
+iCloud does **not** use OAuth. It uses Apple's **CloudKit** with app-specific passwords:
+
+1. Apple Developer account required ($99/year)
+2. Create a **CloudKit container** in Certificates, Identifiers & Profiles
+3. Enable **CloudKit** capability for your App ID
+4. User generates an **app-specific password** at <https://appleid.apple.com> → Security → App-Specific Passwords
+5. rclone iCloud backend uses: Apple ID + app-specific password (not client_id/secret)
+
+No broker registration needed — SRAT would need a different auth flow for iCloud (not currently supported by oauth_broker).
+
 ## Testing
 
 Contract tests mirror `backend/src/service/rclone/broker_test.go` (`fakeBroker`) to
