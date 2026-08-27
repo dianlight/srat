@@ -232,10 +232,20 @@ mcp_home-assistan_ha_addon_logs  →  slug: "local_sambanas2"
 Only needed when testing UI changes. Run in the `frontend/` terminal (background):
 
 ```bash
+export HOMEASSISTANT_IP=192.168.0.68
+export SUPERVISOR_URL=http://192.168.0.68/
+export API_URL=http://192.168.0.68:3000/  # must be env var — -a flag alone is NOT enough
 mise run //frontend:dev:remote
 ```
 
-- `API_URL` is derived automatically from `SUPERVISOR_URL` — the script computes `${SUPERVISOR_URL%/}:3000/` (strips trailing slash, appends the SRAT backend port). Ensure `SUPERVISOR_URL` is set before running.
+- `API_URL` **must be an env var** (`http://192.168.0.68:3000/` for remote). The Bun macro `getApiUrl()` is evaluated at import time (`frontend/src/index.html` imported at `frontend/bun.build.ts:8`) **before** `build()` sets `process.env.API_URL`; passing `-a http://...` alone leaves the macro as `dynamic` → same-origin `http://localhost:3080/` + `ws://localhost:3080/ws` (returns HTML 200, not WS, so `useVolume` shows `Error loading volumes: [object Object]`). See `docs/tasks/045_full-mobile-support.md:65`.
+- `SUPERVISOR_URL` is the canonical source; derive `API_URL` as `${SUPERVISOR_URL%/}:3000/` if not set explicitly. Always verify with:
+  ```bash
+  curl -H "Origin: http://localhost:3080" http://192.168.0.68:3000/api/volumes -v  # expect Access-Control-Allow-Origin: http://localhost:3080
+  curl -H "Connection: Upgrade" -H "Upgrade: websocket" http://192.168.0.68:3000/ws -v  # expect SSE frames id:/event:/data:
+  ```
+  The WS URL is `new URL("ws", apiUrl.replace(/^http/, "ws"))` → `ws://192.168.0.68:3000/ws` via `socat TCP-LISTEN:3000 → 127.0.0.1:64289`.
+- **Never bypass `tsc`**: `mise run //frontend:dev:remote` runs `//frontend:generate` (`rtk-query-codegen-openapi` + `bun tsc --noEmit`) first. If it fails with `TS6133: 'container' is declared but its value is never read` / `TS2339`, the dev server will not start. **Do not** fall back to `bun --hot run bun.build.ts -w -s ./out -a ...` — expose the full `tsc` error block, fix unused `container`/`within` destructurings (e.g. `const { container } = await render...()` → `await render...();`) and `import { within }` removal, then retry. `mise run //frontend:dev:remote` will fail fast if `3080` is occupied by a non-stale process (only a stale `python3 -m http.server 3080` is auto-killed by `ensure-dev-port`).
 - This compiles TypeScript, starts a watch build, and serves the frontend at **`http://localhost:3080/`**.
 - Keep the terminal visible — TypeScript type errors and HMR output appear in stdout.
 - Wait for the line `Bun.serve listening on :3080` before opening the browser.

@@ -115,6 +115,21 @@ E04: No-auth returns 401 | E05: Rapid create/delete (10x) no crash | E06: Restar
 
 For each test: mark todo `in_progress` → execute → collect evidence (screenshot, cmd output, log lines) → evaluate → mark `pass|fail|skip` → update progress. Do NOT guess — require concrete evidence.
 
+### Frontend dev server — never bypass `tsc` or `API_URL`
+
+`mise run //frontend:dev:remote` is the **only** supported way to start the UI at `http://localhost:3080/`. It runs `//frontend:generate` (`rtk-query-codegen-openapi` + `bun tsc --noEmit`) first — **never bypass it** with `bun --hot run bun.build.ts -w -s ./out -a ...` when `tsc` fails. A `TS6133/TS2339` failure means real unused-import or type errors that will break the app; expose them, fix the source, then retry.
+
+Correct invocation (from `docs/tasks/045_full-mobile-support.md:65` and `SKILL.md` Step 5):
+```bash
+export HOMEASSISTANT_IP=192.168.0.68
+export SUPERVISOR_URL=http://192.168.0.68/   # -> API_URL http://192.168.0.68:3000/
+export API_URL=http://192.168.0.68:3000/    # must be env var — -a flag alone is NOT enough (Bun macro evaluated at import time before build() sets process.env.API_URL, so -a alone falls back to dynamic/same-origin and WS hits http://localhost:3080/ws → HTML 200 not WS)
+mise run //frontend:dev:remote
+```
+If port `3080` is occupied, `ensure-dev-port` will kill only a stale `python3 -m http.server 3080` instance; any other occupant is a hard failure — stop it manually, do not force with `lsof -t | xargs kill -9` on unrelated processes. Verify `lsof -nPiTCP:3080 -sTCP:LISTEN` is empty before retry.
+
+WebSocket URL is derived as `new URL("ws", apiUrl.replace(/^http/, "ws"))` → `ws://192.168.0.68:3000/ws` via `socat` (`TCP-LISTEN:3000 → 127.0.0.1:64289`). Test with `curl -H "Origin: http://localhost:3080" http://192.168.0.68:3000/api/volumes` (expect `Access-Control-Allow-Origin: http://localhost:3080`) and `curl -H "Connection: Upgrade" http://192.168.0.68:3000/ws` (SSE frames `id:`/`event:`/`data:`).
+
 ### Playwright sequence (abbreviated)
 navigate → snapshot → click/fill → screenshot → console_messages → network_requests
 
@@ -215,10 +230,12 @@ Ask: *"Approve these suggested agent modifications? (yes/no/edit)"* — do NOT e
 1. Cat 1 first — abort if connectivity broken.
 2. Screenshot before/after any UI action.
 3. Evidence required for pass/fail — never guess.
-4. Do not fix bugs during testing (report + move on).
+4. Do not fix bugs during testing (report + move on) — except `bun tsc --noEmit` failures that block `dev:remote`: fix unused-import/type errors first, because the UI cannot be tested while it fails to type-check.
 5. Known bugs → mark `known_bug`, skip, do not re-report.
 6. Check addon + HA core logs for any component/WS test.
 7. Clean up test artifacts after each category.
 8. Never expose credentials; ask once at session start.
 9. **Phase 0 is mandatory** before any test execution.
 10. **Retrospective is mandatory** after test completion/stop.
+11. **Never bypass `mise run //frontend:dev:remote` tsc gate** — if `//frontend:generate` fails with `TS6133/TS2339`, expose the full error block and fix the source; do not fall back to `bun --hot run bun.build.ts -w ... -a ...`.
+12. **WebSocket correctness** — verify `API_URL` via env var (`http://192.168.0.68:3000/` for remote) not just `-a` flag, and confirm CORS/WS with `curl` before blaming UI.
