@@ -82,9 +82,16 @@
     },
     {
       "matchFileNames": [
-        "frontend/**"
+        "custom_components/**"
       ],
-      "groupName": "FrontEnd",
+      "groupName": "Custom Component (Python)",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchFileNames": [
+        "oauth_broker/**"
+      ],
+      "groupName": "OAuth Broker",
       "commitMessageTopic": "{{groupName}} {{depName}}"
     },
     {
