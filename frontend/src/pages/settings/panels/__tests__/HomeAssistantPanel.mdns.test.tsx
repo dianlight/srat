@@ -31,6 +31,12 @@ vi.mock("../../../../store/sratApi", async () => {
       data: { connected: mockState.getConnected() },
       isLoading: false,
     }),
+    useGetApiLabFeaturesQuery: () => ({
+      data: [
+        { key: "ha_custom_component", name: "HA custom component", description: "", status: "alpha", available: true },
+      ],
+      isLoading: false,
+    }),
   };
 });
 

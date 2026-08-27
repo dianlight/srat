@@ -196,6 +196,7 @@ func prog(listener net.Listener, serverPort int) {
 			server.AsHumaRoute(api.NewIssueAPI),
 			server.AsHumaRoute(api.NewTelemetryHandler),
 			server.AsHumaRoute(api.NewHDIdleHandler),
+			server.AsHumaRoute(api.NewLabFeatureHandler),
 			server.NewMuxRouter,
 			server.NewHTTPServer,
 			server.NewHumaAPI,
