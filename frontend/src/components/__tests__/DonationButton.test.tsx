@@ -54,10 +54,8 @@ describe("DonationButton Component", () => {
 	});
 
 	it("renders DonationButton with icon", async () => {
-		const result = await renderDonationButton();
+		await renderDonationButton();
 
-		// Component should render successfully - use getByTestId for icon buttons
-		expect(result.container).toBeTruthy();
 
 		// Find button by accessible role and name
 		const button = screen.getByRole("button", { name: /support this project/i });

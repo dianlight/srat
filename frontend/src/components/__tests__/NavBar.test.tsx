@@ -1,5 +1,5 @@
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import React from "react";
@@ -309,7 +309,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
         // Find theme switch button (look for mode icons)
         const themeButtons = screen.queryAllByRole("button");
         const themeButton = Array.from(themeButtons).find(button =>
-            button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
+            within(button).queryByTestId("LightModeIcon") !== null ||
+            within(button).queryByTestId("DarkModeIcon") !== null ||
+            within(button).queryByTestId("AutoModeIcon") !== null
         );
 
         if (themeButton) {
@@ -833,7 +835,8 @@ it("renders NavBar with AppBar and basic elements", async () => {
         // Find help button and click it
         const buttons = screen.queryAllByRole("button");
         const helpButton = Array.from(buttons).find(button =>
-            button.querySelector('[data-testid="HelpIcon"], [data-testid="HelpOutlineIcon"]')
+            within(button).queryByTestId("HelpIcon") !== null ||
+            within(button).queryByTestId("HelpOutlineIcon") !== null
         );
 
         if (helpButton) {
@@ -878,7 +881,9 @@ it("renders NavBar with AppBar and basic elements", async () => {
         // Find theme switch button
         const buttons = screen.queryAllByRole("button");
         const themeButton = Array.from(buttons).find(button =>
-            button.querySelector('[data-testid="LightModeIcon"], [data-testid="DarkModeIcon"], [data-testid="AutoModeIcon"]')
+            within(button).queryByTestId("LightModeIcon") !== null ||
+            within(button).queryByTestId("DarkModeIcon") !== null ||
+            within(button).queryByTestId("AutoModeIcon") !== null
         );
 
         if (themeButton) {
@@ -1048,6 +1053,11 @@ it("renders NavBar with AppBar and basic elements", async () => {
                     telemetry_mode: "Disabled",
                     experimental_lab_mode: false,
                 })
+            ),
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, () =>
+                HttpResponse.json([
+                    { key: "smb_conf", name: "smb.conf view", description: "", status: "beta", available: false },
+                ])
             )
         );
 
@@ -1091,6 +1101,11 @@ it("renders NavBar with AppBar and basic elements", async () => {
                     telemetry_mode: "Disabled",
                     experimental_lab_mode: true,
                 })
+            ),
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, () =>
+                HttpResponse.json([
+                    { key: "smb_conf", name: "smb.conf view", description: "", status: "beta", available: true },
+                ])
             )
         );
 

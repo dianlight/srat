@@ -348,7 +348,7 @@ describe("SetupWizard", () => {
             }),
         );
 
-        const { screen, waitFor } = await import("@testing-library/react");
+        const { screen, waitFor, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - query suffix ensures isolated module instance for test
         const { SetupWizard } = await import("../SetupWizard?wizard-test-summary-clean");
@@ -383,8 +383,11 @@ describe("SetupWizard", () => {
         // Wait for step to advance to Network
         await waitFor(() => {
             expect(screen.getByRole("button", { name: /^next$/i })).toBeTruthy();
-            const activeLabels = document.querySelectorAll(".MuiStepLabel-label.Mui-active");
-            expect(Array.from(activeLabels).map((el) => el.textContent)).toContain("Network");
+            // The active step label carries Mui-active; scope to the stepper so the
+            // summary step thumbnail text cannot match.
+            const stepper = screen.getByLabelText("Setup wizard progress");
+            const networkLabel = within(stepper).getByText("Network");
+            expect(networkLabel.className).toContain("Mui-active");
         });
         await user.click(screen.getByRole("button", { name: /^next$/i }));
         await user.click(screen.getByRole("button", { name: /^next$/i }));

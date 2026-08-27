@@ -728,7 +728,7 @@ describe("VolumesTreeView Component", () => {
 
         const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -748,10 +748,10 @@ describe("VolumesTreeView Component", () => {
 
         // The partition icon (StorageIcon) must carry the primary color class
         // when any mount point has automount enabled.
-        const primaryIcon = container.querySelector(
-            ".MuiSvgIcon-colorPrimary",
+        const primaryIcon = screen.getByTestId("StorageIcon");
+        expect(primaryIcon.getAttribute("class")).toContain(
+            "MuiSvgIcon-colorPrimary",
         );
-        expect(primaryIcon).toBeTruthy();
     });
 
     it("does not color the partition icon primary when automount is disabled", async () => {
@@ -789,7 +789,7 @@ describe("VolumesTreeView Component", () => {
 
         const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -807,10 +807,10 @@ describe("VolumesTreeView Component", () => {
 
         await screen.findByText("No Automount Partition");
 
-        const primaryIcon = container.querySelector(
-            ".MuiSvgIcon-colorPrimary",
+        const primaryIcon = screen.getByTestId("StorageIcon");
+        expect(primaryIcon.getAttribute("class")).not.toContain(
+            "MuiSvgIcon-colorPrimary",
         );
-        expect(primaryIcon).toBeNull();
     });
 });
 
