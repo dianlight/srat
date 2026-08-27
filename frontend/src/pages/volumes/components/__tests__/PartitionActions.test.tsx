@@ -213,7 +213,7 @@ describe("PartitionActions component", () => {
 
     it("renders mount action for unmounted partition", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -227,7 +227,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -252,7 +252,7 @@ describe("PartitionActions component", () => {
 
     it("renders unmount action for mounted partition without automount", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -267,7 +267,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -288,7 +288,7 @@ describe("PartitionActions component", () => {
 
     it("renders unmount action when automount is enabled (#971)", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -303,7 +303,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -326,7 +326,7 @@ describe("PartitionActions component", () => {
 
     it("renders unmount actions for mounted partition with enabled share (#971)", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -342,7 +342,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -368,7 +368,7 @@ describe("PartitionActions component", () => {
 
     it("renders force unmount action for mounted partition without automount", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -383,7 +383,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -403,7 +403,7 @@ describe("PartitionActions component", () => {
 
     it("renders enable automount action when not enabled", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -418,7 +418,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -438,7 +438,7 @@ describe("PartitionActions component", () => {
 
     it("renders disable automount action when enabled", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -453,7 +453,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -473,7 +473,7 @@ describe("PartitionActions component", () => {
 
     it("renders go to share action for partition with enabled share", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -488,7 +488,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -508,7 +508,7 @@ describe("PartitionActions component", () => {
 
     it("does not render automount toggle when mounted with enabled share", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -523,7 +523,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -546,7 +546,7 @@ describe("PartitionActions component", () => {
 
     it("calls onMount when mount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -565,7 +565,7 @@ describe("PartitionActions component", () => {
             mountCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -590,7 +590,7 @@ describe("PartitionActions component", () => {
 
     it("calls onUnmount when unmount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -609,7 +609,7 @@ describe("PartitionActions component", () => {
             unmountCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -633,7 +633,7 @@ describe("PartitionActions component", () => {
 
     it("calls onToggleAutomount when automount button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -653,7 +653,7 @@ describe("PartitionActions component", () => {
             toggleCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -676,7 +676,7 @@ describe("PartitionActions component", () => {
 
     it("renders create share action for mounted partition without share and automount disabled", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -692,7 +692,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -712,7 +712,7 @@ describe("PartitionActions component", () => {
 
     it("calls onGoToShare when go to share button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -732,7 +732,7 @@ describe("PartitionActions component", () => {
             goToShareCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -789,7 +789,7 @@ describe("PartitionActions component", () => {
 
     it("shows automount toggle for mounted partition without enabled share", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -805,7 +805,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -826,7 +826,7 @@ describe("PartitionActions component", () => {
 
     it("shows create share when mounted without share and automount disabled", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -842,7 +842,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -863,7 +863,7 @@ describe("PartitionActions component", () => {
 
     it("calls onSetFilesystemLabel when set label button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -881,7 +881,7 @@ describe("PartitionActions component", () => {
             labelCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -905,7 +905,7 @@ describe("PartitionActions component", () => {
 
     it("calls onFormatPartition when format button is clicked", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -923,7 +923,7 @@ describe("PartitionActions component", () => {
             formatCalled = true;
         };
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -947,7 +947,7 @@ describe("PartitionActions component", () => {
 
     it("hides set label and format actions when filesystem support is unavailable", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -962,7 +962,7 @@ describe("PartitionActions component", () => {
             },
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -985,7 +985,7 @@ describe("PartitionActions component", () => {
 
     it("hides set label action when the partition is mounted", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const user = userEvent.setup();
         const { PartitionActions } = await import("../PartitionActions");
@@ -1005,7 +1005,7 @@ describe("PartitionActions component", () => {
             ],
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,

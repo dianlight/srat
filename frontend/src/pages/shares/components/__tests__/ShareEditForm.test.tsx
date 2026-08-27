@@ -155,7 +155,7 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen} = await import("@testing-library/react");
         const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-internal");

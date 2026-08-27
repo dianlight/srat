@@ -144,7 +144,7 @@ describe("SharesTreeView component", () => {
     const { overrides } = setupOverrides();
     const store = await createTestStore();
 
-    const { container } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -182,7 +182,7 @@ describe("SharesTreeView component", () => {
     });
     const store = await createTestStore();
 
-    const { container } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -227,7 +227,7 @@ describe("SharesTreeView component", () => {
     const { overrides } = setupOverrides();
     const store = await createTestStore();
 
-    const { container } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -300,7 +300,7 @@ describe("SharesTreeView component", () => {
     const { overrides } = setupOverrides();
     const store = await createTestStore();
 
-    const { container } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -334,7 +334,7 @@ describe("SharesTreeView component", () => {
     const { overrides } = setupOverrides();
     const store = await createTestStore();
 
-    const { container } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{

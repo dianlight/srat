@@ -119,7 +119,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -182,7 +182,7 @@ describe("VolumeMountDialog Component", () => {
             }]
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -208,7 +208,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -288,7 +288,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -341,7 +341,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {

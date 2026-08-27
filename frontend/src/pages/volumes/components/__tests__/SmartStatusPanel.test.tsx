@@ -257,7 +257,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should disable all actions in read-only mode", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -355,7 +355,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should call onStartTest when Start Test button is clicked", async () => {
-                    const { screen, within } = await import("@testing-library/react");
+                    const { screen} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -430,7 +430,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display disk type when available", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -463,7 +463,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display RPM when rotation_rate > 0", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -497,7 +497,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should not display RPM when rotation_rate is 0", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -531,7 +531,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display both disk type and RPM for HDDs", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -572,7 +572,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display model, family, firmware, and serial when available", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "NVMe",

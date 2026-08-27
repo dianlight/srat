@@ -31,7 +31,7 @@ describe("UsersTreeView component", () => {
         const mockSelect = () => { };
         const mockExpand = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(UsersTreeView as any, {
                 users: undefined,
                 selectedUserKey: undefined,
@@ -174,7 +174,7 @@ describe("UsersTreeView component", () => {
         const mockSelect = () => { };
         const mockExpand = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(UsersTreeView as any, {
                 users: mockUsers,
                 selectedUserKey: undefined,

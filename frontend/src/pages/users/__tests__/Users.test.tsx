@@ -33,7 +33,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -95,7 +95,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -115,7 +115,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -156,7 +156,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -176,7 +176,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -253,7 +253,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -276,7 +276,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -296,7 +296,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -316,7 +316,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),
@@ -359,7 +359,7 @@ describe("Users component", () => {
 
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(Provider, {
                 store,
                 children: React.createElement(Users as any),

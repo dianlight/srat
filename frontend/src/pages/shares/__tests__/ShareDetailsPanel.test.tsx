@@ -69,7 +69,7 @@ describe("ShareDetailsPanel", () => {
 
     it("renders embedded form when editing", async () => {
         const React = await import("react");
-        const { render, screen, within } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
         const share = buildShare();

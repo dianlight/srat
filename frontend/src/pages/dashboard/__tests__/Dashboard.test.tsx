@@ -30,7 +30,7 @@ describe("Dashboard Component Basic Tests", () => {
         const store = await createTestStore();
 
         // Should render without throwing errors
-        const container = render(
+        render(
             React.createElement(
                 Provider,
                 {

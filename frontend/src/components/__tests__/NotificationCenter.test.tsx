@@ -48,7 +48,7 @@ describe("NotificationCenter Component", () => {
     }
 
     it("renders notification center icon button", async () => {
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Check that the notification button is rendered
         const notificationButtons = screen.queryAllByRole("button");
@@ -60,7 +60,7 @@ describe("NotificationCenter Component", () => {
 
     it("opens popover when notification button is clicked", async () => {
         const user = userEvent.setup();
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Find and click the notification button
         const notificationButton = screen.queryByRole("button");
@@ -73,7 +73,7 @@ describe("NotificationCenter Component", () => {
     });
 
     it("displays notification count badge", async () => {
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Look for badge element - check component renders without errors
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
@@ -81,7 +81,7 @@ describe("NotificationCenter Component", () => {
 
     it("handles show read notifications toggle", async () => {
         const user = userEvent.setup();
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Open the popover first
         const notificationButton = screen.queryByRole("button");
@@ -101,7 +101,7 @@ describe("NotificationCenter Component", () => {
 
     it("renders notification list when popover is open", async () => {
         const user = userEvent.setup();
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Open the popover
         const notificationButton = screen.queryByRole("button");
@@ -159,7 +159,7 @@ describe("NotificationCenter Component", () => {
 
     it("displays tooltips on hover", async () => {
         const user = userEvent.setup();
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Test tooltip on main notification button
         const notificationButton = screen.queryByRole("button");
@@ -172,21 +172,21 @@ describe("NotificationCenter Component", () => {
     });
 
     it("handles color scheme changes", async () => {
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // The component should render without errors regardless of color scheme
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("converts severity levels correctly", async () => {
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Test that the component renders (severity conversion is internal)
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders ToastContainer with correct configuration", async () => {
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Look for toast container elements - check component renders without errors
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
@@ -194,7 +194,7 @@ describe("NotificationCenter Component", () => {
 
     it("handles popover close correctly", async () => {
         const user = userEvent.setup();
-        const { container } = await renderNotificationCenter();
+        await renderNotificationCenter();
 
         // Open and close the popover
         const notificationButton = screen.queryByRole("button");

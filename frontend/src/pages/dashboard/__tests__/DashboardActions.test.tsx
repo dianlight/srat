@@ -27,7 +27,7 @@ describe("DashboardActions component", () => {
     });
 
     it("renders DashboardActions accordion without crashing", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
@@ -63,12 +63,12 @@ describe("DashboardActions component", () => {
     });
 
     it("renders ActionableItemsList component", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders IssueCard components when issues exist", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
@@ -78,28 +78,28 @@ describe("DashboardActions component", () => {
     });
 
     it("filters system and host-mounted partitions", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("identifies unmounted partitions", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("identifies partitions without shares", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("auto-expands when actionable items exist", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         // Just verify the component renders - auto-expansion behavior is implementation detail
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles tour events correctly", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
@@ -119,37 +119,37 @@ describe("DashboardActions component", () => {
     });
 
     it("renders loading state correctly", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders error state correctly", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles read-only mode correctly", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders disks data from useVolume hook", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles SSE data updates", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles issues from API", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("filters hassos- prefixed partitions", async () => {
-        const { container } = await renderDashboardActions();
+        await renderDashboardActions();
         expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 });

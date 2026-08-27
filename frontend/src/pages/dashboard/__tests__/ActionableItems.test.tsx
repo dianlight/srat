@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen} from "@testing-library/react";
 import React from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
@@ -54,7 +54,7 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = await renderActionableItems({
+        await renderActionableItems({
             actionablePartitions: mockPartitions,
             isLoading: false,
             error: null,
@@ -84,7 +84,7 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = await renderActionableItems({
+        await renderActionableItems({
             actionablePartitions: mockPartitions,
             isLoading: false,
             error: null,
@@ -114,7 +114,7 @@ describe("Dashboard Actionable Items", () => {
             },
         ];
 
-        const { container } = await renderActionableItems({
+        await renderActionableItems({
             actionablePartitions: mockPartitions,
             isLoading: false,
             error: null,
@@ -142,7 +142,7 @@ describe("Dashboard Actionable Items", () => {
     it("shows error state", async () => {
         const mockError = new Error("Failed to load volumes");
 
-        const { container } = await renderActionableItems({
+        await renderActionableItems({
             actionablePartitions: [],
             isLoading: false,
             error: mockError,
@@ -155,7 +155,7 @@ describe("Dashboard Actionable Items", () => {
     });
 
     it("shows empty state when no actionable items", async () => {
-        const { container } = await renderActionableItems({
+        await renderActionableItems({
             actionablePartitions: [],
             isLoading: false,
             error: null,

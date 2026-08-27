@@ -119,7 +119,7 @@ describe("UserEditForm component", () => {
         const passwordInputs = screen.getAllByLabelText(/password/i);
         let passwordCount = 0;
         for (let i = 0; i < passwordInputs.length; i++) {
-            if (passwordInputs[i]?.type === 'password') {
+            if ((passwordInputs[i] as HTMLInputElement)?.type === 'password') {
                 passwordCount++;
             }
         }

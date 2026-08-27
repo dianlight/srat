@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen} from "@testing-library/react";
 import React from "react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
@@ -30,28 +30,28 @@ describe("Dashboard Collapsible Sections", () => {
     };
 
     it("renders process metrics section as collapsible", async () => {
-        const { container } = await renderCollapsibleMetrics();
+        await renderCollapsibleMetrics();
 
         const processMetricsHeaders = screen.getAllByText("Process Metrics");
         expect(processMetricsHeaders.length).toBeGreaterThan(0);
     });
 
     it("renders disk health section as collapsible", async () => {
-        const { container } = await renderCollapsibleMetrics();
+        await renderCollapsibleMetrics();
 
         const diskHealthHeaders = screen.getAllByText("Disk Health");
         expect(diskHealthHeaders.length).toBeGreaterThan(0);
     });
 
     it("renders network health section as collapsible", async () => {
-        const { container } = await renderCollapsibleMetrics();
+        await renderCollapsibleMetrics();
 
         const networkHealthHeaders = screen.getAllByText("Network Health");
         expect(networkHealthHeaders.length).toBeGreaterThan(0);
     });
 
     it("renders samba status section as collapsible", async () => {
-        const { container } = await renderCollapsibleMetrics();
+        await renderCollapsibleMetrics();
 
         const sambaStatusHeaders = screen.getAllByText("Samba Status");
         expect(sambaStatusHeaders.length).toBeGreaterThan(0);
