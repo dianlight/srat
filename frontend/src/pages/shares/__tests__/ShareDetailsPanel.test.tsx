@@ -27,7 +27,7 @@ describe("ShareDetailsPanel", () => {
 
     it("renders share information and triggers toggle actions", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
@@ -37,7 +37,7 @@ describe("ShareDetailsPanel", () => {
         let editClicks = 0;
         const onEditClick = () => { editClicks += 1; };
 
-        const { container } = render(
+        render(
             React.createElement(ShareDetailsPanel as any, {
                 share,
                 shareKey: "documents",
@@ -45,19 +45,21 @@ describe("ShareDetailsPanel", () => {
             })
         );
 
-        expect(await within(container).findByText("Documents")).toBeTruthy();
-        expect(within(container).getByText(/Mount Point Information/)).toBeTruthy();
+        expect(await screen.findByText("Documents")).toBeTruthy();
+        expect(screen.getByText(/Mount Point Information/)).toBeTruthy();
 
-        const toggle = within(container).getByLabelText(/show more/i);
+        const toggle = screen.getByLabelText(/show more/i);
         const user = userEvent.setup();
         await user.click(toggle as any);
 
-        expect(await within(container).findByText("/mnt/data")).toBeTruthy();
+        expect(await screen.findByText("/mnt/data")).toBeTruthy();
 
-        const editIcons = within(container).getAllByTestId("EditIcon");
+        const editIcons = screen.getAllByTestId("EditIcon");
         const firstEditIcon = editIcons[0];
         if (firstEditIcon) {
-            const primaryEditButton = firstEditIcon.closest("button");
+            const { screen } = await import("@testing-library/react");
+            const buttons = screen.getAllByRole("button");
+            const primaryEditButton = buttons.find((btn) => within(btn).queryByTestId("EditIcon"));
             if (primaryEditButton) {
                 await user.click(primaryEditButton as any);
                 expect(editClicks).toBe(1);
@@ -67,12 +69,12 @@ describe("ShareDetailsPanel", () => {
 
     it("renders embedded form when editing", async () => {
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen, within } = await import("@testing-library/react");
         // @ts-expect-error - Query param ensures fresh module instance for mocks
         const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-test");
         const share = buildShare();
 
-        const { container } = render(
+        render(
             React.createElement(ShareDetailsPanel as any, {
                 share,
                 shareKey: "documents",
@@ -82,7 +84,7 @@ describe("ShareDetailsPanel", () => {
             })
         );
 
-        expect(await within(container).findByRole("form")).toBeTruthy();
+        expect(await screen.findByRole("form")).toBeTruthy();
     });
 
     it("opens PreviewDialog when StorageIcon is clicked", async () => {

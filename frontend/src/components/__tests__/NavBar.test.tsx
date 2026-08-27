@@ -118,7 +118,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -140,7 +140,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Check that the component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // NavBar component renders successfully (even if it doesn't render visible elements in test environment)
         // The component is rendered within the container
@@ -157,7 +157,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const mockBodyRef = { current: document.createElement('div') };
         const user = userEvent.setup();
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -179,7 +179,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Check that the component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // Look for logo image element
         const logoElements = screen.queryAllByRole("img");
@@ -330,7 +330,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -352,7 +352,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Look for help icons - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders GitHub support button", async () => {
@@ -419,7 +419,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -441,7 +441,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Check that the component rendered without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // Check that localStorage value persists
         expect(localStorage.getItem("srat_tab")).toBe("1");
@@ -456,7 +456,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -477,7 +477,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders tab panels with ErrorBoundary wrapping", async () => {
@@ -489,7 +489,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -510,7 +510,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         // Check that tab panels are created (they should be portaled to mockBodyRef.current)
         expect(mockBodyRef.current?.children.length).toBeGreaterThanOrEqual(0);
     });
@@ -524,7 +524,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -546,7 +546,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Look for bug report icons that indicate development environment - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("keeps the development environment debug trigger keyboard accessible", async () => {
@@ -598,7 +598,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -620,7 +620,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Check that the navbar rendered without errors (NotificationCenter is embedded)
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles mobile menu open and close", async () => {
@@ -635,7 +635,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -656,7 +656,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         // Find menu button
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
         if (menuButton) {
@@ -689,7 +689,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -709,7 +709,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
                 )
             )
         );
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // Find menu button and open menu
         const menuButton = screen.queryByRole("button", { name: /navigation menu/i });
@@ -740,7 +740,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -762,7 +762,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Look for lock icons - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders read-only mode icon when applicable", async () => {
@@ -774,7 +774,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -796,7 +796,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Look for preview icon (read-only indicator) - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("toggles tour open/close state", async () => {
@@ -906,7 +906,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 { initialEntries: [{ pathname: '/', state: { tabId: TabIDs.SHARES } }] },
@@ -927,7 +927,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles invalid stored tab index", async () => {
@@ -942,7 +942,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -964,7 +964,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Should default to 0 if stored index is invalid
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         const storedTab = localStorage.getItem("srat_tab");
         expect(parseInt(storedTab || "0")).toBeGreaterThanOrEqual(0);
     });
@@ -978,7 +978,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -998,7 +998,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
                 )
             )
         );
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // Check for circular progress elements
         const progressElements = screen.queryAllByRole("progressbar");
@@ -1014,7 +1014,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -1036,7 +1036,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Check that component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
 
         // Tabs may or may not be visible depending on media queries and environment
         const tabs = screen.queryAllByRole("tab");
@@ -1146,7 +1146,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         const store = await createTestStore();
         const mockBodyRef = { current: document.createElement('div') };
 
-        const { container } = render(
+        render(
             React.createElement(
                 MemoryRouter,
                 null,
@@ -1168,7 +1168,7 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         // Look for report problem icons (dirty state indicator) - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("sets srat_tour_seen in localStorage when guided tour is closed", () => {

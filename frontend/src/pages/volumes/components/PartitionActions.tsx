@@ -131,7 +131,11 @@ export function PartitionActions({
 
   if (isSmallScreen) {
     return (
-      <>
+      <Stack
+        direction="row"
+        data-testid="partition-actions-root"
+        sx={{ alignItems: "center" }}
+      >
         <IconButton
           aria-label="more actions"
           aria-controls="partition-actions-menu"
@@ -163,7 +167,7 @@ export function PartitionActions({
             </MenuItem>
           ))}
         </Menu>
-      </>
+      </Stack>
     );
   }
 
@@ -171,6 +175,7 @@ export function PartitionActions({
     <Stack
       direction="row"
       spacing={0}
+      data-testid="partition-actions-root"
       sx={{
         alignItems: "center",
         pr: 1,

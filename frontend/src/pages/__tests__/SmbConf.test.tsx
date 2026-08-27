@@ -38,7 +38,7 @@ describe("SmbConf Component", () => {
 
     it("renders SmbConf component with syntax highlighter", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -47,7 +47,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -59,13 +59,12 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check that the component rendered without errors
-        expect(container.firstChild).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("displays InView component with proper structure", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -74,7 +73,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -86,8 +85,7 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check that InView creates a container
-        expect(container.firstChild).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("renders syntax highlighter with correct language setting", async () => {
@@ -113,14 +111,13 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Check for syntax highlighter elements using getElementsByTagName
         const codeViewer = screen.getByTestId("smbconf-code-viewer");
         expect(codeViewer).toBeTruthy();
     });
 
     it("handles light theme color scheme correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -133,7 +130,7 @@ describe("SmbConf Component", () => {
         });
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -145,13 +142,12 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Component should render without errors in light mode
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("handles dark theme color scheme correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -164,7 +160,7 @@ describe("SmbConf Component", () => {
         });
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -176,13 +172,12 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Component should render without errors in dark mode
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("handles API query state correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -191,7 +186,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -203,8 +198,7 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Should render even when API is loading/error state
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("displays syntax highlighter with correct styling properties", async () => {
@@ -237,7 +231,7 @@ describe("SmbConf Component", () => {
 
     it("handles InView intersection correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
 
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
@@ -248,7 +242,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -260,22 +254,18 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // The InView component should have rendered
-        const inViewDiv = container.firstChild as HTMLElement;
-        expect(inViewDiv).toBeTruthy();
+        const codeViewer = screen.getByTestId("smbconf-code-viewer");
+        expect(codeViewer).toBeTruthy();
 
-        // Fire a scroll event to potentially trigger InView
-        if (inViewDiv) {
-            const user = userEvent.setup();
-            await user.pointer({ target: inViewDiv });
-        }
+        const user = userEvent.setup();
+        await user.pointer({ target: codeViewer });
 
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("renders empty config data correctly", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -284,7 +274,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -296,13 +286,12 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // Component should handle empty/null data gracefully
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("handles colorScheme mode changes", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { ThemeProvider, createTheme } = await import("@mui/material/styles");
         const { Provider } = await import("react-redux");
         const { SmbConfPage: SmbConf } = await import("../SmbConf");
@@ -311,7 +300,7 @@ describe("SmbConf Component", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container, rerender } = render(
+        const { rerender } = render(
             React.createElement(
                 Provider,
                 {
@@ -323,7 +312,7 @@ describe("SmbConf Component", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
 
         // Rerender with dark theme
         const darkTheme = createTheme({ palette: { mode: 'dark' } });
@@ -339,7 +328,7 @@ describe("SmbConf Component", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(screen.getByTestId("smbconf-code-viewer")).toBeTruthy();
     });
 
     it("applies custom styling to syntax highlighter", async () => {
@@ -365,7 +354,6 @@ describe("SmbConf Component", () => {
             )
         );
 
-        // SyntaxHighlighter should be in the DOM - check using getElementsByTagName
         const codeViewer = screen.getByTestId("smbconf-code-viewer");
         expect(codeViewer).toBeTruthy();
     });

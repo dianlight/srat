@@ -44,7 +44,7 @@ describe("Dashboard Component Basic Tests", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("welcome text appears in dashboard", async () => {

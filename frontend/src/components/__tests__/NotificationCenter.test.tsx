@@ -55,7 +55,7 @@ describe("NotificationCenter Component", () => {
         expect(notificationButtons.length).toBeGreaterThanOrEqual(1);
 
         // Look for notification icon - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("opens popover when notification button is clicked", async () => {
@@ -68,7 +68,7 @@ describe("NotificationCenter Component", () => {
             await user.click(notificationButton);
 
             // Check if popover opened (look for notifications text)
-            expect(container).toBeTruthy();
+            expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         }
     });
 
@@ -76,7 +76,7 @@ describe("NotificationCenter Component", () => {
         const { container } = await renderNotificationCenter();
 
         // Look for badge element - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles show read notifications toggle", async () => {
@@ -96,7 +96,7 @@ describe("NotificationCenter Component", () => {
             }
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders notification list when popover is open", async () => {
@@ -109,7 +109,7 @@ describe("NotificationCenter Component", () => {
             await user.click(notificationButton);
 
             // Check for notification list container - component renders without errors
-            expect(container).toBeTruthy();
+            expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         }
     });
 
@@ -168,28 +168,28 @@ describe("NotificationCenter Component", () => {
             await user.unhover(notificationButton);
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles color scheme changes", async () => {
         const { container } = await renderNotificationCenter();
 
         // The component should render without errors regardless of color scheme
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("converts severity levels correctly", async () => {
         const { container } = await renderNotificationCenter();
 
         // Test that the component renders (severity conversion is internal)
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders ToastContainer with correct configuration", async () => {
         const { container } = await renderNotificationCenter();
 
         // Look for toast container elements - check component renders without errors
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles popover close correctly", async () => {
@@ -204,7 +204,7 @@ describe("NotificationCenter Component", () => {
             await user.keyboard('{Escape}');
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles disabled action buttons correctly", async () => {

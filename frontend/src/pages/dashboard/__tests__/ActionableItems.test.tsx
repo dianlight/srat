@@ -62,11 +62,11 @@ describe("Dashboard Actionable Items", () => {
         });
 
         // Check that partition name appears
-        const partitionName = await within(container).findByText("by-uuid-0560-3E7B");
+        const partitionName = await screen.findByText("by-uuid-0560-3E7B");
         expect(partitionName).toBeTruthy();
 
         // Check that Mount button appears
-        const mountButton = await within(container).findByText("Mount");
+        const mountButton = await screen.findByText("Mount");
         expect(mountButton).toBeTruthy();
     });
 
@@ -92,11 +92,11 @@ describe("Dashboard Actionable Items", () => {
         });
 
         // Check that partition name appears
-        const partitionName = await within(container).findByText("EFI");
+        const partitionName = await screen.findByText("EFI");
         expect(partitionName).toBeTruthy();
 
         // Check that Create Share button appears
-        const shareButton = await within(container).findByText("Create Share");
+        const shareButton = await screen.findByText("Create Share");
         expect(shareButton).toBeTruthy();
     });
 
@@ -122,7 +122,7 @@ describe("Dashboard Actionable Items", () => {
         });
 
         // Check that Hide button appears
-        const hideButtons = within(container).getAllByText("Hide");
+        const hideButtons = screen.getAllByText("Hide");
         expect(hideButtons.length).toBeGreaterThan(0);
     });
 
@@ -150,7 +150,7 @@ describe("Dashboard Actionable Items", () => {
         });
 
         // Check that error message appears - use getAllByText since there may be multiple instances
-        const errorMessages = within(container).getAllByText("Could not load volume information.");
+        const errorMessages = screen.getAllByText("Could not load volume information.");
         expect(errorMessages.length).toBeGreaterThan(0);
     });
 
@@ -163,7 +163,7 @@ describe("Dashboard Actionable Items", () => {
         });
 
         // Check that empty message appears
-        const emptyMessage = await within(container).findByText("No actionable items at the moment.");
+        const emptyMessage = await screen.findByText("No actionable items at the moment.");
         expect(emptyMessage).toBeTruthy();
     });
 });

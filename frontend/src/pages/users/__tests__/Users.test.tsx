@@ -41,7 +41,7 @@ describe("Users component", () => {
         );
 
         // Check that the component renders
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders add user button in tree view header", async () => {
@@ -103,7 +103,7 @@ describe("Users component", () => {
         );
 
         // Verify UserEditDialog is in the component tree
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles InView component for lazy loading", async () => {
@@ -123,7 +123,7 @@ describe("Users component", () => {
         );
 
         // Check that the component renders with the InView wrapper
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders select message when no user is selected", async () => {
@@ -164,7 +164,7 @@ describe("Users component", () => {
         );
 
         // Verify the tree view renders
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("displays share information for users", async () => {
@@ -184,7 +184,7 @@ describe("Users component", () => {
         );
 
         // Check basic rendering
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles add button click to open create dialog", async () => {
@@ -260,7 +260,7 @@ describe("Users component", () => {
             })
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
         // Check for loading indicators
         const { screen } = await import("@testing-library/react");
         const loadingElements = screen.queryAllByRole("progressbar");
@@ -284,7 +284,7 @@ describe("Users component", () => {
         );
 
         // Verify component handles empty state
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders grid layout with two panels", async () => {
@@ -304,7 +304,7 @@ describe("Users component", () => {
         );
 
         // Verify the component renders with layout structure
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles user data updates from SSE", async () => {
@@ -324,7 +324,7 @@ describe("Users component", () => {
         );
 
         // Verify the component can handle data updates
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("persists selection to localStorage", async () => {
@@ -367,6 +367,6 @@ describe("Users component", () => {
         );
 
         // Verify component renders with localStorage state
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 });

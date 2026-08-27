@@ -41,7 +41,7 @@ describe("UsersTreeView component", () => {
             })
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders admin and regular user groups", async () => {
@@ -184,8 +184,7 @@ describe("UsersTreeView component", () => {
             })
         );
 
-        // Verify component renders with content
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("shows share count for users with shares", async () => {

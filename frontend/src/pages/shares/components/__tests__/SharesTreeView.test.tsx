@@ -1,4 +1,4 @@
-import { render, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -62,7 +62,7 @@ describe("SharesTreeView component", () => {
     const onSelect = vi.fn(() => {});
     const store = await createTestStore();
 
-    const { getByLabelText, getAllByRole } = render(
+    render(
       <Provider store={store}>
         <SharesTreeView
           shares={{
@@ -90,10 +90,10 @@ describe("SharesTreeView component", () => {
 
     const user = userEvent.setup();
     await waitFor(() => {
-      expect(getByLabelText("Documents")).toBeTruthy();
+      expect(screen.getByLabelText("Documents")).toBeTruthy();
     });
 
-    const documentsNode = getByLabelText("Documents");
+    const documentsNode = screen.getByLabelText("Documents");
     await user.click(documentsNode);
     expect(onSelect).toHaveBeenCalledWith(
       "doc",
@@ -101,7 +101,7 @@ describe("SharesTreeView component", () => {
     );
 
     const clickShareAction = async (actionName: RegExp, shareText: string) => {
-      const treeItems = getAllByRole("treeitem");
+      const treeItems = screen.getAllByRole("treeitem");
       const shareContainer = treeItems.find((item) =>
         within(item).queryByText(shareText),
       );
@@ -171,9 +171,9 @@ describe("SharesTreeView component", () => {
       </Provider>,
     );
 
-    const trees = within(container).queryAllByRole("tree");
+    const trees = screen.queryAllByRole("tree");
     expect(trees).toHaveLength(1);
-    expect(within(container).queryByText("Documents")).toBeNull();
+    expect(screen.queryByText("Documents")).toBeNull();
   });
 
   it("does not disable share when confirmation is declined", async () => {
@@ -203,14 +203,14 @@ describe("SharesTreeView component", () => {
     );
 
     const user = userEvent.setup();
-    const directButtons = within(container).queryAllByRole("button", {
+    const directButtons = screen.queryAllByRole("button", {
       name: /disable share/i,
     });
 
     if (directButtons.length > 0) {
       await user.click(directButtons[0]!);
     } else {
-      const menuButton = within(container).getByRole("button", {
+      const menuButton = screen.getByRole("button", {
         name: /more actions/i,
       });
       await user.click(menuButton);
@@ -251,14 +251,14 @@ describe("SharesTreeView component", () => {
       </Provider>,
     );
 
-    expect(await within(container).findAllByLabelText("Documents")).toHaveLength(
+    expect(await screen.findAllByLabelText("Documents")).toHaveLength(
       1,
     );
     expect(
-      within(container).queryByRole("button", { name: /disable share/i }),
+      screen.queryByRole("button", { name: /disable share/i }),
     ).toBeNull();
     expect(
-      within(container).queryByRole("button", { name: /enable share/i }),
+      screen.queryByRole("button", { name: /enable share/i }),
     ).toBeNull();
   });
 
@@ -325,9 +325,9 @@ describe("SharesTreeView component", () => {
     );
 
     // Legacy badge is rendered
-    expect(within(container).getByText("Legacy")).toBeTruthy();
+    expect(screen.getByText("Legacy")).toBeTruthy();
     // The share is selectable (not gated by mount data invalidity)
-    expect(within(container).getByLabelText("addons")).toBeTruthy();
+    expect(screen.getByLabelText("addons")).toBeTruthy();
   });
 
   it("renders error icon only when status.is_valid is false", async () => {
@@ -358,7 +358,7 @@ describe("SharesTreeView component", () => {
     );
 
     // Error tooltip with fallback message is shown for status-invalid shares
-    const brokenIcon = within(container).getByTestId("FolderSharedIcon");
+    const brokenIcon = screen.getByTestId("FolderSharedIcon");
     const user = userEvent.setup();
     await user.hover(brokenIcon);
     const tooltip = await within(document.body).findByRole("tooltip");

@@ -10,16 +10,25 @@ export const FontAwesomeSvgIcon = React.forwardRef<
   SVGSVGElement,
   FontAwesomeSvgIconProps
 >((props, ref) => {
-  const { icon, ...rest } = props;
+  const {
+    icon,
+    "data-testid": dataTestId,
+    ...rest
+  } = props as FontAwesomeSvgIconProps & { "data-testid"?: string };
 
   const {
     icon: [width, height, , , svgPathData],
   } = icon;
 
   return (
-    <SvgIcon ref={ref} {...rest} viewBox={`0 0 ${width} ${height}`}>
+    <SvgIcon
+      ref={ref}
+      {...rest}
+      viewBox={`0 0 ${width} ${height}`}
+      data-testid={dataTestId ?? "fontawesome-svg-icon"}
+    >
       {typeof svgPathData === "string" ? (
-        <path d={svgPathData} />
+        <path data-testid="fontawesome-icon-path" d={svgPathData} />
       ) : (
         /**
          * A multi-path Font Awesome icon seems to imply a duotune icon. The 0th path seems to
@@ -29,7 +38,12 @@ export const FontAwesomeSvgIcon = React.forwardRef<
          * @see https://fontawesome.com/how-to-use/on-the-web/styling/duotone-icons#changing-opacity
          */
         svgPathData.map((d: string, i: number) => (
-          <path key={d} style={{ opacity: i === 0 ? 0.4 : 1 }} d={d} />
+          <path
+            key={d}
+            data-testid="fontawesome-icon-path"
+            style={{ opacity: i === 0 ? 0.4 : 1 }}
+            d={d}
+          />
         ))
       )}
     </SvgIcon>
