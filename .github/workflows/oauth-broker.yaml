@@ -244,6 +244,9 @@ jobs:
           fi
           echo "Version $VER → deploy_env=$(cat $GITHUB_OUTPUT | grep deploy_env)"
 
+      - name: Prepare oauth_broker for deploy
+        run: mise run //oauth_broker:prepare
+
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -252,6 +255,7 @@ jobs:
           BROKER_API_TOKEN: ${{ secrets.BROKER_API_TOKEN }}
           DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
           DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
+          BROKER_PROVIDERS_JSON: ${{ secrets.BROKER_PROVIDERS_JSON }}
         run: |
           set -euo pipefail
           if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
