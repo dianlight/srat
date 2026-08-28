@@ -19,6 +19,21 @@ export const testIds = {
   },
   volumes: {
     partitionActionIcon: "partition-action-icon",
+    actionsGrid: "partition-actions-grid",
+    partitionActionsRoot: "partition-actions-root",
+  },
+  shares: {
+    legacyBadge: "shares-legacy-badge",
+  },
+  smbConf: {
+    codeViewer: "smbconf-code-viewer",
+  },
+  swagger: {
+    explorer: "openapi-explorer",
+  },
+  fontawesome: {
+    icon: "fontawesome-svg-icon",
+    path: "fontawesome-icon-path",
   },
   testFixtures: {
     shareEditFormSubmit: "submit-form-test",
