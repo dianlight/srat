@@ -18,7 +18,7 @@ import type {
   UpdateProgress,
   Welcome,
 } from "./sratApi";
-import { Supported_events } from "./sratApi";
+import { Supported_events, sratApi } from "./sratApi";
 
 export type EventData = {
   [Supported_events.Heartbeat]: HealthPing;
@@ -73,7 +73,7 @@ export const wsApi = createApi({
       providesTags: ["system"],
       async onCacheEntryAdded(
         _arg,
-        { updateCachedData, cacheDataLoaded, cacheEntryRemoved },
+        { updateCachedData, cacheDataLoaded, cacheEntryRemoved, dispatch },
       ) {
         const inactivityTimeoutMs = getGlobalNumber(
           "__SRAT_WS_INACTIVITY_MS",
@@ -193,11 +193,40 @@ export const wsApi = createApi({
               )?.[1];
 
               if (eventTypeEnum) {
+                const parsed = JSON.parse(data);
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
-                    draft[eventTypeEnum] = JSON.parse(data);
+                    draft[eventTypeEnum] = parsed;
                   }
                 });
+                // Auto-invalidate RTK Query tags based on dirty tracking.
+                // This makes API-created users/shares visible without manual reload.
+                try {
+                  if (
+                    eventTypeEnum === Supported_events.DirtyDataTracker &&
+                    parsed?.users
+                  ) {
+                    dispatch(sratApi.util.invalidateTags(["user"]));
+                  }
+                  if (
+                    eventTypeEnum === Supported_events.Heartbeat &&
+                    parsed?.dirty_tracking?.users
+                  ) {
+                    dispatch(sratApi.util.invalidateTags(["user"]));
+                  }
+                  if (
+                    eventTypeEnum === Supported_events.DirtyDataTracker &&
+                    parsed?.shares
+                  ) {
+                    dispatch(sratApi.util.invalidateTags(["share"]));
+                  }
+                  if (
+                    eventTypeEnum === Supported_events.Heartbeat &&
+                    parsed?.dirty_tracking?.shares
+                  ) {
+                    dispatch(sratApi.util.invalidateTags(["share"]));
+                  }
+                } catch {}
               } else if (
                 eventType === "command_started" ||
                 eventType === "command_output" ||
