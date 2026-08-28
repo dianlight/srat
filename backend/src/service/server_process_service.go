@@ -908,6 +908,10 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			tlog.WarnContext(ctx, "Skipping share with empty path", "name", share.Name)
 			continue
 		}
+		// Resolve subfolder within the mount point
+		if share.Subfolder != "" {
+			path = filepath.Join(path, share.Subfolder)
+		}
 
 		if share.MountPointData.Partition == nil {
 			enrichSharePartitionFromCache(&share, self.disks)
