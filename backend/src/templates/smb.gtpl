@@ -96,10 +96,14 @@
    {{- else -}}
    ntlm auth = ntlmv2-only
    {{- end }}
-   {{if .allow_guest -}}
+{{ $hasGuestShare := false }}
+{{ range $sk, $sv := .shares }}
+{{ if and $sv.guest_ok (not $sv.disabled) }}{{ $hasGuestShare = true }}{{ end }}
+{{ end }}
+{{if or .allow_guest $hasGuestShare}}
    guest account = nobody
    map to guest = Bad User
-   {{- end }}
+{{- end }}
    idmap config * : backend = tdb
    idmap config * : range = 1000000-2000000
 
@@ -138,7 +142,9 @@
    {{- if or (eq .data.name "addons") (eq .data.name "addon_configs") }}
    preexec = /usr/bin/logger -s -t smbd -p local0.warning "%u connected to deprecated share %S from %m (%I), please switch to the {{ if eq .data.name "addons" }}local_apps{{ else }}app_configs{{ end }} share"
    {{- end }}
-   valid users =_ha_mount_user_ {{ concat (.data.users|default (list .username)) (.data.ro_users|default (list)) | uniq | compact | join " " }}
+   {{- $users := concat (.data.users|default (list .username)) (.data.ro_users|default (list)) | uniq | compact -}}
+   {{- if .data.guest_ok }}{{- $users = append $users "nobody" | uniq -}}{{- end }}
+   valid users =_ha_mount_user_ {{ $users | join " " }}
    {{ if .data.ro_users -}}
    read list = {{ .data.ro_users|join " " }}
    {{- end }}
