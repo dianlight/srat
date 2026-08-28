@@ -82,7 +82,9 @@ describe("DiskHealthMetrics", () => {
                     device_id: "test-id",
                     hdidle_status: {
                         spun_down: true,
+                        spin_up_at: "2025-12-10T08:00:00Z",
                         spin_down_at: "2025-12-15T10:00:00Z",
+                        last_io_at: "2025-12-15T09:59:00Z",
                     },
                 },
             },
@@ -167,6 +169,8 @@ describe("DiskHealthMetrics", () => {
                     hdidle_status: {
                         spun_down: false,
                         spin_up_at: "2025-12-15T10:30:00Z",
+                        spin_down_at: "2025-12-14T02:00:00Z",
+                        last_io_at: "2025-12-15T10:29:00Z",
                     },
                 },
             },

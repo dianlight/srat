@@ -172,6 +172,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     # Start WebSocket connection — data arrives via events
     await ws_client.async_connect()
 
+    # Task 050: push HA Dropbox token when available so the backend can offer
+    # "Reuse Dropbox integration auth" without a second OAuth flow.
+    async def _push_ha_dropbox_token_soon() -> None:
+        # Wait for the WebSocket to be connected (with a short timeout) then
+        # forward the token once. Subsequent pushes happen on demand when the
+        # WS reconnects or the user opens the wizard (backend is single-use
+        # per authorization, so a fresh push is needed each time).
+        for _ in range(10):
+            if ws_client.connected:
+                break
+            await asyncio.sleep(0.5)
+        try:
+            from .ha_dropbox import async_push_ha_dropbox_token
+
+            await async_push_ha_dropbox_token(hass, ws_client)
+        except Exception:
+            _LOGGER.debug("Failed to push HA Dropbox token on startup", exc_info=True)
+
+    hass.async_create_background_task(
+        _push_ha_dropbox_token_soon(), "srat_push_ha_dropbox_token"
+    )
+
     async def _ws_watchdog_loop() -> None:
         """Ensure WS listener task keeps running and self-heals if needed."""
         while True:

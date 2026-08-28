@@ -39,6 +39,7 @@ type webEventTypesContainer struct {
 	EVENTCOMMANDSTARTED    WebEventType
 	EVENTCOMMANDOUTPUT     WebEventType
 	EVENTCOMMANDTERMINATED WebEventType
+	EVENTRCLONETASK        WebEventType
 }
 
 // WebEventTypes is a main entry point using the WebEventType type.
@@ -92,6 +93,9 @@ var WebEventTypes = webEventTypesContainer{
 	EVENTCOMMANDTERMINATED: WebEventType{
 		webEventType: eventCommandTerminated,
 	},
+	EVENTRCLONETASK: WebEventType{
+		webEventType: eventRcloneTask,
+	},
 }
 
 // invalidWebEventType is an invalid sentinel value for WebEventType
@@ -119,6 +123,7 @@ func (w webEventTypesContainer) allSlice() []WebEventType {
 		WebEventTypes.EVENTCOMMANDSTARTED,
 		WebEventTypes.EVENTCOMMANDOUTPUT,
 		WebEventTypes.EVENTCOMMANDTERMINATED,
+		WebEventTypes.EVENTRCLONETASK,
 	}
 }
 
@@ -221,6 +226,7 @@ var webEventTypesNameMap = map[string]WebEventType{
 	"command_started":    WebEventTypes.EVENTCOMMANDSTARTED,
 	"command_output":     WebEventTypes.EVENTCOMMANDOUTPUT,
 	"command_terminated": WebEventTypes.EVENTCOMMANDTERMINATED,
+	"rclone_task":        WebEventTypes.EVENTRCLONETASK,
 }
 
 // stringToWebEventType converts a string representation of an enum value into its WebEventType representation
@@ -340,6 +346,12 @@ func numberToWebEventType[T interface {
 			return nil
 		}
 		return &result
+	case 16:
+		result := WebEventTypes.EVENTRCLONETASK
+		if !result.IsValid() {
+			return nil
+		}
+		return &result
 	default:
 		return nil
 	}
@@ -371,6 +383,7 @@ var validWebEventTypes = map[WebEventType]bool{
 	WebEventTypes.EVENTCOMMANDSTARTED:    true,
 	WebEventTypes.EVENTCOMMANDOUTPUT:     true,
 	WebEventTypes.EVENTCOMMANDTERMINATED: true,
+	WebEventTypes.EVENTRCLONETASK:        true,
 }
 
 // IsValid checks whether the WebEventTypes value is valid.
@@ -479,7 +492,7 @@ func (w *WebEventType) UnmarshalYAML(by []byte) error {
 }
 
 // webeventtypeNames is a constant string containing the canonical names for all enum values.
-const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandproblemapp_config_changedmdns_registercommand_startedcommand_outputcommand_terminated"
+const webeventtypeNames = "helloupdatingvolumesheartbeatsharesdirty_data_trackersmart_test_statusfilesystem_taskerrorrepair_commandproblemapp_config_changedmdns_registercommand_startedcommand_outputcommand_terminatedrclone_task"
 
 // webeventtypeNamesMap is a map of enum values to their canonical absolute
 // name positions within the webeventtypeNames string slice
@@ -500,6 +513,7 @@ var webeventtypeNamesMap = map[WebEventType]string{
 	WebEventTypes.EVENTCOMMANDSTARTED:    webeventtypeNames[142:157],
 	WebEventTypes.EVENTCOMMANDOUTPUT:     webeventtypeNames[157:171],
 	WebEventTypes.EVENTCOMMANDTERMINATED: webeventtypeNames[171:189],
+	WebEventTypes.EVENTRCLONETASK:        webeventtypeNames[189:200],
 }
 
 // String implements the Stringer interface.
@@ -518,7 +532,7 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the goenums command to generate them again.
 	// Does not identify newly added constant values unless order changes
-	var x [16]struct{}
+	var x [17]struct{}
 	_ = x[eventHello]
 	_ = x[eventUpdating-1]
 	_ = x[eventVolumes-2]
@@ -535,4 +549,5 @@ func _() {
 	_ = x[eventCommandStarted-13]
 	_ = x[eventCommandOutput-14]
 	_ = x[eventCommandTerminated-15]
+	_ = x[eventRcloneTask-16]
 }

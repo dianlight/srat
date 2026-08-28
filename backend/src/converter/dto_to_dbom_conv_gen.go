@@ -217,6 +217,34 @@ func (c *DtoToDbomConverterImpl) MountPointPathsToMountPointDatas(source []dbom.
 	}
 	return pDtoMountPointDataList, nil
 }
+func (c *DtoToDbomConverterImpl) RcloneLinkDTOToRcloneLink(source dto.RcloneLink) (dbom.RcloneLink, error) {
+	var dbomRcloneLink dbom.RcloneLink
+	dbomRcloneLink.TargetKind = source.TargetKind
+	dbomRcloneLink.TargetID = source.TargetID
+	dbomRcloneLink.Provider = source.Provider
+	dbomRcloneLink.RemotePath = source.RemotePath
+	dbomRcloneLink.Status = source.Status
+	dbomRcloneLink.LastSyncAt = source.LastSyncAt
+	dbomRcloneLink.LastSyncResult = source.LastSyncResult
+	dbomRcloneLink.LastSyncMessage = source.LastSyncMessage
+	dbomRcloneLink.AutoSync = source.AutoSync
+	dbomRcloneLink.ScheduleMinutes = source.ScheduleMinutes
+	return dbomRcloneLink, nil
+}
+func (c *DtoToDbomConverterImpl) RcloneLinkToRcloneLinkDTO(source dbom.RcloneLink) (dto.RcloneLink, error) {
+	var dtoRcloneLink dto.RcloneLink
+	dtoRcloneLink.TargetKind = source.TargetKind
+	dtoRcloneLink.TargetID = source.TargetID
+	dtoRcloneLink.Provider = source.Provider
+	dtoRcloneLink.RemotePath = source.RemotePath
+	dtoRcloneLink.Status = source.Status
+	dtoRcloneLink.LastSyncAt = source.LastSyncAt
+	dtoRcloneLink.LastSyncResult = source.LastSyncResult
+	dtoRcloneLink.LastSyncMessage = source.LastSyncMessage
+	dtoRcloneLink.AutoSync = source.AutoSync
+	dtoRcloneLink.ScheduleMinutes = source.ScheduleMinutes
+	return dtoRcloneLink, nil
+}
 func (c *DtoToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser) (dto.User, error) {
 	var dtoUser dto.User
 	dtoUser.Username = source.Username

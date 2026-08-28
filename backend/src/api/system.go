@@ -41,6 +41,7 @@ func (self *SystemHanler) RegisterSystemHanler(api huma.API) {
 	huma.Get(api, "/appconfig", self.HandleAppConfig, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/command_output", self.HandleCommandOutput, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/command_events", self.HandleCommandEvents, huma.OperationTags("system", "internal"))
+	huma.Get(api, "/rclone_events", self.HandleRcloneEvents, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/mdns_events", self.HandleMdnsEvents, huma.OperationTags("system", "internal"))
 	huma.Get(api, "/nics", self.GetNICsHandler, huma.OperationTags("system"))
 	huma.Get(api, "/hostname", self.GetHostnameHandler, huma.OperationTags("system"))
@@ -79,6 +80,15 @@ func (self *SystemHanler) HandleMdnsEvents(ctx context.Context, input *struct{})
 	Body dto.MdnsRegisterNotification
 }, error) {
 	return nil, huma.Error500InternalServerError("Use WebSocket for mDNS events", nil)
+}
+
+// HandleRcloneEvents is a documentation-only stub that anchors the rclone task progress
+// event schema (dto.RcloneTask) into the OpenAPI spec so it code-generates into the
+// frontend TypeScript types. Actual rclone task events are delivered over WebSocket.
+func (self *SystemHanler) HandleRcloneEvents(ctx context.Context, input *struct{}) (*struct {
+	Body dto.RcloneTask
+}, error) {
+	return nil, huma.Error500InternalServerError("Use WebSocket for rclone events", nil)
 }
 
 func (self *SystemHanler) HandleCommandOutput(ctx context.Context, input *struct {

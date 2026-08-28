@@ -14,6 +14,17 @@
 
 ### ✨ Features
 
+- **Rclone cloud sync (lab feature, #954)**: mounted volumes can now be
+  linked to a cloud provider behind `experimental_lab_mode`. A lab-gated
+  Cloud Sync panel in the volume details offers a three-step link wizard
+  (provider + credentials → OAuth account connect with automatic callback
+  polling → remote folder), unlink with confirmation, a difference table
+  grouped by local-only/remote-only/changed, and Push/Pull/Bidirectional
+  sync actions — each with an optional side-effect-free dry run —
+  featuring live progress (`rclone_task` WebSocket events),
+  terminal-style log and abort. Dropbox is the first driver; the librclone
+  RPC bridge is build-tag gated (`rclonelib`) with a stub fallback.
+
 - **Full mobile support**: the UI is now fully usable on phones (320–430px)
   and small tablets. Dashboard metric tables compact their cells and hide the
   sparkline charts on xs so they fit their containers, the SMART self-test

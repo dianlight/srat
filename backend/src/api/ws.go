@@ -29,6 +29,7 @@ type WebSocketHandler struct {
 	haService      service.HomeAssistantServiceInterface
 	haComponentSvc service.HomeAssistantComponentServiceInterface
 	mdnsService    service.MDNSServiceInterface
+	rcloneService  service.RcloneServiceInterface
 	state          *dto.ContextState
 	upgrader       websocket.Upgrader
 	eventMap       map[string]any
@@ -44,6 +45,7 @@ type WebSocketHandlerParams struct {
 	HAService      service.HomeAssistantServiceInterface          `optional:"true"`
 	HAComponentSvc service.HomeAssistantComponentServiceInterface `optional:"true"`
 	MDNSService    service.MDNSServiceInterface                   `optional:"true"`
+	RcloneService  service.RcloneServiceInterface                 `optional:"true"`
 	State          *dto.ContextState
 }
 
@@ -69,6 +71,7 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 		haService:      p.HAService,
 		haComponentSvc: p.HAComponentSvc,
 		mdnsService:    p.MDNSService,
+		rcloneService:  p.RcloneService,
 		state:          p.State,
 		upgrader:       upgrader,
 		eventMap:       dto.WebEventMap,
@@ -252,6 +255,25 @@ func (self *WebSocketHandler) handleInboundMessage(messageType int, payload []by
 				}
 			}
 		}
+	case dto.ClientEventTypes.CLIENTEVENTTYPEHADROPBOXTOKEN.String():
+		var message dto.HaDropboxTokenMessage
+		if err := json.Unmarshal(payload, &message); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring malformed ha_dropbox_token message", "error", err)
+			return
+		}
+		if err := message.Validate(); err != nil {
+			slog.WarnContext(self.ctx, "Ignoring invalid ha_dropbox_token message", "error", err)
+			return
+		}
+		if self.rcloneService == nil {
+			slog.WarnContext(self.ctx, "Ignoring ha_dropbox_token: rclone service not available")
+			return
+		}
+		if err := self.rcloneService.SetHaDropboxToken(message); err != nil {
+			slog.WarnContext(self.ctx, "Failed to store ha_dropbox_token", "error", err)
+			return
+		}
+		slog.InfoContext(self.ctx, "Accepted ha_dropbox_token from Home Assistant", "account_label", message.AccountLabel)
 	default:
 		slog.WarnContext(self.ctx, "Ignoring unsupported inbound WebSocket message type", "type", envelope.Type)
 	}

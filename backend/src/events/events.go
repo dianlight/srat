@@ -151,6 +151,13 @@ type FilesystemTaskEvent struct {
 	Task *dto.FilesystemTask
 }
 
+// RcloneTaskEvent represents a cloud-sync operation event (diff, sync)
+// for rclone links (issue #954, lab feature).
+type RcloneTaskEvent struct {
+	Event
+	Task *dto.RcloneTask
+}
+
 // CommandExecutionEvent represents a command lifecycle notification emitted by
 // the shared command executor. Message is always one of the typed command
 // notification DTOs.

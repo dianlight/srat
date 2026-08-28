@@ -23,6 +23,49 @@ export function clearFilesystemSupportOverrides() {
 }
 
 /**
+ * In-memory store backing the rclone cloud-sync mock endpoints. Tests can
+ * seed a link before rendering to simulate the "linked" state.
+ */
+export const rcloneMockState = {
+	link: null as Record<string, unknown> | null,
+	/** Body of the last POST …/sync request, for asserting dry_run etc. */
+	lastSyncBody: null as Record<string, unknown> | null,
+};
+
+export function resetRcloneMockState() {
+	rcloneMockState.link = null;
+	rcloneMockState.lastSyncBody = null;
+}
+
+const rcloneDropboxProvider = {
+	name: "dropbox",
+	display_name: "Dropbox",
+	config_fields: [
+		{
+			name: "client_id",
+			label: "App key",
+			description: "Dropbox OAuth app key",
+			required: true,
+			secret: false,
+		},
+		{
+			name: "client_secret",
+			label: "App secret",
+			description: undefined,
+			required: true,
+			secret: true,
+		},
+	],
+};
+
+function jsonResponse(body: unknown, status = 200) {
+	return new Response(JSON.stringify(body), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	});
+}
+
+/**
 
  * 
  * These handlers will automatically mock all REST endpoints defined in the OpenAPI spec
@@ -339,5 +382,81 @@ export const customHandlers: RequestHandler[] = [
 				},
 			},
 		);
+	}),
+
+	// Rclone cloud-sync (lab feature) endpoint mocks.
+	// Link identity travels as query params (target_kind/target_id) since
+	// volume target ids contain slashes.
+	http.get("*/api/rclone/providers", () => {
+		return jsonResponse({
+			library_available: true,
+			broker_available: false,
+			oauth_callback_path: "/api/rclone/oauth/callback",
+			providers: [rcloneDropboxProvider],
+		});
+	}),
+
+	http.get("*/api/rclone/link", () => {
+		if (!rcloneMockState.link) {
+			return jsonResponse({ detail: "rclone link not found" }, 404);
+		}
+		return jsonResponse(rcloneMockState.link);
+	}),
+
+	http.put("*/api/rclone/link", async ({ request }) => {
+		const body = (await request.json()) as Record<string, unknown>;
+		rcloneMockState.link = {
+			target_kind: "volume",
+			target_id: "/mnt/usb",
+			status: "unlinked",
+			auto_sync: false,
+			schedule_minutes: 0,
+			...body,
+		};
+		return jsonResponse(rcloneMockState.link);
+	}),
+
+	http.delete("*/api/rclone/link", () => {
+		rcloneMockState.link = null;
+		return new Response(null, { status: 204 });
+	}),
+
+	http.post("*/api/rclone/link/auth/start", () => {
+		return jsonResponse({
+			auth_url: "https://www.dropbox.com/oauth2/authorize?mock=1",
+			redirect_uri: "http://localhost/api/rclone/oauth/callback",
+			state: "mock-state",
+		});
+	}),
+
+	http.post("*/api/rclone/link/diff", () => {
+		return jsonResponse({
+			local_only: 1,
+			remote_only: 1,
+			changed: 1,
+			entries: [
+				{
+					path: "photos/",
+					diff_type: "local_only",
+					local_size: 1288490188,
+				},
+				{ path: "backup.zip", diff_type: "remote_only", remote_size: 92274688 },
+				{
+					path: "notes.txt",
+					diff_type: "changed",
+					local_size: 4096,
+					remote_size: 2048,
+				},
+			],
+		});
+	}),
+
+	http.post("*/api/rclone/link/sync", async ({ request }) => {
+		rcloneMockState.lastSyncBody = (await request.json()) as Record<string, unknown>;
+		return jsonResponse({});
+	}),
+
+	http.post("*/api/rclone/link/abort", () => {
+		return jsonResponse({});
 	}),
 ];

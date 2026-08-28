@@ -161,6 +161,14 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
 	expectNoBroadcast("problem nil")
 
+	// 14. RcloneTask event with Task set -> task broadcast
+	eventBus.EmitRcloneTask(events.RcloneTaskEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, Task: &dto.RcloneTask{TargetKind: "volume", TargetID: "/mnt/x", Operation: "sync", Status: "start"}})
+	expectBroadcast("rclone task")
+
+	// 15. RcloneTask event with nil Task -> no broadcast
+	eventBus.EmitRcloneTask(events.RcloneTaskEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
+	expectNoBroadcast("rclone task nil")
+
 	_, _ = mock.Verify(shareService, matchers.Times(1)).ListShares()
 	mock.VerifyNoMoreInteractions(shareService)
 }

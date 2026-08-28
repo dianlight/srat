@@ -26,6 +26,7 @@ import (
 	"github.com/dianlight/srat/internal/commandexec"
 	"github.com/dianlight/srat/service"
 	servicefilesystem "github.com/dianlight/srat/service/filesystem"
+	sr "github.com/dianlight/srat/service/rclone"
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
@@ -121,6 +122,8 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewHaWsService,
 			service.NewHardwareService,
 			service.NewHDIdleService,
+			sr.NewRPC,
+			service.NewRcloneService,
 			service.NewHaDiscoveryService,
 			service.NewSettingService,
 			//repository.NewPropertyRepositoryRepository,
