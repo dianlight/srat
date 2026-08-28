@@ -13,15 +13,35 @@ compatibility_flags = ["nodejs_compat"]
 SESSION_TTL = "600"
 
 [env.staging]
-vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.workers.dev", SESSION_TTL = "600" }
-# kv_namespaces = [{ binding = "OAUTH_SESSIONS", id = "<staging-kv-id>", preview_id = "<staging-preview-id>" }]
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
+kv_namespaces = [
+  { binding = "OAUTH_SESSIONS", id = "f8b827aa57414209bc24c230905c0037" },
+]
+
 
 [env.production]
 vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker.workers.dev", SESSION_TTL = "600" }
-# kv_namespaces = [{ binding = "OAUTH_SESSIONS", id = "<prod-kv-id>", preview_id = "<prod-preview-id>" }]
+kv_namespaces = [
+  { binding = "OAUTH_SESSIONS", id = "64340357ce71418daf0e6c41ddfafea7" },
+]
 
 # Secrets (never commit):
 # wrangler secret put BROKER_API_TOKEN --env staging|production
 # wrangler secret put DROPBOX_CLIENT_ID --env staging|production
 # wrangler secret put DROPBOX_CLIENT_SECRET --env staging|production
 # wrangler secret put BROKER_PROVIDERS_JSON --env staging|production  # optional generic providers JSON
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

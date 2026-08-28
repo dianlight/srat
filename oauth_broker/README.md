@@ -174,7 +174,7 @@ change is needed per platform.
 
 The Dropbox app's `redirect_uri` **must** be `{BROKER_PUBLIC_URL}/v1/callback`:
 
-- Staging: `https://srat-oauth-broker-staging.workers.dev/v1/callback` (and/or staging Render URL)
+- Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback` (and/or staging Render URL)
 - Production: `https://srat-oauth-broker.workers.dev/v1/callback` (and/or prod Render URL)
 
 Create two Dropbox apps (or one with both URIs) at <https://www.dropbox.com/developers/apps>.
@@ -189,7 +189,7 @@ Both use Google Cloud OAuth 2.0. Register a project at <https://console.cloud.go
 3. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
 4. Application type: **Web application**
 5. Authorized redirect URIs: add `{BROKER_PUBLIC_URL}/v1/callback` for each environment
-   - Staging: `https://srat-oauth-broker-staging.workers.dev/v1/callback`
+   - Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
    - Production: `https://srat-oauth-broker.workers.dev/v1/callback`
 6. Copy **Client ID** and **Client Secret**
 
