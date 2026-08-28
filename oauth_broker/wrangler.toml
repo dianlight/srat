@@ -20,7 +20,7 @@ kv_namespaces = [
 
 
 [env.production]
-vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker.workers.dev", SESSION_TTL = "600" }
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
 kv_namespaces = [
   { binding = "OAUTH_SESSIONS", id = "64340357ce71418daf0e6c41ddfafea7" },
 ]
