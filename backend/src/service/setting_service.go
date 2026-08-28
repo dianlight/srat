@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"github.com/creasty/defaults"
@@ -17,6 +18,20 @@ import (
 	"go.uber.org/fx"
 	"gorm.io/gorm"
 )
+
+var (
+	hostnameRegex   = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$`)
+	workgroupRegex  = regexp.MustCompile(`^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$`)
+	ipv4OrCidrRegex = regexp.MustCompile(`^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\/(?:[0-9]|[12][0-9]|3[0-2]))?$`)
+	ipv6OrCidrRegex = regexp.MustCompile(`^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))(/(?:[0-9]|[1-9][0-9]|1[01][0-9]|12[0-8]))?$`)
+)
+
+func isValidIpAddressOrCidr(ip string) bool {
+	if ip == "" {
+		return false
+	}
+	return ipv4OrCidrRegex.MatchString(ip) || ipv6OrCidrRegex.MatchString(ip)
+}
 
 // settingService handles business logic for settings.
 type settingService struct {
@@ -124,10 +139,23 @@ func defaultExperimentalLabMode() bool {
 
 // ValidateSettings validates and potentially modifies settings based on system capabilities and constraints.
 // This is the central point for all settings validation logic.
-func (self *settingService) ValidateSettings(setting *dto.Settings) {
+// Empty hostname/workgroup is treated as defaulted (no error) per issue #1013 decision.
+// Returns ErrorInvalidParameter wrapped error for 422 mapping on validation failures.
+func (self *settingService) ValidateSettings(setting *dto.Settings) errors.E {
+	if setting.Hostname != "" && !hostnameRegex.MatchString(setting.Hostname) {
+		return errors.WithStack(errors.WithMessagef(dto.ErrorInvalidParameter, "invalid hostname %q: must match ^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$ and be 1-63 chars", setting.Hostname))
+	}
+	if setting.Workgroup != "" && !workgroupRegex.MatchString(setting.Workgroup) {
+		return errors.WithStack(errors.WithMessagef(dto.ErrorInvalidParameter, "invalid workgroup %q: must match ^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,13}[a-zA-Z0-9])?$ and be 1-15 chars", setting.Workgroup))
+	}
+	for _, host := range setting.AllowHost {
+		if !isValidIpAddressOrCidr(host) {
+			return errors.WithStack(errors.WithMessagef(dto.ErrorInvalidParameter, "invalid allow_hosts entry %q: must be IPv4/IPv6/CIDR", host))
+		}
+	}
 	// Validate HAUseNFS setting - NFS must be available if enabled
 	if setting.HAUseNFS != nil && *setting.HAUseNFS {
-		if !self.commandExists([]string{"exportfs"}) {
+		if self.commandExists != nil && !self.commandExists([]string{"exportfs"}) {
 			// NFS is not available, force the setting to false
 			slog.Warn("NFS is not available on this system (exportfs command not found). Setting ha_use_nfs to false.")
 			falseVal := false
@@ -138,6 +166,7 @@ func (self *settingService) ValidateSettings(setting *dto.Settings) {
 	// Addon-side direct mDNS and HA-managed mDNS are no longer mutually
 	// exclusive: mdns_registration is the master switch and
 	// use_component_mdns_proxy selects the implementation.
+	return nil
 }
 
 func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
@@ -147,9 +176,10 @@ func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
 			setting.HASmbPassword = existing.HASmbPassword
 		}
 	}
+	if err := self.ValidateSettings(setting); err != nil {
+		return err
+	}
 	errS := self.db.Transaction(func(tx *gorm.DB) error {
-		// Validate settings before saving
-		self.ValidateSettings(setting)
 
 		props := dbom.Properties{}
 		err := self.converter.SettingsToProperties(*setting, &props)

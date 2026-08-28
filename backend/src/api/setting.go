@@ -10,6 +10,7 @@ import (
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 type SettingsHanler struct {
@@ -256,6 +257,9 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 
 	err := self.settingService.UpdateSettings(&config)
 	if err != nil {
+		if tozderrors.Is(err, dto.ErrorInvalidParameter) {
+			return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
+		}
 		return nil, huma.Error500InternalServerError("Failed to update settings: %v", err)
 	}
 

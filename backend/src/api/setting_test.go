@@ -207,7 +207,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	autopatch.AutoPatch(api)
 
 	glc := dto.Settings{
-		Workgroup:           "pluto&admin",
+		Workgroup:           "pluto-admin",
 		ExperimentalLabMode: true,
 	}
 
@@ -304,14 +304,14 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_PreservesHASmbPassw
 	autopatch.AutoPatch(api)
 
 	initial := dto.Settings{
-		Workgroup:     "initial-workgroup",
+		Workgroup:     "initial-wg",
 		HASmbPassword: logfusc.NewSecret("super-secret"),
 	}
 	err := suite.settingService.UpdateSettings(&initial)
 	suite.Require().NoError(err)
 
 	update := dto.Settings{
-		Workgroup: "updated-workgroup",
+		Workgroup: "updated-wg",
 	}
 
 	rr := api.Patch("/settings", update)
@@ -319,7 +319,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_PreservesHASmbPassw
 
 	loaded, loadErr := suite.settingService.Load()
 	suite.Require().NoError(loadErr)
-	suite.Equal("updated-workgroup", loaded.Workgroup)
+	suite.Equal("updated-wg", loaded.Workgroup)
 	suite.Equal("super-secret", loaded.HASmbPassword.Expose())
 }
 
@@ -329,7 +329,7 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler_DoesNotLeakSecrets() {
 	autopatch.AutoPatch(api)
 
 	initial := dto.Settings{
-		Workgroup:     "secret-workgroup",
+		Workgroup:     "secret-wg",
 		HASmbPassword: logfusc.NewSecret("top-secret"),
 	}
 	err := suite.settingService.UpdateSettings(&initial)
