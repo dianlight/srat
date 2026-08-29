@@ -1,0 +1,18 @@
+# CodeFactor configuration
+# https://docs.codefactor.io/
+# Exclude test and generated sources from quality analysis.
+# The 657 `no-explicit-any` hits are intentional `as any` casts in test mocks
+# (e.g. `{ disk_type: "SATA" } as any`) to avoid building full DTO factories.
+# Our frontend eslint.config.js intentionally does not enable
+# `@typescript-eslint/no-explicit-any` (uses @babel/eslint-parser for TS 7.0
+# compatibility) and test `as any` is accepted. Excluding tests keeps PR
+# annotations focused on shippable code.
+exclude:
+  - frontend/src/**/__tests__/**
+  - frontend/src/**/*.test.ts
+  - frontend/src/**/*.test.tsx
+  - frontend/test/**
+  - frontend/src/mocks/**
+  - frontend/src/store/sratApi.ts
+  - backend/src/vendor/**
+  - backend/docs/**
