@@ -12,7 +12,7 @@ type MountPointData struct {
 	CustomFlags        *MountFlags         `json:"custom_flags,omitempty"`
 	DeviceId           string              `json:"device_id,omitempty" read-only:"true"` // Source Device source of the filesystem (e.g. /dev/sda1).
 	Partition          *Partition          `json:"-"`                                    // Partition object ephemeral - excluded from JSON to prevent circular references
-	IsMounted          bool                `json:"is_mounted,omitempty" read-only:"true"`
+	IsMounted          bool                `json:"is_mounted" read-only:"true"`
 	IsInvalid          bool                `json:"invalid,omitempty" read-only:"true"`
 	IsToMountAtStartup *bool               `json:"is_to_mount_at_startup,omitempty"`              // If true, mount point should be mounted at startup.
 	IsWriteSupported   *bool               `json:"is_write_supported,omitempty" read-only:"true"` // If true, write operations are supported on this mount point.

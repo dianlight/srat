@@ -92,6 +92,7 @@ function MountShareWizardInner({
         mountPointData = (await mountVolume({
           mountPointData: {
             device_id: partition.id,
+            is_mounted: false,
             path: mountPath,
             root: "/",
             type: Type.Addon,

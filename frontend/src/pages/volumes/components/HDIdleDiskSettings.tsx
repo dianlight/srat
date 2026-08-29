@@ -142,7 +142,8 @@ export function HDIdleDiskSettings({
       device_path: `/dev/disk/by-id/${diskId}`,
       enabled: values.enabled as Enabled,
       idle_time: secondsToNanos(Number(values.idle_time ?? 0)),
-      command_type: values.command_type || undefined,
+      command_type:
+        (values.command_type as Command_type) ?? ("scsi" as Command_type),
       power_condition: Number(values.power_condition ?? 0),
       force_enabled: disk.hdidle_device?.force_enabled ?? false,
       suggestion_ignored: false,
