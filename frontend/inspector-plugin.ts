@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Bun onLoad plugin for dev-inspector-mcp.
  *

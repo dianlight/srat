@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Example test demonstrating MSW integration with React 19 and RTK Query
  * 

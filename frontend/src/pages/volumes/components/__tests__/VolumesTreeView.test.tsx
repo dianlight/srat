@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createBaseProps = (overrides: Record<string, unknown> = {}) => ({

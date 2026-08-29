@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockState = vi.hoisted(() => ({

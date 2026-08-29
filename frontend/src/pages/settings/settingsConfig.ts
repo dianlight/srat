@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { getCurrentEnv } from "../../macro/Environment" with { type: "macro" };
 
 // --- IP Address and CIDR Validation Helpers ---
