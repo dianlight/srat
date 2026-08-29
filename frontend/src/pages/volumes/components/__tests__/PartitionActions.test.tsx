@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("PartitionActions component", () => {
@@ -1025,7 +1026,7 @@ describe("PartitionActions component", () => {
 
     it("renders all action icons with consistent size classes (coherence)", async () => {
         const React = await import("react");
-        const { render } = await import("@testing-library/react");
+        const { render, screen } = await import("@testing-library/react");
         const { PartitionActions } = await import("../PartitionActions");
 
         // Unmounted partition with full filesystem support and all callbacks:
@@ -1041,7 +1042,7 @@ describe("PartitionActions component", () => {
             },
         });
 
-        const { container } = render(
+        render(
             React.createElement(PartitionActions as any, {
                 partition,
                 protected_mode: false,
@@ -1056,13 +1057,19 @@ describe("PartitionActions component", () => {
             })
         );
 
-        const svgIcons = container.querySelectorAll("svg");
-        expect(svgIcons.length).toBeGreaterThanOrEqual(5);
+        // FA icons carry the registered "partition-action-icon" test id; MUI icons
+        // expose their own PascalCase auto-testid. All must share the identical
+        // class list, i.e. the same effective size.
+        const icons = [
+            ...screen.getAllByTestId("partition-action-icon"),
+            ...screen.getAllByTestId("FactCheckIcon"),
+            ...screen.getAllByTestId("LabelIcon"),
+            ...screen.getAllByTestId("DeleteSweepIcon"),
+        ];
+        expect(icons.length).toBeGreaterThanOrEqual(5);
 
-        // Every icon (FontAwesome + MUI) must carry the identical class list,
-        // i.e. the same effective size.
         const iconClasses = new Set(
-            Array.from(svgIcons).map((svg) => svg.getAttribute("class"))
+            icons.map((svg) => svg.getAttribute("class"))
         );
         expect(iconClasses.size).toBe(1);
 

@@ -86,7 +86,7 @@ export const HDIdleSuggestionBadge: React.FC<HDIdleSuggestionBadgeProps> = ({
         borderRadius: 1,
         bgcolor: "action.hover",
       }}
-      data-testid="hdidle-suggestion-badge"
+      data-testid="dashboard-hdidle-suggestion-badge"
     >
       <Typography variant="caption" sx={{ color: "text.secondary" }}>
         Enable HDIdle?

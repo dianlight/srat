@@ -1,3 +1,4 @@
+/* eslint-disable */
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";

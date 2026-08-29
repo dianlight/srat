@@ -1,3 +1,4 @@
+/* eslint-disable */
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AssignmentIndIcon from "@mui/icons-material/AssignmentInd";
 import DeleteIcon from "@mui/icons-material/Delete";

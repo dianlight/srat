@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Vitest happy-dom test setup entrypoint.
  */

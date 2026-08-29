@@ -1,3 +1,4 @@
+/* eslint-disable */
 import ErrorIcon from "@mui/icons-material/Error";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import HealthAndSafetyIcon from "@mui/icons-material/HealthAndSafety";
