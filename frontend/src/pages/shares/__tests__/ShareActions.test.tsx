@@ -29,6 +29,7 @@ describe("ShareActions component", () => {
         mount_point_data: {
             path_hash: "hash",
             invalid: false,
+            is_mounted: true,
             path: "/mnt/test",
             type: Type.Host,
         },
@@ -116,6 +117,7 @@ describe("ShareActions component", () => {
             mount_point_data: {
                 path_hash: "hash",
                 invalid: true,
+                is_mounted: false,
                 invalid_error: "legacy volume no longer mounted",
                 path: "",
                 type: Type.Host,
@@ -188,6 +190,7 @@ describe("ShareActions component", () => {
             mount_point_data: {
                 path_hash: "hash",
                 invalid: false,
+                is_mounted: true,
                 path: "/mnt/test",
                 type: Type.Host,
             },
