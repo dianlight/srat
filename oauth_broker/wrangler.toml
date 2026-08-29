@@ -3,7 +3,13 @@ main = "src/index.ts"
 compatibility_date = "2025-12-01"
 compatibility_flags = ["nodejs_compat"]
 
-# KV namespace for session_id → {provider, callback, token_json, account_label}
+# D1 database for atomic single-use sessions (preferred over KV).
+# Create with: wrangler d1 create srat-oauth-broker --env staging
+#              wrangler d1 create srat-oauth-broker --env production
+# Then paste database_id below and run: wrangler d1 migrations apply srat-oauth-broker --env staging|production
+# Migration file: oauth_broker/migrations/0001_create_sessions.sql
+#
+# KV namespace kept as fallback (eventually consistent, non-atomic consume).
 # Create with: wrangler kv namespace create "OAUTH_SESSIONS" [--env staging|production]
 # Then paste the IDs below per environment.
 
@@ -17,13 +23,22 @@ vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.lucio-tarantino.
 kv_namespaces = [
   { binding = "OAUTH_SESSIONS", id = "f8b827aa57414209bc24c230905c0037" },
 ]
+# D1 — preferred (atomic DELETE ... RETURNING). Requires database_id after `wrangler d1 create`.
+[[env.staging.d1_databases]]
+binding = "OAUTH_SESSIONS_DB"
+database_name = "srat-oauth-broker-staging"
+database_id = "5c07d44a-29eb-4988-b75e-16ef1bdeceab"
 
 
 [env.production]
-vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
 kv_namespaces = [
   { binding = "OAUTH_SESSIONS", id = "64340357ce71418daf0e6c41ddfafea7" },
 ]
+[[env.production.d1_databases]]
+binding = "OAUTH_SESSIONS_DB"
+database_name = "srat-oauth-broker"
+database_id = "c9ce34bc-c254-45ef-8278-5e626d77147e"
 
 # Secrets (never commit):
 # wrangler secret put BROKER_API_TOKEN --env staging|production

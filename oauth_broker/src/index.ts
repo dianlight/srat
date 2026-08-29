@@ -1,5 +1,6 @@
 import { createBrokerApp } from "./app.js";
-import { KVSessionStore, MemorySessionStore } from "./session.js";
+import { D1SessionStore, KVSessionStore, MemorySessionStore } from "./session.js";
+import type { D1DatabaseLike } from "./session.js";
 
 type Env = Record<string, string | undefined> & {
   OAUTH_SESSIONS?: {
@@ -7,6 +8,7 @@ type Env = Record<string, string | undefined> & {
     put(key: string, value: string, opts?: { expirationTtl?: number }): Promise<void>;
     delete(key: string): Promise<void>;
   };
+  OAUTH_SESSIONS_DB?: D1DatabaseLike;
 };
 
 // Module-scoped memory store reused across requests when KV is absent (local dev / tests).
@@ -14,8 +16,13 @@ type Env = Record<string, string | undefined> & {
 const workerMemoryStore = new MemorySessionStore();
 
 // For Cloudflare Workers: `wrangler dev` / deploy uses `fetch` export
+// Precedence: D1 (atomic) > KV (eventually consistent) > memory (local dev/tests).
 const workerApp = (env: Env) => {
-  const store = env.OAUTH_SESSIONS ? new KVSessionStore(env.OAUTH_SESSIONS) : workerMemoryStore;
+  const store = env.OAUTH_SESSIONS_DB
+    ? new D1SessionStore(env.OAUTH_SESSIONS_DB)
+    : env.OAUTH_SESSIONS
+      ? new KVSessionStore(env.OAUTH_SESSIONS)
+      : workerMemoryStore;
   return createBrokerApp({ store, env });
 };
 

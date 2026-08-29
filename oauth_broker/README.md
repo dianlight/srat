@@ -125,7 +125,13 @@ Workflow: `.github/workflows/oauth-broker.yaml`
 ### Cloudflare Workers
 
 ```sh
-# One-time setup per env (staging / production)
+# One-time setup per env (staging / production) — D1 (preferred, atomic)
+wrangler d1 create srat-oauth-broker-staging --env staging
+wrangler d1 create srat-oauth-broker --env production
+# Paste database_id into oauth_broker/wrangler.toml [[env.*.d1_databases]] and run:
+wrangler d1 migrations apply srat-oauth-broker --env staging
+wrangler d1 migrations apply srat-oauth-broker --env production
+# Legacy KV (fallback, kept for zero-downtime migration):
 wrangler kv namespace create OAUTH_SESSIONS --env staging
 wrangler kv namespace create OAUTH_SESSIONS --env production
 # Paste IDs into oauth_broker/wrangler.toml kv_namespaces
@@ -145,17 +151,14 @@ wrangler secret put BROKER_PROVIDERS_JSON --env staging
 mise run //oauth_broker:deploy:worker   # or npx wrangler deploy --env staging|production --cwd oauth_broker
 ```
 
-`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`. KV binding
-`OAUTH_SESSIONS` uses `expirationTtl = SESSION_TTL` seconds (minimum 60 s);
-single-use consumption is atomic via `SessionStore.consume()` — only one
-concurrent `GET /v1/session/{id}` receives the token.
+`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`. `OAUTH_SESSIONS_DB` (D1) is preferred: `sessions` table (`oauth_broker/migrations/0001_create_sessions.sql`) with atomic `DELETE ... RETURNING` in `D1SessionStore.consume()`; `OAUTH_SESSIONS` (KV) remains as fallback (eventually consistent, best-effort consume). Both use `expirationTtl`/`expires_at = SESSION_TTL` seconds (minimum 60 s); only one concurrent `GET /v1/session/{id}` receives the token when D1 is bound.
 
 ### Render
 
-`oauth_broker/render.yaml` defines the free web service:
+`oauth_broker/render.yaml` defines the free web service (per <https://bun.com/guides/deployment/render> — Render's `Node` runtime includes Bun):
 
-- `buildCommand: bun install && bun tsc --noEmit`
-- `startCommand: bun run src/index.ts`
+- `buildCommand: bun install` (type-check runs in CI via `mise run //oauth_broker:test:ci`, not at Render build)
+- `startCommand: bun src/index.ts` (Bun transpiles TS at start)
 - `healthCheckPath: /v1/healthz`
 - `envVars: PORT=10000`, `BROKER_PUBLIC_URL`, `BROKER_API_TOKEN`, `DROPBOX_*`, optionally `BROKER_PROVIDERS_JSON`
 
@@ -166,16 +169,14 @@ Connect the GitHub repo to Render, then create **two services** (staging + produ
 - `BROKER_STAGING_URL` / `BROKER_PRODUCTION_URL` (e.g. `https://srat-oauth-broker-staging.onrender.com`)
   → healthz smoke.
 
-The same Hono code runs on both: Workers uses KV (`OAUTH_SESSIONS` binding) when
-present, otherwise falls back to `MemorySessionStore` (Render / local). No code
-change is needed per platform.
+The same Hono code runs on both: Workers prefers D1 (`OAUTH_SESSIONS_DB`), otherwise KV (`OAUTH_SESSIONS`) when present, otherwise falls back to `MemorySessionStore` (Render / local). No code change is needed per platform.
 
 ## Dropbox app registration
 
 The Dropbox app's `redirect_uri` **must** be `{BROKER_PUBLIC_URL}/v1/callback`:
 
 - Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback` (and/or staging Render URL)
-- Production: `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback` (and/or prod Render URL)
+- Production: `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback` (and/or prod Render URL)
 
 Create two Dropbox apps (or one with both URIs) at <https://www.dropbox.com/developers/apps>.
 Use the app key/secret as `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` (or in providers JSON).
@@ -190,7 +191,7 @@ Both use Google Cloud OAuth 2.0. Register a project at <https://console.cloud.go
 4. Application type: **Web application**
 5. Authorized redirect URIs: add `{BROKER_PUBLIC_URL}/v1/callback` for each environment
    - Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
-   - Production: `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback`
+   - Production: `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
 6. Copy **Client ID** and **Client Secret**
 
 **Google Photos specifics:**
@@ -265,6 +266,8 @@ wizard option becomes available when `broker_available` is true (`GET /rclone/pr
   (librclone needs it bound to refresh token); never shipped in the binary.
 - Sessions expire after `SESSION_TTL`, consumed on first fetch; early polling cannot
   destroy an in-flight flow.
-- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev).
+- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev). No allowlist is enforced: SRAT instances have arbitrary domains, so any `https:` callback is accepted. If `BROKER_API_TOKEN` leaks, an attacker could call `POST /v1/start` with an attacker-controlled `srat_callback_url` and have the victim browser 302'd there after provider consent (token itself stays single-use in the broker). Mitigate by rotating `BROKER_API_TOKEN` per environment, keeping it only in `wrangler secret` / Render env / GitHub `BROKER_API_TOKEN` secrets, and fronting the broker with an IP allowlist if needed. See `docs/CLOUD_STORAGE_OAUTH.md` trade-off note.
+- `BROKER_PUBLIC_URL` validated as absolute `https` (loopback `http` allowed for dev); misconfigured `http://` outside loopback now returns `500 BROKER_PUBLIC_URL must be an absolute https URL` instead of a later opaque `502 redirect_uri_mismatch` from the provider.
 - Bearer auth uses `crypto.timingSafeEqual` over SHA-256 digests (fixed-length, non-ASCII safe) constant-time compare; missing `BROKER_API_TOKEN` fails closed unless `BROKER_DISABLE_AUTH=true`.
 - Provider `client_secret` never committed; supply via `wrangler secret put` / Render env / GitHub secrets per environment.
+- Session store precedence: `OAUTH_SESSIONS_DB` (D1, atomic `DELETE ... RETURNING`) > `OAUTH_SESSIONS` (KV, eventually consistent, non-atomic consume) > `MemorySessionStore`. Use D1 in production for single-use guarantee.

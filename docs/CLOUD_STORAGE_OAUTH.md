@@ -41,7 +41,7 @@ Dropbox **does not provide** a shared client ID. Every integration must register
 3. Name your app (e.g., "SRAT Staging", "SRAT Production")
 4. **Redirect URI**: `{BROKER_PUBLIC_URL}/v1/callback`
    - Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
-   - Production: `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback`
+   - Production: `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
 5. Copy **App key** → `DROPBOX_CLIENT_ID`
 6. Copy **App secret** → `DROPBOX_CLIENT_SECRET`
 
@@ -75,8 +75,8 @@ For production SRAT deployments, register your own Google Cloud project.
    - Application type: **Web application**
    - Name: "SRAT OAuth Broker"
    - **Authorized redirect URIs**:
-     - `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
-     - `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback`
+      - `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
+      - `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
 6. Copy **Client ID** and **Client Secret**
 
 ### Scopes
@@ -129,7 +129,7 @@ Microsoft provides a shared default client ID in rclone, but it's:
 3. Supported account types: **Accounts in any organizational directory and personal Microsoft accounts**
 4. **Redirect URI** (Web): `{BROKER_PUBLIC_URL}/v1/callback`
    - Staging: `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
-   - Production: `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback`
+   - Production: `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
 5. **Certificates & secrets** → **New client secret** → copy value immediately
 6. **API permissions** → **Add a permission** → **Microsoft Graph** → **Delegated permissions**:
    - `Files.ReadWrite.All`
@@ -186,7 +186,7 @@ iCloud **does not use OAuth**. It uses Apple's **CloudKit** framework with **app
 | Local Dev (Workers) | `http://localhost:8787/v1/callback` (wrangler dev) |
 | Staging (Workers) | `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback` |
 | Staging (Render) | `https://srat-oauth-broker-staging.onrender.com/v1/callback` |
-| Production (Workers) | `https://srat-oauth-broker.lucio-tarantino.workers.dev/v1/callback` |
+| Production (Workers) | `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback` |
 | Production (Render) | `https://srat-oauth-broker.onrender.com/v1/callback` |
 
 **Add all applicable URIs** to each provider's app registration.

@@ -43,6 +43,31 @@ export function getBrokerPublicUrl(env: Record<string, string | undefined>): str
   return raw;
 }
 
+function isLoopbackBrokerUrl(url: URL): boolean {
+  if (url.protocol !== "http:") return false;
+  const host = url.hostname.toLowerCase();
+  return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+}
+
+export function isValidBrokerPublicUrl(raw: string): boolean {
+  if (!raw) return false;
+  try {
+    const u = new URL(raw);
+    if (u.protocol === "https:") return true;
+    if (isLoopbackBrokerUrl(u)) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function getBrokerPublicUrlOrThrow(env: Record<string, string | undefined>): string {
+  const raw = getBrokerPublicUrl(env);
+  if (!raw) throw new Error("BROKER_PUBLIC_URL is not configured");
+  if (!isValidBrokerPublicUrl(raw)) throw new Error("BROKER_PUBLIC_URL must be an absolute https URL (loopback http allowed for dev)");
+  return raw;
+}
+
 export function loadProvidersConfig(env: Record<string, string | undefined>): ProvidersConfig {
   const cfg: ProvidersConfig = {};
 
