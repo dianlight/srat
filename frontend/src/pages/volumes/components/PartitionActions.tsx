@@ -64,7 +64,6 @@ export function PartitionActions({
 
   const handleMenuClose = (
     e?: React.MouseEvent<HTMLElement> | Record<string, never>,
-    _reason?: "backdropClick" | "escapeKeyDown",
   ) => {
     (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
     setAnchorEl(null);
