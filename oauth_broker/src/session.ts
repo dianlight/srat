@@ -91,8 +91,74 @@ export class KVSessionStore implements SessionStore {
     }
     // Best-effort atomic: delete immediately after read; KV is eventually consistent
     // but this ensures single-use within a single isolate. For true atomicity across
-    // isolates, KV conditional writes would be needed (not yet available in KV API).
+    // isolates, use D1SessionStore (D1 DELETE ... RETURNING is atomic).
     await this.kv.delete(id);
     return parsed;
+  }
+}
+
+/** D1-backed store for Cloudflare Workers — atomic single-use via DELETE ... RETURNING. */
+export type D1DatabaseLike = {
+  prepare(query: string): {
+    bind(...values: unknown[]): {
+      first<T = unknown>(col?: string): Promise<T | null>;
+      run(): Promise<{ success: boolean; meta?: unknown; results?: unknown }>;
+      all<T = unknown>(): Promise<{ results: T[] }>;
+    };
+  };
+  batch?(statements: unknown[]): Promise<unknown[]>;
+};
+
+export class D1SessionStore implements SessionStore {
+  constructor(private db: D1DatabaseLike) {}
+
+  private nowSec(): number {
+    return Math.floor(Date.now() / 1000);
+  }
+
+  async get(id: string): Promise<SessionRecord | null> {
+    const row = await this.db
+      .prepare("SELECT data, expires_at FROM sessions WHERE id = ?")
+      .bind(id)
+      .first<{ data: string; expires_at: number }>();
+    if (!row) return null;
+    if (row.expires_at <= this.nowSec()) {
+      // Lazily prune expired row (best-effort).
+      await this.db.prepare("DELETE FROM sessions WHERE id = ?").bind(id).run();
+      return null;
+    }
+    try {
+      return JSON.parse(row.data) as SessionRecord;
+    } catch {
+      return null;
+    }
+  }
+
+  async set(id: string, data: SessionRecord, ttlSeconds: number): Promise<void> {
+    const expiresAt = this.nowSec() + ttlSeconds;
+    const json = JSON.stringify(data);
+    await this.db
+      .prepare("INSERT OR REPLACE INTO sessions (id, data, expires_at) VALUES (?, ?, ?)")
+      .bind(id, json, expiresAt)
+      .run();
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.db.prepare("DELETE FROM sessions WHERE id = ?").bind(id).run();
+  }
+
+  async consume(id: string): Promise<SessionRecord | null> {
+    // Atomic: only one isolate can DELETE ... RETURNING the row when expires_at > now.
+    const now = this.nowSec();
+    const row = await this.db
+      .prepare("DELETE FROM sessions WHERE id = ? AND expires_at > ? RETURNING data as data")
+      .bind(id, now)
+      .first<{ data: string }>();
+    if (!row?.data) return null;
+    try {
+      return JSON.parse(row.data) as SessionRecord;
+    } catch {
+      return null;
+    }
   }
 }

@@ -4,8 +4,8 @@ services:
     env: node
     plan: free
     rootDir: oauth_broker
-    buildCommand: bun install && bun tsc --noEmit
-    startCommand: bun run src/index.ts
+    buildCommand: bun install
+    startCommand: bun src/index.ts
     envVars:
       - key: PORT
         value: 10000

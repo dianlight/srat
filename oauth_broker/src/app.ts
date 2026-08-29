@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createHash, timingSafeEqual } from "node:crypto";
-import { getBrokerPublicUrl, getProviderOrThrow, getSessionTtlSeconds, loadProvidersConfig } from "./config.js";
+import { getBrokerPublicUrlOrThrow, getProviderOrThrow, getSessionTtlSeconds, loadProvidersConfig } from "./config.js";
 import type { SessionStore } from "./session.js";
 import { MemorySessionStore } from "./session.js";
 
@@ -117,8 +117,12 @@ export function createBrokerApp(opts?: {
       return c.json({ error: (e as Error).message }, 400);
     }
 
-    const publicUrl = getBrokerPublicUrl(env);
-    if (!publicUrl) return c.json({ error: "BROKER_PUBLIC_URL is not configured" }, 500);
+    let publicUrl: string;
+    try {
+      publicUrl = getBrokerPublicUrlOrThrow(env);
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 500);
+    }
     const redirectUri = `${publicUrl}/v1/callback`;
 
     const sessionId = crypto.randomUUID();
@@ -168,8 +172,13 @@ export function createBrokerApp(opts?: {
       return c.json({ error: (e as Error).message }, 400);
     }
 
-    const publicUrl = getBrokerPublicUrl(env);
-    const redirectUri = `${publicUrl}/v1/callback`;
+    let publicUrl2: string;
+    try {
+      publicUrl2 = getBrokerPublicUrlOrThrow(env);
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 500);
+    }
+    const redirectUri = `${publicUrl2}/v1/callback`;
 
     // Exchange code with provider token URL
     const form = new URLSearchParams({
