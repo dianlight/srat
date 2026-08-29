@@ -17,12 +17,24 @@ type AppEnv = {
   Variables: Record<string, never>;
 };
 
+/**
+ * Determines whether a URL uses HTTP and targets a loopback host.
+ *
+ * @param url - The URL to check
+ * @returns `true` if the URL uses HTTP and targets localhost or a loopback address, `false` otherwise.
+ */
 function isLoopbackHttp(url: URL): boolean {
   if (url.protocol !== "http:") return false;
   const host = url.hostname.toLowerCase();
   return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
 }
 
+/**
+ * Determines whether an SRAT callback URL is valid.
+ *
+ * @param raw - The callback URL to validate
+ * @returns `true` if `raw` is an absolute HTTPS URL or a loopback HTTP URL, `false` otherwise
+ */
 export function isValidSratCallbackUrl(raw: string): boolean {
   try {
     const u = new URL(raw);
@@ -34,18 +46,37 @@ export function isValidSratCallbackUrl(raw: string): boolean {
   }
 }
 
+/**
+ * Extracts a bearer token from an authorization header.
+ *
+ * @param authHeader - The authorization header value, or `null` when absent
+ * @returns The trimmed bearer token, or an empty string when the header does not contain one
+ */
 function bearerTokenFromHeader(authHeader: string | null): string {
   if (!authHeader) return "";
   const m = authHeader.match(/^Bearer\s+(.+)$/i);
   return m ? m[1].trim() : "";
 }
 
+/**
+ * Compares two strings using timing-safe equality.
+ *
+ * @param a - The first string to compare
+ * @param b - The second string to compare
+ * @returns `true` if the strings are equal, `false` otherwise.
+ */
 function constantTimeEqual(a: string, b: string): boolean {
   const da = createHash("sha256").update(a, "utf8").digest();
   const db = createHash("sha256").update(b, "utf8").digest();
   return timingSafeEqual(da, db);
 }
 
+/**
+ * Creates a Hono application that brokers OAuth authorization flows.
+ *
+ * @param opts - Optional session store, environment overrides, and token-exchange fetch implementation.
+ * @returns The configured OAuth broker application.
+ */
 export function createBrokerApp(opts?: {
   store?: SessionStore;
   env?: Record<string, string | undefined>;
