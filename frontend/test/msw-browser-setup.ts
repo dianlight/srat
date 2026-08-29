@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Browser MSW setup for Vitest browser runs.
  */

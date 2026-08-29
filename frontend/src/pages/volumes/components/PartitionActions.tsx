@@ -64,7 +64,6 @@ export function PartitionActions({
 
   const handleMenuClose = (
     e?: React.MouseEvent<HTMLElement> | Record<string, never>,
-    _reason?: "backdropClick" | "escapeKeyDown",
   ) => {
     (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
     setAnchorEl(null);
@@ -87,16 +86,40 @@ export function PartitionActions({
   }
 
   const actionIcons: Record<PartitionActionKey, ReactElement | null> = {
-    mount: <FontAwesomeSvgIcon icon={faPlug} fontSize="small" />,
+    mount: (
+      <FontAwesomeSvgIcon
+        icon={faPlug}
+        fontSize="small"
+        data-testid="partition-action-icon"
+      />
+    ),
     "enable-automount": (
-      <FontAwesomeSvgIcon icon={faPlugCircleBolt} fontSize="small" />
+      <FontAwesomeSvgIcon
+        icon={faPlugCircleBolt}
+        fontSize="small"
+        data-testid="partition-action-icon"
+      />
     ),
     "disable-automount": (
-      <FontAwesomeSvgIcon icon={faPlugCircleXmark} fontSize="small" />
+      <FontAwesomeSvgIcon
+        icon={faPlugCircleXmark}
+        fontSize="small"
+        data-testid="partition-action-icon"
+      />
     ),
-    unmount: <FontAwesomeSvgIcon icon={faPlugCircleMinus} fontSize="small" />,
+    unmount: (
+      <FontAwesomeSvgIcon
+        icon={faPlugCircleMinus}
+        fontSize="small"
+        data-testid="partition-action-icon"
+      />
+    ),
     "force-unmount": (
-      <FontAwesomeSvgIcon icon={faPlugCircleExclamation} fontSize="small" />
+      <FontAwesomeSvgIcon
+        icon={faPlugCircleExclamation}
+        fontSize="small"
+        data-testid="partition-action-icon"
+      />
     ),
     "create-share": <AddIcon fontSize="small" />,
     "go-to-share": <ShareIcon fontSize="small" />,

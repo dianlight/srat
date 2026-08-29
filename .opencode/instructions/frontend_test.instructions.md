@@ -100,6 +100,19 @@ describe("MyComponent", () => {
   });
 });
 ````
+
+## **7. Test IDs (data-testid Registry)**
+
+- Every `data-testid` value and every `*ByTestId(...)` literal must be
+  registered in `frontend/src/testIds.ts` — enforced by the custom ESLint
+  rule `srat/registered-test-id` (error level, see `frontend/eslint.config.js`).
+- Register an id **before** using it; renaming or removing a registry entry
+  surfaces as a lint error in the tests that reference it.
+- Ids must be **kebab-case** (`page-component-element`).
+- Exemptions (do not register): library-generated PascalCase ids (MUI icon
+  auto-testids) and throwaway `mock-*` fixture ids used by test mock renderers.
+- The registry is parsed textually by the lint plugin, so keep entries plain
+  kebab-case string literals.
 <userPrompt>
 Provide the fully rewritten file, incorporating the suggested code change. You must produce the complete file.
 </userPrompt>

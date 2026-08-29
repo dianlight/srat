@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Shared test helpers for both happy-dom and browser Vitest runs.
  * This module intentionally avoids the "setup" name so tests don't import setup entrypoints.

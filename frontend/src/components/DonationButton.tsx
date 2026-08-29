@@ -75,7 +75,7 @@ export function DonationButton() {
         aria-haspopup="true"
         aria-expanded={open ? "true" : undefined}
         aria-label="Support this project"
-        data-testid="donation-button"
+        data-testid="footer-donation-button"
       >
         <Tooltip title="Support this project" arrow>
           <VolunteerActivismIcon sx={{ color: "white" }} />

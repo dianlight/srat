@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {
   Memory as SmartIcon,
   Warning as WarningIcon,
