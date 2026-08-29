@@ -9,9 +9,13 @@ type Env = Record<string, string | undefined> & {
   };
 };
 
+// Module-scoped memory store reused across requests when KV is absent (local dev / tests).
+// Prevents per-request MemorySessionStore that would lose sessions between /v1/start and /v1/callback.
+const workerMemoryStore = new MemorySessionStore();
+
 // For Cloudflare Workers: `wrangler dev` / deploy uses `fetch` export
 const workerApp = (env: Env) => {
-  const store = env.OAUTH_SESSIONS ? new KVSessionStore(env.OAUTH_SESSIONS) : new MemorySessionStore();
+  const store = env.OAUTH_SESSIONS ? new KVSessionStore(env.OAUTH_SESSIONS) : workerMemoryStore;
   return createBrokerApp({ store, env });
 };
 

@@ -16,7 +16,7 @@ on:
     types: ["published"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   setversion:
@@ -213,6 +213,8 @@ jobs:
     needs: [setversion, test-oauth-broker]
     if: github.event_name != 'pull_request'
     environment: ${{ contains(needs.setversion.outputs.version, '-dev') && 'broker-staging' || contains(needs.setversion.outputs.version, '-rc') && 'broker-staging' || 'broker-production' }}
+    permissions:
+      contents: read
     env:
       BROKER_VERSION: ${{ needs.setversion.outputs.version }}
     steps:
@@ -265,14 +267,17 @@ jobs:
           ENV="${{ steps.envselect.outputs.deploy_env }}"
           echo "Deploying broker $BROKER_VERSION to Workers env=$ENV"
           if [ -n "${BROKER_API_TOKEN:-}" ]; then
-            echo "$BROKER_API_TOKEN" | npx wrangler secret put BROKER_API_TOKEN --env "$ENV" --cwd oauth_broker || true
+            echo "$BROKER_API_TOKEN" | npx wrangler secret put BROKER_API_TOKEN --env "$ENV" --cwd oauth_broker
           fi
-          if [ -n "${DROPBOX_CLIENT_ID:-}" ]; then
-            echo "$DROPBOX_CLIENT_ID" | npx wrangler secret put DROPBOX_CLIENT_ID --env "$ENV" --cwd oauth_broker || true
-            echo "$DROPBOX_CLIENT_SECRET" | npx wrangler secret put DROPBOX_CLIENT_SECRET --env "$ENV" --cwd oauth_broker || true
+          if [ -n "${DROPBOX_CLIENT_ID:-}" ] && [ -n "${DROPBOX_CLIENT_SECRET:-}" ]; then
+            echo "$DROPBOX_CLIENT_ID" | npx wrangler secret put DROPBOX_CLIENT_ID --env "$ENV" --cwd oauth_broker
+            echo "$DROPBOX_CLIENT_SECRET" | npx wrangler secret put DROPBOX_CLIENT_SECRET --env "$ENV" --cwd oauth_broker
+          elif [ -n "${DROPBOX_CLIENT_ID:-}" ] || [ -n "${DROPBOX_CLIENT_SECRET:-}" ]; then
+            echo "❌ DROPBOX_CLIENT_ID and DROPBOX_CLIENT_SECRET must both be set"
+            exit 1
           fi
           if [ -n "${BROKER_PROVIDERS_JSON:-}" ]; then
-            echo "$BROKER_PROVIDERS_JSON" | npx wrangler secret put BROKER_PROVIDERS_JSON --env "$ENV" --cwd oauth_broker || true
+            echo "$BROKER_PROVIDERS_JSON" | npx wrangler secret put BROKER_PROVIDERS_JSON --env "$ENV" --cwd oauth_broker
           fi
           npx wrangler deploy --env "$ENV" --cwd oauth_broker
 

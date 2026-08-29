@@ -125,7 +125,7 @@ describe("contract: SRAT Go client compatibility (broker_test.go)", () => {
     });
     expect(bad.status).toBe(401);
 
-    const noTokenEnv = testEnv({ BROKER_API_TOKEN: "" });
+    const noTokenEnv = testEnv({ BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true" });
     const { app: appNoToken } = createTestApp(noTokenEnv, { store: new MemorySessionStore() });
     const devOk = await appNoToken.request("/v1/start", {
       method: "POST",
@@ -133,6 +133,16 @@ describe("contract: SRAT Go client compatibility (broker_test.go)", () => {
       body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb" }),
     });
     expect(devOk.status).toBe(200);
+
+    const failClosedEnv = testEnv({ BROKER_API_TOKEN: "" });
+    delete (failClosedEnv as Record<string, string | undefined>).BROKER_DISABLE_AUTH;
+    const { app: appFailClosed } = createTestApp(failClosedEnv, { store: new MemorySessionStore() });
+    const devFail = await appFailClosed.request("/v1/start", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb" }),
+    });
+    expect(devFail.status).toBe(401);
   });
 
   it("session id path escaping round-trips (a/b c)", async () => {

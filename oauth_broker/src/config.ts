@@ -10,6 +10,7 @@ export type BrokerEnv = {
   DROPBOX_CLIENT_SECRET?: string;
   SESSION_TTL?: string;
   PORT?: string;
+  BROKER_DISABLE_AUTH?: string;
 };
 
 /** Built-in provider defaults (only credentials required from config). */
@@ -25,11 +26,16 @@ export function getSessionTtlSeconds(env: Record<string, string | undefined>): n
   const raw = env.SESSION_TTL?.trim();
   if (!raw) return 600;
   // Accept "10m", "600", "600s"
-  if (/^\d+$/.test(raw)) return parseInt(raw, 10);
-  if (/^\d+m$/.test(raw)) return parseInt(raw.replace("m", ""), 10) * 60;
-  if (/^\d+s$/.test(raw)) return parseInt(raw.replace("s", ""), 10);
-  const n = parseInt(raw, 10);
-  return Number.isNaN(n) ? 600 : n;
+  let n: number;
+  if (/^\d+$/.test(raw)) n = parseInt(raw, 10);
+  else if (/^\d+m$/.test(raw)) n = parseInt(raw.replace("m", ""), 10) * 60;
+  else if (/^\d+s$/.test(raw)) n = parseInt(raw.replace("s", ""), 10);
+  else {
+    const parsed = parseInt(raw, 10);
+    n = Number.isNaN(parsed) ? 600 : parsed;
+  }
+  if (Number.isNaN(n) || n <= 0) return 60;
+  return Math.max(n, 60);
 }
 
 export function getBrokerPublicUrl(env: Record<string, string | undefined>): string {
@@ -85,8 +91,6 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
     if (cfg[name]) {
       const existing = cfg[name];
       cfg[name] = {
-        authorize_url: existing.authorize_url || defaults.authorize_url,
-        token_url: existing.token_url || defaults.token_url,
         ...existing,
         auth_params: { ...defaults.auth_params, ...existing.auth_params },
       };

@@ -32,7 +32,7 @@ See the full spec in GitHub issue #1002.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `BROKER_PUBLIC_URL` | yes | – | Externally reachable https base; used as `redirect_uri={BROKER_PUBLIC_URL}/v1/callback` |
-| `BROKER_API_TOKEN` | yes (prod) | – | Shared bearer secret SRAT presents; empty allows dev without auth |
+| `BROKER_API_TOKEN` | yes (prod) | – | Shared bearer secret SRAT presents; empty requires `BROKER_DISABLE_AUTH=true` for local dev, otherwise 401 |
 | `BROKER_PROVIDERS_FILE` | no | – | Path to JSON providers file (Node/Render) |
 | `BROKER_PROVIDERS_JSON` | no | – | Inline JSON providers (Workers secret/KV). Merged with file if both set; env shorthand wins |
 | `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` | no | – | Shorthand for built-in `dropbox`. Either these or an entry in providers JSON/file is required for `dropbox` |
@@ -115,7 +115,7 @@ job `deploy-oauth-broker` to **both** platforms.
 | `-rc.*` | `broker-staging` | `prerelease` | `staging` | staging |
 | final | `broker-production` | `production` | `production` | production |
 
-Workflow: `.github/workflows/build.yaml`
+Workflow: `.github/workflows/oauth-broker.yaml`
 
 - `test-oauth-broker` runs on every PR/push (`mise run //oauth_broker:test:ci`).
 - `test-e2e-broker-smoke` hits `BROKER_STAGING_URL/v1/healthz` + bearer smoke.
@@ -146,9 +146,9 @@ mise run //oauth_broker:deploy:worker   # or npx wrangler deploy --env staging|p
 ```
 
 `wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`. KV binding
-`OAUTH_SESSIONS` uses `expirationTtl = SESSION_TTL` seconds; single-use
-consumption does KV `delete` on first successful `GET /v1/session/{id}` (race
-acceptable at this scale; eventual consistency tolerable for single-writer short sessions).
+`OAUTH_SESSIONS` uses `expirationTtl = SESSION_TTL` seconds (minimum 60 s);
+single-use consumption is atomic via `SessionStore.consume()` — only one
+concurrent `GET /v1/session/{id}` receives the token.
 
 ### Render
 
@@ -260,10 +260,11 @@ wizard option becomes available when `broker_available` is true (`GET /rclone/pr
 
 ## Security notes
 
-- `client_secret` only leaves the broker inside the single-use `GET /v1/session/{id}`
-  handover (librclone needs it bound to refresh token); never shipped in binary.
+- `client_secret` is sent to the provider `token_url` during code exchange and
+  returned only inside the single-use `GET /v1/session/{id}` SRAT handover
+  (librclone needs it bound to refresh token); never shipped in the binary.
 - Sessions expire after `SESSION_TTL`, consumed on first fetch; early polling cannot
   destroy an in-flight flow.
 - `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev).
-- Bearer auth uses `crypto.timingSafeEqual` constant-time compare.
+- Bearer auth uses `crypto.timingSafeEqual` over SHA-256 digests (fixed-length, non-ASCII safe) constant-time compare; missing `BROKER_API_TOKEN` fails closed unless `BROKER_DISABLE_AUTH=true`.
 - Provider `client_secret` never committed; supply via `wrangler secret put` / Render env / GitHub secrets per environment.
