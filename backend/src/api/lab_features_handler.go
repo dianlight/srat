@@ -48,11 +48,12 @@ func (h *LabFeatureHandler) HandleGetLabFeatures(ctx context.Context, input *str
 		available := false
 		switch f.Status {
 		case service.StatusAlpha:
-			// Alpha features exist only in development/pre-release builds.
+			// Alpha features are omitted in production and otherwise gated
+			// by experimental_lab_mode, matching requireLabFeature enforcement.
 			if env == "production" {
 				continue
 			}
-			available = true
+			available = labMode
 		case service.StatusBeta:
 			available = labMode
 		}

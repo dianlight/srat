@@ -125,19 +125,29 @@ func (suite *LabFeatureHandlerSuite) TestProductionOmitsAlphaWithLabModeOff() {
 	suite.False(features["smb_conf"].Available)
 }
 
-// TestPrereleaseIncludesAlpha projects alpha features in non-production
-// builds and forces available=true (alpha availability is not
-// experimental_lab_mode-gated — the build tier is the only gate).
+// TestPrereleaseIncludesAlpha verifies alpha features are present in
+// non-production builds but their availability follows
+// experimental_lab_mode, matching requireLabFeature enforcement.
 func (suite *LabFeatureHandlerSuite) TestPrereleaseIncludesAlpha() {
 	config.Version = "1.0.0-rc.1"
 	suite.labMode(false)
 
 	features := suite.byKey(suite.fetch())
 	suite.Contains(features, "ha_custom_component")
-	suite.True(features["ha_custom_component"].Available)
+	suite.False(features["ha_custom_component"].Available, "alpha availability must follow lab mode even in prerelease")
 	suite.Equal("alpha", features["ha_custom_component"].Status)
 	suite.Equal("beta", features["hdidle"].Status)
 	suite.False(features["hdidle"].Available, "beta availability still follows lab mode")
+}
+
+func (suite *LabFeatureHandlerSuite) TestPrereleaseIncludesAlphaWithLabModeOn() {
+	config.Version = "1.0.0-rc.1"
+	suite.labMode(true)
+
+	features := suite.byKey(suite.fetch())
+	suite.Contains(features, "ha_custom_component")
+	suite.True(features["ha_custom_component"].Available, "alpha available when lab mode on in prerelease")
+	suite.True(features["hdidle"].Available)
 }
 
 // =============================================================================

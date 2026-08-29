@@ -193,36 +193,52 @@ export const wsApi = createApi({
               )?.[1];
 
               if (eventTypeEnum) {
-                const parsed = JSON.parse(data);
+                let parsed: unknown;
+                try {
+                  parsed = JSON.parse(data);
+                } catch (e) {
+                  console.error(
+                    "* Failed to parse WebSocket event data:",
+                    eventType,
+                    data,
+                    e,
+                  );
+                  return;
+                }
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
-                    draft[eventTypeEnum] = parsed;
+                    (draft as Record<string, unknown>)[eventTypeEnum] = parsed;
                   }
                 });
                 // Auto-invalidate RTK Query tags based on dirty tracking.
                 // This makes API-created users/shares visible without manual reload.
                 try {
+                  const p = parsed as {
+                    users?: boolean;
+                    shares?: boolean;
+                    dirty_tracking?: { users?: boolean; shares?: boolean };
+                  };
                   if (
                     eventTypeEnum === Supported_events.DirtyDataTracker &&
-                    parsed?.users
+                    p?.users
                   ) {
                     dispatch(sratApi.util.invalidateTags(["user"]));
                   }
                   if (
                     eventTypeEnum === Supported_events.Heartbeat &&
-                    parsed?.dirty_tracking?.users
+                    p?.dirty_tracking?.users
                   ) {
                     dispatch(sratApi.util.invalidateTags(["user"]));
                   }
                   if (
                     eventTypeEnum === Supported_events.DirtyDataTracker &&
-                    parsed?.shares
+                    p?.shares
                   ) {
                     dispatch(sratApi.util.invalidateTags(["share"]));
                   }
                   if (
                     eventTypeEnum === Supported_events.Heartbeat &&
-                    parsed?.dirty_tracking?.shares
+                    p?.dirty_tracking?.shares
                   ) {
                     dispatch(sratApi.util.invalidateTags(["share"]));
                   }
@@ -232,9 +248,21 @@ export const wsApi = createApi({
                 eventType === "command_output" ||
                 eventType === "command_terminated"
               ) {
+                let parsedCmd: unknown;
+                try {
+                  parsedCmd = JSON.parse(data);
+                } catch (e) {
+                  console.error(
+                    "* Failed to parse WebSocket command event data:",
+                    eventType,
+                    data,
+                    e,
+                  );
+                  return;
+                }
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
-                    draft[eventType] = JSON.parse(data);
+                    (draft as Record<string, unknown>)[eventType] = parsedCmd;
                   }
                 });
               } else {

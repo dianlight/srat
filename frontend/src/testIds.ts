@@ -19,6 +19,8 @@ export const testIds = {
     smartIcon: "disk-health-smart-icon",
   },
   volumes: {
+    // Intentionally shared across all FontAwesome partition action icons;
+    // consumers must use getAllByTestId (getByTestId throws on multiple matches).
     partitionActionIcon: "partition-action-icon",
     actionsGrid: "partition-actions-grid",
     partitionActionsRoot: "partition-actions-root",

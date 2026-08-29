@@ -161,18 +161,11 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
 	expectNoBroadcast("problem nil")
 
-	// 14. User event -> DataDirtyTracker{Users: true} broadcast
+	// 14. User event -> no direct broadcast; user dirty tracking is now
+	// handled exclusively via DirtyDataService → OnDirtyData (with timer
+	// debounce and dedup). Broadcaster no longer listens to OnUser directly.
 	eventBus.EmitUser(events.UserEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, User: &dto.User{Username: "alice"}})
-	payloadTimeout := time.After(250 * time.Millisecond)
-	select {
-	case msg := <-listener.Ch():
-		tracker, ok := msg.Message.(dto.DataDirtyTracker)
-		assert.True(t, ok, "user event should broadcast a DataDirtyTracker")
-		assert.True(t, tracker.Users, "user event should mark users dirty")
-		assert.False(t, tracker.Shares, "user event should not mark shares dirty")
-	case <-payloadTimeout:
-		t.Fatal("expected broadcast for user event")
-	}
+	expectNoBroadcast("user direct (now via DirtyDataService)")
 
 	_, _ = mock.Verify(shareService, matchers.Times(1)).ListShares()
 	mock.VerifyNoMoreInteractions(shareService)

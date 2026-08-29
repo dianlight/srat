@@ -85,6 +85,8 @@ export function PartitionActions({
     return null;
   }
 
+  // All FontAwesome partition action icons share the same test id
+  // intentionally; tests must query with getAllByTestId("partition-action-icon").
   const actionIcons: Record<PartitionActionKey, ReactElement | null> = {
     mount: (
       <FontAwesomeSvgIcon
