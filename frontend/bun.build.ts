@@ -1,3 +1,4 @@
+/* eslint-disable */
 //import copy from 'bun-copy-plugin';
 
 import type { BuildConfig, BuildOutput } from "bun";

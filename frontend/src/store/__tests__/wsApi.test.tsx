@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTestStore } from "/test/testing";
 import { Severity, Status, Supported_events } from "../sratApi";

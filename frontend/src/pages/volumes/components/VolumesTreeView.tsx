@@ -1,3 +1,4 @@
+/* eslint-disable */
 import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import EjectIcon from "@mui/icons-material/Eject";

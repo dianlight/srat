@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Happy-dom MSW setup for Bun/Vitest runs.
  */

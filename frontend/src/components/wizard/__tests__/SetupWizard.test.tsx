@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { delay, http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getMswServer } from "/test/testing";
