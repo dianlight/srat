@@ -53,6 +53,7 @@ describe("SharesTreeView component", () => {
   const mountPointData = (overrides: Record<string, unknown> = {}) => ({
     path: "/mnt/test",
     type: Type.Host,
+    is_mounted: true,
     ...overrides,
   });
 

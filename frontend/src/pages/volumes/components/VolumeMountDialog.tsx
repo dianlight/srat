@@ -214,12 +214,16 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
     });
     //console.debug("Form Data:", formData,custom_flags);
 
+    const existingMountData = Object.values(
+      props.objectToEdit.mount_point_data || {},
+    )[0] as MountPointData | undefined;
     const submitData: MountPointData = {
       path: formData.path,
       root: "/",
       fstype: formData.fstype || undefined,
       flags: formData.flags,
       custom_flags: custom_flags,
+      is_mounted: existingMountData?.is_mounted ?? false,
       //device: props.objectToEdit.device, // Ensure device name is included
       is_to_mount_at_startup: formData.is_to_mount_at_startup, // Include the switch value in submitted data
       type: Type.Addon,

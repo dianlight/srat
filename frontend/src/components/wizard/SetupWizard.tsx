@@ -407,6 +407,7 @@ export function SetupWizard({
             mountVolume({
               mountPointData: {
                 device_id: selectedPartition.id,
+                is_mounted: false,
                 path: mountPath,
                 root: "/",
                 type: Type.Addon,

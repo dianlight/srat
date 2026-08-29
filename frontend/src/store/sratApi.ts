@@ -1345,10 +1345,10 @@ export type CommandExecutionSnapshot = {
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  command_type?: Command_type;
+  command_type: Command_type;
   device_path?: string;
   disk_id?: string;
-  enabled?: Enabled;
+  enabled: Enabled;
   error_message?: string;
   force_enabled: boolean;
   idle_time: number;
@@ -1372,10 +1372,10 @@ export type JsonPatchOp = {
 export type HdIdleDeviceStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  last_io_at?: string;
+  last_io_at: string;
   name?: string;
-  spin_down_at?: string;
-  spin_up_at?: string;
+  spin_down_at: string;
+  spin_up_at: string;
   spun_down: boolean;
 };
 export type HdIdleDeviceSupport = {
@@ -1838,7 +1838,7 @@ export type RepairCommandMessage = {
   is_persistent: boolean;
   learn_more_url?: string;
   repair_id: string;
-  severity?: string;
+  severity: string;
   translation_key?: string;
   translation_placeholders?: {
     [key: string]: string;
@@ -1934,7 +1934,7 @@ export type MountPointData = {
   fstype?: string;
   invalid?: boolean;
   invalid_error?: string;
-  is_mounted?: boolean;
+  is_mounted: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
   path: string;
@@ -2004,7 +2004,7 @@ export type BinaryAsset = {
 export type ReleaseAsset = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  arch_asset?: BinaryAsset;
+  arch_asset: BinaryAsset;
   last_release?: string;
 };
 export type UpdateProgress = {
@@ -2013,7 +2013,7 @@ export type UpdateProgress = {
   error_message?: string;
   progress?: number;
   release_asset?: ReleaseAsset;
-  update_process_state?: Update_process_state;
+  update_process_state: Update_process_state;
 };
 export type PatchMountPointData = {
   /** A URL to the JSON Schema for this object. */
@@ -2027,7 +2027,7 @@ export type PatchMountPointData = {
   fstype?: string;
   invalid?: boolean;
   invalid_error?: string;
-  is_mounted?: boolean;
+  is_mounted: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
   path: string;
