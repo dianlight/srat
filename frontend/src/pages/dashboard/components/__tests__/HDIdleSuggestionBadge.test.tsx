@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Disk } from "../../../../store/sratApi";
 import { Command_type, Enabled } from "../../../../store/sratApi";
@@ -72,27 +73,27 @@ describe("HDIdleSuggestionBadge", () => {
 
   it("renders for an unconfigured rotational HDD", () => {
     render(<HDIdleSuggestionBadge disk={rotationalDisk()} />);
-    expect(screen.getByTestId("hdidle-suggestion-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-hdidle-suggestion-badge")).toBeInTheDocument();
   });
 
   it("hides when Lab Mode is off", () => {
     labModeRef.value = false;
     render(<HDIdleSuggestionBadge disk={rotationalDisk()} />);
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
   it("hides for a non-rotational disk", () => {
     render(
       <HDIdleSuggestionBadge disk={rotationalDisk({ is_rotational: false })} />,
     );
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
   it("hides when is_rotational is unknown (treated as non-rotational)", () => {
     render(
       <HDIdleSuggestionBadge disk={rotationalDisk({ is_rotational: undefined })} />,
     );
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
   it("hides when HDIdle is already enabled (Custom)", () => {
@@ -103,7 +104,7 @@ describe("HDIdleSuggestionBadge", () => {
         })}
       />,
     );
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
   it("hides when the suggestion has been ignored", () => {
@@ -114,7 +115,7 @@ describe("HDIdleSuggestionBadge", () => {
         })}
       />,
     );
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
   it("shows when disabled with suggestion not ignored", () => {
@@ -125,39 +126,43 @@ describe("HDIdleSuggestionBadge", () => {
         })}
       />,
     );
-    expect(screen.getByTestId("hdidle-suggestion-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("dashboard-hdidle-suggestion-badge")).toBeInTheDocument();
   });
 
   it("hides when disk is undefined", () => {
     render(<HDIdleSuggestionBadge disk={undefined} />);
-    expect(screen.queryByTestId("hdidle-suggestion-badge")).toBeNull();
+    expect(screen.queryByTestId("dashboard-hdidle-suggestion-badge")).toBeNull();
   });
 
-  it("Enable button navigates to volumes page with disk query", () => {
+  it("Enable button navigates to volumes page with disk query", async () => {
+    const user = userEvent.setup();
     render(<HDIdleSuggestionBadge disk={rotationalDisk()} />);
-    fireEvent.click(screen.getByLabelText("enable hdidle"));
+    await user.click(screen.getByLabelText("enable hdidle"));
     expect(navigateMock).toHaveBeenCalledWith(
       `/volumes?disk=${encodeURIComponent("ata-Some_HDD_1234")}`,
     );
   });
 
-  it("Enable button falls back to /volumes when disk has no id", () => {
+  it("Enable button falls back to /volumes when disk has no id", async () => {
+    const user = userEvent.setup();
     render(<HDIdleSuggestionBadge disk={rotationalDisk({ id: undefined })} />);
-    fireEvent.click(screen.getByLabelText("enable hdidle"));
+    await user.click(screen.getByLabelText("enable hdidle"));
     expect(navigateMock).toHaveBeenCalledWith("/volumes");
   });
 
-  it("Ignore button calls ignore-suggestion mutation with disk id", () => {
+  it("Ignore button calls ignore-suggestion mutation with disk id", async () => {
+    const user = userEvent.setup();
     render(<HDIdleSuggestionBadge disk={rotationalDisk()} />);
-    fireEvent.click(screen.getByLabelText("ignore hdidle suggestion"));
+    await user.click(screen.getByLabelText("ignore hdidle suggestion"));
     expect(ignoreSuggestionMock).toHaveBeenCalledWith({
       diskId: "ata-Some_HDD_1234",
     });
   });
 
-  it("Ignore button is a no-op when disk has no id", () => {
+  it("Ignore button is a no-op when disk has no id", async () => {
+    const user = userEvent.setup();
     render(<HDIdleSuggestionBadge disk={rotationalDisk({ id: undefined })} />);
-    fireEvent.click(screen.getByLabelText("ignore hdidle suggestion"));
+    await user.click(screen.getByLabelText("ignore hdidle suggestion"));
     expect(ignoreSuggestionMock).not.toHaveBeenCalled();
   });
 });

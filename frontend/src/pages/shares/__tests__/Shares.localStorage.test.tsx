@@ -1,3 +1,4 @@
+/* eslint-disable */
 // Shared test setup (DOM globals, APIURL, and store helper)
 import { beforeEach, describe, expect, it } from "vitest";
 

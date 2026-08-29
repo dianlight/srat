@@ -16,6 +16,13 @@ local linters = new Mapping<String, Step> {
 
     ["biome"] = (Builtins.biome)
 
+    ["eslint"] {
+        glob = "src/**/*.tsx"
+        dir = "frontend"
+        check = "bunx eslint src --config eslint.config.js"
+        fix = "bunx eslint src --config eslint.config.js --fix"
+    }
+
     ["go-fmt"] = (Builtins.go_fmt) {
         glob = "**/*.go"
         exclude = "vendor/**/*.go"

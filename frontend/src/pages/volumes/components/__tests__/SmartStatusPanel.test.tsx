@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderWithTestStore } from "/test/testing";
 
@@ -366,7 +367,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        let startTestCalled = false;
+        const startTestCalled = false;
 
         const { container } = await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,

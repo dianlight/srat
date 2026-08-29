@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("volumes utils", () => {

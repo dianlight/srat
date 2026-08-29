@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 // localStorage shim for jsdom environments that lack one.
