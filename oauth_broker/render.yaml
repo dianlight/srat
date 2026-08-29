@@ -3,6 +3,7 @@ services:
     name: srat-oauth-broker
     env: node
     plan: free
+    rootDir: oauth_broker
     buildCommand: bun install && bun tsc --noEmit
     startCommand: bun run src/index.ts
     envVars:
@@ -14,6 +15,8 @@ services:
         value: 600
       - key: BROKER_API_TOKEN
         sync: false
+      - key: BROKER_DISABLE_AUTH
+        value: false
       - key: DROPBOX_CLIENT_ID
         sync: false
       - key: DROPBOX_CLIENT_SECRET

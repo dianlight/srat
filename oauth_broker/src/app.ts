@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { getBrokerPublicUrl, getProviderOrThrow, getSessionTtlSeconds, loadProvidersConfig } from "./config.js";
 import type { SessionStore } from "./session.js";
 import { MemorySessionStore } from "./session.js";
@@ -41,21 +41,9 @@ function bearerTokenFromHeader(authHeader: string | null): string {
 }
 
 function constantTimeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    // Still do a timing-safe compare on padded buffers to avoid length leak
-    const ba = Buffer.from(a);
-    const bb = Buffer.from(b);
-    // Use equal length buffers for timingSafeEqual; if lengths differ, pad
-    const maxLen = Math.max(ba.length, bb.length);
-    const padA = Buffer.alloc(maxLen);
-    const padB = Buffer.alloc(maxLen);
-    ba.copy(padA);
-    bb.copy(padB);
-    // Always false when lengths differ, but we still call timingSafeEqual
-    timingSafeEqual(padA, padB);
-    return false;
-  }
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const da = createHash("sha256").update(a, "utf8").digest();
+  const db = createHash("sha256").update(b, "utf8").digest();
+  return timingSafeEqual(da, db);
 }
 
 export function createBrokerApp(opts?: {
@@ -77,7 +65,12 @@ export function createBrokerApp(opts?: {
   function requireBearer(c: { req: { header: (n: string) => string | undefined }; env: Record<string, unknown> }): boolean {
     const env = getEnv(c);
     const expected = (env.BROKER_API_TOKEN || "").trim();
-    if (!expected) return true; // if no token configured, allow (dev)
+    if (!expected) {
+      // Fail closed: allow unauthenticated only when explicitly opted in for local dev
+      const allowInsecure = (env.BROKER_DISABLE_AUTH || "").trim().toLowerCase();
+      if (allowInsecure === "true" || allowInsecure === "1" || allowInsecure === "yes") return true;
+      return false;
+    }
     const got = bearerTokenFromHeader(c.req.header("authorization") || null);
     if (!got) return false;
     return constantTimeEqual(got, expected);
@@ -212,7 +205,7 @@ export function createBrokerApp(opts?: {
 
     // Wrap in rclone envelope: {"access_token","token_type","refresh_token","expires_in","expiry","account_id"}
     const expiresIn = Number(tokenResp.expires_in || 0);
-    const expiry = new Date(Date.now() + expiresIn * 1000).toISOString();
+    const expiry = expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000).toISOString() : undefined;
     const envelope: Record<string, unknown> = {
       access_token: tokenResp.access_token,
       token_type: tokenResp.token_type || "Bearer",
@@ -249,18 +242,22 @@ export function createBrokerApp(opts?: {
       return c.json({ error: "unauthorized" }, 401);
     }
     const id = c.req.param("id");
-    const session = await store.get(id);
-    if (!session) {
+    const peek = await store.get(id);
+    if (!peek) {
       c.header("Cache-Control", "no-store");
       return c.json({ error: "expired or already used" }, 404);
     }
-    if (!session.tokenJson) {
+    if (!peek.tokenJson) {
       // Not yet completed — 404 without consuming (early polling cannot destroy flow)
       c.header("Cache-Control", "no-store");
       return c.json({ error: "not yet completed" }, 404);
     }
-    // Completed — consume single-use
-    await store.delete(id);
+    // Completed — consume single-use atomically; only one concurrent caller receives the token
+    const session = await store.consume(id);
+    if (!session || !session.tokenJson) {
+      c.header("Cache-Control", "no-store");
+      return c.json({ error: "expired or already used" }, 404);
+    }
     c.header("Cache-Control", "no-store");
     return c.json({
       token_json: session.tokenJson,

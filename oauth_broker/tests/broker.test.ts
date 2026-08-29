@@ -337,8 +337,8 @@ describe("broker endpoints", () => {
       expect(res.status).toBe(401);
     });
 
-    it("allows when BROKER_API_TOKEN unset (dev)", async () => {
-      const env = testEnv({ BROKER_API_TOKEN: "" });
+    it("allows when BROKER_API_TOKEN unset with BROKER_DISABLE_AUTH (dev)", async () => {
+      const env = testEnv({ BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true" });
       const { app } = createTestApp(env, { store });
       const res = await app.request("/v1/start", {
         method: "POST",
@@ -346,6 +346,29 @@ describe("broker endpoints", () => {
         body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
       });
       expect(res.status).toBe(200);
+    });
+
+    it("rejects when BROKER_API_TOKEN unset and BROKER_DISABLE_AUTH not set (fail-closed)", async () => {
+      const env = testEnv({ BROKER_API_TOKEN: "" });
+      // Ensure flag absent/empty
+      delete (env as Record<string, string | undefined>).BROKER_DISABLE_AUTH;
+      const { app } = createTestApp(env, { store });
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it("constantTimeEqual handles non-ASCII bearer token (401 not 500)", async () => {
+      const { app } = createTestApp(undefined, { store });
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer é" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(401);
     });
   });
 });

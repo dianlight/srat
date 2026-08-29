@@ -89,6 +89,13 @@
     },
     {
       "matchFileNames": [
+        "frontend/**"
+      ],
+      "groupName": "FrontEnd",
+      "commitMessageTopic": "{{groupName}} {{depName}}"
+    },
+    {
+      "matchFileNames": [
         "oauth_broker/**"
       ],
       "groupName": "OAuth Broker",
