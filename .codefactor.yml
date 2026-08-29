@@ -8,11 +8,14 @@
 # compatibility) and test `as any` is accepted. Excluding tests keeps PR
 # annotations focused on shippable code.
 exclude:
-  - frontend/src/**/__tests__/**
-  - frontend/src/**/*.test.ts
-  - frontend/src/**/*.test.tsx
-  - frontend/test/**
-  - frontend/src/mocks/**
+  - "**/__tests__/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/test/**"
+  - "**/mocks/**"
   - frontend/src/store/sratApi.ts
   - backend/src/vendor/**
   - backend/docs/**
+  - "frontend/src/**/__tests__/**"
+  - "frontend/test/**"
+  - "frontend/src/mocks/**"
