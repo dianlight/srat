@@ -103,7 +103,7 @@ describe("security hardening (Z-Audit fixes)", () => {
           body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb" }),
         });
       }
-      let blocked = await app.request("/v1/start", {
+      const blocked = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "9.9.9.9" },
         body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb" }),
