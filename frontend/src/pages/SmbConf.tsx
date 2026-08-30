@@ -23,8 +23,7 @@ export function SmbConfPage() {
   return (
     <InView
       as="div"
-      onChange={(_inView, _entry) => {
-        //console.log("Inview:", inView)
+      onChange={() => {
         smbconfig.refetch();
       }}
     >
