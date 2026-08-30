@@ -366,7 +366,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        let startTestCalled = false;
+        const startTestCalled = false;
 
         await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
