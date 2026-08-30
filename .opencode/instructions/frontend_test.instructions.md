@@ -51,7 +51,7 @@ applyTo: **/frontend/**/*.test.{js,jsx,ts,tsx}
 
 ## **3. Query Priority (The "No-Break" Rule)**
 
-Always use `screen` from `@testing-library/react`. Use queries in this order:
+Always use `screen` from `@testing-library/react`. Use `within` only to scope a semantic query inside a container already found via `screen`. Use queries in this order:
 
 1. getByRole: Primary choice. Always prefer the name option (for example, screen.getByRole('button', { name: /submit/i })).
 2. getByLabelText: For form inputs.
@@ -62,7 +62,27 @@ Always use `screen` from `@testing-library/react`. Use queries in this order:
 ❌ STRICTLY PROHIBITED:
 
 - No container.querySelector().
+- No container.getElementsByTagName / getElementById / querySelector.
 - No CSS class selectors (.my-class), IDs (#id), or deep HTML tag selectors (div > span).
+- No node access via .closest(), .parentElement, .children, .firstChild, or tag-name counting (e.g., getElementsByTagName('svg').length).
+
+### **3.1 Optimizing Non-Semantic Targets with `data-testid` Metadata**
+
+When items 1–4 cannot target an element without fragility (third-party components like `SyntaxHighlighter`, custom elements like `openapi-explorer`, decorative MUI `SvgIcon`s without accessible name, or layout-only `Box` grids), **annotate the target itself** with `data-testid` metadata and query it directly. This is the only sanctioned use of `getByTestId` and is preferred over DOM traversal.
+
+**When to add a testId to the target:**
+
+- The component renders no semantic role/name (`role="table"` / `aria-label` absent) and you would otherwise count tags or walk `.closest()`.
+- The markup is owned by a library you cannot add semantics to (e.g., `react-syntax-highlighter`, `openapi-explorer`).
+- Stability matters more than semantics (e.g., asserting a SMART icon is present/absent per device row).
+
+**How to do it:**
+
+1. Add `data-testid="kebab-case-id"` directly on the component in `frontend/src/*.tsx` (e.g., `<SmartIcon data-testid="disk-health-smart-icon" />`, `<SyntaxHighlighter data-testid="smbconf-code-viewer" />`).
+2. Register the id **before** using it in `frontend/src/testIds.ts` under a hierarchical key (`dashboard.smartIcon`, `smbConf.codeViewer`, etc.) — enforced by `srat/registered-test-id` (error level, see `frontend/eslint.config.js`).
+3. Query via `screen.getByTestId("disk-health-smart-icon")` or scoped `within(cell).getByTestId("disk-health-smart-icon")` / `within(cell).queryByTestId(...)` for presence/absence. Never re-introduce `container` to reach the id.
+
+**Benefit:** O(1) lookup, no coupling to tag names or DOM nesting, survives CSS refactors, and satisfies the central registry lint gate.
 
 ## **4. User Interactions**
 
@@ -80,7 +100,7 @@ Always use `screen` from `@testing-library/react`. Use queries in this order:
 
 ```typescript
 import { test, expect, describe } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MyComponent } from "./MyComponent";
 
@@ -98,8 +118,21 @@ describe("MyComponent", () => {
 
     expect(screen.getByText(/data saved/i)).toBeInTheDocument();
   });
+
+  test("targets non-semantic icon via annotated testId", async () => {
+    render(<MyComponent />);
+    const table = await screen.findByRole("table", { name: /disk health table/i });
+    const tbody = within(table).getAllByRole("rowgroup")[1];
+    const firstRow = within(tbody as HTMLElement).getAllByRole("row")[0]!;
+    const deviceCell = within(firstRow).getAllByRole("rowheader")[1]!;
+
+    // ✅ GOOD: target carries data-testid="disk-health-smart-icon" in component
+    expect(within(deviceCell).getByTestId("disk-health-smart-icon")).toBeInTheDocument();
+    // ✅ GOOD: absence check
+    expect(within(deviceCell).queryByTestId("disk-health-smart-icon")).toBeNull();
+  });
 });
-````
+```
 
 ## **7. Test IDs (data-testid Registry)**
 
@@ -113,6 +146,4 @@ describe("MyComponent", () => {
   auto-testids) and throwaway `mock-*` fixture ids used by test mock renderers.
 - The registry is parsed textually by the lint plugin, so keep entries plain
   kebab-case string literals.
-<userPrompt>
-Provide the fully rewritten file, incorporating the suggested code change. You must produce the complete file.
-</userPrompt>
+- Prefer annotating the **target component itself** (see §3.1) over wrapping it in an extra `div` just to host a testId. Keep the hierarchy semantic: `smbConf.codeViewer → "smbconf-code-viewer"`, `dashboard.smartIcon → "disk-health-smart-icon"`, `volumes.actionsGrid → "partition-actions-grid"`.

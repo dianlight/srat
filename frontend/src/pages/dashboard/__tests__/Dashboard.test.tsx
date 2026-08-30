@@ -31,7 +31,7 @@ describe("Dashboard Component Basic Tests", () => {
         const store = await createTestStore();
 
         // Should render without throwing errors
-        const container = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -45,7 +45,7 @@ describe("Dashboard Component Basic Tests", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("welcome text appears in dashboard", async () => {
@@ -71,8 +71,8 @@ describe("Dashboard Component Basic Tests", () => {
     });
 
     it("renders dashboard container", async () => {
-        const { container } = await renderDashboard();
-        expect(container.firstChild).toBeTruthy();
+        await renderDashboard();
+        expect(await screen.findByText("Welcome to SRAT")).toBeTruthy();
     });
 
     it("shows expand button", async () => {
@@ -84,9 +84,9 @@ describe("Dashboard Component Basic Tests", () => {
     });
 
     it("has grid layout structure", async () => {
-        const { container } = await renderDashboard();
+        await renderDashboard();
 
         // Check that Dashboard renders with content (test behavior, not implementation)
-        expect(container.firstChild).toBeTruthy();
+        expect(await screen.findByText("Welcome to SRAT")).toBeTruthy();
     });
 });

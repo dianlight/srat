@@ -57,7 +57,7 @@ describe("DiskHealthMetrics", () => {
         if (!table) {
             throw new Error("Table not found");
         }
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
@@ -110,7 +110,7 @@ describe("DiskHealthMetrics", () => {
 
         expect(headerTexts).toContain("Spin Status");
 
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
@@ -191,7 +191,7 @@ describe("DiskHealthMetrics", () => {
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
@@ -234,7 +234,7 @@ describe("DiskHealthMetrics", () => {
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!; // Get the most recent table
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
@@ -282,14 +282,14 @@ describe("DiskHealthMetrics", () => {
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
 
         // Check that SMART icon is present
-        expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
+        expect(within(deviceCell as HTMLElement).getByTestId("disk-health-smart-icon")).toBeTruthy();
 
     });
 
@@ -329,14 +329,14 @@ describe("DiskHealthMetrics", () => {
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
 
         // Check that SMART icon is present for SSD
-        expect(deviceCell?.getElementsByTagName('svg').length).toBeGreaterThan(0);
+        expect(within(deviceCell as HTMLElement).getByTestId("disk-health-smart-icon")).toBeTruthy();
 
     });
 
@@ -374,14 +374,14 @@ describe("DiskHealthMetrics", () => {
 
         const tables = await screen.findAllByRole("table", { name: "disk health table" });
         const table = tables[tables.length - 1]!;
-        const tbody = table.getElementsByTagName("tbody")[0];
+        const tbody = within(table).getAllByRole("rowgroup")[1];
         expect(tbody).toBeTruthy();
 
         const rows = within(tbody as HTMLElement).getAllByRole("row");
         const deviceCell = within(rows[0]!).getAllByRole("rowheader")[1];
 
         // Check that SMART icon is NOT present
-        expect(deviceCell?.getElementsByTagName('svg').length).toBe(0);
+        expect(within(deviceCell as HTMLElement).queryByTestId("disk-health-smart-icon")).toBeNull();
 
     });
 });

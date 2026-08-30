@@ -120,7 +120,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -132,7 +132,7 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders form fields when dialog is open", async () => {
@@ -183,7 +183,7 @@ describe("VolumeMountDialog Component", () => {
             }]
         };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -196,7 +196,7 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("displays read-only view when readOnlyView prop is true", async () => {
@@ -209,7 +209,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -222,7 +222,7 @@ describe("VolumeMountDialog Component", () => {
             )
         );
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders action buttons", async () => {
@@ -289,7 +289,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -302,7 +302,7 @@ describe("VolumeMountDialog Component", () => {
         );
 
         // Check that component renders mount flags section
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles automatic mount checkbox", async () => {
@@ -342,7 +342,7 @@ describe("VolumeMountDialog Component", () => {
         const store = await createTestStore();
         const mockClose = () => { };
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -355,7 +355,7 @@ describe("VolumeMountDialog Component", () => {
         );
 
         // Check for warning or chip elements for unsupported flags
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("disables the Mount button while submitting", async () => {

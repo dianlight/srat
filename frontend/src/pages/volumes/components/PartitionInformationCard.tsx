@@ -528,6 +528,7 @@ export function PartitionInformationCard({
                 Actions
               </Typography>
               <Box
+                data-testid="partition-actions-grid"
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {
