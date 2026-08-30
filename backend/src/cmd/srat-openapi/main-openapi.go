@@ -45,6 +45,34 @@ func applyOpenAPIGenerationDefaults() {
 	}
 }
 
+// openAPIRouteOption returns the fx.Option that provides all Huma route
+// registrations for OpenAPI generation, including the lab feature registry.
+// Extracted from main() for testability so the wiring line for
+// NewLabFeatureHandler is directly coverable without executing main() as a
+// subprocess. Patch coverage for PR #1025 targets this line.
+func openAPIRouteOption() fx.Option {
+	return fx.Provide(
+		server.AsHumaRoute(api.NewHealthHandler),
+		server.AsHumaRoute(api.NewShareHandler),
+		server.AsHumaRoute(api.NewVolumeHandler),
+		server.AsHumaRoute(api.NewSmartHandler),
+		server.AsHumaRoute(api.NewSettingsHanler),
+		server.AsHumaRoute(api.NewUserHandler),
+		server.AsHumaRoute(api.NewSambaHanler),
+		server.AsHumaRoute(api.NewUpgradeHanler),
+		server.AsHumaRoute(api.NewSystemHanler),
+		server.AsHumaRoute(api.NewFilesystemHandler),
+		server.AsHumaRoute(api.NewProblemAPI),
+		server.AsHumaRoute(api.NewIssueAPI),
+		server.AsHumaRoute(api.NewTelemetryHandler),
+		server.AsHumaRoute(api.NewHDIdleHandler),
+		server.AsHumaRoute(api.NewLabFeatureHandler),
+		api.NewWebSocketBroker,
+		server.NewMuxRouter,
+		server.NewHumaAPI,
+	)
+}
+
 func main() {
 	// set global logger with custom options
 	logLevelString := flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
@@ -89,26 +117,7 @@ func main() {
 		appsetup.ProvideCoreDependencies(appParams),
 		appsetup.ProvideHAClientDependenciesWithoutWebSocket(appParams),
 		appsetup.ProvideCyclicDependencyWorkaroundOption(),
-		fx.Provide(
-			server.AsHumaRoute(api.NewHealthHandler),
-			server.AsHumaRoute(api.NewShareHandler),
-			server.AsHumaRoute(api.NewVolumeHandler),
-			server.AsHumaRoute(api.NewSmartHandler),
-			server.AsHumaRoute(api.NewSettingsHanler),
-			server.AsHumaRoute(api.NewUserHandler),
-			server.AsHumaRoute(api.NewSambaHanler),
-			server.AsHumaRoute(api.NewUpgradeHanler),
-			server.AsHumaRoute(api.NewSystemHanler),
-			server.AsHumaRoute(api.NewFilesystemHandler),
-			server.AsHumaRoute(api.NewProblemAPI),
-			server.AsHumaRoute(api.NewIssueAPI),
-			server.AsHumaRoute(api.NewTelemetryHandler),
-			server.AsHumaRoute(api.NewHDIdleHandler),
-			server.AsHumaRoute(api.NewLabFeatureHandler),
-			api.NewWebSocketBroker,
-			server.NewMuxRouter,
-			server.NewHumaAPI,
-		),
+		openAPIRouteOption(),
 		fx.Invoke(
 			func(
 				api huma.API,
