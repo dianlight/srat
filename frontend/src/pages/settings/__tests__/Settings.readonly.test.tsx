@@ -1,5 +1,5 @@
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Provider } from "react-redux";
@@ -123,10 +123,14 @@ describe("Settings read_only gating", () => {
     expect(screen.getByRole("button", { name: /^reset$/i })).toBeDisabled();
     expect(screen.getByRole("button", { name: /^apply$/i })).toBeDisabled();
 
-    // Verify Devices panel also disabled (use role query to avoid duplicate text from hidden drawer)
+    // Verify Devices panel also disabled (match Settings.test.tsx helper to avoid treeitem name mismatch)
     const user = userEvent.setup();
-    const devicesItems = screen.getAllByRole("treeitem", { name: /devices/i });
-    await user.click(devicesItems[0] as HTMLElement);
+    const treeItems = await screen.findAllByRole("treeitem");
+    const devicesLabel = treeItems
+      .map((item) => within(item).queryByText("Devices"))
+      .find((el) => el != null);
+    expect(devicesLabel).toBeTruthy();
+    await user.click(devicesLabel as HTMLElement);
     expect(await screen.findByRole("heading", { name: /^devices$/i })).toBeInTheDocument();
     // bind all interfaces checkbox may be rendered as checkbox, not switch - check both
     const bindAll = screen.queryByLabelText(/bind all interfaces/i) ?? screen.queryByRole("checkbox", { name: /bind all interfaces/i });
