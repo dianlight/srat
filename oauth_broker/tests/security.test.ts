@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createTestApp, testEnv, jsonBody } from "./utils.js";
 import { MemorySessionStore } from "../src/session.js";
 import { __clearRateLimitBucketsForTests } from "../src/app.js";
+import type { BrokerBindings } from "../src/app.js";
 import {
   globToRegExp,
   isAllowedSratCallbackUrl,
@@ -87,7 +88,9 @@ describe("security hardening (Z-Audit fixes)", () => {
     });
 
     it("uses CF RateLimiter binding when present (Both mode)", async () => {
-      const mockLimiter: any = { limit: vi.fn(async () => ({ success: false })) };
+      const mockLimiter: NonNullable<BrokerBindings["RATE_LIMITER"]> = {
+        limit: vi.fn(async () => ({ success: false })),
+      };
       // Verify mock shape matches BrokerBindings RATE_LIMITER contract
       expect(mockLimiter.limit).toBeDefined();
       await expect(mockLimiter.limit({ key: "test" })).resolves.toEqual({ success: false });
