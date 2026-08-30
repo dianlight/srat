@@ -61,4 +61,31 @@ describe("useLabFeatures hook", () => {
 		expect(result.current.features).toEqual([]);
 		expect(result.current.isAvailable("hdidle")).toBe(false);
 	});
+
+	it("returns available:false for a registered beta feature when lab mode is off", async () => {
+		const { React, renderHook, waitFor, Provider, getMswServer, http, HttpResponse, useLabFeatures } =
+			await setup();
+		const { createTestStore } = await import("/test/testing");
+
+		const server = getMswServer();
+		server.use(
+			http.get(/.*\/api\/lab_features(?:\?.*)?$/, () =>
+				HttpResponse.json([
+					{ key: "hdidle", name: "HDIdle", description: "", status: "beta", available: false },
+					{ key: "smb_conf", name: "smb.conf", description: "", status: "beta", available: false },
+				]),
+			),
+		);
+
+		const store = await createTestStore();
+		const wrapper = ({ children }: React.PropsWithChildren) =>
+			React.createElement(Provider, { store, children });
+
+		const { result } = renderHook(() => useLabFeatures(), { wrapper });
+		await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+		expect(result.current.features.length).toBe(2);
+		expect(result.current.isAvailable("hdidle")).toBe(false);
+		expect(result.current.isAvailable("smb_conf")).toBe(false);
+	});
 });

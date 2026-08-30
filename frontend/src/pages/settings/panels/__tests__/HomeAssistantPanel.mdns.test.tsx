@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
-import type { Settings as ApiSettings } from "../../../../store/sratApi";
+import { Status2, type LabFeature, type Settings as ApiSettings } from "../../../../store/sratApi";
 import { HomeAssistantPanel } from "../HomeAssistantPanel";
 
 const mockState = vi.hoisted(() => {
@@ -33,8 +33,8 @@ vi.mock("../../../../store/sratApi", async () => {
     }),
     useGetApiLabFeaturesQuery: () => ({
       data: [
-        { key: "ha_custom_component", name: "HA custom component", description: "", status: "alpha", available: true },
-      ],
+        { key: "ha_custom_component", name: "HA custom component", description: "", status: Status2.Alpha, available: true },
+      ] satisfies LabFeature[],
       isLoading: false,
     }),
   };

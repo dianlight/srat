@@ -119,6 +119,8 @@ func (suite *LabFeatureHandlerSuite) TestProductionOmitsAlphaWithLabModeOff() {
 
 	features := suite.byKey(suite.fetch())
 	suite.NotContains(features, "ha_custom_component")
+	suite.Contains(features, "hdidle")
+	suite.Contains(features, "smb_conf")
 	suite.False(features["hdidle"].Available)
 	suite.False(features["smb_conf"].Available)
 }

@@ -26,9 +26,9 @@ type HDIdleDevice struct {
 type HDIdleDeviceStatus struct {
 	Name       string    `json:"name,omitempty"` // Resolved device name, e.g., "sda"
 	SpunDown   bool      `json:"spun_down"`
-	LastIOAt   time.Time `json:"last_io_at,omitempty"`   // ISO8601 timestamp
-	SpinDownAt time.Time `json:"spin_down_at,omitempty"` // ISO8601 timestamp
-	SpinUpAt   time.Time `json:"spin_up_at,omitempty"`   // ISO8601 timestamp
+	LastIOAt   time.Time `json:"last_io_at,omitzero"`   // ISO8601 timestamp
+	SpinDownAt time.Time `json:"spin_down_at,omitzero"` // ISO8601 timestamp
+	SpinUpAt   time.Time `json:"spin_up_at,omitzero"`   // ISO8601 timestamp
 }
 
 // HDIdleDeviceSupport represents the HD idle support status for a device

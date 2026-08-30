@@ -66,7 +66,7 @@ availability server-side.
 | `ha_use_nfs` | Use NFS for HA | beta |
 | `ha_custom_component` | HA custom component tools | **alpha** |
 | `smb_over_quic` | SMB over QUIC | beta |
-| `addon_mdns` | Addon-side mDNS (zeroconf) | beta |
+| `addon_mdns` | Add-on side mDNS (zeroconf) | beta |
 
 ### Status lifecycle
 alpha → beta (lab mode) → GA (drop from registry). Alpha entries are never
