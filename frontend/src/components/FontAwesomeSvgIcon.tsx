@@ -25,7 +25,7 @@ export const FontAwesomeSvgIcon = React.forwardRef<
       ref={ref}
       {...rest}
       viewBox={`0 0 ${width} ${height}`}
-      data-testid={dataTestId ?? "fontawesome-svg-icon"}
+      data-testid={dataTestId}
     >
       {typeof svgPathData === "string" ? (
         <path data-testid="fontawesome-icon-path" d={svgPathData} />

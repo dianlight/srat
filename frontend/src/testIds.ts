@@ -21,7 +21,6 @@ export const testIds = {
   volumes: {
     partitionActionIcon: "partition-action-icon",
     actionsGrid: "partition-actions-grid",
-    partitionActionsRoot: "partition-actions-root",
   },
   smbConf: {
     codeViewer: "smbconf-code-viewer",

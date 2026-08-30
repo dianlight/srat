@@ -20,7 +20,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
-        await renderIcon(singlePathIcon);
+        await renderIcon(singlePathIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement).toBeTruthy();
@@ -46,7 +46,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             ]
         };
 
-        await renderIcon(multiPathIcon);
+        await renderIcon(multiPathIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement).toBeTruthy();
@@ -66,7 +66,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             icon: [32, 20, [], "f002", "M0 0h32v20H0z"]
         };
 
-        await renderIcon(customSizeIcon);
+        await renderIcon(customSizeIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement).toBeTruthy();
@@ -92,7 +92,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             icon: [16, 16, [], "f003", []]
         };
 
-        await renderIcon(emptyMultiPathIcon);
+        await renderIcon(emptyMultiPathIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement).toBeTruthy();
@@ -116,7 +116,7 @@ describe("FontAwesomeSvgIcon Component", () => {
             ]
         };
 
-        await renderIcon(complexMultiPathIcon);
+        await renderIcon(complexMultiPathIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         const pathElements = within(svgElement).getAllByTestId("fontawesome-icon-path");
@@ -131,21 +131,34 @@ describe("FontAwesomeSvgIcon Component", () => {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
         };
 
-        await renderIcon(singlePathIcon);
+        await renderIcon(singlePathIcon, { "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement.getAttribute('class')).toContain('MuiSvgIcon-fontSizeMedium');
     });
 
     it("applies the small size class when fontSize='small' is passed", async () => {
-        const singlePathIcon: FaIcon = {
+const singlePathIcon: FaIcon = {
             icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8-3.58 8-8-8-3.58-8-8-8z"]
         };
 
-        await renderIcon(singlePathIcon, { fontSize: "small" });
+        await renderIcon(singlePathIcon, { fontSize: "small", "data-testid": "fontawesome-svg-icon" });
 
         const svgElement = screen.getByTestId("fontawesome-svg-icon");
         expect(svgElement.getAttribute('class')).toContain('MuiSvgIcon-fontSizeSmall');
         expect(svgElement.getAttribute('class')).not.toContain('MuiSvgIcon-fontSizeMedium');
+    });
+
+    it("renders without a data-testid attribute when none is provided", async () => {
+        const singlePathIcon: FaIcon = {
+            icon: [16, 16, [], "f000", "M8 0C3.58 0 0 3.58 0 8s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z"]
+        };
+
+        await renderIcon(singlePathIcon);
+
+        // No default testid is stamped on the icon root...
+        expect(screen.queryByTestId("fontawesome-svg-icon")).toBeNull();
+        // ...yet the icon still rendered (its per-path marker is present).
+        expect(screen.queryAllByTestId("fontawesome-icon-path").length).toBeGreaterThan(0);
     });
 });
