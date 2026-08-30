@@ -11,6 +11,7 @@ export type BrokerEnv = {
   SESSION_TTL?: string;
   PORT?: string;
   BROKER_DISABLE_AUTH?: string;
+  BROKER_ALLOWED_CALLBACK_PATTERNS?: string;
 };
 
 /** Built-in provider defaults (only credentials required from config). */
@@ -38,9 +39,16 @@ export function getSessionTtlSeconds(env: Record<string, string | undefined>): n
   else if (/^\d+s$/.test(raw)) n = parseInt(raw.replace("s", ""), 10);
   else {
     const parsed = parseInt(raw, 10);
-    n = Number.isNaN(parsed) ? 600 : parsed;
+    if (Number.isNaN(parsed)) {
+      console.warn(`[broker] SESSION_TTL unparseable "${raw}" – falling back to 600s`);
+      return 600;
+    }
+    n = parsed;
   }
-  if (Number.isNaN(n) || n <= 0) return 60;
+  if (Number.isNaN(n) || n <= 0) {
+    console.warn(`[broker] SESSION_TTL "${raw}" out of range – using 60s minimum`);
+    return 60;
+  }
   return Math.max(n, 60);
 }
 
@@ -119,8 +127,8 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
           cfg[k] = { ...v };
         }
       }
-    } catch {
-      // Best-effort: malformed JSON yields empty, caller will error on missing provider
+    } catch (e) {
+      console.warn(`[broker] malformed BROKER_PROVIDERS_FILE JSON ignored: ${(e as Error).message}`);
     }
   }
 
@@ -132,8 +140,8 @@ export function loadProvidersConfig(env: Record<string, string | undefined>): Pr
       for (const [k, v] of Object.entries(parsed)) {
         cfg[k] = { ...cfg[k], ...v };
       }
-    } catch {
-      // ignore malformed inline json
+    } catch (e) {
+      console.warn(`[broker] malformed BROKER_PROVIDERS_JSON ignored: ${(e as Error).message}`);
     }
   }
 
@@ -182,4 +190,56 @@ export function getProviderOrThrow(
   if (!p.authorize_url) throw new Error(`provider ${name} missing authorize_url`);
   if (!p.token_url) throw new Error(`provider ${name} missing token_url`);
   return p as ProviderConfig & { authorize_url: string; token_url: string };
+}
+
+/** Max srat_callback_url length to prevent header overflow / DoS (also applied to BROKER_PUBLIC_URL). */
+export const MAX_CALLBACK_URL_LENGTH = 2048;
+
+/**
+ * Convert a glob pattern (e.g. "https://*.example.com/*") to RegExp.
+ * Supports * (any chars except / for host part is relaxed) – deliberately simple, not shell glob.
+ */
+export function globToRegExp(glob: string): RegExp {
+  // Escape regex specials except * and ?
+  const escaped = glob.replace(/([.+^${}()|[\]\\])/g, "\\$1");
+  const regexStr = "^" + escaped.replace(/\*/g, ".*").replace(/\?/g, ".") + "$";
+  return new RegExp(regexStr);
+}
+
+export function parseAllowedCallbackPatterns(raw: string | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+export function isAllowedSratCallbackUrl(raw: string, allowlistRaw: string | undefined): boolean {
+  const patterns = parseAllowedCallbackPatterns(allowlistRaw);
+  if (patterns.length === 0) return true; // permissive default (any https) – isValid already checked
+  try {
+    // URL must be valid first
+    const u = new URL(raw);
+    // Try each glob
+    for (const pat of patterns) {
+      // If pattern looks like a plain host (no scheme), treat as "*://host/*"
+      let glob = pat;
+      if (!glob.includes("://")) {
+        glob = `https://${glob}`;
+        if (!glob.endsWith("*") && !glob.includes("/")) glob += "/*";
+      }
+      const re = globToRegExp(glob);
+      if (re.test(raw) || re.test(u.origin + u.pathname)) return true;
+      // Also test against origin only for simple host patterns
+      if (re.test(u.origin) || re.test(u.host) || re.test(u.hostname)) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+export function isProductionEnv(env: Record<string, string | undefined>): boolean {
+  const url = (env.BROKER_PUBLIC_URL || "").toLowerCase();
+  return url.includes("production") || (env.ENV || "").toLowerCase() === "production" || (env.WORKERS_ENV || "").toLowerCase() === "production";
 }

@@ -11,6 +11,15 @@ export interface SessionStore {
 /** In-memory store for Node/Render single-instance and tests. Supports TTL expiry. */
 export class MemorySessionStore implements SessionStore {
   private map = new Map<string, { data: SessionRecord; expiresAt: number }>();
+  /** Max entries before evicting expired and rejecting new inserts (DoS cap). */
+  static readonly MAX_ENTRIES = 10_000;
+
+  private evictExpired(): void {
+    const now = Date.now();
+    for (const [k, v] of this.map) {
+      if (now > v.expiresAt) this.map.delete(k);
+    }
+  }
 
   async get(id: string): Promise<SessionRecord | null> {
     const entry = this.map.get(id);
@@ -23,6 +32,12 @@ export class MemorySessionStore implements SessionStore {
   }
 
   async set(id: string, data: SessionRecord, ttlSeconds: number): Promise<void> {
+    if (this.map.size >= MemorySessionStore.MAX_ENTRIES) {
+      this.evictExpired();
+      if (this.map.size >= MemorySessionStore.MAX_ENTRIES) {
+        throw new Error("session store full – too many active sessions, retry after expiry");
+      }
+    }
     const expiresAt = Date.now() + ttlSeconds * 1000;
     this.map.set(id, { data, expiresAt });
   }

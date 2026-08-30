@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     rootDir: oauth_broker
-    buildCommand: bun install
+    buildCommand: bun install && bun tsc --noEmit
     startCommand: bun src/index.ts
     envVars:
       - key: PORT
@@ -27,4 +27,7 @@ services:
       # Optional: providers file path
       # - key: BROKER_PROVIDERS_FILE
       #   sync: false
+      # Optional: restrict srat_callback_url to glob CSV (empty = any https)
+      # - key: BROKER_ALLOWED_CALLBACK_PATTERNS
+      #   value: "https://*.example.com/*"
     healthCheckPath: /v1/healthz
