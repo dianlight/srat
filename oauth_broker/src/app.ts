@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   getBrokerPublicUrlOrThrow,
@@ -11,6 +12,7 @@ import {
 } from "./config.js";
 import type { SessionStore } from "./session.js";
 import { MemorySessionStore } from "./session.js";
+import type { ProviderConfig } from "./types.js";
 
 export type BrokerBindings = {
   OAUTH_SESSIONS?: {
@@ -134,6 +136,114 @@ function isAllowedWithMemoryBucket(key: string, cfg: RateLimitConfig): boolean {
   return true;
 }
 
+// ---- Helpers to reduce per-handler complexity (CodeFactor: Complex Method) ----
+
+type StartBody = { provider?: string; srat_callback_url?: string };
+
+function validateStartFields(
+  provider: string,
+  sratCallbackUrl: string,
+): { status: 400; error: string } | null {
+  if (!provider) return { status: 400, error: "provider is required" };
+  if (!sratCallbackUrl) return { status: 400, error: "srat_callback_url is required" };
+  if (sratCallbackUrl.length > MAX_CALLBACK_URL_LENGTH) {
+    return { status: 400, error: `srat_callback_url too long (max ${MAX_CALLBACK_URL_LENGTH})` };
+  }
+  if (!isValidSratCallbackUrl(sratCallbackUrl)) {
+    return {
+      status: 400,
+      error: "srat_callback_url must be an absolute https URL (loopback http allowed for dev)",
+    };
+  }
+  return null;
+}
+
+function buildAuthUrl(
+  prov: ProviderConfig & { authorize_url: string; token_url: string },
+  publicUrl: string,
+  sessionId: string,
+): URL {
+  const redirectUri = `${publicUrl}/v1/callback`;
+  const authUrl = new URL(prov.authorize_url);
+  authUrl.searchParams.set("client_id", prov.client_id);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("redirect_uri", redirectUri);
+  authUrl.searchParams.set("state", sessionId);
+  for (const [k, v] of Object.entries(prov.auth_params || {})) {
+    if (!authUrl.searchParams.has(k)) authUrl.searchParams.set(k, v);
+  }
+  if (prov.scopes && prov.scopes.length > 0) {
+    authUrl.searchParams.set("scope", prov.scopes.join(" "));
+  }
+  return authUrl;
+}
+
+function buildRcloneEnvelope(tokenResp: Record<string, unknown>): {
+  envelope: Record<string, unknown>;
+  tokenJson: string;
+  accountLabel: string;
+} {
+  const expiresIn = Number(tokenResp.expires_in || 0);
+  const expiry = expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000).toISOString() : undefined;
+  const envelope: Record<string, unknown> = {
+    access_token: tokenResp.access_token,
+    token_type: tokenResp.token_type || "Bearer",
+    refresh_token: tokenResp.refresh_token,
+    expires_in: expiresIn || undefined,
+    expiry,
+    account_id: tokenResp.account_id || tokenResp.accountId || tokenResp.user_id || undefined,
+  };
+  for (const k of Object.keys(envelope)) if (envelope[k] === undefined) delete envelope[k];
+  return { envelope, tokenJson: JSON.stringify(envelope), accountLabel: (envelope.account_id as string) || "" };
+}
+
+async function exchangeCodeForToken(
+  prov: ProviderConfig & { authorize_url: string; token_url: string },
+  code: string,
+  redirectUri: string,
+  fetchImpl: typeof fetch,
+): Promise<{ tokenResp: Record<string, unknown>; tokenStatus: number } | { error: string; status: ContentfulStatusCode }> {
+  const form = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+    client_id: prov.client_id,
+    client_secret: prov.client_secret,
+  });
+
+  try {
+    const resp = await fetchImpl(prov.token_url, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: form.toString(),
+    });
+    const tokenStatus = resp.status;
+    const text = await resp.text();
+    let tokenResp: Record<string, unknown>;
+    try {
+      tokenResp = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      return { error: `invalid token response (status ${tokenStatus})`, status: 502 };
+    }
+    if (!resp.ok || !tokenResp.access_token) {
+      const detail =
+        (tokenResp.error_description as string) || (tokenResp.error as string) || `status ${tokenStatus}`;
+      console.warn(`[broker] token exchange failed: ${detail} (status ${tokenStatus})`);
+      return { error: "token exchange failed", status: 502 };
+    }
+    return { tokenResp, tokenStatus };
+  } catch (e) {
+    console.warn(`[broker] token exchange network error: ${(e as Error).message}`);
+    return { error: "token exchange failed", status: 502 };
+  }
+}
+
+function setNoStore(c: { header: (k: string, v: string) => void }): void {
+  c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+  c.header("Pragma", "no-cache");
+  c.header("Expires", "0");
+}
+
 /**
  * Creates a Hono application that brokers OAuth authorization flows.
  *
@@ -166,7 +276,9 @@ export function createBrokerApp(opts?: {
       if (insecureEnabled) {
         if (isProductionEnv(env)) {
           // Throw-equivalent: fail closed in production even if flag set – never allow
-          console.error("[broker] BROKER_DISABLE_AUTH is not allowed in production (BROKER_PUBLIC_URL looks like production) – denying request");
+          console.error(
+            "[broker] BROKER_DISABLE_AUTH is not allowed in production (BROKER_PUBLIC_URL looks like production) – denying request",
+          );
           return false;
         }
         console.warn("[broker] BROKER_DISABLE_AUTH enabled – auth disabled (dev only)");
@@ -226,7 +338,9 @@ export function createBrokerApp(opts?: {
 
     // Prefer Cloudflare Rate Limiter binding if present (Both mode)
     const envAny = (c.env || {}) as Record<string, unknown>;
-    const rlBinding = (envAny.RATE_LIMITER as BrokerBindings["RATE_LIMITER"]) || (envAny.BROKER_RATE_LIMITER as BrokerBindings["BROKER_RATE_LIMITER"]);
+    const rlBinding =
+      (envAny.RATE_LIMITER as BrokerBindings["RATE_LIMITER"]) ||
+      (envAny.BROKER_RATE_LIMITER as BrokerBindings["BROKER_RATE_LIMITER"]);
     if (rlBinding && typeof rlBinding.limit === "function") {
       try {
         const res = await rlBinding.limit({ key });
@@ -266,7 +380,7 @@ export function createBrokerApp(opts?: {
     if (!requireBearer(c)) {
       return c.json({ error: "unauthorized" }, 401);
     }
-    let body: { provider?: string; srat_callback_url?: string };
+    let body: StartBody;
     try {
       body = await c.req.json();
     } catch {
@@ -274,17 +388,11 @@ export function createBrokerApp(opts?: {
     }
     const provider = (body.provider || "").trim();
     const sratCallbackUrl = (body.srat_callback_url || "").trim();
-    if (!provider) return c.json({ error: "provider is required" }, 400);
-    if (!sratCallbackUrl) return c.json({ error: "srat_callback_url is required" }, 400);
-    if (sratCallbackUrl.length > MAX_CALLBACK_URL_LENGTH) {
-      return c.json({ error: `srat_callback_url too long (max ${MAX_CALLBACK_URL_LENGTH})` }, 400);
-    }
-    if (!isValidSratCallbackUrl(sratCallbackUrl)) {
-      return c.json({ error: "srat_callback_url must be an absolute https URL (loopback http allowed for dev)" }, 400);
-    }
+
+    const fieldErr = validateStartFields(provider, sratCallbackUrl);
+    if (fieldErr) return c.json({ error: fieldErr.error }, fieldErr.status);
 
     const env = getEnv(c);
-    // Optional allowlist: BROKER_ALLOWED_CALLBACK_PATTERNS (glob CSV, e.g. "https://*.srat.example/*")
     const allowlistRaw = env.BROKER_ALLOWED_CALLBACK_PATTERNS?.trim();
     if (allowlistRaw && !isAllowedSratCallbackUrl(sratCallbackUrl, allowlistRaw)) {
       return c.json({ error: "srat_callback_url not allowed by broker policy" }, 403);
@@ -304,28 +412,14 @@ export function createBrokerApp(opts?: {
     } catch (e) {
       return c.json({ error: (e as Error).message }, 500);
     }
-    const redirectUri = `${publicUrl}/v1/callback`;
 
     const sessionId = crypto.randomUUID();
     const ttl = getSessionTtlSeconds(env);
-
-    // Build auth_url: provider authorize URL + query (client_id, response_type=code, redirect_uri, state=session_id, + auth_params + scope)
-    const authUrl = new URL(prov.authorize_url);
-    authUrl.searchParams.set("client_id", prov.client_id);
-    authUrl.searchParams.set("response_type", "code");
-    authUrl.searchParams.set("redirect_uri", redirectUri);
-    authUrl.searchParams.set("state", sessionId);
-    for (const [k, v] of Object.entries(prov.auth_params || {})) {
-      if (!authUrl.searchParams.has(k)) authUrl.searchParams.set(k, v);
-    }
-    if (prov.scopes && prov.scopes.length > 0) {
-      authUrl.searchParams.set("scope", prov.scopes.join(" "));
-    }
+    const authUrl = buildAuthUrl(prov, publicUrl, sessionId);
 
     try {
       await store.set(sessionId, { provider, sratCallbackUrl, createdAt: Date.now() }, ttl);
     } catch (e) {
-      // MemoryStore full or other store error
       if ((e as Error).message.includes("session store full")) {
         return c.json({ error: "too many pending sessions, try again later" }, 429);
       }
@@ -337,10 +431,7 @@ export function createBrokerApp(opts?: {
   });
 
   app.get("/v1/callback", async (c) => {
-    // Ensure browser/edge never caches the code/state exchange
-    c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-    c.header("Pragma", "no-cache");
-    c.header("Expires", "0");
+    setNoStore(c);
 
     const code = c.req.query("code") || "";
     const state = c.req.query("state") || "";
@@ -354,7 +445,6 @@ export function createBrokerApp(opts?: {
     if (!session) {
       return c.json({ error: "session not found or expired" }, 410);
     }
-    // If already completed, treat as gone (single-use guard)
     if (session.tokenJson) {
       return c.json({ error: "session not found or expired" }, 410);
     }
@@ -375,58 +465,15 @@ export function createBrokerApp(opts?: {
     }
     const redirectUri = `${publicUrl2}/v1/callback`;
 
-    // Exchange code with provider token URL
-    const form = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-      client_id: prov.client_id,
-      client_secret: prov.client_secret,
-    });
-
-    let tokenResp: Record<string, unknown>;
-    let tokenStatus = 200;
-    try {
-      const resp = await fetchImpl(prov.token_url, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: form.toString(),
-      });
-      tokenStatus = resp.status;
-      const text = await resp.text();
-      try {
-        tokenResp = JSON.parse(text) as Record<string, unknown>;
-      } catch {
-        return c.json({ error: `invalid token response (status ${tokenStatus})` }, 502);
+    const exchange = await exchangeCodeForToken(prov, code, redirectUri, fetchImpl);
+    if ("error" in exchange) {
+      if (exchange.error.startsWith("invalid token response")) {
+        return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
       }
-      if (!resp.ok || !tokenResp.access_token) {
-        // Log detailed provider error server-side without leaking to browser verbatim (L2)
-        const detail = (tokenResp.error_description as string) || (tokenResp.error as string) || `status ${tokenStatus}`;
-        console.warn(`[broker] token exchange failed for provider ${session.provider}: ${detail} (status ${tokenStatus})`);
-        return c.json({ error: "token exchange failed" }, 502);
-      }
-    } catch (e) {
-      // Network failure – generic to browser, detail server-side
-      console.warn(`[broker] token exchange network error: ${(e as Error).message}`);
-      return c.json({ error: "token exchange failed" }, 502);
+      return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
     }
 
-    // Wrap in rclone envelope: {"access_token","token_type","refresh_token","expires_in","expiry","account_id"}
-    const expiresIn = Number(tokenResp.expires_in || 0);
-    const expiry = expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000).toISOString() : undefined;
-    const envelope: Record<string, unknown> = {
-      access_token: tokenResp.access_token,
-      token_type: tokenResp.token_type || "Bearer",
-      refresh_token: tokenResp.refresh_token,
-      expires_in: expiresIn || undefined,
-      expiry,
-      account_id: tokenResp.account_id || tokenResp.accountId || tokenResp.user_id || undefined,
-    };
-    // Remove undefined keys for cleanliness
-    for (const k of Object.keys(envelope)) if (envelope[k] === undefined) delete envelope[k];
-
-    const tokenJson = JSON.stringify(envelope);
-    const accountLabel = (envelope.account_id as string) || "";
+    const { tokenJson, accountLabel } = buildRcloneEnvelope(exchange.tokenResp);
 
     await store.set(
       state,
@@ -438,11 +485,9 @@ export function createBrokerApp(opts?: {
         clientSecret: prov.client_secret,
         completedAt: Date.now(),
       },
-      ttl
+      ttl,
     );
 
-    // 302 redirect back to srat_callback_url (which already carries SRAT's state)
-    // Extra no-store already set above; ensure no leakage via Referrer
     return c.redirect(session.sratCallbackUrl, 302);
   });
 
@@ -453,29 +498,19 @@ export function createBrokerApp(opts?: {
     const id = c.req.param("id");
     const peek = await store.get(id);
     if (!peek) {
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-      c.header("Pragma", "no-cache");
-      c.header("Expires", "0");
+      setNoStore(c);
       return c.json({ error: "expired or already used" }, 404);
     }
     if (!peek.tokenJson) {
-      // Not yet completed — 404 without consuming (early polling cannot destroy flow)
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-      c.header("Pragma", "no-cache");
-      c.header("Expires", "0");
+      setNoStore(c);
       return c.json({ error: "not yet completed" }, 404);
     }
-    // Completed — consume single-use atomically; only one concurrent caller receives the token
     const session = await store.consume(id);
     if (!session || !session.tokenJson) {
-      c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-      c.header("Pragma", "no-cache");
-      c.header("Expires", "0");
+      setNoStore(c);
       return c.json({ error: "expired or already used" }, 404);
     }
-    c.header("Cache-Control", "no-store, no-cache, must-revalidate");
-    c.header("Pragma", "no-cache");
-    c.header("Expires", "0");
+    setNoStore(c);
     return c.json({
       token_json: session.tokenJson,
       account_label: session.accountLabel || "",
