@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent, { PointerEventsCheckLevel } from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";

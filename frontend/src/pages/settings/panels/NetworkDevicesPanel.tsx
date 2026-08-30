@@ -86,7 +86,8 @@ export function NetworkDevicesPanel({ readOnly }: NetworkDevicesPanelProps) {
           {...commonProps}
         />
       </Tooltip>
-      {/* SMB over QUIC (lab feature) */}
+      {/* SMB over QUIC (beta lab feature — reactive to in-form Lab Mode
+          switch, matching backend semantics). */}
       {experimentalLabMode ? (
         <Tooltip
           title={

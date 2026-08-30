@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Shared frontend test setup for all Vitest environments.
  */

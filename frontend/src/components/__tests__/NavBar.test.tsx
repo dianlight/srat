@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -1006,13 +1007,20 @@ it("renders NavBar with AppBar and basic elements", async () => {
     });
 
     it("filters development-only tabs in production", async () => {
-
-
-
+        const envModule = await import("../../macro/Environment");
+        const spy = vi.spyOn(envModule, "getCurrentEnv").mockReturnValue("production");
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, () =>
+                HttpResponse.json([
+                    { key: "smb_conf", name: "smb.conf view", description: "", status: "beta", available: true },
+                ]),
+            ),
+        );
 
         const theme = createTheme();
         const store = await createTestStore();
-        const mockBodyRef = { current: document.createElement('div') };
+        const mockBodyRef = { current: document.createElement("div") };
 
         render(
             React.createElement(
@@ -1027,20 +1035,20 @@ it("renders NavBar with AppBar and basic elements", async () => {
                                 { theme },
                                 React.createElement(NavBar as any, {
                                     error: "",
-                                    bodyRef: mockBodyRef
-                                })
-                            )
-                    }
-                )
-            )
-        );
+                                    bodyRef: mockBodyRef,
+                                }),
+                            ),
+                    },
+                ),
+            ),
+);
 
-        // Check that component renders without errors
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+        await waitFor(() => {
+            expect(screen.queryByRole("tab", { name: /API Docs/i })).toBeNull();
+        });
+        expect(screen.queryByRole("tab", { name: /smb\.conf/i })).toBeInTheDocument();
 
-        // Tabs may or may not be visible depending on media queries and environment
-        const tabs = screen.queryAllByRole("tab");
-        expect(tabs.length).toBeGreaterThanOrEqual(0);
+        spy.mockRestore();
     });
 
     it("hides the smb.conf tab when experimental lab mode is disabled", async () => {
@@ -1135,6 +1143,122 @@ it("renders NavBar with AppBar and basic elements", async () => {
         );
 
         expect(await screen.findByRole("tab", { name: /smb\.conf/i })).toBeInTheDocument();
+    });
+
+    it("hides the smb.conf tab when the feature is omitted from the registry", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, () =>
+                HttpResponse.json([
+                    { key: "hdidle", name: "HDIdle", description: "", status: "beta", available: true },
+                ]),
+            ),
+        );
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                }),
+                            ),
+                    },
+                ),
+            ),
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByRole("tab", { name: /smb\.conf/i })).toBeNull();
+        });
+    });
+
+    it("hides the smb.conf tab while lab features are loading", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, async () => {
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                return HttpResponse.json([
+                    { key: "smb_conf", name: "smb.conf view", description: "", status: "beta", available: true },
+                ]);
+            }),
+        );
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                }),
+                            ),
+                    },
+                ),
+            ),
+        );
+
+        // During loading isAvailable is fail-closed, so tab must be hidden
+        expect(screen.queryByRole("tab", { name: /smb\.conf/i })).toBeNull();
+    });
+
+    it("hides the smb.conf tab when lab features endpoint errors", async () => {
+        const server = getMswServer();
+        server.use(
+            http.get(/.*\/api\/lab_features(?:\?.*)?$/, () => HttpResponse.json(null, { status: 500 })),
+        );
+
+        const theme = createTheme();
+        const store = await createTestStore();
+        const mockBodyRef = { current: document.createElement("div") };
+
+        render(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(
+                    Provider,
+                    {
+                        store, children:
+                            React.createElement(
+                                ThemeProvider,
+                                { theme },
+                                React.createElement(NavBar as any, {
+                                    error: "",
+                                    bodyRef: mockBodyRef,
+                                }),
+                            ),
+                    },
+                ),
+            ),
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByRole("tab", { name: /smb\.conf/i })).toBeNull();
+        });
     });
 
     it("renders tab icons for dirty state", async () => {

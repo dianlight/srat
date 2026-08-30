@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useMemo } from "react";

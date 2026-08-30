@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"go.uber.org/fx"
@@ -13,6 +14,7 @@ type HDIdleHandler struct {
 	hdidleService   service.HDIdleServiceInterface
 	hardwareService service.HardwareServiceInterface
 	settingService  service.SettingServiceInterface
+	labRegistry     *service.LabFeatureRegistry
 }
 
 type HDIdleHandlerParams struct {
@@ -27,6 +29,7 @@ func NewHDIdleHandler(params HDIdleHandlerParams) *HDIdleHandler {
 		hdidleService:   params.HDIdleService,
 		hardwareService: params.HardwareService,
 		settingService:  params.SettingService,
+		labRegistry:     service.NewLabFeatureRegistry(),
 	}
 }
 
@@ -51,6 +54,22 @@ func (h *HDIdleHandler) RegisterHDIdleHandler(api huma.API) {
 	huma.Put(api, "/disk/{disk_id}/hdidle/config", h.putConfig, huma.OperationTags("disk"))
 	huma.Get(api, "/disk/{disk_id}/hdidle/support", h.checkSupport, huma.OperationTags("disk"))
 	huma.Post(api, "/disk/{disk_id}/hdidle/ignore-suggestion", h.ignoreSuggestion, huma.OperationTags("disk", "volume"))
+}
+
+// requireLabFeature returns 403 unless the feature is available in the
+// current build. Alpha features are rejected in release (production) builds
+// even when Lab Mode is enabled; beta features fall through to
+// requireLabMode. Called at the top of every public hdidle handler.
+func (h *HDIdleHandler) requireLabFeature(featureKey string) error {
+	feature, ok := h.labRegistry.Get(featureKey)
+	if !ok {
+		return huma.Error404NotFound("unknown lab feature", nil)
+	}
+	if feature.Status == service.StatusAlpha && config.Environment() == "production" {
+		return huma.Error403Forbidden(
+			"alpha feature not available in release builds", nil)
+	}
+	return h.requireLabMode()
 }
 
 // requireLabMode returns 403 unless settings.experimental_lab_mode is true.
@@ -93,7 +112,7 @@ type GetHDIdleConfigOutput struct {
 func (h *HDIdleHandler) getConfig(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleConfigOutput, error) {
-	if err := h.requireLabMode(); err != nil {
+	if err := h.requireLabFeature("hdidle"); err != nil {
 		return nil, err
 	}
 	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
@@ -126,7 +145,7 @@ type PutHDIdleConfigOutput struct {
 }
 
 func (h *HDIdleHandler) putConfig(ctx context.Context, input *PutHDIdleConfigInput) (*PutHDIdleConfigOutput, error) {
-	if err := h.requireLabMode(); err != nil {
+	if err := h.requireLabFeature("hdidle"); err != nil {
 		return nil, err
 	}
 	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
@@ -179,7 +198,7 @@ type GetHDIdleStatusOutput struct {
 func (h *HDIdleHandler) getStatus(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleStatusOutput, error) {
-	if err := h.requireLabMode(); err != nil {
+	if err := h.requireLabFeature("hdidle"); err != nil {
 		return nil, err
 	}
 	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
@@ -209,7 +228,7 @@ type GetHDIdleSupportOutput struct {
 func (h *HDIdleHandler) checkSupport(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID (not the device path)"`
 }) (*GetHDIdleSupportOutput, error) {
-	if err := h.requireLabMode(); err != nil {
+	if err := h.requireLabFeature("hdidle"); err != nil {
 		return nil, err
 	}
 	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)
@@ -238,7 +257,7 @@ type IgnoreSuggestionOutput struct {
 func (h *HDIdleHandler) ignoreSuggestion(ctx context.Context, input *struct {
 	DiskID string `path:"disk_id" required:"true" doc:"The disk ID"`
 }) (*IgnoreSuggestionOutput, error) {
-	if err := h.requireLabMode(); err != nil {
+	if err := h.requireLabFeature("hdidle"); err != nil {
 		return nil, err
 	}
 	devicePath, errR := h.hdidleService.ResolveDevicePath(input.DiskID)

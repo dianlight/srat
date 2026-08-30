@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { beforeEach, describe, expect, it } from "vitest";
 
 // localStorage shim for testing

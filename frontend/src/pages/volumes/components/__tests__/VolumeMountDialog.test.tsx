@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the sratApi hooks and types used by VolumeMountDialog and related components

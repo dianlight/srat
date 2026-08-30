@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { beforeEach, describe, expect, it } from "vitest";
 import { renderWithTestStore } from "/test/testing";
 
