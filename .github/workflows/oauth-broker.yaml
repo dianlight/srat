@@ -51,8 +51,8 @@ jobs:
 
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "Manual trigger detected. Reading latest draft release..."
-            LATEST_DRAFT_TITLE=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""' || echo "")
-            LATEST_DRAFT_TAG=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""' || echo "")
+            LATEST_DRAFT_TITLE=$(gh api --paginate /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""' || echo "")
+            LATEST_DRAFT_TAG=$(gh api --paginate /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""' || echo "")
             if [[ -z "$LATEST_DRAFT_TITLE" && -z "$LATEST_DRAFT_TAG" ]]; then
               echo "No draft release found. Manual runs require an existing draft release title/tag to derive the version."
               exit 1
