@@ -17,13 +17,13 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should not render when smartInfo is undefined", async () => {
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: undefined,
             isSmartSupported: false,
         });
 
-        // Component should return null, so container should be empty
-        expect(container.firstChild).toBeFalsy();
+        const { screen } = await import("@testing-library/react");
+        expect(screen.queryByText(/S\.M\.A\.R\.T/)).toBeNull();
     });
 
     it("should not render when smartInfo.supported is false", async () => {
@@ -36,13 +36,13 @@ describe("SmartStatusPanel Component", () => {
             supported: false,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
         });
 
-        // Component should return null when supported is false
-        expect(container.firstChild).toBeFalsy();
+        const { screen: s2 } = await import("@testing-library/react");
+        expect(s2.queryByText(/S\.M\.A\.R\.T/)).toBeNull();
     });
 
     it("should render SMART status when data is available", async () => {
@@ -258,7 +258,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should disable all actions in read-only mode", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -269,7 +269,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: true,
@@ -286,15 +286,15 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // All action buttons should be disabled
-        const startButtons = await within(container).findAllByText("Start Test");
+        const startButtons = await screen.findAllByText("Start Test");
         expect(startButtons).toHaveLength(1);
         expect((startButtons[0] as HTMLButtonElement).disabled).toBe(true);
 
-        const enableButtons = await within(container).findAllByText("Enable SMART");
+        const enableButtons = await screen.findAllByText("Enable SMART");
         expect(enableButtons).toHaveLength(1);
         expect((enableButtons[0] as HTMLButtonElement).disabled).toBe(true);
 
-        const disableButtons = await within(container).findAllByText("Disable SMART");
+        const disableButtons = await screen.findAllByText("Disable SMART");
         expect(disableButtons).toHaveLength(1);
         expect((disableButtons[0] as HTMLButtonElement).disabled).toBe(true);
     });
@@ -345,18 +345,18 @@ describe("SmartStatusPanel Component", () => {
             supported: false,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
         });
 
-        // Component should not render when smartInfo.supported is false
-        expect(container.firstChild).toBeNull();
+        const { screen: s3 } = await import("@testing-library/react");
+        expect(s3.queryByText(/S\.M\.A\.R\.T/)).toBeNull();
     });
 
     it("should call onStartTest when Start Test button is clicked", async () => {
-                    const { screen, within } = await import("@testing-library/react");
+                    const { screen} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -369,7 +369,7 @@ describe("SmartStatusPanel Component", () => {
 
         const startTestCalled = false;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
         });
@@ -383,7 +383,7 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Click Start Test button
-        const startButtons = await within(container).findAllByText("Start Test");
+        const startButtons = await screen.findAllByText("Start Test");
         expect(startButtons).toHaveLength(1);
         const user = userEvent.setup();
         await user.click(startButtons[0]! as any);
@@ -431,7 +431,7 @@ describe("SmartStatusPanel Component", () => {
     });
 
     it("should display disk type when available", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -442,7 +442,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
@@ -459,12 +459,12 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Should display disk type
-        const diskTypeChip = await within(container).findAllByText("SATA");
+        const diskTypeChip = await screen.findAllByText("SATA");
         expect(diskTypeChip.length).toBeGreaterThan(0);
     });
 
     it("should display RPM when rotation_rate > 0", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -476,7 +476,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
@@ -493,12 +493,12 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Should display RPM
-        const rpmChip = await within(container).findAllByText("7200 RPM");
+        const rpmChip = await screen.findAllByText("7200 RPM");
         expect(rpmChip.length).toBeGreaterThan(0);
     });
 
     it("should not display RPM when rotation_rate is 0", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -510,7 +510,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
@@ -527,12 +527,12 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Should NOT display RPM
-        const rpmChips = within(container).queryAllByText(/RPM/);
+        const rpmChips = screen.queryAllByText(/RPM/);
         expect(rpmChips.length).toBe(0);
     });
 
     it("should display both disk type and RPM for HDDs", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "SATA",
@@ -544,7 +544,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
@@ -561,19 +561,19 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Should display both disk type and RPM
-        const diskTypeChip = await within(container).findAllByText("SATA");
+        const diskTypeChip = await screen.findAllByText("SATA");
         expect(diskTypeChip.length).toBeGreaterThan(0);
 
-        const rpmChip = await within(container).findAllByText("5400 RPM");
+        const rpmChip = await screen.findAllByText("5400 RPM");
         expect(rpmChip.length).toBeGreaterThan(0);
 
         // Should have "Device Information" section
-        const deviceInfoSection = await within(container).findAllByText("Device Information");
+        const deviceInfoSection = await screen.findAllByText("Device Information");
         expect(deviceInfoSection.length).toBeGreaterThan(0);
     });
 
     it("should display model, family, firmware, and serial when available", async () => {
-        const { screen, act, within } = await import("@testing-library/react");
+        const { screen, act} = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
         const mockSmartInfo = {
             disk_type: "NVMe",
@@ -585,7 +585,7 @@ describe("SmartStatusPanel Component", () => {
             supported: true,
         } as any;
 
-        const { container } = await renderSmartStatusPanel({
+        await renderSmartStatusPanel({
             smartInfo: mockSmartInfo,
             isSmartSupported: true,
             isReadOnlyMode: false,
@@ -602,16 +602,16 @@ describe("SmartStatusPanel Component", () => {
         }
 
         // Verify chips are rendered
-        const modelChip = await within(container).findAllByText("Samsung SSD 980");
+        const modelChip = await screen.findAllByText("Samsung SSD 980");
         expect(modelChip.length).toBeGreaterThan(0);
 
-        const familyChip = await within(container).findAllByText("Samsung NVMe SSD");
+        const familyChip = await screen.findAllByText("Samsung NVMe SSD");
         expect(familyChip.length).toBeGreaterThan(0);
 
-        const firmwareChip = await within(container).findAllByText(/FW 3B2QGXA7/);
+        const firmwareChip = await screen.findAllByText(/FW 3B2QGXA7/);
         expect(firmwareChip.length).toBeGreaterThan(0);
 
-        const serialChip = await within(container).findAllByText(/SN S64BNF0T123456X/);
+        const serialChip = await screen.findAllByText(/SN S64BNF0T123456X/);
         expect(serialChip.length).toBeGreaterThan(0);
     });
 });

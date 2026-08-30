@@ -35,9 +35,9 @@ describe("DashboardMetrics Component", () => {
     };
 
     it("renders dashboard metrics component", async () => {
-        const { container } = await renderDashboardMetrics();
+        await renderDashboardMetrics();
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders metric cards", async () => {

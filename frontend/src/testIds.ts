@@ -16,9 +16,21 @@ export const testIds = {
   },
   dashboard: {
     hdidleSuggestionBadge: "dashboard-hdidle-suggestion-badge",
+    smartIcon: "disk-health-smart-icon",
   },
   volumes: {
     partitionActionIcon: "partition-action-icon",
+    actionsGrid: "partition-actions-grid",
+  },
+  smbConf: {
+    codeViewer: "smbconf-code-viewer",
+  },
+  swagger: {
+    explorer: "openapi-explorer",
+  },
+  fontawesome: {
+    icon: "fontawesome-svg-icon",
+    path: "fontawesome-icon-path",
   },
   testFixtures: {
     shareEditFormSubmit: "submit-form-test",
