@@ -6,6 +6,19 @@
 
 ### ✨ Features
 
+- **Lab feature registry with maturity tiers**: lab-gated features now flow
+  through a central registry (`GET /api/lab_features`) that assigns each feature
+  an alpha or beta tier and computes availability server-side. Beta features are
+  visible whenever `experimental_lab_mode` is enabled in any build; alpha
+  features (currently the Home Assistant custom-component tools) are exposed
+  only in development and prerelease builds and are unreachable in release
+  builds even with Lab Mode on — enforcement is server-side only, so no
+  frontend environment logic is needed for correctness. The frontend gates
+  lab-gated surfaces — for example the NavBar smb.conf tab, HDIdle badge and
+  disk metrics, HA custom-component panel, NetworkDevicesPanel, SMB over QUIC
+  and add-on mDNS registration — through a single `useLabFeatures()` hook, and
+  HDIdle's `useLabMode()` is now a thin wrapper over it.
+
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore
