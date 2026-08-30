@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { render, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import React from "react";

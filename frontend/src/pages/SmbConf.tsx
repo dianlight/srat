@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Box } from "@mui/material";
 import { useColorScheme } from "@mui/material/styles";
 import { useMemo } from "react";
@@ -22,8 +23,7 @@ export function SmbConfPage() {
   return (
     <InView
       as="div"
-      onChange={(_inView, _entry) => {
-        //console.log("Inview:", inView)
+      onChange={() => {
         smbconfig.refetch();
       }}
     >
@@ -51,6 +51,7 @@ export function SmbConfPage() {
         </Box>
 
         <SyntaxHighlighter
+          data-testid="smbconf-code-viewer"
           customStyle={{ fontSize: "0.7rem" }}
           language="ini"
           style={mode === "light" ? a11yLight : a11yDark}

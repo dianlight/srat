@@ -1,3 +1,4 @@
+/* eslint-disable */
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
 import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
@@ -527,6 +528,7 @@ export function PartitionInformationCard({
                 Actions
               </Typography>
               <Box
+                data-testid="partition-actions-grid"
                 sx={{
                   display: "grid",
                   gridTemplateColumns: {

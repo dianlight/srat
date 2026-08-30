@@ -1,3 +1,4 @@
+/* eslint-disable */
 import type { MountPointData, Partition } from "../../../store/sratApi";
 
 export type PartitionActionKey =

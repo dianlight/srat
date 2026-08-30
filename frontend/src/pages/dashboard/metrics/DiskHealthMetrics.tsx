@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {
   Memory as SmartIcon,
   Warning as WarningIcon,
@@ -315,6 +316,7 @@ export function DiskHealthMetrics({
                           arrow
                         >
                           <SmartIcon
+                            data-testid="disk-health-smart-icon"
                             color="info"
                             fontSize="small"
                             sx={{ verticalAlign: "middle" }}

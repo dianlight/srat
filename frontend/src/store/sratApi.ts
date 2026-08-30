@@ -321,6 +321,13 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/issues/template` }),
         providesTags: ["Issues"],
       }),
+      getApiLabFeatures: build.query<
+        GetApiLabFeaturesApiResponse,
+        GetApiLabFeaturesApiArg
+      >({
+        query: () => ({ url: `/api/lab_features` }),
+        providesTags: ["system"],
+      }),
       getApiMdnsEvents: build.query<
         GetApiMdnsEventsApiResponse,
         GetApiMdnsEventsApiArg
@@ -945,6 +952,10 @@ export type GetApiIssuesTemplateApiResponse = /** status 200 OK */
   | IssueTemplateResponse
   | /** status default Error */ ErrorModel;
 export type GetApiIssuesTemplateApiArg = void;
+export type GetApiLabFeaturesApiResponse =
+  | /** status 200 OK */ (LabFeature[] | null)
+  | /** status default Error */ ErrorModel;
+export type GetApiLabFeaturesApiArg = void;
 export type GetApiMdnsEventsApiResponse = /** status 200 OK */
   | MdnsRegisterNotification
   | /** status default Error */ ErrorModel;
@@ -1807,6 +1818,13 @@ export type IssueTemplateResponse = {
   error?: string;
   template: IssueTemplate;
 };
+export type LabFeature = {
+  available: boolean;
+  description: string;
+  key: string;
+  name: string;
+  status: Status2;
+};
 export type MdnsRegisterNotification = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
@@ -2131,6 +2149,10 @@ export enum Disk_type {
   Scsi = "SCSI",
   Unknown = "Unknown",
 }
+export enum Status2 {
+  Alpha = "alpha",
+  Beta = "beta",
+}
 export enum Smart_mode {
   None = "none",
   Legacy = "legacy",
@@ -2234,6 +2256,7 @@ export const {
   useGetApiHostnameQuery,
   usePostApiIssuesReportMutation,
   useGetApiIssuesTemplateQuery,
+  useGetApiLabFeaturesQuery,
   useGetApiMdnsEventsQuery,
   useGetApiNicsQuery,
   useGetApiProblemsQuery,

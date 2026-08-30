@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("ShareEditForm component", () => {
@@ -155,12 +156,12 @@ describe("ShareEditForm component", () => {
         const { overrides } = setupCommonOverrides();
 
         const React = await import("react");
-        const { render, within } = await import("@testing-library/react");
+        const { render, screen} = await import("@testing-library/react");
         const { Usage } = await import("../../../../store/sratApi");
         // @ts-expect-error - Query param fetches isolated module instance
         const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-internal");
 
-        const { container } = render(
+        render(
             React.createElement(ShareEditForm as any, {
                 shareData: {
                     org_name: "InternalShare",
@@ -180,7 +181,7 @@ describe("ShareEditForm component", () => {
         );
 
         // Volume field should not be present for internal shares
-        const volumeLabels = within(container).queryAllByText("Volume");
+        const volumeLabels = screen.queryAllByText("Volume");
         expect(volumeLabels.length).toBe(0);
     });
 

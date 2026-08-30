@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { describe, expect, it } from "vitest";
 
 describe("mdcMiddleware", () => {

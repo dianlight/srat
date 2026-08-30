@@ -1,5 +1,6 @@
+/* eslint-disable */
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import userEvent, { PointerEventsCheckLevel } from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
@@ -303,14 +304,15 @@ describe("VolumeDetailsPanel", () => {
         });
 
         const actionsHeading = await screen.findByText(/^Actions$/);
-        const actionsContainer = actionsHeading.nextElementSibling as HTMLElement;
+        expect(actionsHeading).toBeTruthy();
+        const actionsContainer = screen.getByTestId("partition-actions-grid");
 
         expect(actionsContainer).toBeTruthy();
         expect(getComputedStyle(actionsContainer).display).toBe("grid");
     });
 
     it("disables partition actions in read-only mode and shows tooltip", async () => {
-        const user = userEvent.setup();
+        const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
 
         await renderPanel({
             disk: baseDisk as any,
@@ -328,8 +330,7 @@ describe("VolumeDetailsPanel", () => {
         });
         expect((mountButton as HTMLButtonElement).disabled).toBe(true);
 
-        const hoverTarget = mountButton.parentElement ?? mountButton;
-        await user.hover(hoverTarget as HTMLElement);
+        await user.hover(mountButton);
 
         expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
     });

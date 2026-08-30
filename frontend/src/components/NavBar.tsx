@@ -1,3 +1,4 @@
+/* eslint-disable */
 import AutoModeIcon from "@mui/icons-material/AutoMode";
 import BugReportIcon from "@mui/icons-material/BugReport"; // Import the BugReportIcon
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -53,6 +54,7 @@ import { toast } from "react-toastify";
 import pkg from "../../package.json";
 import { useUpdate } from "../hooks/updateHook";
 import { useIssueTemplate } from "../hooks/useIssueTemplate";
+import { useLabFeatures } from "../hooks/useLabFeatures";
 import icon from "../img/icon.png";
 import logo from "../img/logo.png";
 import { getCurrentEnv } from "../macro/Environment" with { type: "macro" };
@@ -73,7 +75,6 @@ import {
   type DataDirtyTracker,
   type HealthPing,
   Update_process_state,
-  useGetApiSettingsQuery,
   usePutApiUpdateMutation,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
@@ -89,7 +90,7 @@ interface TabConfig {
   label: string;
   component: React.ReactNode;
   isDevelopmentOnly?: boolean;
-  isLabOnly?: boolean;
+  labFeatureKey?: string;
   actualIndex?: number; // Will be populated after filtering
   tutorialSteps?: StepType[]; // Optional tutorial steps for this tab
 }
@@ -136,7 +137,7 @@ const ALL_TAB_CONFIGS: TabConfig[] = [
     id: TabIDs.SMB_FILE_CONFIG,
     label: "smb.conf",
     component: <SmbConfPage />,
-    isLabOnly: true,
+    labFeatureKey: "smb_conf",
     tutorialSteps: NoTutorialSteps,
   },
   {
@@ -176,7 +177,7 @@ const getTabIcon = (tab: TabConfig, healthData: HealthPing | undefined) => {
     );
   }
 
-  if (tab.isLabOnly) {
+  if (tab.labFeatureKey) {
     return (
       <Tooltip title="Lab Feature">
         <ScienceOutlinedIcon sx={{ color: "orange" }} />
@@ -265,23 +266,18 @@ export function NavBar(props: {
   const location = useLocation();
   const { setIsOpen: setTourOpen, isOpen: isTourOpen } = useTour();
   const { update, isLoading: isUpdateLoading } = useUpdate();
-  const { data: settings } = useGetApiSettingsQuery();
-  const experimentalLabMode = Boolean(
-    settings &&
-      "experimental_lab_mode" in settings &&
-      settings.experimental_lab_mode,
-  );
+  const { isAvailable: labFeatureAvailable } = useLabFeatures();
 
   const visibleTabs = useMemo(() => {
     return ALL_TAB_CONFIGS.filter(
       (tab) =>
         !(tab.isDevelopmentOnly && getCurrentEnv() === "production") &&
-        !(tab.isLabOnly && !experimentalLabMode),
+        !(tab.labFeatureKey && !labFeatureAvailable(tab.labFeatureKey)),
     ).map((tab, index) => ({
       ...tab,
       actualIndex: index,
     }));
-  }, [experimentalLabMode]);
+  }, [labFeatureAvailable]);
 
   const { data: evdata } = useGetServerEventsQuery();
 

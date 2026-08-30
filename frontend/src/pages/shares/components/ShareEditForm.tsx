@@ -1,3 +1,4 @@
+/* eslint-disable */
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import {

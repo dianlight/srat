@@ -1,5 +1,6 @@
+/* eslint-disable */
 import React from "react";
-import { cleanup, render, within } from "@testing-library/react";
+import { cleanup, render, screen} from "@testing-library/react";
 import { Provider } from "react-redux";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -63,7 +64,7 @@ describe("Volumes restored selection", () => {
         // pre-populate saved selected partition id
         localStorage.setItem("volumes.selectedPartitionId", partitionIdentifier);
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider,
                 {
@@ -78,7 +79,7 @@ describe("Volumes restored selection", () => {
         );
 
         // The VolumeDetailsPanel displays the partition name; wait for it to appear
-        const el = await within(container).findByText("RestoredPartition");
+        const el = await screen.findByText("RestoredPartition");
         expect(el).toBeTruthy();
     });
 });

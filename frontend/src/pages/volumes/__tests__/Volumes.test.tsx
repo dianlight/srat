@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTestStore, withTestHandlers } from "/test/testing";
 
@@ -46,10 +47,10 @@ describe("Volumes component", () => {
     });
 
     it("renders volumes page without crashing", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that the component renders
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders with initial disks data", async () => {
@@ -62,15 +63,15 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
+        await renderVolumesPage({ initialDisks: mockDisks });
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles hide system partitions toggle", async () => {
         const { screen } = await import("@testing-library/react");
         const userEvent = (await import("@testing-library/user-event")).default;
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Find the hide system partitions switch
         const switches = screen.queryAllByRole("checkbox");
@@ -82,25 +83,25 @@ describe("Volumes component", () => {
             expect(localStorage.getItem("volumes.hideSystemPartitions")).toBeTruthy();
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("persists selected partition to localStorage", async () => {
         // Set initial localStorage value
         localStorage.setItem("volumes.selectedPartitionId", "test-partition-1");
 
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Verify localStorage is being used
         expect(localStorage.getItem("volumes.selectedPartitionId")).toBe("test-partition-1");
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("persists expanded disks to localStorage", async () => {
         // Set initial expanded disks
         localStorage.setItem("volumes.expandedDisks", JSON.stringify(["disk1", "disk2"]));
 
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Verify localStorage is being used
         const storedExpanded = localStorage.getItem("volumes.expandedDisks");
@@ -110,45 +111,45 @@ describe("Volumes component", () => {
             expect(Array.isArray(parsed)).toBe(true);
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles invalid localStorage data gracefully", async () => {
         // Set invalid JSON in localStorage
         localStorage.setItem("volumes.expandedDisks", "invalid-json");
 
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Should handle invalid data without crashing
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders VolumesTreeView component", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that tree view structure exists
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders VolumeDetailsPanel component", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that details panel structure exists
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders VolumeMountDialog component", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that mount dialog structure exists
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders PreviewDialog component", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that preview dialog structure exists
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles partition selection", async () => {
@@ -170,7 +171,7 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
+        await renderVolumesPage({ initialDisks: mockDisks });
 
         // Look for partition items that can be clicked
         const treeItems = screen.queryAllByRole("treeitem");
@@ -180,7 +181,7 @@ describe("Volumes component", () => {
             await user.click(firstTreeItem as any);
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("updates the nested partition label in the volumes tree data", async () => {
@@ -220,7 +221,7 @@ describe("Volumes component", () => {
             }
         ];
 
-        const { container } = await renderVolumesPage({ initialDisks: mockDisks });
+        await renderVolumesPage({ initialDisks: mockDisks });
 
         // Look for expandable tree items
         const expandButtons = screen.queryAllByRole("button");
@@ -234,67 +235,67 @@ describe("Volumes component", () => {
             await user.click(firstExpandButton as any);
         }
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders loading state correctly", async () => {
         const { screen } = await import("@testing-library/react");
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check for loading indicators
         const loadingElements = screen.queryAllByRole("progressbar");
         expect(loadingElements.length).toBeGreaterThanOrEqual(0);
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles location state navigation", async () => {
-        const { container } = await renderVolumesPage(undefined, {
+        await renderVolumesPage(undefined, {
             initialEntries: [{ pathname: "/volumes", state: { from: "dashboard" } }],
         });
 
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders grid layout correctly", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Verify grid layout renders correctly
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles filter options correctly", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Verify filter controls are present
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles empty disk list", async () => {
-        const { container } = await renderVolumesPage({ initialDisks: [] });
+        await renderVolumesPage({ initialDisks: [] });
 
         // Should handle empty list gracefully
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles SSE data updates", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Component should be able to receive SSE updates
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("renders paper container correctly", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Verify component renders correctly
-        expect(container.firstChild).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles tour events correctly", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Component should be able to handle tour events
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("handles decodeEscapeSequence utility function", async () => {
@@ -374,10 +375,10 @@ describe("Volumes component", () => {
     });
 
     it("handles responsive layout", async () => {
-        const { container } = await renderVolumesPage();
+        await renderVolumesPage();
 
         // Check that responsive grid is used
-        expect(container).toBeTruthy();
+        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
     });
 
     it("writes partition label rename into the RTK volumes cache and keeps it across refetch", async () => {

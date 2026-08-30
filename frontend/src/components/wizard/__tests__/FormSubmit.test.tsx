@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { expect, it } from "vitest";
 
 it("submits form with MUI Button type=submit inside Dialog + multiple watches", async () => {

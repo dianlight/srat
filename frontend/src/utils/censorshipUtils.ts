@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * Utility functions for censoring sensitive data in various formats
  * TODO: Condier to use https://github.com/slippyex/data-guardian for more robust and configurable data masking

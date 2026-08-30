@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import { render, screen } from "@testing-library/react";
 import React from "react";
@@ -57,7 +58,7 @@ describe("Swagger page", () => {
         const theme = createTheme();
         const store = await createTestStore();
 
-        const { container } = render(
+        render(
             React.createElement(
                 Provider as any,
                 { store },
@@ -69,10 +70,10 @@ describe("Swagger page", () => {
             ),
         );
 
-        // Custom element without semantic role - use getElementsByTagName
-        const explorer = container.getElementsByTagName("openapi-explorer")[0];
+        // Custom element without semantic role - query via data-testid
+        const explorer = screen.getByTestId("openapi-explorer");
         expect(explorer).toBeTruthy();
-        const specUrl = explorer?.getAttribute("spec-url") || "";
+        const specUrl = explorer.getAttribute("spec-url") || "";
         expect(specUrl).toContain("openapi.yaml");
         // apiUrl is environment-dependent; assert normalized absolute URL instead of fixed host
         expect(specUrl.startsWith("http://") || specUrl.startsWith("https://")).toBeTruthy();

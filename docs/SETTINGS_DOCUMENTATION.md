@@ -29,6 +29,7 @@
     - [back-end Storage](#back-end-storage)
     - [API Endpoint](#api-endpoint)
     - [Frontend Integration](#frontend-integration)
+    - [Lab Feature Tiers (Alpha/Beta)](#lab-feature-tiers-alphabeta)
   - [Related Documentation](#related-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -284,6 +285,29 @@ Settings are stored in the database and mapped between:
 - **Component**: SwitchElement (toggle switch)
 - **Label**: "Allow Guest"
 - **ID**: `allow_guest`
+
+### Lab Feature Tiers (Alpha/Beta)
+
+Lab-gated settings are managed through a central feature registry in the Go
+back-end (`GET /api/lab_features`) instead of a single flat
+`experimental_lab_mode` switch. Every lab feature is assigned a maturity tier
+that determines its availability:
+
+- **Beta** — visible when the `experimental_lab_mode` setting is enabled, in
+  any build. Currently: HDIdle per-disk control (`hdidle`), the smb.conf view
+  (`smb_conf`), SMB over QUIC (`smb_over_quic`), Use NFS for Home Assistant
+  (`ha_use_nfs`), and add-on side mDNS registration (`addon_mdns`).
+- **Alpha** — development and prerelease builds only; completely unreachable
+  in release (production) builds regardless of Lab Mode. Currently: Home
+  Assistant custom-component tools (`ha_custom_component`).
+- **GA (promoted)** — the feature is enabled by default and is removed from
+  the registry; its Lab Mode gating is deleted from the code.
+
+Enforcement is server-side only: alpha features are omitted from
+`GET /api/lab_features` and rejected with HTTP 403 by gated handlers in production
+builds, so no frontend environment logic is required for correctness. The
+frontend consumes the registry through the `useLabFeatures()` hook
+(`isAvailable(key)`) to show or hide lab-gated UI.
 
 ## Related Documentation
 

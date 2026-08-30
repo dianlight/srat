@@ -8,6 +8,7 @@
  */
 
 import { http, type RequestHandler } from "msw";
+import { Status2, type LabFeature } from "../store/sratApi";
 
 const filesystemSupportOverrides = new Map<string, Record<string, unknown>>();
 
@@ -310,6 +311,28 @@ export const customHandlers: RequestHandler[] = [
 				"Content-Type": "application/json",
 			},
 		});
+	}),
+
+	// Lab feature registry mock — mirrors the settings mock above
+	// (experimental_lab_mode: true), so every beta feature is available and
+	// the alpha feature is present (tests run in a non-production env).
+	http.get(/.*\/api\/lab_features(?:\?.*)?$/, () => {
+		const labFeatures: LabFeature[] = [
+			{ key: "hdidle", name: "HDIdle per-disk control", description: "Per-disk spin-down control.", status: Status2.Beta, available: true },
+			{ key: "smb_conf", name: "smb.conf view", description: "Read-only view of the generated smb.conf.", status: Status2.Beta, available: true },
+			{ key: "ha_use_nfs", name: "Use NFS for Home Assistant", description: "Mount Home Assistant shares with NFS.", status: Status2.Beta, available: true },
+			{ key: "ha_custom_component", name: "Home Assistant custom component tools", description: "Install, upgrade and uninstall the SRAT custom component.", status: Status2.Alpha, available: true },
+			{ key: "smb_over_quic", name: "SMB over QUIC", description: "Expose SMB shares over the QUIC transport.", status: Status2.Beta, available: true },
+			{ key: "addon_mdns", name: "Add-on side mDNS registration", description: "Zeroconf mDNS registration of the Samba service.", status: Status2.Beta, available: true },
+		];
+		return new Response(JSON.stringify(labFeatures),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
 	}),
 
 	// Example: Settings endpoint mock

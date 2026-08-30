@@ -16,6 +16,7 @@ export const testIds = {
   },
   dashboard: {
     hdidleSuggestionBadge: "dashboard-hdidle-suggestion-badge",
+    smartIcon: "disk-health-smart-icon",
   },
   volumes: {
     partitionActionIcon: "partition-action-icon",
