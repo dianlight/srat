@@ -38,6 +38,8 @@ See the full spec in GitHub issue #1002.
 | `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` | no | – | Shorthand for built-in `dropbox`. Either these or an entry in providers JSON/file is required for `dropbox` |
 | `PORT` | no | `8080` | Listen port for Node/Render (Workers ignores) |
 | `SESSION_TTL` | no | `10m` | Completed-session fetch window. Workers KV `expirationTtl`, memory store TTL |
+| `BROKER_ALLOWED_CALLBACK_PATTERNS` | no | – | Comma CSV glob allowlist for `srat_callback_url` (e.g. `https://*.srat.example/*,https://srat.example.com/*`). Empty = allow any `https:` (default, see Security notes) |
+| `BROKER_DISABLE_AUTH` | no | `false` | Set `true` only for local dev; **refuses to start in production** (when `BROKER_PUBLIC_URL` looks like production) |
 
 ### Providers JSON schema
 
@@ -136,6 +138,12 @@ wrangler kv namespace create OAUTH_SESSIONS --env staging
 wrangler kv namespace create OAUTH_SESSIONS --env production
 # Paste IDs into oauth_broker/wrangler.toml kv_namespaces
 
+# Optional Cloudflare Rate Limiting (Both mode: in-app fallback always active)
+# For stronger DDoS protection, also create a Workers Rate Limit binding:
+# wrangler ratelimit create broker-ratelimit --period 60 --limit 20
+# Then uncomment [[ratelimits]] in wrangler.toml and paste namespace_id.
+# In-app fallback (20/min /v1/start, 30/min /v1/callback, 60/min /v1/session) still protects Render.
+
 # Secrets per env (Workers secret store, not committed)
 wrangler secret put BROKER_API_TOKEN --env staging
 wrangler secret put BROKER_API_TOKEN --env production
@@ -151,16 +159,16 @@ wrangler secret put BROKER_PROVIDERS_JSON --env staging
 mise run //oauth_broker:deploy:worker   # or npx wrangler deploy --env staging|production --cwd oauth_broker
 ```
 
-`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`. `OAUTH_SESSIONS_DB` (D1) is preferred: `sessions` table (`oauth_broker/migrations/0001_create_sessions.sql`) with atomic `DELETE ... RETURNING` in `D1SessionStore.consume()`; `OAUTH_SESSIONS` (KV) remains as fallback (eventually consistent, best-effort consume). Both use `expirationTtl`/`expires_at = SESSION_TTL` seconds (minimum 60 s); only one concurrent `GET /v1/session/{id}` receives the token when D1 is bound.
+`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`, `BROKER_ALLOWED_CALLBACK_PATTERNS`. `OAUTH_SESSIONS_DB` (D1) is preferred: `sessions` table (`oauth_broker/migrations/0001_create_sessions.sql`) with atomic `DELETE ... RETURNING` in `D1SessionStore.consume()`; `OAUTH_SESSIONS` (KV) remains as fallback (eventually consistent, best-effort consume). Both use `expirationTtl`/`expires_at = SESSION_TTL` seconds (minimum 60 s); only one concurrent `GET /v1/session/{id}` receives the token when D1 is bound. Rate limiting is **Both mode**: in-app sliding window (20/min `POST /v1/start`, 30/min `GET /v1/callback`, 60/min `GET /v1/session/{id}` per IP) plus optional `RATE_LIMITER` binding when configured.
 
 ### Render
 
 `oauth_broker/render.yaml` defines the free web service (per <https://bun.com/guides/deployment/render> — Render's `Node` runtime includes Bun):
 
-- `buildCommand: bun install` (type-check runs in CI via `mise run //oauth_broker:test:ci`, not at Render build)
+- `buildCommand: bun install && bun tsc --noEmit` (type-check at Render build; CI also runs `mise run //oauth_broker:test:ci`)
 - `startCommand: bun src/index.ts` (Bun transpiles TS at start)
 - `healthCheckPath: /v1/healthz`
-- `envVars: PORT=10000`, `BROKER_PUBLIC_URL`, `BROKER_API_TOKEN`, `DROPBOX_*`, optionally `BROKER_PROVIDERS_JSON`
+- `envVars: PORT=10000`, `BROKER_PUBLIC_URL`, `BROKER_API_TOKEN`, `DROPBOX_*`, optionally `BROKER_PROVIDERS_JSON` / `BROKER_ALLOWED_CALLBACK_PATTERNS`
 
 Connect the GitHub repo to Render, then create **two services** (staging + production) from `render.yaml` or set deploy hooks:
 
@@ -259,15 +267,21 @@ SRAT addon wizard: set `SRAT_OAUTH_BROKER_URL` to the deployed `BROKER_PUBLIC_UR
 and `SRAT_OAUTH_BROKER_TOKEN` to `BROKER_API_TOKEN`; the “Hosted SRAT OAuth”
 wizard option becomes available when `broker_available` is true (`GET /rclone/providers`).
 
-## Security notes
+## Security notes (hardened 2026-08 – Z-Audit fixes)
 
 - `client_secret` is sent to the provider `token_url` during code exchange and
   returned only inside the single-use `GET /v1/session/{id}` SRAT handover
   (librclone needs it bound to refresh token); never shipped in the binary.
+  Responses use `Cache-Control: no-store, no-cache, must-revalidate` + `Pragma: no-cache` + `Expires: 0`.
 - Sessions expire after `SESSION_TTL`, consumed on first fetch; early polling cannot
-  destroy an in-flight flow.
-- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev). No allowlist is enforced: SRAT instances have arbitrary domains, so any `https:` callback is accepted. If `BROKER_API_TOKEN` leaks, an attacker could call `POST /v1/start` with an attacker-controlled `srat_callback_url` and have the victim browser 302'd there after provider consent (token itself stays single-use in the broker). Mitigate by rotating `BROKER_API_TOKEN` per environment, keeping it only in `wrangler secret` / Render env / GitHub `BROKER_API_TOKEN` secrets, and fronting the broker with an IP allowlist if needed. See `docs/CLOUD_STORAGE_OAUTH.md` trade-off note.
-- `BROKER_PUBLIC_URL` validated as absolute `https` (loopback `http` allowed for dev); misconfigured `http://` outside loopback now returns `500 BROKER_PUBLIC_URL must be an absolute https URL` instead of a later opaque `502 redirect_uri_mismatch` from the provider.
-- Bearer auth uses `crypto.timingSafeEqual` over SHA-256 digests (fixed-length, non-ASCII safe) constant-time compare; missing `BROKER_API_TOKEN` fails closed unless `BROKER_DISABLE_AUTH=true`.
+  destroy an in-flight flow. `MemorySessionStore` caps at 10 000 entries with TTL eviction and returns `429` when full (DoS guard).
+- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev) and capped at 2048 chars. By default any `https:` is accepted (SRAT instances have arbitrary domains), but **optional allowlist** `BROKER_ALLOWED_CALLBACK_PATTERNS` (comma CSV globs, e.g. `https://*.srat.example/*`) enforces `403` when set. If `BROKER_API_TOKEN` leaks, an attacker could still call `POST /v1/start` with an attacker-controlled callback and have the victim browser 302'd there after provider consent (token itself stays single-use in the broker). Mitigate by rotating `BROKER_API_TOKEN` per environment, keeping it only in `wrangler secret` / Render env / GitHub secrets, setting the allowlist, and fronting the broker with an IP allowlist if needed. See `docs/CLOUD_STORAGE_OAUTH.md` trade-off note.
+- `BROKER_PUBLIC_URL` validated as absolute `https` (loopback `http` allowed for dev); misconfigured `http://` outside loopback now returns `500 BROKER_PUBLIC_URL must be an absolute https URL` instead of a later opaque `502 redirect_uri_mismatch` from the provider. Startup also fails fast if `BROKER_PUBLIC_URL` is invalid.
+- Bearer auth uses `crypto.timingSafeEqual` over SHA-256 digests (fixed-length, non-ASCII safe) constant-time compare; missing `BROKER_API_TOKEN` fails closed unless `BROKER_DISABLE_AUTH=true`. **`BROKER_DISABLE_AUTH=true` is refused in production** (`BROKER_PUBLIC_URL` containing `production` or `ENV=production`) – the broker logs `BROKER_DISABLE_AUTH is not allowed in production – denying request` and returns `401`; Node/Workers startup throws `must not be enabled in production – refusing to start`.
+- **Rate limiting (Both mode):** in-app sliding window per IP (`20/min POST /v1/start`, `30/min GET /v1/callback`, `60/min GET /v1/session`) always active, plus optional Cloudflare `RATE_LIMITER` binding (`wrangler ratelimit create broker-ratelimit --period 60 --limit 20` + `[[ratelimits]]` in `wrangler.toml`) when configured. Exceeded returns `429 + Retry-After:60`.
+- **Security headers on every response:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `X-Robots-Tag: noindex, nofollow`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`. `GET /v1/callback` 302 and all `/v1/session` responses also include `Cache-Control: no-store` triple.
+- **CORS deny by default:** no `Access-Control-Allow-Origin` is ever set; `OPTIONS` preflight returns `204` with `Allow-Methods/Headers` only. Broker is server-to-server (SRAT Go backend) + browser 302, not a browser `fetch` API.
+- **Token exchange errors are generic:** provider `error`/`error_description` is logged server-side (`[broker] token exchange failed for provider …`) but the browser/client receives only `502 token exchange failed`, preventing secret detail leakage.
+- `BROKER_PROVIDERS_JSON` / `BROKER_PROVIDERS_FILE` malformed JSON now warns `malformed … ignored` instead of silent swallow; `SESSION_TTL` unparseable warns and falls back to `600s`.
 - Provider `client_secret` never committed; supply via `wrangler secret put` / Render env / GitHub secrets per environment.
-- Session store precedence: `OAUTH_SESSIONS_DB` (D1, atomic `DELETE ... RETURNING`) > `OAUTH_SESSIONS` (KV, eventually consistent, non-atomic consume) > `MemorySessionStore`. Use D1 in production for single-use guarantee.
+- Session store precedence: `OAUTH_SESSIONS_DB` (D1, atomic `DELETE ... RETURNING`) > `OAUTH_SESSIONS` (KV, eventually consistent, non-atomic consume) > `MemorySessionStore`. Workers logs `warn` when D1 is missing / KV fallback. Use D1 in production for single-use guarantee.

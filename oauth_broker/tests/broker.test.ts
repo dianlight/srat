@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { createTestApp, jsonBody, testEnv } from "./utils.js";
 import { MemorySessionStore } from "../src/session.js";
 import { getSessionTtlSeconds, loadProvidersConfig } from "../src/config.js";
-import { isValidSratCallbackUrl } from "../src/app.js";
+import { isValidSratCallbackUrl, __clearRateLimitBucketsForTests } from "../src/app.js";
 
 describe("isValidSratCallbackUrl", () => {
   it("accepts https absolute", () => {
@@ -62,6 +62,7 @@ describe("broker endpoints", () => {
 
   beforeEach(() => {
     store = new MemorySessionStore();
+    __clearRateLimitBucketsForTests();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
   });
@@ -248,7 +249,9 @@ describe("broker endpoints", () => {
       const cbRes = await app.request(`/v1/callback?code=x&state=${session_id}`);
       expect(cbRes.status).toBe(502);
       const body = await jsonBody(cbRes);
-      expect(body.error).toMatch(/network down/);
+      // L2: detailed provider error not leaked to browser – generic message only, detail logged server-side
+      expect(body.error).toMatch(/token exchange failed/);
+      expect(body.error).not.toMatch(/network down/);
     });
   });
 
@@ -265,7 +268,7 @@ describe("broker endpoints", () => {
         headers: { authorization: "Bearer test-token" },
       });
       expect(first.status).toBe(404);
-      expect(first.headers.get("cache-control")).toBe("no-store");
+      expect(first.headers.get("cache-control")).toContain("no-store");
       const second = await app.request(`/v1/session/${session_id}`, {
         headers: { authorization: "Bearer test-token" },
       });
@@ -290,7 +293,7 @@ describe("broker endpoints", () => {
         headers: { authorization: "Bearer test-token" },
       });
       expect(got.status).toBe(200);
-      expect(got.headers.get("cache-control")).toBe("no-store");
+      expect(got.headers.get("cache-control")).toContain("no-store");
       const body = (await jsonBody(got)) as { token_json: string; account_label: string; client_id: string; client_secret: string };
       expect(body.token_json).toBeDefined();
       expect(JSON.parse(body.token_json).access_token).toBe("at");

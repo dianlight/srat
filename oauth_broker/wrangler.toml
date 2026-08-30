@@ -17,6 +17,16 @@ compatibility_flags = ["nodejs_compat"]
 # BROKER_PUBLIC_URL is set per environment (staging vs production) via vars or secrets
 # SESSION_TTL is in seconds (default 600 = 10m)
 SESSION_TTL = "600"
+# Optional allowlist for srat_callback_url (comma glob CSV, e.g. "https://*.srat.example/*,https://srat.example/*")
+# Empty = allow any https (default, see README trade-off). Set to restrict.
+# BROKER_ALLOWED_CALLBACK_PATTERNS = "https://*.example.com/*"
+
+# Optional Cloudflare Rate Limiting binding (Both mode: in-app fallback always active)
+# Create with: wrangler ratelimit create broker-ratelimit --period 60 --limit 20
+# Then uncomment:
+# [[ratelimits]]
+# binding = "RATE_LIMITER"
+# namespace_id = "REPLACE_WITH_RATELIMIT_NAMESPACE_ID"
 
 [env.staging]
 vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.lucio-tarantino.workers.dev", SESSION_TTL = "600" }

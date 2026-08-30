@@ -5,12 +5,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTestApp, jsonBody, testEnv } from "./utils.js";
 import { MemorySessionStore } from "../src/session.js";
+import { __clearRateLimitBucketsForTests } from "../src/app.js";
 
 describe("contract: SRAT Go client compatibility (broker_test.go)", () => {
   let store: MemorySessionStore;
 
   beforeEach(() => {
     store = new MemorySessionStore();
+    __clearRateLimitBucketsForTests();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2030-01-01T00:00:00Z"));
   });
