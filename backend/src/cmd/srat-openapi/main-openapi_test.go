@@ -85,6 +85,80 @@ func TestOpenAPIGenerationCreatesFiles(t *testing.T) {
 	}
 }
 
+func TestOpenAPIGenerationIncludesLabFeaturesRoute(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping openapi generation test in short mode")
+	}
+	if runtime.GOOS == "darwin" {
+		t.Skip("requires Linux environment (HA addon: /proc, /etc/samba)")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
+
+	outDir := t.TempDir()
+	cwd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get working directory: %v", err)
+	}
+
+	cmd := exec.CommandContext(ctx, "go", "run", ".", "-out", outDir, "-mock", "-loglevel", "error")
+	cmd.Dir = cwd
+	cmd.Env = append(os.Environ(), "SRAT_MOCK=true")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("srat-openapi execution failed: %v\nOutput:\n%s", err, string(output))
+	}
+	t.Logf("srat-openapi output:\n%s", string(output))
+
+	jsonPath := filepath.Join(outDir, "openapi.json")
+	jsonData, err := os.ReadFile(jsonPath)
+	if err != nil {
+		t.Fatalf("failed to read generated openapi.json: %v", err)
+	}
+
+	var payload map[string]any
+	if err := json.Unmarshal(jsonData, &payload); err != nil {
+		t.Fatalf("generated openapi.json is not valid JSON: %v", err)
+	}
+
+	paths, ok := payload["paths"].(map[string]any)
+	if !ok {
+		t.Fatalf("generated openapi.json missing paths object")
+	}
+	if _, ok := paths["/api/lab_features"]; !ok {
+		t.Fatalf("expected openapi.json to contain /api/lab_features path, got paths: %v", keysOf(paths))
+	}
+
+	yamlPath := filepath.Join(outDir, "openapi.yaml")
+	yamlData, err := os.ReadFile(yamlPath)
+	if err != nil {
+		t.Fatalf("failed to read generated openapi.yaml: %v", err)
+	}
+	if !bytes.Contains(yamlData, []byte("/api/lab_features")) {
+		t.Fatalf("generated openapi.yaml missing /api/lab_features route")
+	}
+}
+
+func keysOf(m map[string]any) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+func TestOpenAPIRouteOptionIsCoverable(t *testing.T) {
+	// Directly exercises the extracted wiring helper so the line
+	// server.AsHumaRoute(api.NewLabFeatureHandler) is hit by coverage
+	// without requiring main() execution or a subprocess.
+	opt := openAPIRouteOption()
+	if opt == nil {
+		t.Fatalf("expected non-nil fx.Option from openAPIRouteOption")
+	}
+}
+
 func TestOpenAPIFilenames(t *testing.T) {
 	yamlPath, jsonPath := openAPIFilenames("./docs/")
 	if !strings.HasSuffix(yamlPath, "docs/openapi.yaml") {

@@ -1,6 +1,7 @@
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
+import { useLabFeatures } from "../../../hooks/useLabFeatures";
 import {
   type Settings as ApiSettings,
   type SystemCapabilities,
@@ -21,6 +22,7 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
     useGetApiSettingsHomeassistantCustomComponentStatusQuery();
   const commonProps = { control, disabled: readOnly };
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+  const { isAvailable: labFeatureAvailable } = useLabFeatures();
   const mdnsEnabled = Boolean(watch("mdns_registration"));
   const isComponentConnected = Boolean(
     componentStatus &&
@@ -59,7 +61,9 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
         />
       </Tooltip>
 
-      {/* Use NFS (remote env only) */}
+      {/* Use NFS (remote env only) — beta lab feature, reactive to the
+          in-form Lab Mode switch (matches backend: beta available ⟺
+          experimental_lab_mode). */}
       {experimentalLabMode ? (
         <Tooltip
           title={
@@ -96,8 +100,9 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
         </Tooltip>
       ) : null}
 
-      {/* Custom Component Panel (remote env only) */}
-      {experimentalLabMode ? (
+      {/* Custom Component Panel — ALPHA lab feature: only in dev/prerelease
+          builds (registry drops it in production), AND behind Lab Mode. */}
+      {experimentalLabMode && labFeatureAvailable("ha_custom_component") ? (
         <HomeAssistantCustomComponentPanel readOnly={readOnly} />
       ) : null}
 
