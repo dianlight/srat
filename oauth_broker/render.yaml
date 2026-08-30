@@ -1,11 +1,11 @@
 services:
   - type: web
     name: srat-oauth-broker
-    env: node
+    runtime: node # Node runtime includes Bun (build+runtime); no bun env exists
     plan: free
     rootDir: oauth_broker
     buildCommand: bun install && bun tsc --noEmit
-    startCommand: bun src/index.ts
+    startCommand: bun run src/index.ts
     envVars:
       - key: PORT
         value: 10000

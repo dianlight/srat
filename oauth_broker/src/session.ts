@@ -4,7 +4,14 @@ export interface SessionStore {
   get(id: string): Promise<SessionRecord | null>;
   set(id: string, data: SessionRecord, ttlSeconds: number): Promise<void>;
   delete(id: string): Promise<void>;
-  /** Atomically get and delete — returns the record if existed, null otherwise. Only one concurrent caller should receive the completed session. */
+  /**
+   * Best-effort single-use get-and-delete — returns the record if existed, null otherwise.
+   * Atomic in MemorySessionStore (single isolate); best-effort in KVSessionStore
+   * (eventually consistent across Workers isolates — two concurrent GET /v1/session/:id
+   * may both read before delete propagates; KV has no conditional writes). Only one
+   * caller SHOULD receive the token; callers must tolerate at-most-once delivery.
+   * For strong single-use use D1SessionStore (DELETE ... RETURNING is atomic).
+   */
   consume(id: string): Promise<SessionRecord | null>;
 }
 
