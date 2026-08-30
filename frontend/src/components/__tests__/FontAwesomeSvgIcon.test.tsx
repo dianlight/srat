@@ -159,6 +159,9 @@ const singlePathIcon: FaIcon = {
         // No default testid is stamped on the icon root...
         expect(screen.queryByTestId("fontawesome-svg-icon")).toBeNull();
         // ...yet the icon still rendered (its per-path marker is present).
-        expect(screen.queryAllByTestId("fontawesome-icon-path").length).toBeGreaterThan(0);
+        // Scoped query avoids global duplicate-ID pollution when multiple icons render.
+        const svg = document.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(within(svg as unknown as HTMLElement).queryAllByTestId("fontawesome-icon-path").length).toBeGreaterThan(0);
     });
 });
