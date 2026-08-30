@@ -3,6 +3,7 @@ package dto_test
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
@@ -76,4 +77,41 @@ func TestHDIdleDevice_AllBoolFields_FalseRoundTrip(t *testing.T) {
 	assert.Contains(t, jsonStr, `"supported":false`)
 	assert.Contains(t, jsonStr, `"supports_scsi":false`)
 	assert.Contains(t, jsonStr, `"supports_ata":false`)
+}
+
+func TestHDIdleDeviceStatus_OmitZero_ZeroTimestampsAreOmitted(t *testing.T) {
+	status := dto.HDIdleDeviceStatus{
+		Name:     "sda",
+		SpunDown: false,
+		// All timestamps zero — must be omitted with omitzero.
+	}
+	data, err := json.Marshal(status)
+	require.NoError(t, err)
+	jsonStr := string(data)
+	assert.NotContains(t, jsonStr, "last_io_at", "zero LastIOAt must be omitted with omitzero")
+	assert.NotContains(t, jsonStr, "spin_down_at", "zero SpinDownAt must be omitted with omitzero")
+	assert.NotContains(t, jsonStr, "spin_up_at", "zero SpinUpAt must be omitted with omitzero")
+}
+
+func TestHDIdleDeviceStatus_OmitZero_PopulatedTimestampsAreSerialized(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	status := dto.HDIdleDeviceStatus{
+		Name:       "sda",
+		SpunDown:   true,
+		LastIOAt:   now,
+		SpinDownAt: now,
+		SpinUpAt:   now,
+	}
+	data, err := json.Marshal(status)
+	require.NoError(t, err)
+	jsonStr := string(data)
+	assert.Contains(t, jsonStr, "last_io_at")
+	assert.Contains(t, jsonStr, "spin_down_at")
+	assert.Contains(t, jsonStr, "spin_up_at")
+	// Round-trip preserves values.
+	var decoded dto.HDIdleDeviceStatus
+	require.NoError(t, json.Unmarshal(data, &decoded))
+	assert.Equal(t, now, decoded.LastIOAt)
+	assert.Equal(t, now, decoded.SpinDownAt)
+	assert.Equal(t, now, decoded.SpinUpAt)
 }
