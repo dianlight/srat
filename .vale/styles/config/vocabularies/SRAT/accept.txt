@@ -360,3 +360,16 @@ Partitionless
 superfloppy
 darwin
 unpartitioned
+deletable
+devtools
+testId
+shareKey
+selectedShareKey
+expandedGroups
+basename
+experimental_lab_mode
+socat
+uppercased
+rescan
+lib_smart_available
+testIds
