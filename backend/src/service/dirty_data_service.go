@@ -127,6 +127,7 @@ func (p *DirtyDataService) setDirtyShares() {
 }
 
 func (p *DirtyDataService) setDirtyUsers() {
+	slog.DebugContext(p.ctx, "DirtyDataService setDirtyUsers triggered", "tracker", p.dataDirtyTracker)
 	p.dataDirtyTracker.Users = true
 	p.startTimer()
 }
@@ -156,6 +157,16 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 func (p *DirtyDataService) resetDirtyStatus() {
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
 	p.stopTimer()
+	// Emit clean tracker so Broadcaster can update its deduplication hash
+	// and heartbeat correctly reflects clean state. Without this, the next
+	// dirty with same hash (e.g. users:true) would be deduplicated and
+	// never broadcast (see #1011).
+	if p.eventBus != nil {
+		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+			Type:             events.EventTypes.CLEAN,
+			DataDirtyTracker: p.dataDirtyTracker,
+		})
+	}
 }
 
 func (p *DirtyDataService) ResetDirtyDataTracker() {
