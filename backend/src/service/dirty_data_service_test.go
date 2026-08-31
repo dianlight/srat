@@ -11,6 +11,7 @@ import (
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
@@ -145,4 +146,38 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtyAppConfig() {
 	suite.True(tracker.AppConfig)
 	suite.False(suite.dirtyDataService.IsTimerRunning())
 	suite.False(suite.dirtyDataService.IsClean())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus_EmitsCleanTracker() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+	suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
+
+	var captured []events.DirtyDataEvent
+	unsub := suite.eventBus.OnDirtyData(func(_ context.Context, e events.DirtyDataEvent) errors.E {
+		captured = append(captured, e)
+		return nil
+	})
+	defer unsub()
+
+	suite.dirtyDataService.ResetDirtyDataTracker()
+
+	suite.NotEmpty(captured)
+	last := captured[len(captured)-1]
+	suite.Equal(events.EventTypes.CLEAN, last.Type)
+	suite.Equal(dto.DataDirtyTracker{}, last.DataDirtyTracker)
+	suite.True(suite.dirtyDataService.IsClean())
+	suite.False(suite.dirtyDataService.IsTimerRunning())
+}
+
+func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus_NilEventBusDoesNotPanic() {
+	svc := &DirtyDataService{
+		ctx:              suite.ctx,
+		dataDirtyTracker: dto.DataDirtyTracker{Users: true},
+		eventBus:         nil,
+	}
+	suite.NotPanics(func() {
+		svc.ResetDirtyDataTracker()
+	})
+	suite.Equal(dto.DataDirtyTracker{}, svc.dataDirtyTracker)
+	suite.True(svc.IsClean())
 }
