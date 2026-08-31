@@ -13,19 +13,42 @@ already consumes.
 
 ```text
 SRAT  POST /v1/start {provider, srat_callback_url}  → {auth_url, session_id}
-browser GET auth_url  → provider sign-in / consent
+        broker generates PKCE code_verifier (43-char base64url, 32 random bytes)
+        and S256 code_challenge = BASE64URL(SHA256(verifier)); stores verifier
+        in session, embeds challenge in auth_url
+browser GET auth_url?code_challenge=<S256>&code_challenge_method=S256  → provider sign-in / consent
 provider GET {BROKER_PUBLIC_URL}/v1/callback?code&state  (state = session_id)
-broker  exchanges code with ITS client secret, stores rclone-shaped token
-        under session_id (single use, short TTL) and 302s browser → srat_callback_url
+broker  exchanges code + code_verifier with ITS client secret (S256 proof),
+        stores rclone-shaped token under session_id (single use, short TTL)
+        and 302s browser → srat_callback_url
 SRAT  GET /v1/session/{session_id}  → {token_json, account_label, client_id, client_secret}
 ```
 
 - `POST /v1/start` + `GET /v1/session/{id}` require `Authorization: Bearer <BROKER_API_TOKEN>`
   (constant-time compare). `GET /v1/callback` is browser-facing, protected by
-  the opaque single-use `session_id` as OAuth `state`.
+  the opaque single-use `session_id` as OAuth `state` **and** the PKCE
+  `code_verifier` / `code_challenge` (S256) binding.
 - `GET /v1/healthz` → `{status:"ok", providers:[...]}` (public).
 
 See the full spec in GitHub issue #1002.
+
+## PKCE (RFC 7636) — S256
+
+The broker implements **Proof Key for Code Exchange (PKCE)** with `S256` for
+every OAuth flow. No configuration is required — it is always on.
+
+| Step | Function | Detail |
+| --- | --- | --- |
+| **Generate verifier** | `generateCodeVerifier()` in `src/app.ts` | 32 random bytes via `crypto.getRandomValues()` → 43-char `base64url` string (RFC 7636 §4.1, 43–128 chars, charset `A-Z a-z 0-9 - _ . ~`) |
+| **Derive challenge** | `pkceChallengeFromVerifier(verifier)` | `BASE64URL(SHA256(ASCII(verifier)))` using `node:crypto` `createHash("sha256")` |
+| **Authorize** | `buildAuthUrl(prov, publicUrl, sessionId, codeVerifier)` | Sets `code_challenge=<S256>` + `code_challenge_method=S256` on the provider `authorize_url` alongside `client_id`, `response_type=code`, `redirect_uri`, `state` |
+| **Store** | `POST /v1/start` handler | Persists `codeVerifier` in `SessionRecord.codeVerifier` (memory / KV / D1) for the TTL window |
+| **Exchange** | `exchangeCodeForToken(prov, code, redirectUri, fetchImpl, codeVerifier)` | Sends `code_verifier` in the `application/x-www-form-urlencoded` token request (`grant_type=authorization_code`); omitted only for legacy sessions without a verifier |
+| **Verify** | Provider | Validates `code_verifier` against the earlier `code_challenge` (S256) before issuing tokens |
+
+- **Why S256 only:** `plain` is not offered — SHA-256 prevents challenge reversal even if the authorize URL leaks in logs. Verified against the RFC 7636 test vector (`dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` → `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`).
+- **Compatibility:** Providers that do not support PKCE ignore the extra params; the flow still succeeds. Providers that require PKCE (e.g., Dropbox with PKCE-enforced clients, Google) now succeed where plain `authorization_code` would be rejected. No SRAT client changes are needed — the broker handles PKCE transparently.
+- **Session binding:** The verifier is single-use and bound to the opaque `state` (`session_id`), so an intercepted `code` alone cannot be redeemed without the verifier stored only server-side.
 
 ## Configuration
 
@@ -252,11 +275,12 @@ No broker registration needed — SRAT would need a different auth flow for iClo
 Contract tests mirror `backend/src/service/rclone/broker_test.go` (`fakeBroker`) to
 guarantee SRAT client compatibility:
 
-- `POST /v1/start` happy path + early validation + bearer + public URL trimming
-- `GET /v1/callback` 400/410/502 + token envelope wrapping (`expiry` RFC3339)
+- `POST /v1/start` happy path + early validation + bearer + public URL trimming + **PKCE** `code_challenge` S256 present
+- `GET /v1/callback` 400/410/502 + token envelope wrapping (`expiry` RFC3339) + **PKCE** `code_verifier` forwarded (S256 proof)
 - `GET /v1/session/{id}` early polling 404 without consuming + single-use 200 + `Cache-Control: no-store` + path escaping
 - Providers: `BROKER_PROVIDERS_FILE` + `BROKER_PROVIDERS_JSON` merging, built-in defaults, missing file ignored
-- Session stores: `MemorySessionStore` TTL + `KVSessionStore` JSON roundtrip
+- Session stores: `MemorySessionStore` TTL + `KVSessionStore` JSON roundtrip + `codeVerifier` persistence
+- **PKCE**: RFC 7636 test vector (`dBjftJeZ4CVP…` → `E9Melhoa…`), verifier 43-char length + charset, challenge S256, `buildAuthUrl` / `exchangeCodeForToken` unit coverage, end-to-end `POST /v1/start` → `GET /v1/callback` verifier round-trip
 - Coverage gate ≥70% lines/functions (see `vitest.config.ts`)
 
 ```sh
@@ -267,7 +291,9 @@ SRAT addon wizard: set `SRAT_OAUTH_BROKER_URL` to the deployed `BROKER_PUBLIC_UR
 and `SRAT_OAUTH_BROKER_TOKEN` to `BROKER_API_TOKEN`; the “Hosted SRAT OAuth”
 wizard option becomes available when `broker_available` is true (`GET /rclone/providers`).
 
-## Security notes (hardened 2026-08 – Z-Audit fixes)
+## Security notes (hardened 2026-08 – Z-Audit fixes; PKCE added 2026-08)
+
+- **PKCE S256 (RFC 7636):** Every `POST /v1/start` generates a 32-byte `code_verifier` → 43-char `base64url` and stores it in the session; `buildAuthUrl` sends `code_challenge=S256(challenge)` + `code_challenge_method=S256`; `GET /v1/callback` sends `code_verifier` in the token exchange. This binds the authorization `code` to the server-side verifier, so an intercepted `code` (e.g., via log leak or open-redirect) cannot be redeemed without the verifier. `plain` is never offered; S256 is verified against the RFC test vector. See `## PKCE` above.
 
 - `client_secret` is sent to the provider `token_url` during code exchange and
   returned only inside the single-use `GET /v1/session/{id}` SRAT handover

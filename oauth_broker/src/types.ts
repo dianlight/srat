@@ -31,6 +31,8 @@ export type SessionRecord = {
   clientId?: string;
   clientSecret?: string;
   completedAt?: number;
+  // PKCE S256: verifier stored at /v1/start, consumed at /v1/callback token exchange
+  codeVerifier?: string;
 };
 
 export type HealthResponse = {
