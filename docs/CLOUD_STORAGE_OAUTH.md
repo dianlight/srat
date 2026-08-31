@@ -2,6 +2,8 @@
 
 This document explains why OAuth app registration is required for each cloud storage provider and how to set it up for use with SRAT's OAuth broker.
 
+> **PKCE (RFC 7636) S256:** The SRAT OAuth broker (`oauth_broker/src/app.ts`) now implements PKCE with `S256` on every flow. `POST /v1/start` generates a 43-char `code_verifier` (32 random bytes, `base64url`), derives `code_challenge = BASE64URL(SHA256(verifier))`, stores the verifier in the session (`SessionRecord.codeVerifier`), and embeds the challenge in the provider authorize URL; `GET /v1/callback` forwards `code_verifier` in the token exchange. This is transparent to the SRAT back end and to provider app registrations (extra parameters are ignored by providers that do not require PKCE, and required by those that do). No configuration is needed. See [`oauth_broker/README.md` → `## PKCE`](../oauth_broker/README.md#pkce-rfc-7636--s256) and [`oauth_broker/src/app.ts`](../oauth_broker/src/app.ts) (`generateCodeVerifier`, `pkceChallengeFromVerifier`, `buildAuthUrl`, `exchangeCodeForToken`).
+
 ## Why App Registration Is Required
 
 OAuth providers (Dropbox, Google, Microsoft) require each integration to have its own **client ID** and **client secret** for several reasons:
@@ -178,6 +180,26 @@ iCloud **does not use OAuth**. It uses Apple's **CloudKit** framework with **app
 
 ---
 
+## PKCE (Proof Key for Code Exchange) — S256
+
+SRAT's broker implements PKCE per [RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636) with `S256` on every authorization flow. This protects the `code` redemption step against interception (e.g., leaked `code` via logs, referrer, or open-redirect).
+
+**How it works (no operator action required):**
+
+1. `POST /v1/start` → `generateCodeVerifier()` creates 32 random bytes (`crypto.getRandomValues`) → 43-char `base64url` verifier (within RFC 43–128). Stored server-side as `SessionRecord.codeVerifier` in memory / KV / D1 for the session TTL.
+2. `pkceChallengeFromVerifier(verifier)` → `SHA256(verifier)` → `base64url` S256 challenge. `buildAuthUrl()` appends `code_challenge` + `code_challenge_method=S256` to the provider authorize URL (alongside `client_id`, `response_type=code`, `redirect_uri`, `state`).
+3. `GET /v1/callback?code&state` → `exchangeCodeForToken(..., codeVerifier)` sends `code_verifier` in the `application/x-www-form-urlencoded` token request. The provider validates it against the earlier challenge before issuing `access_token` / `refresh_token`.
+
+- `plain` is never offered — `S256` prevents reversing the challenge. Verified against the RFC test vector (`dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` → `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`).
+- **Backward compatible:** Providers that do not support PKCE ignore `code_challenge`/`code_challenge_method`/`code_verifier`; the flow still succeeds. Providers that require PKCE (some Dropbox / Google OAuth clients, Microsoft identity platform with PKCE-enforced apps) now succeed.
+- **Transparent to SRAT:** The Go client (`backend/src/service/rclone/broker.go`) and HA addon wizard do not need changes — PKCE is handled entirely inside the broker.
+
+**Files:** `oauth_broker/src/app.ts` (`base64UrlEncode`, `generateCodeVerifier`, `pkceChallengeFromVerifier`, `buildAuthUrl`, `exchangeCodeForToken`), `oauth_broker/src/types.ts` (`SessionRecord.codeVerifier`), `oauth_broker/README.md` → `## PKCE`.
+
+**Security benefit:** Even if an attacker obtains the `code` and `state` (e.g., via a compromised browser history or leaked redirect), they cannot redeem it at `token_url` without the server-side `code_verifier` bound to the session.
+
+---
+
 ## Quick Reference: Redirect URIs by Environment
 
 | Environment | Redirect URI |
@@ -199,7 +221,8 @@ iCloud **does not use OAuth**. It uses Apple's **CloudKit** framework with **app
 - [ ] Google: Project created, both APIs enabled, OAuth client configured, scopes added
 - [ ] Google Photos: Photos Library API enabled, appropriate scope selected
 - [ ] OneDrive: Azure AD app registered, Graph permissions granted, admin consent if needed
-- [ ] All: `mise run //oauth_broker:test:ci` passes
+- [ ] PKCE: `POST /v1/start` returns `auth_url` with `code_challenge` + `code_challenge_method=S256`; provider / broker logs show S256 challenge and `code_verifier` in token exchange (verify with `mise run //oauth_broker:test:ci` RFC vector test)
+- [ ] All: `mise run //oauth_broker:test:ci` passes (includes PKCE S256 coverage)
 - [ ] All: `GET /v1/healthz` returns provider list including configured providers
 - [ ] All: End-to-end flow works via SRAT addon wizard ("Hosted SRAT OAuth" option)
 

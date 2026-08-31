@@ -89,6 +89,43 @@ function constantTimeEqual(a: string, b: string): boolean {
   return timingSafeEqual(da, db);
 }
 
+// ---- PKCE S256 helpers ----
+
+/**
+ * Base64url-encodes bytes without padding.
+ * Uses Buffer when available (Node) with fallback to Web APIs for Workers.
+ */
+export function base64UrlEncode(bytes: Uint8Array): string {
+  // Node / Bun: Buffer is fastest and handles base64url natively
+  if (typeof Buffer !== "undefined" && typeof Buffer.from === "function") {
+    return (Buffer.from(bytes) as unknown as { toString(enc: string): string }).toString("base64url");
+  }
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  const b64 = btoa(binary);
+  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Generates a PKCE code_verifier per RFC 7636 §4.1:
+ * 32 random bytes → 43-char base64url string (within 43–128 allowed range,
+ * using unreserved characters A-Z / a-z / 0-9 / - / _ / . / ~).
+ */
+export function generateCodeVerifier(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+}
+
+/**
+ * Derives a PKCE S256 code_challenge from a verifier.
+ * code_challenge = BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))
+ */
+export function pkceChallengeFromVerifier(verifier: string): string {
+  const hash = createHash("sha256").update(verifier, "utf8").digest();
+  return base64UrlEncode(hash);
+}
+
 // ---- Rate limiting (in-memory fallback + optional CF binding) ----
 type RateLimitConfig = { windowMs: number; limit: number };
 const RATE_LIMITS: Record<string, RateLimitConfig> = {
@@ -158,17 +195,22 @@ function validateStartFields(
   return null;
 }
 
-function buildAuthUrl(
+export function buildAuthUrl(
   prov: ProviderConfig & { authorize_url: string; token_url: string },
   publicUrl: string,
   sessionId: string,
+  codeVerifier?: string,
 ): URL {
+  const verifier = codeVerifier ?? generateCodeVerifier();
+  const challenge = pkceChallengeFromVerifier(verifier);
   const redirectUri = `${publicUrl}/v1/callback`;
   const authUrl = new URL(prov.authorize_url);
   authUrl.searchParams.set("client_id", prov.client_id);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("state", sessionId);
+  authUrl.searchParams.set("code_challenge", challenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
   for (const [k, v] of Object.entries(prov.auth_params || {})) {
     if (!authUrl.searchParams.has(k)) authUrl.searchParams.set(k, v);
   }
@@ -197,19 +239,24 @@ function buildRcloneEnvelope(tokenResp: Record<string, unknown>): {
   return { envelope, tokenJson: JSON.stringify(envelope), accountLabel: (envelope.account_id as string) || "" };
 }
 
-async function exchangeCodeForToken(
+export async function exchangeCodeForToken(
   prov: ProviderConfig & { authorize_url: string; token_url: string },
   code: string,
   redirectUri: string,
   fetchImpl: typeof fetch,
+  codeVerifier?: string,
 ): Promise<{ tokenResp: Record<string, unknown>; tokenStatus: number } | { error: string; status: ContentfulStatusCode }> {
-  const form = new URLSearchParams({
+  const formEntries: Record<string, string> = {
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
     client_id: prov.client_id,
     client_secret: prov.client_secret,
-  });
+  };
+  if (codeVerifier) {
+    formEntries.code_verifier = codeVerifier;
+  }
+  const form = new URLSearchParams(formEntries);
 
   try {
     const resp = await fetchImpl(prov.token_url, {
@@ -415,10 +462,11 @@ export function createBrokerApp(opts?: {
 
     const sessionId = crypto.randomUUID();
     const ttl = getSessionTtlSeconds(env);
-    const authUrl = buildAuthUrl(prov, publicUrl, sessionId);
+    const codeVerifier = generateCodeVerifier();
+    const authUrl = buildAuthUrl(prov, publicUrl, sessionId, codeVerifier);
 
     try {
-      await store.set(sessionId, { provider, sratCallbackUrl, createdAt: Date.now() }, ttl);
+      await store.set(sessionId, { provider, sratCallbackUrl, createdAt: Date.now(), codeVerifier }, ttl);
     } catch (e) {
       if ((e as Error).message.includes("session store full")) {
         return c.json({ error: "too many pending sessions, try again later" }, 429);
@@ -465,7 +513,7 @@ export function createBrokerApp(opts?: {
     }
     const redirectUri = `${publicUrl2}/v1/callback`;
 
-    const exchange = await exchangeCodeForToken(prov, code, redirectUri, fetchImpl);
+    const exchange = await exchangeCodeForToken(prov, code, redirectUri, fetchImpl, session.codeVerifier);
     if ("error" in exchange) {
       if (exchange.error.startsWith("invalid token response")) {
         return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
