@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { type SkipToken, skipToken } from "@reduxjs/toolkit/query";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { apiUrl } from "./emptyApi";
@@ -18,7 +17,7 @@ import type {
   UpdateProgress,
   Welcome,
 } from "./sratApi";
-import { Supported_events } from "./sratApi";
+import { Supported_events, sratApi } from "./sratApi";
 
 export type EventData = {
   [Supported_events.Heartbeat]: HealthPing;
@@ -73,7 +72,7 @@ export const wsApi = createApi({
       providesTags: ["system"],
       async onCacheEntryAdded(
         _arg,
-        { updateCachedData, cacheDataLoaded, cacheEntryRemoved },
+        { updateCachedData, cacheDataLoaded, cacheEntryRemoved, dispatch },
       ) {
         const inactivityTimeoutMs = getGlobalNumber(
           "__SRAT_WS_INACTIVITY_MS",
@@ -193,19 +192,64 @@ export const wsApi = createApi({
               )?.[1];
 
               if (eventTypeEnum) {
+                let parsed: unknown;
+                try {
+                  parsed = JSON.parse(data);
+                } catch (e) {
+                  console.error(
+                    "* Failed to parse WebSocket event data:",
+                    eventType,
+                    data,
+                    e,
+                  );
+                  return;
+                }
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
-                    draft[eventTypeEnum] = JSON.parse(data);
+                    (draft as Record<string, unknown>)[eventTypeEnum] = parsed;
                   }
                 });
+                // Auto-invalidate RTK Query tags based on dirty tracking.
+                // This makes API-created users/shares visible without manual reload.
+                try {
+                  if (eventTypeEnum === Supported_events.DirtyDataTracker) {
+                    const tracker = parsed as DataDirtyTracker;
+                    if (tracker.users) {
+                      dispatch(sratApi.util.invalidateTags(["user"]));
+                    }
+                    if (tracker.shares) {
+                      dispatch(sratApi.util.invalidateTags(["share"]));
+                    }
+                  } else if (eventTypeEnum === Supported_events.Heartbeat) {
+                    const ping = parsed as HealthPing;
+                    if (ping.dirty_tracking?.users) {
+                      dispatch(sratApi.util.invalidateTags(["user"]));
+                    }
+                    if (ping.dirty_tracking?.shares) {
+                      dispatch(sratApi.util.invalidateTags(["share"]));
+                    }
+                  }
+                } catch {}
               } else if (
                 eventType === "command_started" ||
                 eventType === "command_output" ||
                 eventType === "command_terminated"
               ) {
+                let parsedCmd: unknown;
+                try {
+                  parsedCmd = JSON.parse(data);
+                } catch (e) {
+                  console.error(
+                    "* Failed to parse WebSocket command event data:",
+                    eventType,
+                    data,
+                    e,
+                  );
+                  return;
+                }
                 updateCachedData((draft) => {
                   if (draft !== undefined && draft !== null) {
-                    draft[eventType] = JSON.parse(data);
+                    (draft as Record<string, unknown>)[eventType] = parsedCmd;
                   }
                 });
               } else {
