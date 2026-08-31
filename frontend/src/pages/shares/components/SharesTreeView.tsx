@@ -312,6 +312,7 @@ export function SharesTreeView({
                     variant="outlined"
                     color="warning"
                     label="Legacy"
+                    data-testid="shares-legacy-badge"
                     sx={{ fontSize: "0.7rem", height: 16 }}
                   />
                 )}
