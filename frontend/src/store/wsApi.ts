@@ -1,4 +1,3 @@
-/* eslint-disable */
 import { type SkipToken, skipToken } from "@reduxjs/toolkit/query";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { apiUrl } from "./emptyApi";
@@ -213,34 +212,22 @@ export const wsApi = createApi({
                 // Auto-invalidate RTK Query tags based on dirty tracking.
                 // This makes API-created users/shares visible without manual reload.
                 try {
-                  const p = parsed as {
-                    users?: boolean;
-                    shares?: boolean;
-                    dirty_tracking?: { users?: boolean; shares?: boolean };
-                  };
-                  if (
-                    eventTypeEnum === Supported_events.DirtyDataTracker &&
-                    p?.users
-                  ) {
-                    dispatch(sratApi.util.invalidateTags(["user"]));
-                  }
-                  if (
-                    eventTypeEnum === Supported_events.Heartbeat &&
-                    p?.dirty_tracking?.users
-                  ) {
-                    dispatch(sratApi.util.invalidateTags(["user"]));
-                  }
-                  if (
-                    eventTypeEnum === Supported_events.DirtyDataTracker &&
-                    p?.shares
-                  ) {
-                    dispatch(sratApi.util.invalidateTags(["share"]));
-                  }
-                  if (
-                    eventTypeEnum === Supported_events.Heartbeat &&
-                    p?.dirty_tracking?.shares
-                  ) {
-                    dispatch(sratApi.util.invalidateTags(["share"]));
+                  if (eventTypeEnum === Supported_events.DirtyDataTracker) {
+                    const tracker = parsed as DataDirtyTracker;
+                    if (tracker.users) {
+                      dispatch(sratApi.util.invalidateTags(["user"]));
+                    }
+                    if (tracker.shares) {
+                      dispatch(sratApi.util.invalidateTags(["share"]));
+                    }
+                  } else if (eventTypeEnum === Supported_events.Heartbeat) {
+                    const ping = parsed as HealthPing;
+                    if (ping.dirty_tracking?.users) {
+                      dispatch(sratApi.util.invalidateTags(["user"]));
+                    }
+                    if (ping.dirty_tracking?.shares) {
+                      dispatch(sratApi.util.invalidateTags(["share"]));
+                    }
                   }
                 } catch {}
               } else if (

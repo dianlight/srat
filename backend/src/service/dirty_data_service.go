@@ -127,7 +127,7 @@ func (p *DirtyDataService) setDirtyShares() {
 }
 
 func (p *DirtyDataService) setDirtyUsers() {
-	slog.InfoContext(p.ctx, "DirtyDataService setDirtyUsers triggered", "tracker", p.dataDirtyTracker)
+	slog.DebugContext(p.ctx, "DirtyDataService setDirtyUsers triggered", "tracker", p.dataDirtyTracker)
 	p.dataDirtyTracker.Users = true
 	p.startTimer()
 }

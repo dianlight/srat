@@ -125,14 +125,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		return nil
 	})
 	ret[3] = broker.eventBus.OnDirtyData(func(ctx context.Context, dde events.DirtyDataEvent) errors.E {
-		slog.InfoContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker, "type", dde.Type)
+		slog.DebugContext(ctx, "BroadcasterService received DirtyData event", "tracker", dde.DataDirtyTracker, "type", dde.Type)
 		currentHash := hashDirtyTracker(dde.DataDirtyTracker)
 		if lastHash, ok := broker.lastDirtyHash.Load().(string); ok && lastHash == currentHash {
-			slog.InfoContext(ctx, "Skipping unchanged dirty data tracker broadcast (dedup)", "tracker", dde.DataDirtyTracker, "hash", currentHash)
+			tlog.TraceContext(ctx, "Skipping unchanged dirty data tracker broadcast (dedup)", "tracker", dde.DataDirtyTracker, "hash", currentHash)
 			return nil
 		}
 		broker.lastDirtyHash.Store(currentHash)
-		slog.InfoContext(ctx, "Broadcasting dirty_data_tracker", "tracker", dde.DataDirtyTracker)
+		slog.DebugContext(ctx, "Broadcasting dirty_data_tracker", "tracker", dde.DataDirtyTracker)
 		broker.BroadcastMessage(dde.DataDirtyTracker)
 		return nil
 	})
