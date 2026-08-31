@@ -150,6 +150,19 @@ func (suite *LabFeatureHandlerSuite) TestPrereleaseIncludesAlphaWithLabModeOn() 
 	suite.True(features["hdidle"].Available)
 }
 
+// TestNilSettingsTreatedAsLabModeOff verifies that a nil Settings (load
+// returns nil, nil error) is treated as lab mode off and does not panic.
+func (suite *LabFeatureHandlerSuite) TestNilSettingsTreatedAsLabModeOff() {
+	config.Version = "1.0.0-rc.1"
+	mock.When(suite.mockSettingService.Load()).ThenReturn(nil, nil)
+
+	features := suite.byKey(suite.fetch())
+	suite.Contains(features, "ha_custom_component")
+	suite.False(features["ha_custom_component"].Available)
+	suite.False(features["hdidle"].Available)
+	suite.False(features["smb_conf"].Available)
+}
+
 // =============================================================================
 // Error path
 // =============================================================================

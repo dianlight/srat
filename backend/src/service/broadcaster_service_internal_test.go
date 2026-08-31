@@ -171,6 +171,58 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	mock.VerifyNoMoreInteractions(shareService)
 }
 
+func TestBroadcasterDirtyDataDedupe_ResetsAfterClean(t *testing.T) {
+	ctx := t.Context()
+	eventBus := events.NewEventBus(ctx)
+	b := &BroadcasterService{
+		ctx:      ctx,
+		relay:    broadcast.NewRelay[broadcastEvent](),
+		eventBus: eventBus,
+		disks:    dto.NewDiskMap(),
+		state:    &dto.ContextState{},
+	}
+	unsub := b.setupEventListeners()
+	defer func() {
+		for _, fn := range unsub {
+			fn()
+		}
+	}()
+	listener := b.relay.Listener(10)
+	defer listener.Close()
+
+	tracker := dto.DataDirtyTracker{Users: true}
+	clean := dto.DataDirtyTracker{}
+
+	// First dirty -> broadcast
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: tracker})
+	select {
+	case <-listener.Ch():
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected first dirty broadcast")
+	}
+	// Duplicate without clean -> deduped
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: tracker})
+	select {
+	case msg := <-listener.Ch():
+		t.Fatalf("unexpected deduped broadcast: %#v", msg)
+	case <-time.After(80 * time.Millisecond):
+	}
+	// Clean resets hash
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.CLEAN, DataDirtyTracker: clean})
+	select {
+	case <-listener.Ch():
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected clean broadcast")
+	}
+	// Same dirty after clean must broadcast again (#1011)
+	eventBus.EmitDirtyData(events.DirtyDataEvent{Type: events.EventTypes.UPDATE, DataDirtyTracker: tracker})
+	select {
+	case <-listener.Ch():
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected dirty broadcast after clean (dedup hash should have reset)")
+	}
+}
+
 // TestBroadcasterSetupEventListeners_ShareListError ensures a share listing
 // failure is logged but does not crash the listener.
 func TestBroadcasterSetupEventListeners_ShareListError(t *testing.T) {
