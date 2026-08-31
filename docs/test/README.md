@@ -1,3 +1,20 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Test Cases](#test-cases)
+  - [Naming Convention](#naming-convention)
+  - [Directory Structure](#directory-structure)
+  - [Test Case Format](#test-case-format)
+    - [1. Preparation](#1-preparation)
+    - [2. Execution](#2-execution)
+    - [3. Validation (Optional)](#3-validation-optional)
+  - [Execution Environment](#execution-environment)
+  - [Running Tests](#running-tests)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Test Cases
 
 This directory contains test case specifications for the SRAT project. Test cases are designed to be executed on remote test environments with Home Assistant and the SRAT addon.
