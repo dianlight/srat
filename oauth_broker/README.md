@@ -9,26 +9,32 @@ TypeScript (Hono) codebase deploys to **both** free targets:
 It implements the contract the Go client `backend/src/service/rclone/broker.go`
 already consumes.
 
-## Protocol (SRAT contract)
+## Protocol (SRAT contract) — hardened with instance registration (2026-09)
 
 ```text
-SRAT  POST /v1/start {provider, srat_callback_url}  → {auth_url, session_id}
+HA    POST /v1/instances/register {instance_id, redirect_url}  → {instance_id, redirect_url, expires_at, ttl_seconds}
+        client-provided instance_id (no broker fallback), exact redirect_url, TTL 1h (3600s), Bearer auth
+SRAT  POST /v1/start {provider, srat_callback_url, instance_id}  → {auth_url, session_id}
+        instance_id required (hard 400 if missing), broker validates srat_callback_url == registered redirect_url (exact match)
         broker generates PKCE code_verifier (43-char base64url, 32 random bytes)
-        and S256 code_challenge = BASE64URL(SHA256(verifier)); stores verifier
+        and S256 code_challenge = BASE64URL(SHA256(verifier)); stores verifier+instance_id
         in session, embeds challenge in auth_url
 browser GET auth_url?code_challenge=<S256>&code_challenge_method=S256  → provider sign-in / consent
 provider GET {BROKER_PUBLIC_URL}/v1/callback?code&state  (state = session_id)
-broker  exchanges code + code_verifier with ITS client secret (S256 proof),
+broker  validates instance binding (session.instance_id → instanceStore, exact redirect match),
+        exchanges code + code_verifier with ITS client secret (S256 proof),
         stores rclone-shaped token under session_id (single use, short TTL)
-        and 302s browser → srat_callback_url
+        and renders broker-owned HTML page (broker validates redirect, not provider)
+        → shows localized ok/ko (en/it via Accept-Language) and auto-redirects to validated redirect_url (inspired by https://my.home-assistant.io/redirect/oauth)
 SRAT  GET /v1/session/{session_id}  → {token_json, account_label, client_id, client_secret}
 ```
 
-- `POST /v1/start` + `GET /v1/session/{id}` require `Authorization: Bearer <BROKER_API_TOKEN>`
+- `POST /v1/instances/register` + `POST /v1/start` + `GET /v1/session/{id}` require `Authorization: Bearer <BROKER_API_TOKEN>`
   (constant-time compare). `GET /v1/callback` is browser-facing, protected by
-  the opaque single-use `session_id` as OAuth `state` **and** the PKCE
-  `code_verifier` / `code_challenge` (S256) binding.
+  the opaque single-use `session_id` as OAuth `state`, the PKCE
+  `code_verifier` / `code_challenge` (S256) binding, **and** the instance-registered `redirect_url` (exact match, TTL 1h).
 - `GET /v1/healthz` → `{status:"ok", providers:[...]}` (public).
+- Instance registration must precede OAuth; unregistered/expired instance → `410`, redirect mismatch → `403`.
 
 See the full spec in GitHub issue #1002.
 
@@ -121,9 +127,15 @@ mise run //oauth_broker:dev            # listens on :8080
 mise run //oauth_broker:dev:worker     # wrangler dev (KV preview)
 
 curl http://localhost:8080/v1/healthz
+# 1) Register HA instance (must be done first, TTL 1h, exact redirect)
 curl -H "Authorization: Bearer test-token" -H "Content-Type: application/json" \
-  -d '{"provider":"dropbox","srat_callback_url":"https://srat.example/cb"}' \
+  -d '{"instance_id":"my-ha-uuid","redirect_url":"https://srat.example/cb"}' \
+  http://localhost:8080/v1/instances/register
+# 2) Start OAuth (instance_id required, srat_callback_url must exactly match registered redirect_url)
+curl -H "Authorization: Bearer test-token" -H "Content-Type: application/json" \
+  -d '{"provider":"dropbox","srat_callback_url":"https://srat.example/cb","instance_id":"my-ha-uuid"}' \
   http://localhost:8080/v1/start
+# GET /v1/callback is broker-owned HTML (en/it via Accept-Language) that validates instance binding and auto-redirects
 ```
 
 ## Deploy
@@ -182,7 +194,7 @@ wrangler secret put BROKER_PROVIDERS_JSON --env staging
 mise run //oauth_broker:deploy:worker   # or npx wrangler deploy --env staging|production --cwd oauth_broker
 ```
 
-`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`, `BROKER_ALLOWED_CALLBACK_PATTERNS`. `OAUTH_SESSIONS_DB` (D1) is preferred: `sessions` table (`oauth_broker/migrations/0001_create_sessions.sql`) with atomic `DELETE ... RETURNING` in `D1SessionStore.consume()`; `OAUTH_SESSIONS` (KV) remains as fallback (eventually consistent, best-effort consume). Both use `expirationTtl`/`expires_at = SESSION_TTL` seconds (minimum 60 s); only one concurrent `GET /v1/session/{id}` receives the token when D1 is bound. Rate limiting is **Both mode**: in-app sliding window (20/min `POST /v1/start`, 30/min `GET /v1/callback`, 60/min `GET /v1/session/{id}` per IP) plus optional `RATE_LIMITER` binding when configured.
+`wrangler.toml` vars: `BROKER_PUBLIC_URL`, `SESSION_TTL`, `BROKER_ALLOWED_CALLBACK_PATTERNS`. `OAUTH_SESSIONS_DB` (D1) is preferred: `sessions` table (`oauth_broker/migrations/0001_create_sessions.sql`) + `instances` table (`oauth_broker/migrations/0002_create_instances.sql`) with atomic `DELETE ... RETURNING` in `D1SessionStore.consume()`; `OAUTH_SESSIONS` (KV) remains as fallback (eventually consistent, best-effort consume; instances use `inst:` prefix). Both use `expirationTtl`/`expires_at = SESSION_TTL` (sessions) or `3600` (instances, fixed 1h) seconds (minimum 60 s); only one concurrent `GET /v1/session/{id}` receives the token when D1 is bound. Rate limiting is **Both mode**: in-app sliding window (20/min `POST /v1/start`, 30/min `GET /v1/callback`, 60/min `GET /v1/session/{id}`, 20/min `POST /v1/instances/register` per IP) plus optional `RATE_LIMITER` binding when configured. Callback is now broker-owned HTML (en/it, `Accept-Language` negotiation, auto-redirect via meta refresh + JS, inspired by https://my.home-assistant.io/redirect/oauth) rather than blind 302; `Accept: application/json` still gets 302/JSON for API clients/tests.
 
 ### Render
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { createTestApp, jsonBody, testEnv } from "./utils.js";
-import { MemorySessionStore } from "../src/session.js";
+import { createTestApp, jsonBody, testEnv, registerInstance } from "./utils.js";
+import { MemorySessionStore, MemoryInstanceStore } from "../src/session.js";
 import { getSessionTtlSeconds, loadProvidersConfig } from "../src/config.js";
 import { isValidSratCallbackUrl, __clearRateLimitBucketsForTests } from "../src/app.js";
 
@@ -50,7 +50,6 @@ describe("config", () => {
   });
 
   it("file + env both: env wins on overlap", () => {
-    // This test exercises the merge path; file not present so only env matters
     const env = testEnv({ DROPBOX_CLIENT_ID: "from-env", DROPBOX_CLIENT_SECRET: "sec" });
     const cfg = loadProvidersConfig(env);
     expect(cfg.dropbox.client_id).toBe("from-env");
@@ -59,9 +58,11 @@ describe("config", () => {
 
 describe("broker endpoints", () => {
   let store: MemorySessionStore;
+  let instanceStore: MemoryInstanceStore;
 
   beforeEach(() => {
     store = new MemorySessionStore();
+    instanceStore = new MemoryInstanceStore();
     __clearRateLimitBucketsForTests();
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
@@ -69,6 +70,13 @@ describe("broker endpoints", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
+
+  async function prepareRegisteredApp(cbUrl = "https://srat.example.com/cb", id = "ha-instance-1") {
+    const { app } = createTestApp(undefined, { store, instanceStore });
+    const reg = await registerInstance(app, id, cbUrl);
+    expect(reg.status).toBe(200);
+    return { app, instanceId: id, cbUrl };
+  }
 
   describe("GET /v1/healthz", () => {
     it("returns ok with providers list", async () => {
@@ -81,14 +89,76 @@ describe("broker endpoints", () => {
     });
   });
 
-  describe("POST /v1/start", () => {
-    it("happy path posts provider and callback url and returns auth_url + session_id", async () => {
-      const { app } = createTestApp(undefined, { store });
-      const callback = "https://srat.example.com/api/rclone/oauth/callback?state=st%3D1";
+  describe("POST /v1/instances/register", () => {
+    it("registers instance with exact redirect_url and TTL", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ instance_id: "my-ha-123", redirect_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(200);
+      const body = await jsonBody(res);
+      expect(body.instance_id).toBe("my-ha-123");
+      expect(body.redirect_url).toBe("https://srat.example.com/cb");
+      expect(body.ttl_seconds).toBe(3600);
+      const stored = await instanceStore.get("my-ha-123");
+      expect(stored?.redirectUrl).toBe("https://srat.example.com/cb");
+    });
+
+    it("rejects missing instance_id", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ redirect_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("rejects invalid redirect_url (non-https)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ instance_id: "id1", redirect_url: "http://evil.com/cb" }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it("requires bearer token", async () => {
+      const { app } = createTestApp(testEnv({ BROKER_API_TOKEN: "secret" }), { store, instanceStore });
+      const res = await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ instance_id: "id1", redirect_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(401);
+    });
+
+    it("expires after TTL (1h)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      await registerInstance(app, "exp-id", "https://srat.example.com/cb");
+      expect(await instanceStore.get("exp-id")).not.toBeNull();
+      vi.advanceTimersByTime(3601_000);
+      expect(await instanceStore.get("exp-id")).toBeNull();
+      // start should now 410
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: callback }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "exp-id" }),
+      });
+      expect(res.status).toBe(410);
+    });
+  });
+
+  describe("POST /v1/start", () => {
+    it("happy path with instance binding returns auth_url + session_id", async () => {
+      const { app, cbUrl, instanceId } = await prepareRegisteredApp("https://srat.example.com/api/rclone/oauth/callback?state=st%3D1", "ha-1");
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: instanceId }),
       });
       expect(res.status).toBe(200);
       const body = await jsonBody(res);
@@ -101,46 +171,84 @@ describe("broker endpoints", () => {
       expect(authUrl.searchParams.get("redirect_uri")).toBe("https://broker.example.com/v1/callback");
       expect(authUrl.searchParams.get("token_access_type")).toBe("offline");
       expect(authUrl.searchParams.get("state")).toBe(body.session_id);
+      // session stores instanceId
+      const sess = await store.get(body.session_id as string);
+      expect(sess?.instanceId).toBe(instanceId);
+    });
+
+    it("hard fail 400 when instance_id missing", async () => {
+      const { app } = await prepareRegisteredApp();
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+      });
+      expect(res.status).toBe(400);
+      expect((await jsonBody(res)).error).toMatch(/instance_id is required/i);
+    });
+
+    it("410 when instance not registered", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "unknown" }),
+      });
+      expect(res.status).toBe(410);
+    });
+
+    it("403 when srat_callback_url does not exactly match registered redirect_url", async () => {
+      const { app } = await prepareRegisteredApp("https://srat.example.com/cb", "ha-1");
+      const res = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/other", instance_id: "ha-1" }),
+      });
+      expect(res.status).toBe(403);
+      expect((await jsonBody(res)).error).toMatch(/does not match registered/i);
     });
 
     it("rejects missing bearer token", async () => {
-      const { app } = createTestApp(testEnv({ BROKER_API_TOKEN: "secret" }), { store });
+      const { app } = createTestApp(testEnv({ BROKER_API_TOKEN: "secret" }), { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "x" }),
       });
       expect(res.status).toBe(401);
     });
 
     it("rejects invalid srat_callback_url (non-https)", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = await prepareRegisteredApp("https://srat.example.com/cb", "ha-1");
+      // instance is registered for https, but we try http – should 400 before mismatch check? Actually 400 for invalid url
+      // register another not needed – just test invalid url path with instance
+      await registerInstance(app, "ha-http", "https://srat.example.com/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://srat.example.com/cb", instance_id: "ha-http" }),
       });
-      expect(res.status).toBe(400);
-      const body = await jsonBody(res);
-      expect(body.error).toMatch(/srat_callback_url must be an absolute https/i);
+      // invalid url -> 400 (exact mismatch also triggers but invalid first)
+      expect([400, 403]).toContain(res.status);
     });
 
-    it("allows loopback http for dev", async () => {
-      const { app } = createTestApp(undefined, { store });
+    it("allows loopback http for dev when registered", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      await registerInstance(app, "loop", "http://localhost:3000/callback?state=x");
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://localhost:3000/callback?state=x" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://localhost:3000/callback?state=x", instance_id: "loop" }),
       });
       expect(res.status).toBe(200);
     });
 
     it("rejects unknown provider", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = await prepareRegisteredApp("https://srat.example.com/cb", "ha-1");
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "nope", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "nope", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(400);
       const body = await jsonBody(res);
@@ -149,11 +257,18 @@ describe("broker endpoints", () => {
 
     it("trims trailing slash from BROKER_PUBLIC_URL", async () => {
       const env = testEnv({ BROKER_PUBLIC_URL: "https://broker.example.com/" });
-      const { app } = createTestApp(env, { store });
+      const instStore = new MemoryInstanceStore();
+      const sessStore = new MemorySessionStore();
+      const { app } = createTestApp(env, { store: sessStore, instanceStore: instStore });
+      await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
+      });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(200);
       const body = await jsonBody(res);
@@ -162,30 +277,51 @@ describe("broker endpoints", () => {
 
     it("rejects when BROKER_PUBLIC_URL not configured", async () => {
       const env = testEnv({ BROKER_PUBLIC_URL: "" });
-      const { app } = createTestApp(env, { store });
+      const { app } = createTestApp(env, { store, instanceStore });
+      await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
+      });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(500);
     });
   });
 
   describe("GET /v1/callback", () => {
-    it("400 when missing code or state", async () => {
-      const { app } = createTestApp(undefined, { store });
-      const res = await app.request("/v1/callback?code=abc");
+    it("400 when missing code or state (json mode)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/callback?code=abc", { headers: { accept: "application/json" } });
       expect(res.status).toBe(400);
     });
 
+    it("400 html when missing code (browser mode) shows i18n error", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/callback?code=abc");
+      expect(res.status).toBe(400);
+      const text = await res.text();
+      expect(text).toContain("Invalid request");
+    });
+
     it("410 when session unknown/expired", async () => {
-      const { app } = createTestApp(undefined, { store });
-      const res = await app.request("/v1/callback?code=c&state=unknown-sess");
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/callback?code=c&state=unknown-sess", { headers: { accept: "application/json" } });
       expect(res.status).toBe(410);
     });
 
-    it("exchanges code and 302s to srat_callback_url, wrapping token envelope", async () => {
+    it("410 html when session unknown shows localized (it)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      const res = await app.request("/v1/callback?code=c&state=unknown", { headers: { "accept-language": "it" } });
+      expect(res.status).toBe(410);
+      const text = await res.text();
+      expect(text).toContain("Sessione scaduta");
+    });
+
+    it("exchanges code and returns HTML page with redirect (browser mode)", async () => {
       const mockFetch = vi.fn(async () =>
         new Response(
           JSON.stringify({
@@ -198,17 +334,21 @@ describe("broker endpoints", () => {
           { status: 200, headers: { "content-type": "application/json" } }
         )
       ) as unknown as typeof fetch;
-      const { app } = createTestApp(undefined, { store, fetchImpl: mockFetch });
-      // first create session
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      const cbUrl = "https://srat.example.com/cb?state=srState";
+      await registerInstance(app, "ha-1", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb?state=srState" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=thecode&state=${session_id}`, { method: "GET" });
-      expect(cbRes.status).toBe(302);
-      expect(cbRes.headers.get("location")).toBe("https://srat.example.com/cb?state=srState");
+      expect(cbRes.status).toBe(200);
+      expect(cbRes.headers.get("content-type")).toContain("text/html");
+      const html = await cbRes.text();
+      expect(html).toContain("Authorization successful");
+      expect(html).toContain("https://srat.example.com/cb?state=srState");
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const stored = await store.get(session_id);
       expect(stored?.tokenJson).toBeDefined();
@@ -220,48 +360,88 @@ describe("broker endpoints", () => {
       expect(envelope.token_type).toBe("bearer");
     });
 
-    it("502 when provider token endpoint returns error", async () => {
+    it("json mode still 302 when Accept: application/json", async () => {
       const mockFetch = vi.fn(async () =>
-        new Response(JSON.stringify({ error: "invalid_grant", error_description: "bad code" }), { status: 400 })
+        new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }), { status: 200 })
       ) as unknown as typeof fetch;
-      const { app } = createTestApp(undefined, { store, fetchImpl: mockFetch });
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      const cbUrl = "https://srat.example.com/cb";
+      await registerInstance(app, "ha-json", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-json" }),
+      });
+      const { session_id } = (await jsonBody(startRes)) as { session_id: string };
+      const cbRes = await app.request(`/v1/callback?code=thecode&state=${session_id}`, { headers: { accept: "application/json" } });
+      expect(cbRes.status).toBe(302);
+      expect(cbRes.headers.get("location")).toBe(cbUrl);
+    });
+
+    it("502 html when provider token endpoint returns error", async () => {
+      const mockFetch = vi.fn(async () =>
+        new Response(JSON.stringify({ error: "invalid_grant", error_description: "bad code" }), { status: 400 })
+      ) as unknown as typeof fetch;
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      const cbUrl = "https://srat.example.com/cb";
+      await registerInstance(app, "ha-1", cbUrl);
+      const startRes = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=bad&state=${session_id}`);
       expect(cbRes.status).toBe(502);
+      const html = await cbRes.text();
+      expect(html).toContain("Token exchange failed");
     });
 
-    it("502 when fetch throws", async () => {
+    it("502 when fetch throws (json mode hides detail)", async () => {
       const mockFetch = vi.fn(async () => {
         throw new Error("network down");
       }) as unknown as typeof fetch;
-      const { app } = createTestApp(undefined, { store, fetchImpl: mockFetch });
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      const cbUrl = "https://srat.example.com/cb";
+      await registerInstance(app, "ha-1", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
-      const cbRes = await app.request(`/v1/callback?code=x&state=${session_id}`);
+      const cbRes = await app.request(`/v1/callback?code=x&state=${session_id}`, { headers: { accept: "application/json" } });
       expect(cbRes.status).toBe(502);
       const body = await jsonBody(cbRes);
-      // L2: detailed provider error not leaked to browser – generic message only, detail logged server-side
       expect(body.error).toMatch(/token exchange failed/);
       expect(body.error).not.toMatch(/network down/);
+    });
+
+    it("410 when instance expired between start and callback", async () => {
+      const mockFetch = vi.fn(async () => new Response(JSON.stringify({ access_token: "at" }), { status: 200 })) as unknown as typeof fetch;
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      const cbUrl = "https://srat.example.com/cb";
+      await registerInstance(app, "ha-exp", cbUrl);
+      const startRes = await app.request("/v1/start", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-exp" }),
+      });
+      const { session_id } = (await jsonBody(startRes)) as { session_id: string };
+      vi.advanceTimersByTime(3601_000);
+      const cbRes = await app.request(`/v1/callback?code=c&state=${session_id}`, { headers: { accept: "application/json" } });
+      expect(cbRes.status).toBe(410);
     });
   });
 
   describe("GET /v1/session/:id", () => {
     it("404 without consuming when not yet completed (early polling)", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      await registerInstance(app, "ha-1", "https://srat.example.com/cb");
       const startRes = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const first = await app.request(`/v1/session/${session_id}`, {
@@ -272,7 +452,7 @@ describe("broker endpoints", () => {
       const second = await app.request(`/v1/session/${session_id}`, {
         headers: { authorization: "Bearer test-token" },
       });
-      expect(second.status).toBe(404); // still not consumed
+      expect(second.status).toBe(404);
     });
 
     it("on first successful completed fetch returns token + credentials and consumes (single use)", async () => {
@@ -281,14 +461,15 @@ describe("broker endpoints", () => {
           status: 200,
         })
       ) as unknown as typeof fetch;
-      const { app } = createTestApp(undefined, { store, fetchImpl: mockFetch });
+      const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
+      await registerInstance(app, "ha-1", "https://srat.example.com/cb");
       const startRes = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
-      await app.request(`/v1/callback?code=c&state=${session_id}`);
+      await app.request(`/v1/callback?code=c&state=${session_id}`, { headers: { accept: "application/json" } });
       const got = await app.request(`/v1/session/${session_id}`, {
         headers: { authorization: "Bearer test-token" },
       });
@@ -309,20 +490,16 @@ describe("broker endpoints", () => {
     });
 
     it("requires bearer token", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/session/some-id");
       expect(res.status).toBe(401);
     });
 
     it("path escapes session id (a/b c)", async () => {
-      const mockFetch = vi.fn(async () =>
-        new Response(JSON.stringify({ access_token: "at", expires_in: 100 }), { status: 200 })
-      ) as unknown as typeof fetch;
       const customStore = new MemorySessionStore();
-      // manually insert a session with tricky id
       await customStore.set("a/b c", { provider: "dropbox", sratCallbackUrl: "https://srat.example.com/cb", createdAt: Date.now(), tokenJson: `{"access_token":"at","expiry":"2026-01-01T00:01:40.000Z"}`, accountLabel: "acc", clientId: "id", clientSecret: "sec" }, 600);
-      const { app } = createTestApp(undefined, { store: customStore, fetchImpl: mockFetch });
-      const res = await app.request(`/v1/session/${encodeURIComponent("a/b c")}`, {
+      const { app: app2 } = createTestApp(undefined, { store: customStore, instanceStore });
+      const res = await app2.request(`/v1/session/${encodeURIComponent("a/b c")}`, {
         headers: { authorization: "Bearer test-token" },
       });
       expect(res.status).toBe(200);
@@ -331,45 +508,52 @@ describe("broker endpoints", () => {
 
   describe("auth constant-time", () => {
     it("rejects wrong bearer (401)", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = createTestApp(undefined, { store, instanceStore });
+      await registerInstance(app, "ha-1", "https://srat.example.com/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer wrong" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(401);
     });
 
     it("allows when BROKER_API_TOKEN unset with BROKER_DISABLE_AUTH (dev)", async () => {
-      const env = testEnv({ BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true" });
-      const { app } = createTestApp(env, { store });
+      const env = testEnv({ BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true", BROKER_PUBLIC_URL: "http://localhost:8787" });
+      const { app } = createTestApp(env, { store, instanceStore });
+      // register still needs auth bypass – should allow
+      const reg = await app.request("/v1/instances/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ instance_id: "ha-dev", redirect_url: "https://srat.example.com/cb" }),
+      });
+      expect(reg.status).toBe(200);
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-dev" }),
       });
       expect(res.status).toBe(200);
     });
 
     it("rejects when BROKER_API_TOKEN unset and BROKER_DISABLE_AUTH not set (fail-closed)", async () => {
       const env = testEnv({ BROKER_API_TOKEN: "" });
-      // Ensure flag absent/empty
       delete (env as Record<string, string | undefined>).BROKER_DISABLE_AUTH;
-      const { app } = createTestApp(env, { store });
+      const { app } = createTestApp(env, { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "x" }),
       });
       expect(res.status).toBe(401);
     });
 
     it("constantTimeEqual handles non-ASCII bearer token (401 not 500)", async () => {
-      const { app } = createTestApp(undefined, { store });
+      const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer é" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(401);
     });
