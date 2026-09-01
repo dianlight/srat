@@ -1,16 +1,10 @@
 import { createBrokerApp } from "../src/app.js";
-import { MemoryInstanceStore, MemorySessionStore } from "../src/session.js";
+import { MemoryClientStore, MemoryInstanceStore, MemoryNonceStore, MemorySessionStore } from "../src/session.js";
+import { bodyHashBase64Url, buildStringToSign, generateEd25519KeyPair, signStringToSign } from "../src/crypto.js";
 
-/**
- * Creates the default environment configuration used by tests.
- *
- * @param overrides - Environment values that replace the defaults
- * @returns The test environment configuration
- */
 export function testEnv(overrides: Record<string, string | undefined> = {}): Record<string, string | undefined> {
   return {
     BROKER_PUBLIC_URL: "https://broker.example.com",
-    BROKER_API_TOKEN: "test-token",
     SESSION_TTL: "600",
     DROPBOX_CLIENT_ID: "dropbox-id",
     DROPBOX_CLIENT_SECRET: "dropbox-secret",
@@ -18,37 +12,88 @@ export function testEnv(overrides: Record<string, string | undefined> = {}): Rec
   };
 }
 
-/**
- * Creates a broker application configured for testing.
- *
- * @param env - Environment variables used to configure the broker application
- * @param opts - Optional session store and fetch implementation overrides
- * @returns The broker application, session store, and environment configuration
- */
 export function createTestApp(
   env: Record<string, string | undefined> = testEnv(),
-  opts: { store?: MemorySessionStore; instanceStore?: MemoryInstanceStore; fetchImpl?: typeof fetch } = {}
+  opts: {
+    store?: MemorySessionStore;
+    instanceStore?: MemoryInstanceStore;
+    clientStore?: MemoryClientStore;
+    nonceStore?: MemoryNonceStore;
+    fetchImpl?: typeof fetch;
+  } = {},
 ) {
   const store = opts.store ?? new MemorySessionStore();
   const instanceStore = opts.instanceStore ?? new MemoryInstanceStore();
-  const app = createBrokerApp({ store, instanceStore, env, fetchImpl: opts.fetchImpl });
-  return { app, store, instanceStore, env };
+  const clientStore = opts.clientStore ?? new MemoryClientStore();
+  const nonceStore = opts.nonceStore ?? new MemoryNonceStore();
+  const app = createBrokerApp({ store, instanceStore, clientStore, nonceStore, env, fetchImpl: opts.fetchImpl });
+  return { app, store, instanceStore, clientStore, nonceStore, env };
 }
 
-export async function registerInstance(app: any, instanceId: string, redirectUrl: string) {
-  return app.request("/v1/instances/register", {
+export type TestKeyPair = { publicKeyB64Url: string; privateKeyB64Url: string; clientId: string };
+
+export async function generateTestKeyPair(): Promise<TestKeyPair> {
+  return generateEd25519KeyPair();
+}
+
+export async function registerClient(app: any, kp: TestKeyPair) {
+  return app.request("/v1/clients", {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-    body: JSON.stringify({ instance_id: instanceId, redirect_url: redirectUrl }),
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ client_id: kp.clientId, public_key: kp.publicKeyB64Url }),
   });
 }
 
-/**
- * Parses a response body as JSON and preserves the raw text when parsing fails.
- *
- * @param resp - The response whose body should be parsed
- * @returns The parsed JSON object, or an object containing the raw response text under `_raw`
- */
+export async function signedHeaders(kp: TestKeyPair, method: string, path: string, body: string): Promise<Record<string, string>> {
+  const t = String(Math.floor(Date.now() / 1000));
+  const nonce = `n-${Math.random().toString(36).slice(2, 10)}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const bh = bodyHashBase64Url(body);
+  const sts = buildStringToSign(kp.clientId, method, path, t, nonce, bh);
+  const sig = await signStringToSign(kp.privateKeyB64Url, kp.publicKeyB64Url, sts);
+  return { authorization: `SRAT-Signature client_id="${kp.clientId}", t="${t}", nonce="${nonce}", sig="${sig}"` };
+}
+
+const defaultKeyPairs = new WeakMap<any, TestKeyPair>();
+
+export async function getOrCreateDefaultKeyPair(app: any): Promise<TestKeyPair> {
+  let kp = defaultKeyPairs.get(app);
+  if (kp) return kp;
+  kp = await generateTestKeyPair();
+  defaultKeyPairs.set(app, kp);
+  await registerClient(app, kp);
+  return kp;
+}
+
+export async function registerInstance(app: any, instanceId: string, redirectUrl: string, kp?: TestKeyPair) {
+  const key = kp ?? (await getOrCreateDefaultKeyPair(app));
+  const body = JSON.stringify({ instance_id: instanceId, redirect_url: redirectUrl });
+  const headers = await signedHeaders(key, "POST", "/v1/instances/register", body);
+  return app.request("/v1/instances/register", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body,
+  });
+}
+
+export async function signedStartRequest(app: any, bodyObj: Record<string, unknown>, kp?: TestKeyPair) {
+  const key = kp ?? (await getOrCreateDefaultKeyPair(app));
+  const body = JSON.stringify(bodyObj);
+  const headers = await signedHeaders(key, "POST", "/v1/start", body);
+  return app.request("/v1/start", {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body,
+  });
+}
+
+export async function signedSessionRequest(app: any, sessionId: string, kp?: TestKeyPair) {
+  const key = kp ?? (await getOrCreateDefaultKeyPair(app));
+  const headers = await signedHeaders(key, "GET", `/v1/session/${sessionId}`, "");
+  return app.request(`/v1/session/${sessionId}`, {
+    headers: { ...headers },
+  });
+}
+
 export async function jsonBody(resp: Response): Promise<Record<string, unknown>> {
   const text = await resp.text();
   try {

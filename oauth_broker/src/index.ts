@@ -1,10 +1,16 @@
 import { createBrokerApp } from "./app.js";
 import {
+  D1ClientStore,
   D1InstanceStore,
+  D1NonceStore,
   D1SessionStore,
+  KVClientStore,
   KVInstanceStore,
+  KVNonceStore,
   KVSessionStore,
+  MemoryClientStore,
   MemoryInstanceStore,
+  MemoryNonceStore,
   MemorySessionStore,
 } from "./session.js";
 import type { D1DatabaseLike } from "./session.js";
@@ -25,6 +31,8 @@ type Env = Record<string, string | undefined> & {
 // Prevents per-request MemoryStore that would lose state between /v1/start and /v1/callback.
 const workerMemoryStore = new MemorySessionStore();
 const workerMemoryInstanceStore = new MemoryInstanceStore();
+const workerMemoryClientStore = new MemoryClientStore();
+const workerMemoryNonceStore = new MemoryNonceStore();
 
 function validateEnvAtStartup(env: Record<string, string | undefined>): void {
   const publicUrl = getBrokerPublicUrl(env);
@@ -64,7 +72,17 @@ const workerApp = (env: Env) => {
     : env.OAUTH_SESSIONS
       ? new KVInstanceStore(env.OAUTH_SESSIONS)
       : workerMemoryInstanceStore;
-  return createBrokerApp({ store, instanceStore, env });
+  const clientStore = env.OAUTH_SESSIONS_DB
+    ? new D1ClientStore(env.OAUTH_SESSIONS_DB)
+    : env.OAUTH_SESSIONS
+      ? new KVClientStore(env.OAUTH_SESSIONS)
+      : workerMemoryClientStore;
+  const nonceStore = env.OAUTH_SESSIONS_DB
+    ? new D1NonceStore(env.OAUTH_SESSIONS_DB)
+    : env.OAUTH_SESSIONS
+      ? new KVNonceStore(env.OAUTH_SESSIONS)
+      : workerMemoryNonceStore;
+  return createBrokerApp({ store, instanceStore, clientStore, nonceStore, env });
 };
 
 export default {
@@ -96,7 +114,9 @@ if (import.meta.main) {
   }
   const store = new MemorySessionStore();
   const instanceStore = new MemoryInstanceStore();
-  const app = createBrokerApp({ store, instanceStore, env });
+  const clientStore = new MemoryClientStore();
+  const nonceStore = new MemoryNonceStore();
+  const app = createBrokerApp({ store, instanceStore, clientStore, nonceStore, env });
 
   console.log(`[oauth-broker] listening on :${port} (BROKER_PUBLIC_URL=${env.BROKER_PUBLIC_URL || "(unset)"})`);
   Bun.serve({

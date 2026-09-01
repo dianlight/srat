@@ -9,30 +9,30 @@ TypeScript (Hono) codebase deploys to **both** free targets:
 It implements the contract the Go client `backend/src/service/rclone/broker.go`
 already consumes.
 
-## Protocol (SRAT contract) — hardened with instance registration (2026-09)
+## Protocol (SRAT contract) — SRAT-Signature (Ed25519, 2026-09)
 
 ```text
-HA    POST /v1/instances/register {instance_id, redirect_url}  → {instance_id, redirect_url, expires_at, ttl_seconds}
-        client-provided instance_id (no broker fallback), exact redirect_url, TTL 1h (3600s), Bearer auth
-SRAT  POST /v1/start {provider, srat_callback_url, instance_id}  → {auth_url, session_id}
-        instance_id required (hard 400 if missing), broker validates srat_callback_url == registered redirect_url (exact match)
+SRAT  POST /v1/clients {client_id, public_key} → {client_id, public_key, created_at}
+        client_id = base64url(SHA256(pubkey 32B)), persists in KV/D1 (no TTL), no auth (self-certifying)
+SRAT  POST /v1/instances/register {instance_id, redirect_url} → {instance_id, redirect_url, client_id, expires_at, ttl_seconds}
+        instance short-lived (TTL 1h), bound to signer client_id, exact redirect_url, SRAT-Signature auth
+SRAT  POST /v1/start {provider, srat_callback_url, instance_id} → {auth_url, session_id}
+        instance_id required, broker validates srat_callback_url == registered redirect_url (exact) + ownership by client_id, SRAT-Signature auth
         broker generates PKCE code_verifier (43-char base64url, 32 random bytes)
-        and S256 code_challenge = BASE64URL(SHA256(verifier)); stores verifier+instance_id
+        and S256 code_challenge = BASE64URL(SHA256(verifier)); stores verifier+instance_id+ownerClientId
         in session, embeds challenge in auth_url
-browser GET auth_url?code_challenge=<S256>&code_challenge_method=S256  → provider sign-in / consent
+browser GET auth_url?code_challenge=<S256>&code_challenge_method=S256 → provider sign-in / consent
 provider GET {BROKER_PUBLIC_URL}/v1/callback?code&state  (state = session_id)
-broker  validates instance binding (session.instance_id → instanceStore, exact redirect match),
-        exchanges code + code_verifier with ITS client secret (S256 proof),
+broker  validates instance binding + ownership, exchanges code + code_verifier with ITS client secret (S256 proof),
         stores rclone-shaped token under session_id (single use, short TTL)
         and renders broker-owned HTML page (broker validates redirect, not provider)
-        → shows localized ok/ko (en/it via Accept-Language) and auto-redirects to validated redirect_url (inspired by https://my.home-assistant.io/redirect/oauth)
-SRAT  GET /v1/session/{session_id}  → {token_json, account_label, client_id, client_secret}
+        → shows localized ok/ko (en/it via Accept-Language) and auto-redirects to validated redirect_url
+SRAT  GET /v1/session/{session_id} → {token_json, account_label, client_id, client_secret}
+        SRAT-Signature auth, only owner client_id can consume (403 otherwise), single-use
 ```
 
-- `POST /v1/instances/register` + `POST /v1/start` + `GET /v1/session/{id}` require `Authorization: Bearer <BROKER_API_TOKEN>`
-  (constant-time compare). `GET /v1/callback` is browser-facing, protected by
-  the opaque single-use `session_id` as OAuth `state`, the PKCE
-  `code_verifier` / `code_challenge` (S256) binding, **and** the instance-registered `redirect_url` (exact match, TTL 1h).
+- `POST /v1/clients` is public (self-certifying: server recomputes `client_id == SHA256(public_key)`). All other mutating/fetch endpoints require `Authorization: SRAT-Signature client_id="...", t="...", nonce="...", sig="..."` where `sig = Ed25519(priv, client_id+"\n"+METHOD+"\n"+PATH+"\n"+t+"\n"+nonce+"\n"+base64url(SHA256(body)))`, with 5-min clock skew and 10-min nonce replay window. `GET /v1/callback` is browser-facing, protected by opaque `session_id` as `state`, PKCE S256, and instance-registered `redirect_url` (exact match).
+- Key lives in `/data/srat-oauth.key` (0600) + `/data/srat-oauth.pub` on SRAT addon; `client_id` is stable for the installation, `instance_id` is ephemeral per-callback.
 - `GET /v1/healthz` → `{status:"ok", providers:[...]}` (public).
 - Instance registration must precede OAuth; unregistered/expired instance → `410`, redirect mismatch → `403`.
 
@@ -61,7 +61,7 @@ every OAuth flow. No configuration is required — it is always on.
 | Variable | Required | Default | Notes |
 | --- | --- | --- | --- |
 | `BROKER_PUBLIC_URL` | yes | – | Externally reachable https base; used as `redirect_uri={BROKER_PUBLIC_URL}/v1/callback` |
-| `BROKER_API_TOKEN` | yes (prod) | – | Shared bearer secret SRAT presents; empty requires `BROKER_DISABLE_AUTH=true` for local dev, otherwise 401 |
+| `BROKER_DISABLE_AUTH` | no | `false` | Set `true` only for local dev to bypass SRAT-Signature (refuses to start in production) |
 | `BROKER_PROVIDERS_FILE` | no | – | Path to JSON providers file (Node/Render) |
 | `BROKER_PROVIDERS_JSON` | no | – | Inline JSON providers (Workers secret/KV). Merged with file if both set; env shorthand wins |
 | `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` | no | – | Shorthand for built-in `dropbox`. Either these or an entry in providers JSON/file is required for `dropbox` |
@@ -119,7 +119,7 @@ report merging crashes under Bun (same as frontend). Use `test:ci` for coverage.
 ```sh
 # Node (memory store)
 BROKER_PUBLIC_URL=http://localhost:8080 \
-BROKER_API_TOKEN=test-token \
+# SRAT key now in /data/srat-oauth.key (Ed25519), no shared secret
 DROPBOX_CLIENT_ID=xxx DROPBOX_CLIENT_SECRET=yyy \
 mise run //oauth_broker:dev            # listens on :8080
 
@@ -180,8 +180,8 @@ wrangler kv namespace create OAUTH_SESSIONS --env production
 # In-app fallback (20/min /v1/start, 30/min /v1/callback, 60/min /v1/session) still protects Render.
 
 # Secrets per env (Workers secret store, not committed)
-wrangler secret put BROKER_API_TOKEN --env staging
-wrangler secret put BROKER_API_TOKEN --env production
+# no BROKER_API_TOKEN – per-install Ed25519 keys in /data
+# no BROKER_API_TOKEN – per-install Ed25519 keys in /data
 wrangler secret put DROPBOX_CLIENT_ID --env staging
 wrangler secret put DROPBOX_CLIENT_SECRET --env staging
 wrangler secret put DROPBOX_CLIENT_ID --env production
@@ -203,7 +203,7 @@ mise run //oauth_broker:deploy:worker   # or npx wrangler deploy --env staging|p
 - `buildCommand: bun install && bun tsc --noEmit` (type-check at Render build; CI also runs `mise run //oauth_broker:test:ci`)
 - `startCommand: bun src/index.ts` (Bun transpiles TS at start)
 - `healthCheckPath: /v1/healthz`
-- `envVars: PORT=10000`, `BROKER_PUBLIC_URL`, `BROKER_API_TOKEN`, `DROPBOX_*`, optionally `BROKER_PROVIDERS_JSON` / `BROKER_ALLOWED_CALLBACK_PATTERNS`
+- `envVars: PORT=10000`, `BROKER_PUBLIC_URL`, `DROPBOX_*`, optionally `BROKER_PROVIDERS_JSON` / `BROKER_ALLOWED_CALLBACK_PATTERNS`
 
 Connect the GitHub repo to Render, then create **two services** (staging + production) from `render.yaml` or set deploy hooks:
 
@@ -300,7 +300,7 @@ mise run //oauth_broker:test:ci   # must pass before PR merge
 ```
 
 SRAT addon wizard: set `SRAT_OAUTH_BROKER_URL` to the deployed `BROKER_PUBLIC_URL`
-and `SRAT_OAUTH_BROKER_TOKEN` to `BROKER_API_TOKEN`; the “Hosted SRAT OAuth”
+and only `BROKER_PUBLIC_URL` (key is per-install Ed25519 in /data); the “Hosted SRAT OAuth”
 wizard option becomes available when `broker_available` is true (`GET /rclone/providers`).
 
 ## Security notes (hardened 2026-08 – Z-Audit fixes; PKCE added 2026-08)
@@ -313,9 +313,9 @@ wizard option becomes available when `broker_available` is true (`GET /rclone/pr
   Responses use `Cache-Control: no-store, no-cache, must-revalidate` + `Pragma: no-cache` + `Expires: 0`.
 - Sessions expire after `SESSION_TTL`, consumed on first fetch; early polling cannot
   destroy an in-flight flow. `MemorySessionStore` caps at 10 000 entries with TTL eviction and returns `429` when full (DoS guard).
-- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev) and capped at 2048 chars. By default any `https:` is accepted (SRAT instances have arbitrary domains), but **optional allowlist** `BROKER_ALLOWED_CALLBACK_PATTERNS` (comma CSV globs, e.g. `https://*.srat.example/*`) enforces `403` when set. If `BROKER_API_TOKEN` leaks, an attacker could still call `POST /v1/start` with an attacker-controlled callback and have the victim browser 302'd there after provider consent (token itself stays single-use in the broker). Mitigate by rotating `BROKER_API_TOKEN` per environment, keeping it only in `wrangler secret` / Render env / GitHub secrets, setting the allowlist, and fronting the broker with an IP allowlist if needed. See `docs/CLOUD_STORAGE_OAUTH.md` trade-off note.
+- `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev) and capped at 2048 chars. By default any `https:` is accepted (SRAT instances have arbitrary domains), but **optional allowlist** `BROKER_ALLOWED_CALLBACK_PATTERNS` (comma CSV globs, e.g. `https://*.srat.example/*`) enforces `403` when set. Per-install Ed25519: no shared secret to leak. Attacker without private key cannot sign `POST /v1/instances/register` or `POST /v1/start` even with knowledge of `client_id`.
 - `BROKER_PUBLIC_URL` validated as absolute `https` (loopback `http` allowed for dev); misconfigured `http://` outside loopback now returns `500 BROKER_PUBLIC_URL must be an absolute https URL` instead of a later opaque `502 redirect_uri_mismatch` from the provider. Startup also fails fast if `BROKER_PUBLIC_URL` is invalid.
-- Bearer auth uses `crypto.timingSafeEqual` over SHA-256 digests (fixed-length, non-ASCII safe) constant-time compare; missing `BROKER_API_TOKEN` fails closed unless `BROKER_DISABLE_AUTH=true`. **`BROKER_DISABLE_AUTH=true` is refused in production** (`BROKER_PUBLIC_URL` containing `production` or `ENV=production`) – the broker logs `BROKER_DISABLE_AUTH is not allowed in production – denying request` and returns `401`; Node/Workers startup throws `must not be enabled in production – refusing to start`.
+ - SRAT-Signature uses Ed25519 over `client_id\nMETHOD\nPATH\n t\n nonce\n bodyHash` with 5-min skew + 10-min nonce replay window. Missing/invalid sig u2192 401. `BROKER_DISABLE_AUTH=true` is still refused in production.
 - **Rate limiting (Both mode):** in-app sliding window per IP (`20/min POST /v1/start`, `30/min GET /v1/callback`, `60/min GET /v1/session`) always active, plus optional Cloudflare `RATE_LIMITER` binding (`wrangler ratelimit create broker-ratelimit --period 60 --limit 20` + `[[ratelimits]]` in `wrangler.toml`) when configured. Exceeded returns `429 + Retry-After:60`.
 - **Security headers on every response:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `X-Robots-Tag: noindex, nofollow`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`. `GET /v1/callback` 302 and all `/v1/session` responses also include `Cache-Control: no-store` triple.
 - **CORS deny by default:** no `Access-Control-Allow-Origin` is ever set; `OPTIONS` preflight returns `204` with `Allow-Methods/Headers` only. Broker is server-to-server (SRAT Go backend) + browser 302, not a browser `fetch` API.

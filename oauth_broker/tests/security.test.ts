@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { createTestApp, testEnv, jsonBody, registerInstance } from "./utils.js";
+import { createTestApp, testEnv, jsonBody, registerInstance, signedHeaders, getOrCreateDefaultKeyPair } from "./utils.js";
 import { MemorySessionStore, MemoryInstanceStore } from "../src/session.js";
 import { __clearRateLimitBucketsForTests } from "../src/app.js";
 import type { BrokerBindings } from "../src/app.js";
@@ -33,12 +33,11 @@ describe("security hardening (Z-Audit fixes)", () => {
 
     it("callback html has no-store cache and Referrer-Policy", async () => {
       const mockFetch = vi.fn(async () => new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }), { status: 200 })) as unknown as typeof fetch;
-      const { app } = createTestApp(undefined, { store: new MemorySessionStore(), instanceStore: new MemoryInstanceStore(), fetchImpl: mockFetch });
+      const { app } = createTestApp(testEnv(), { store: new MemorySessionStore(), instanceStore: new MemoryInstanceStore(), fetchImpl: mockFetch });
       await registerInstance(app, "ha-h2", "https://srat.example/cb");
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-h2" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-h2" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-h2" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=c&state=${session_id}`);
@@ -69,20 +68,24 @@ describe("security hardening (Z-Audit fixes)", () => {
     it("blocks after 20 POST /v1/start per IP per minute (429)", async () => {
       const store = new MemorySessionStore();
       const instanceStore = new MemoryInstanceStore();
-      const { app } = createTestApp(undefined, { store, instanceStore });
+      const { app } = createTestApp(testEnv(), { store, instanceStore });
       await registerInstance(app, "ha-rate", "https://srat.example/cb");
+      const kp = await getOrCreateDefaultKeyPair(app);
+      const bodyStr = JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-rate" });
       for (let i = 0; i < 20; i++) {
+        const sig = await signedHeaders(kp, "POST", "/v1/start", bodyStr);
         const r = await app.request("/v1/start", {
           method: "POST",
-          headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "1.2.3.4" },
-          body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-rate" }),
+          headers: { "content-type": "application/json", ...sig, "x-forwarded-for": "1.2.3.4" },
+          body: bodyStr,
         });
         expect(r.status).toBe(200);
       }
+      const blockedSig = await signedHeaders(kp, "POST", "/v1/start", bodyStr);
       const blocked = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "1.2.3.4" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-rate" }),
+        headers: { "content-type": "application/json", ...blockedSig, "x-forwarded-for": "1.2.3.4" },
+        body: bodyStr,
       });
       expect(blocked.status).toBe(429);
       expect(blocked.headers.get("retry-after")).toBe("60");
@@ -100,26 +103,31 @@ describe("security hardening (Z-Audit fixes)", () => {
 
     it("resets after window", async () => {
       const instanceStore = new MemoryInstanceStore();
-      const { app } = createTestApp(undefined, { instanceStore });
+      const { app } = createTestApp(testEnv(), { instanceStore });
       await registerInstance(app, "ha-reset", "https://srat.example/cb");
+      const kp = await getOrCreateDefaultKeyPair(app);
+      const bodyStr = JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-reset" });
       for (let i = 0; i < 20; i++) {
+        const sig = await signedHeaders(kp, "POST", "/v1/start", bodyStr);
         await app.request("/v1/start", {
           method: "POST",
-          headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "9.9.9.9" },
-          body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-reset" }),
+          headers: { "content-type": "application/json", ...sig, "x-forwarded-for": "9.9.9.9" },
+          body: bodyStr,
         });
       }
+      const blockedSig = await signedHeaders(kp, "POST", "/v1/start", bodyStr);
       const blocked = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "9.9.9.9" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-reset" }),
+        headers: { "content-type": "application/json", ...blockedSig, "x-forwarded-for": "9.9.9.9" },
+        body: bodyStr,
       });
       expect(blocked.status).toBe(429);
       vi.advanceTimersByTime(61_000);
+      const okSig = await signedHeaders(kp, "POST", "/v1/start", bodyStr);
       const ok = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token", "x-forwarded-for": "9.9.9.9" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-reset" }),
+        headers: { "content-type": "application/json", ...okSig, "x-forwarded-for": "9.9.9.9" },
+        body: bodyStr,
       });
       expect(ok.status).toBe(200);
     });
@@ -147,11 +155,11 @@ describe("security hardening (Z-Audit fixes)", () => {
       const env = testEnv({ BROKER_ALLOWED_CALLBACK_PATTERNS: "https://*.allowed.com/*,https://srat.example.com/*" });
       const instanceStore = new MemoryInstanceStore();
       const { app } = createTestApp(env, { store: new MemorySessionStore(), instanceStore });
+      // allowlist test uses real env with allowlist, but needs signed, so use registerInstance which is signed via default kp
       await registerInstance(app, "ha-allow-ok", "https://foo.allowed.com/cb");
       const ok = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://foo.allowed.com/cb", instance_id: "ha-allow-ok" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://foo.allowed.com/cb", instance_id: "ha-allow-ok" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://foo.allowed.com/cb", instance_id: "ha-allow-ok" }),
       });
       expect(ok.status).toBe(200);
       await registerInstance(app, "ha-allow-evil", "https://evil.com/cb");
@@ -159,8 +167,7 @@ describe("security hardening (Z-Audit fixes)", () => {
       // Instead test that register for evil is rejected
       const regBad = await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "ha-evil2", redirect_url: "https://evil.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "ha-evil2", redirect_url: "https://evil.com/cb" }))) }, body: JSON.stringify({ instance_id: "ha-evil2", redirect_url: "https://evil.com/cb" }),
       });
       expect(regBad.status).toBe(403);
     });
@@ -173,7 +180,7 @@ describe("security hardening (Z-Audit fixes)", () => {
 
   describe("L4: callback URL length cap", () => {
     it("rejects srat_callback_url > 2048 chars", async () => {
-      const { app } = createTestApp(undefined, { instanceStore: new MemoryInstanceStore() });
+      const { app } = createTestApp(testEnv(), { instanceStore: new MemoryInstanceStore() });
       const longUrl = "https://srat.example.com/cb?" + "a".repeat(2048);
       expect(longUrl.length).toBeGreaterThan(MAX_CALLBACK_URL_LENGTH);
       const longId = "ha-long";
@@ -181,25 +188,25 @@ describe("security hardening (Z-Audit fixes)", () => {
       await registerInstance(app, longId, "https://srat.example.com/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: longUrl, instance_id: longId }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: longUrl, instance_id: longId }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: longUrl, instance_id: longId }),
       });
       // Should fail due to length or mismatch – both count as hardening
       expect([400, 403]).toContain(res.status);
       // Also test register length directly
       const regLong = await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "ha-long2", redirect_url: longUrl }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "ha-long2", redirect_url: longUrl }))) }, body: JSON.stringify({ instance_id: "ha-long2", redirect_url: longUrl }),
       });
       expect(regLong.status).toBe(400);
       expect((await jsonBody(regLong)).error).toMatch(/too long/);
     });
   });
 
+  // Intentional dev-bypass tests: verify BROKER_DISABLE_AUTH prod guard, not happy-path OAuth — do not migrate to signedStartRequest
   describe("M2: BROKER_DISABLE_AUTH prod guard", () => {
+    // Intentional: verifies fail-closed in prod even with flag — must keep BROKER_DISABLE_AUTH, do not migrate to signed
     it("deny in production even with flag – fail closed (throw equivalent)", async () => {
-      const prodEnv = testEnv({ BROKER_PUBLIC_URL: "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true" });
+      const prodEnv = testEnv({ BROKER_PUBLIC_URL: "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", BROKER_DISABLE_AUTH: "true" });
       const { app } = createTestApp(prodEnv, { store: new MemorySessionStore(), instanceStore: new MemoryInstanceStore() });
       const res = await app.request("/v1/start", {
         method: "POST",
@@ -209,8 +216,9 @@ describe("security hardening (Z-Audit fixes)", () => {
       expect(res.status).toBe(401);
     });
 
+    // Intentional: verifies dev bypass allows without sig — must keep BROKER_DISABLE_AUTH, do not migrate to signed
     it("allows in dev with flag", async () => {
-      const devEnv = testEnv({ BROKER_PUBLIC_URL: "http://localhost:8787", BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true" });
+      const devEnv = testEnv({ BROKER_PUBLIC_URL: "http://localhost:8787", BROKER_DISABLE_AUTH: "true" });
       const appObj = createTestApp(devEnv, { store: new MemorySessionStore(), instanceStore: new MemoryInstanceStore() });
       const reg = await appObj.app.request("/v1/instances/register", {
         method: "POST",
@@ -242,20 +250,18 @@ describe("security hardening (Z-Audit fixes)", () => {
         await store.set(`id-${i}`, { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() }, 600);
       }
       expect(store.size()).toBe(10_000);
-      const { app } = createTestApp(undefined, { store, instanceStore });
+      const { app } = createTestApp(testEnv(), { store, instanceStore });
       await registerInstance(app, "ha-full", "https://srat.example/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }),
       });
       expect(res.status).toBe(429);
       expect((await jsonBody(res)).error).toMatch(/too many pending sessions/);
       vi.advanceTimersByTime(601_000);
       const res2 = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-full" }),
       });
       expect(res2.status).toBe(200);
       __clearRateLimitBucketsForTests();
@@ -266,12 +272,11 @@ describe("security hardening (Z-Audit fixes)", () => {
     it("provider error maps to generic 502 (json mode)", async () => {
       const mockFetch = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_grant", error_description: "bad code secret xyz" }), { status: 400 })) as unknown as typeof fetch;
       const instanceStore = new MemoryInstanceStore();
-      const { app } = createTestApp(undefined, { store: new MemorySessionStore(), instanceStore, fetchImpl: mockFetch });
+      const { app } = createTestApp(testEnv(), { store: new MemorySessionStore(), instanceStore, fetchImpl: mockFetch });
       await registerInstance(app, "ha-err", "https://srat.example/cb");
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-err" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-err" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example/cb", instance_id: "ha-err" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=bad&state=${session_id}`, { headers: { accept: "application/json" } });
@@ -283,7 +288,9 @@ describe("security hardening (Z-Audit fixes)", () => {
 
     it("GET /v1/session 404 has no-store triple", async () => {
       const { app } = createTestApp();
-      const res = await app.request("/v1/session/unknown", { headers: { authorization: "Bearer test-token" } });
+      const kp = await getOrCreateDefaultKeyPair(app);
+      const sig = await signedHeaders(kp, "GET", "/v1/session/unknown", "");
+      const res = await app.request("/v1/session/unknown", { headers: { ...sig } });
       expect(res.headers.get("cache-control")).toContain("no-store");
       expect(res.headers.get("pragma")).toBe("no-cache");
       expect(res.headers.get("expires")).toBe("0");
