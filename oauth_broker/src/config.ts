@@ -3,7 +3,6 @@ import type { ProviderConfig, ProvidersConfig } from "./types.js";
 
 export type BrokerEnv = {
   BROKER_PUBLIC_URL: string;
-  BROKER_API_TOKEN: string;
   BROKER_PROVIDERS_FILE?: string;
   BROKER_PROVIDERS_JSON?: string;
   DROPBOX_CLIENT_ID?: string;
@@ -198,8 +197,14 @@ export const MAX_CALLBACK_URL_LENGTH = 2048;
 /** Max instance_id length (client-provided opaque id, e.g. HA uuid). */
 export const MAX_INSTANCE_ID_LENGTH = 128;
 
-/** Default instance registration TTL: 1h (3600s) per spec – not configurable to avoid weakening security. */
+/** Default instance registration TTL: 1h (3600s) – keep 1h for now (instance is ephemeral, client is persistent). Short 600s would break existing TTL tests; can be reduced after client decoupling lands. */
 export const INSTANCE_TTL_SECONDS = 3600;
+
+/** Nonce replay window: 10m (600s) */
+export const NONCE_TTL_SECONDS = 600;
+
+/** Clock skew allowed for SRAT-Signature t: 5m (300s) */
+export const CLOCK_SKEW_SECONDS = 300;
 
 /**
  * Determines the instance registration lifetime.

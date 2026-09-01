@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
-import { createTestApp, jsonBody, testEnv, registerInstance } from "./utils.js";
+import { createTestApp, jsonBody, testEnv, registerInstance, signedHeaders, getOrCreateDefaultKeyPair, signedStartRequest, signedSessionRequest } from "./utils.js";
 import { MemorySessionStore, MemoryInstanceStore } from "../src/session.js";
 import { getSessionTtlSeconds, loadProvidersConfig } from "../src/config.js";
 import { isValidSratCallbackUrl, __clearRateLimitBucketsForTests } from "../src/app.js";
@@ -94,8 +94,7 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "my-ha-123", redirect_url: "https://srat.example.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "my-ha-123", redirect_url: "https://srat.example.com/cb" }))) }, body: JSON.stringify({ instance_id: "my-ha-123", redirect_url: "https://srat.example.com/cb" }),
       });
       expect(res.status).toBe(200);
       const body = await jsonBody(res);
@@ -110,8 +109,7 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ redirect_url: "https://srat.example.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ redirect_url: "https://srat.example.com/cb" }))) }, body: JSON.stringify({ redirect_url: "https://srat.example.com/cb" }),
       });
       expect(res.status).toBe(400);
     });
@@ -120,14 +118,13 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "id1", redirect_url: "http://evil.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "id1", redirect_url: "http://evil.com/cb" }))) }, body: JSON.stringify({ instance_id: "id1", redirect_url: "http://evil.com/cb" }),
       });
       expect(res.status).toBe(400);
     });
 
-    it("requires bearer token", async () => {
-      const { app } = createTestApp(testEnv({ BROKER_API_TOKEN: "secret" }), { store, instanceStore });
+    it("requires SRAT-Signature (401 without sig)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/instances/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -145,8 +142,7 @@ describe("broker endpoints", () => {
       // start should now 410
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "exp-id" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "exp-id" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "exp-id" }),
       });
       expect(res.status).toBe(410);
     });
@@ -157,8 +153,7 @@ describe("broker endpoints", () => {
       const { app, cbUrl, instanceId } = await prepareRegisteredApp("https://srat.example.com/api/rclone/oauth/callback?state=st%3D1", "ha-1");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: instanceId }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: instanceId }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: instanceId }),
       });
       expect(res.status).toBe(200);
       const body = await jsonBody(res);
@@ -180,8 +175,7 @@ describe("broker endpoints", () => {
       const { app } = await prepareRegisteredApp();
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb" }),
       });
       expect(res.status).toBe(400);
       expect((await jsonBody(res)).error).toMatch(/instance_id is required/i);
@@ -191,8 +185,7 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "unknown" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "unknown" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "unknown" }),
       });
       expect(res.status).toBe(410);
     });
@@ -201,15 +194,14 @@ describe("broker endpoints", () => {
       const { app } = await prepareRegisteredApp("https://srat.example.com/cb", "ha-1");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/other", instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/other", instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/other", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(403);
       expect((await jsonBody(res)).error).toMatch(/does not match registered/i);
     });
 
-    it("rejects missing bearer token", async () => {
-      const { app } = createTestApp(testEnv({ BROKER_API_TOKEN: "secret" }), { store, instanceStore });
+    it("requires SRAT-Signature for /v1/start (401 without sig)", async () => {
+      const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -225,8 +217,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-http", "https://srat.example.com/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://srat.example.com/cb", instance_id: "ha-http" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "http://srat.example.com/cb", instance_id: "ha-http" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://srat.example.com/cb", instance_id: "ha-http" }),
       });
       // invalid url -> 400 (exact mismatch also triggers but invalid first)
       expect([400, 403]).toContain(res.status);
@@ -237,8 +228,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "loop", "http://localhost:3000/callback?state=x");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://localhost:3000/callback?state=x", instance_id: "loop" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "http://localhost:3000/callback?state=x", instance_id: "loop" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "http://localhost:3000/callback?state=x", instance_id: "loop" }),
       });
       expect(res.status).toBe(200);
     });
@@ -247,8 +237,7 @@ describe("broker endpoints", () => {
       const { app } = await prepareRegisteredApp("https://srat.example.com/cb", "ha-1");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "nope", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "nope", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "nope", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(400);
       const body = await jsonBody(res);
@@ -262,13 +251,11 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(env, { store: sessStore, instanceStore: instStore });
       await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }))) }, body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
       });
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(200);
       const body = await jsonBody(res);
@@ -280,13 +267,11 @@ describe("broker endpoints", () => {
       const { app } = createTestApp(env, { store, instanceStore });
       await app.request("/v1/instances/register", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/instances/register", JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }))) }, body: JSON.stringify({ instance_id: "ha-1", redirect_url: "https://srat.example.com/cb" }),
       });
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(500);
     });
@@ -339,8 +324,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-1", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=thecode&state=${session_id}`, { method: "GET" });
@@ -369,8 +353,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-json", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-json" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-json" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-json" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=thecode&state=${session_id}`, { headers: { accept: "application/json" } });
@@ -387,8 +370,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-1", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=bad&state=${session_id}`);
@@ -406,8 +388,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-1", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       const cbRes = await app.request(`/v1/callback?code=x&state=${session_id}`, { headers: { accept: "application/json" } });
@@ -424,8 +405,7 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-exp", cbUrl);
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-exp" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-exp" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: cbUrl, instance_id: "ha-exp" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       vi.advanceTimersByTime(3601_000);
@@ -440,18 +420,13 @@ describe("broker endpoints", () => {
       await registerInstance(app, "ha-1", "https://srat.example.com/cb");
       const startRes = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
+        headers: { "content-type": "application/json", ...(await signedHeaders(await getOrCreateDefaultKeyPair(app), "POST", "/v1/start", JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }))) }, body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
-      const first = await app.request(`/v1/session/${session_id}`, {
-        headers: { authorization: "Bearer test-token" },
-      });
+      const first = await signedSessionRequest(app, session_id);
       expect(first.status).toBe(404);
       expect(first.headers.get("cache-control")).toContain("no-store");
-      const second = await app.request(`/v1/session/${session_id}`, {
-        headers: { authorization: "Bearer test-token" },
-      });
+      const second = await signedSessionRequest(app, session_id);
       expect(second.status).toBe(404);
     });
 
@@ -463,16 +438,10 @@ describe("broker endpoints", () => {
       ) as unknown as typeof fetch;
       const { app } = createTestApp(undefined, { store, instanceStore, fetchImpl: mockFetch });
       await registerInstance(app, "ha-1", "https://srat.example.com/cb");
-      const startRes = await app.request("/v1/start", {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer test-token" },
-        body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
-      });
+      const startRes = await signedStartRequest(app, { provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" });
       const { session_id } = (await jsonBody(startRes)) as { session_id: string };
       await app.request(`/v1/callback?code=c&state=${session_id}`, { headers: { accept: "application/json" } });
-      const got = await app.request(`/v1/session/${session_id}`, {
-        headers: { authorization: "Bearer test-token" },
-      });
+      const got = await signedSessionRequest(app, session_id);
       expect(got.status).toBe(200);
       expect(got.headers.get("cache-control")).toContain("no-store");
       const body = (await jsonBody(got)) as { token_json: string; account_label: string; client_id: string; client_secret: string };
@@ -481,45 +450,59 @@ describe("broker endpoints", () => {
       expect(body.account_label).toBe("acc1");
       expect(body.client_id).toBe("dropbox-id");
       expect(body.client_secret).toBe("dropbox-secret");
-      const second = await app.request(`/v1/session/${session_id}`, {
-        headers: { authorization: "Bearer test-token" },
-      });
+      const second = await signedSessionRequest(app, session_id);
       expect(second.status).toBe(404);
       const secondBody = await jsonBody(second);
       expect(secondBody.error).toMatch(/expired or already used/i);
     });
 
-    it("requires bearer token", async () => {
+    it("requires SRAT-Signature for /v1/session (401 without sig)", async () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/session/some-id");
       expect(res.status).toBe(401);
     });
 
-    it("path escapes session id (a/b c)", async () => {
+    it("path escapes session id (valid UUID)", async () => {
+      const validId = "550e8400-e29b-41d4-a716-446655440000";
       const customStore = new MemorySessionStore();
-      await customStore.set("a/b c", { provider: "dropbox", sratCallbackUrl: "https://srat.example.com/cb", createdAt: Date.now(), tokenJson: `{"access_token":"at","expiry":"2026-01-01T00:01:40.000Z"}`, accountLabel: "acc", clientId: "id", clientSecret: "sec" }, 600);
+      await customStore.set(validId, { provider: "dropbox", sratCallbackUrl: "https://srat.example.com/cb", createdAt: Date.now(), tokenJson: `{"access_token":"at","expiry":"2026-01-01T00:01:40.000Z"}`, accountLabel: "acc", clientId: "id", clientSecret: "sec" }, 600);
       const { app: app2 } = createTestApp(undefined, { store: customStore, instanceStore });
-      const res = await app2.request(`/v1/session/${encodeURIComponent("a/b c")}`, {
-        headers: { authorization: "Bearer test-token" },
-      });
+      const kp = await getOrCreateDefaultKeyPair(app2);
+      const encoded = encodeURIComponent(validId);
+      const honoPath = `/v1/session/${encoded.replaceAll("%20", " ")}`;
+      const headers = await signedHeaders(kp, "GET", honoPath, "");
+      const res = await app2.request(`/v1/session/${encoded}`, { headers });
       expect(res.status).toBe(200);
+    });
+
+    it("session id rejects invalid charset (slash/space)", async () => {
+      const { app: app2 } = createTestApp(undefined, { store: new MemorySessionStore(), instanceStore });
+      const kp = await getOrCreateDefaultKeyPair(app2);
+      const invalidId = "a/b c";
+      const encoded = encodeURIComponent(invalidId);
+      const honoPath = `/v1/session/${encoded.replaceAll("%20", " ")}`;
+      const headers = await signedHeaders(kp, "GET", honoPath, "");
+      const res = await app2.request(`/v1/session/${encoded}`, { headers });
+      expect(res.status).toBe(400);
+      expect((await res.json() as any).error).toMatch(/invalid session_id/);
     });
   });
 
-  describe("auth constant-time", () => {
-    it("rejects wrong bearer (401)", async () => {
+  describe("auth SRAT-Signature", () => {
+    it("rejects wrong signature (401)", async () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       await registerInstance(app, "ha-1", "https://srat.example.com/cb");
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer wrong" },
+        headers: { "content-type": "application/json", authorization: 'SRAT-Signature client_id="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", t="1234567890", nonce="bad-nonce-1234567890", sig="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"' },
         body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(401);
     });
 
-    it("allows when BROKER_API_TOKEN unset with BROKER_DISABLE_AUTH (dev)", async () => {
-      const env = testEnv({ BROKER_API_TOKEN: "", BROKER_DISABLE_AUTH: "true", BROKER_PUBLIC_URL: "http://localhost:8787" });
+    // Intentional: verifies dev bypass allows without sig — must keep BROKER_DISABLE_AUTH, do not migrate to signed
+    it("allows when BROKER_DISABLE_AUTH (dev)", async () => {
+      const env = testEnv({ BROKER_DISABLE_AUTH: "true", BROKER_PUBLIC_URL: "http://localhost:8787" });
       const { app } = createTestApp(env, { store, instanceStore });
       // register still needs auth bypass – should allow
       const reg = await app.request("/v1/instances/register", {
@@ -536,8 +519,9 @@ describe("broker endpoints", () => {
       expect(res.status).toBe(200);
     });
 
-    it("rejects when BROKER_API_TOKEN unset and BROKER_DISABLE_AUTH not set (fail-closed)", async () => {
-      const env = testEnv({ BROKER_API_TOKEN: "" });
+    // Intentional: verifies fail-closed without sig/dev-bypass — must keep no BROKER_DISABLE_AUTH, do not migrate to signed
+    it("rejects when BROKER_DISABLE_AUTH not set (fail-closed, no sig)", async () => {
+      const env = testEnv();
       delete (env as Record<string, string | undefined>).BROKER_DISABLE_AUTH;
       const { app } = createTestApp(env, { store, instanceStore });
       const res = await app.request("/v1/start", {
@@ -548,11 +532,11 @@ describe("broker endpoints", () => {
       expect(res.status).toBe(401);
     });
 
-    it("constantTimeEqual handles non-ASCII bearer token (401 not 500)", async () => {
+    it("handles non-ASCII signature header (401 not 500)", async () => {
       const { app } = createTestApp(undefined, { store, instanceStore });
       const res = await app.request("/v1/start", {
         method: "POST",
-        headers: { "content-type": "application/json", authorization: "Bearer é" },
+        headers: { "content-type": "application/json", authorization: "SRAT-Signature client_id=\"é\", t=\"123\", nonce=\"bad\", sig=\"é\"" },
         body: JSON.stringify({ provider: "dropbox", srat_callback_url: "https://srat.example.com/cb", instance_id: "ha-1" }),
       });
       expect(res.status).toBe(401);

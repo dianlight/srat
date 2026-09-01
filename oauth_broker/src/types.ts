@@ -27,6 +27,7 @@ export type SessionRecord = {
   createdAt: number;
   // Instance binding (hardened flow): every session is tied to a registered instance
   instanceId?: string;
+  ownerClientId?: string; // SRAT client_id that owns the session (signature binding)
   // Set after provider callback completes token exchange
   tokenJson?: string;
   accountLabel?: string;
@@ -40,6 +41,13 @@ export type SessionRecord = {
 export type InstanceRecord = {
   instanceId: string;
   redirectUrl: string;
+  createdAt: number;
+  clientId: string;
+};
+
+export type ClientRecord = {
+  clientId: string;
+  publicKey: string; // base64url raw 32B
   createdAt: number;
 };
 

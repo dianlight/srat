@@ -41,7 +41,7 @@ database_id = "5c07d44a-29eb-4988-b75e-16ef1bdeceab"
 
 
 [env.production]
-vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", SESSION_TTL = "600", ENV = "production" }
 kv_namespaces = [
   { binding = "OAUTH_SESSIONS", id = "64340357ce71418daf0e6c41ddfafea7" },
 ]
@@ -51,7 +51,7 @@ database_name = "srat-oauth-broker"
 database_id = "c9ce34bc-c254-45ef-8278-5e626d77147e"
 
 # Secrets (never commit):
-# wrangler secret put BROKER_API_TOKEN --env staging|production
+# # per-install Ed25519 – no shared secret
 # wrangler secret put DROPBOX_CLIENT_ID --env staging|production
 # wrangler secret put DROPBOX_CLIENT_SECRET --env staging|production
 # wrangler secret put BROKER_PROVIDERS_JSON --env staging|production  # optional generic providers JSON

@@ -13,8 +13,6 @@ services:
         sync: false # set to https://<your-render-url>.onrender.com
       - key: SESSION_TTL
         value: 600
-      - key: BROKER_API_TOKEN
-        sync: false
       - key: BROKER_DISABLE_AUTH
         value: false
       - key: DROPBOX_CLIENT_ID
