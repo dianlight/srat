@@ -195,6 +195,28 @@ export function getProviderOrThrow(
 /** Max srat_callback_url length to prevent header overflow / DoS (also applied to BROKER_PUBLIC_URL). */
 export const MAX_CALLBACK_URL_LENGTH = 2048;
 
+/** Max instance_id length (client-provided opaque id, e.g. HA uuid). */
+export const MAX_INSTANCE_ID_LENGTH = 128;
+
+/** Default instance registration TTL: 1h (3600s) per spec – not configurable to avoid weakening security. */
+export const INSTANCE_TTL_SECONDS = 3600;
+
+/**
+ * Determines the instance registration lifetime.
+ * Fixed to 1h per spec; reads INSTANCE_TTL env only as override for tests.
+ */
+export function getInstanceTtlSeconds(env: Record<string, string | undefined>): number {
+  const raw = env.INSTANCE_TTL?.trim();
+  if (!raw) return INSTANCE_TTL_SECONDS;
+  // Accept "1h", "60m", "3600", "3600s"
+  if (/^\d+h$/.test(raw)) return Math.max(parseInt(raw, 10) * 3600, 60);
+  if (/^\d+m$/.test(raw)) return Math.max(parseInt(raw.replace("m", ""), 10) * 60, 60);
+  if (/^\d+s$/.test(raw)) return Math.max(parseInt(raw.replace("s", ""), 10), 60);
+  if (/^\d+$/.test(raw)) return Math.max(parseInt(raw, 10), 60);
+  console.warn(`[broker] INSTANCE_TTL unparseable "${raw}" – falling back to ${INSTANCE_TTL_SECONDS}s`);
+  return INSTANCE_TTL_SECONDS;
+}
+
 /**
  * Convert a glob pattern (e.g. "https://*.example.com/*") to RegExp.
  * Supports * (any chars except / for host part is relaxed) – deliberately simple, not shell glob.

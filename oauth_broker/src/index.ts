@@ -1,5 +1,12 @@
 import { createBrokerApp } from "./app.js";
-import { D1SessionStore, KVSessionStore, MemorySessionStore } from "./session.js";
+import {
+  D1InstanceStore,
+  D1SessionStore,
+  KVInstanceStore,
+  KVSessionStore,
+  MemoryInstanceStore,
+  MemorySessionStore,
+} from "./session.js";
 import type { D1DatabaseLike } from "./session.js";
 import { getBrokerPublicUrl, isValidBrokerPublicUrl, isProductionEnv } from "./config.js";
 
@@ -14,9 +21,10 @@ type Env = Record<string, string | undefined> & {
   BROKER_RATE_LIMITER?: { limit(opts: { key: string }): Promise<{ success: boolean }> };
 };
 
-// Module-scoped memory store reused across requests when KV is absent (local dev / tests).
-// Prevents per-request MemorySessionStore that would lose sessions between /v1/start and /v1/callback.
+// Module-scoped memory stores reused across requests when KV/D1 absent (local dev / tests).
+// Prevents per-request MemoryStore that would lose state between /v1/start and /v1/callback.
 const workerMemoryStore = new MemorySessionStore();
+const workerMemoryInstanceStore = new MemoryInstanceStore();
 
 function validateEnvAtStartup(env: Record<string, string | undefined>): void {
   const publicUrl = getBrokerPublicUrl(env);
@@ -42,11 +50,21 @@ function validateEnvAtStartup(env: Record<string, string | undefined>): void {
 const workerApp = (env: Env) => {
   // Startup validation + store selection warnings
   if (!env.OAUTH_SESSIONS_DB && !env.OAUTH_SESSIONS) {
-    console.warn("[broker] no D1 or KV binding – using MemorySessionStore (single isolate only, data lost on restart)");
+    console.warn("[broker] no D1 or KV binding – using MemoryStores (single isolate only, data lost on restart)");
   } else if (!env.OAUTH_SESSIONS_DB && env.OAUTH_SESSIONS) {
     console.warn("[broker] OAUTH_SESSIONS_DB (D1) not bound – falling back to KV (eventually consistent, non-atomic consume). Use D1 in production for single-use guarantee.");
   }
-  return createBrokerApp({ store: env.OAUTH_SESSIONS_DB ? new D1SessionStore(env.OAUTH_SESSIONS_DB) : env.OAUTH_SESSIONS ? new KVSessionStore(env.OAUTH_SESSIONS) : workerMemoryStore, env });
+  const store = env.OAUTH_SESSIONS_DB
+    ? new D1SessionStore(env.OAUTH_SESSIONS_DB)
+    : env.OAUTH_SESSIONS
+      ? new KVSessionStore(env.OAUTH_SESSIONS)
+      : workerMemoryStore;
+  const instanceStore = env.OAUTH_SESSIONS_DB
+    ? new D1InstanceStore(env.OAUTH_SESSIONS_DB)
+    : env.OAUTH_SESSIONS
+      ? new KVInstanceStore(env.OAUTH_SESSIONS)
+      : workerMemoryInstanceStore;
+  return createBrokerApp({ store, instanceStore, env });
 };
 
 export default {
@@ -77,7 +95,8 @@ if (import.meta.main) {
     console.warn(`[broker] BROKER_PUBLIC_URL "${env.BROKER_PUBLIC_URL}" is not valid https – POST /v1/start will 500 until fixed`);
   }
   const store = new MemorySessionStore();
-  const app = createBrokerApp({ store, env });
+  const instanceStore = new MemoryInstanceStore();
+  const app = createBrokerApp({ store, instanceStore, env });
 
   console.log(`[oauth-broker] listening on :${port} (BROKER_PUBLIC_URL=${env.BROKER_PUBLIC_URL || "(unset)"})`);
   Bun.serve({

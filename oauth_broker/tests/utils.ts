@@ -1,5 +1,5 @@
 import { createBrokerApp } from "../src/app.js";
-import { MemorySessionStore } from "../src/session.js";
+import { MemoryInstanceStore, MemorySessionStore } from "../src/session.js";
 
 /**
  * Creates the default environment configuration used by tests.
@@ -27,11 +27,20 @@ export function testEnv(overrides: Record<string, string | undefined> = {}): Rec
  */
 export function createTestApp(
   env: Record<string, string | undefined> = testEnv(),
-  opts: { store?: MemorySessionStore; fetchImpl?: typeof fetch } = {}
+  opts: { store?: MemorySessionStore; instanceStore?: MemoryInstanceStore; fetchImpl?: typeof fetch } = {}
 ) {
   const store = opts.store ?? new MemorySessionStore();
-  const app = createBrokerApp({ store, env, fetchImpl: opts.fetchImpl });
-  return { app, store, env };
+  const instanceStore = opts.instanceStore ?? new MemoryInstanceStore();
+  const app = createBrokerApp({ store, instanceStore, env, fetchImpl: opts.fetchImpl });
+  return { app, store, instanceStore, env };
+}
+
+export async function registerInstance(app: any, instanceId: string, redirectUrl: string) {
+  return app.request("/v1/instances/register", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer test-token" },
+    body: JSON.stringify({ instance_id: instanceId, redirect_url: redirectUrl }),
+  });
 }
 
 /**

@@ -3,16 +3,19 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
   getBrokerPublicUrlOrThrow,
+  getInstanceTtlSeconds,
   getProviderOrThrow,
   getSessionTtlSeconds,
   isAllowedSratCallbackUrl,
   isProductionEnv,
   loadProvidersConfig,
   MAX_CALLBACK_URL_LENGTH,
+  MAX_INSTANCE_ID_LENGTH,
 } from "./config.js";
-import type { SessionStore } from "./session.js";
-import { MemorySessionStore } from "./session.js";
+import type { InstanceStore, SessionStore } from "./session.js";
+import { MemoryInstanceStore, MemorySessionStore } from "./session.js";
 import type { ProviderConfig } from "./types.js";
+import { pickLocale, renderHtmlPage, getMessages } from "./i18n.js";
 
 export type BrokerBindings = {
   OAUTH_SESSIONS?: {
@@ -132,6 +135,8 @@ const RATE_LIMITS: Record<string, RateLimitConfig> = {
   "/v1/start": { windowMs: 60_000, limit: 20 },
   "/v1/callback": { windowMs: 60_000, limit: 30 },
   "/v1/session": { windowMs: 60_000, limit: 60 },
+  "/v1/instances/register": { windowMs: 60_000, limit: 20 },
+  "/v1/instances": { windowMs: 60_000, limit: 20 },
 };
 
 // Shared in-memory buckets for fallback (per isolate). Map key: `${ip}:${route}`
@@ -175,14 +180,22 @@ function isAllowedWithMemoryBucket(key: string, cfg: RateLimitConfig): boolean {
 
 // ---- Helpers to reduce per-handler complexity (CodeFactor: Complex Method) ----
 
-type StartBody = { provider?: string; srat_callback_url?: string };
+type StartBody = { provider?: string; srat_callback_url?: string; instance_id?: string };
 
 function validateStartFields(
   provider: string,
   sratCallbackUrl: string,
+  instanceId: string,
 ): { status: 400; error: string } | null {
   if (!provider) return { status: 400, error: "provider is required" };
   if (!sratCallbackUrl) return { status: 400, error: "srat_callback_url is required" };
+  if (!instanceId) return { status: 400, error: "instance_id is required" };
+  if (instanceId.length > MAX_INSTANCE_ID_LENGTH) {
+    return { status: 400, error: `instance_id too long (max ${MAX_INSTANCE_ID_LENGTH})` };
+  }
+  if (!isValidInstanceId(instanceId)) {
+    return { status: 400, error: "instance_id must be alphanumeric with . _ - (1-128 chars)" };
+  }
   if (sratCallbackUrl.length > MAX_CALLBACK_URL_LENGTH) {
     return { status: 400, error: `srat_callback_url too long (max ${MAX_CALLBACK_URL_LENGTH})` };
   }
@@ -191,6 +204,30 @@ function validateStartFields(
       status: 400,
       error: "srat_callback_url must be an absolute https URL (loopback http allowed for dev)",
     };
+  }
+  return null;
+}
+
+type RegisterBody = { instance_id?: string; redirect_url?: string };
+
+function isValidInstanceId(raw: string): boolean {
+  return /^[A-Za-z0-9._-]{1,128}$/.test(raw);
+}
+
+function validateRegisterFields(instanceId: string, redirectUrl: string): { status: 400; error: string } | null {
+  if (!instanceId) return { status: 400, error: "instance_id is required" };
+  if (instanceId.length > MAX_INSTANCE_ID_LENGTH) {
+    return { status: 400, error: `instance_id too long (max ${MAX_INSTANCE_ID_LENGTH})` };
+  }
+  if (!isValidInstanceId(instanceId)) {
+    return { status: 400, error: "instance_id must be alphanumeric with . _ - (1-128 chars)" };
+  }
+  if (!redirectUrl) return { status: 400, error: "redirect_url is required" };
+  if (redirectUrl.length > MAX_CALLBACK_URL_LENGTH) {
+    return { status: 400, error: `redirect_url too long (max ${MAX_CALLBACK_URL_LENGTH})` };
+  }
+  if (!isValidSratCallbackUrl(redirectUrl)) {
+    return { status: 400, error: "redirect_url must be an absolute https URL (loopback http allowed for dev)" };
   }
   return null;
 }
@@ -299,11 +336,13 @@ function setNoStore(c: { header: (k: string, v: string) => void }): void {
  */
 export function createBrokerApp(opts?: {
   store?: SessionStore;
+  instanceStore?: InstanceStore;
   env?: Record<string, string | undefined>;
   fetchImpl?: typeof fetch;
 }) {
   const app = new Hono<AppEnv>();
   const store: SessionStore = opts?.store ?? new MemorySessionStore();
+  const instanceStore: InstanceStore = opts?.instanceStore ?? new MemoryInstanceStore();
   const envOverride = opts?.env;
   const fetchImpl: typeof fetch = opts?.fetchImpl ?? fetch;
 
@@ -363,7 +402,12 @@ export function createBrokerApp(opts?: {
     c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
     // Extra cache hardening for sensitive routes
     const path = c.req.path;
-    if (path.startsWith("/v1/session") || path.startsWith("/v1/callback") || path.startsWith("/v1/start")) {
+    if (
+      path.startsWith("/v1/session") ||
+      path.startsWith("/v1/callback") ||
+      path.startsWith("/v1/start") ||
+      path.startsWith("/v1/instances")
+    ) {
       if (!c.res.headers.get("Cache-Control")) c.header("Cache-Control", "no-store, no-cache, must-revalidate");
       c.header("Pragma", "no-cache");
       c.header("Expires", "0");
@@ -373,11 +417,12 @@ export function createBrokerApp(opts?: {
   // ---- Global rate limiting middleware (Both: CF binding + in-memory fallback) ----
   app.use("*", async (c, next) => {
     const path = c.req.path;
-    // Match prefix for /v1/session/:id
+    // Match prefix for /v1/session/:id and /v1/instances
     let cfg: RateLimitConfig | undefined;
     if (path === "/v1/start") cfg = RATE_LIMITS["/v1/start"];
     else if (path === "/v1/callback" || path.startsWith("/v1/callback")) cfg = RATE_LIMITS["/v1/callback"];
     else if (path.startsWith("/v1/session")) cfg = RATE_LIMITS["/v1/session"];
+    else if (path.startsWith("/v1/instances")) cfg = RATE_LIMITS["/v1/instances/register"] ?? RATE_LIMITS["/v1/instances"];
     if (!cfg) return next();
 
     const ip = getClientIp(c);
@@ -423,6 +468,42 @@ export function createBrokerApp(opts?: {
     return c.json({ status: "ok", providers: Object.keys(providers) });
   });
 
+  // Instance registration – must be called before /v1/start, TTL 1h
+  app.post("/v1/instances/register", async (c) => {
+    if (!requireBearer(c)) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+    let body: RegisterBody;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid json body" }, 400);
+    }
+    const instanceId = (body.instance_id || "").trim();
+    const redirectUrl = (body.redirect_url || "").trim();
+    const fieldErr = validateRegisterFields(instanceId, redirectUrl);
+    if (fieldErr) return c.json({ error: fieldErr.error }, fieldErr.status);
+
+    const env = getEnv(c);
+    const allowlistRaw = env.BROKER_ALLOWED_CALLBACK_PATTERNS?.trim();
+    if (allowlistRaw && !isAllowedSratCallbackUrl(redirectUrl, allowlistRaw)) {
+      return c.json({ error: "redirect_url not allowed by broker policy" }, 403);
+    }
+
+    const ttl = getInstanceTtlSeconds(env);
+    try {
+      await instanceStore.set(instanceId, { instanceId, redirectUrl, createdAt: Date.now() }, ttl);
+    } catch (e) {
+      if ((e as Error).message.includes("store full")) {
+        return c.json({ error: "too many pending instances, try again later" }, 429);
+      }
+      throw e;
+    }
+    const expiresAt = Date.now() + ttl * 1000;
+    c.header("Cache-Control", "no-store, no-cache, must-revalidate");
+    return c.json({ instance_id: instanceId, redirect_url: redirectUrl, expires_at: new Date(expiresAt).toISOString(), ttl_seconds: ttl });
+  });
+
   app.post("/v1/start", async (c) => {
     if (!requireBearer(c)) {
       return c.json({ error: "unauthorized" }, 401);
@@ -435,11 +516,22 @@ export function createBrokerApp(opts?: {
     }
     const provider = (body.provider || "").trim();
     const sratCallbackUrl = (body.srat_callback_url || "").trim();
+    const instanceId = (body.instance_id || "").trim();
 
-    const fieldErr = validateStartFields(provider, sratCallbackUrl);
+    const fieldErr = validateStartFields(provider, sratCallbackUrl, instanceId);
     if (fieldErr) return c.json({ error: fieldErr.error }, fieldErr.status);
 
     const env = getEnv(c);
+    // Instance must be registered and not expired
+    const inst = await instanceStore.get(instanceId);
+    if (!inst) {
+      return c.json({ error: "instance not registered or expired – register via POST /v1/instances/register first" }, 410);
+    }
+    // Exact match required per spec
+    if (sratCallbackUrl !== inst.redirectUrl) {
+      return c.json({ error: "srat_callback_url does not match registered instance redirect_url (exact match required)" }, 403);
+    }
+
     const allowlistRaw = env.BROKER_ALLOWED_CALLBACK_PATTERNS?.trim();
     if (allowlistRaw && !isAllowedSratCallbackUrl(sratCallbackUrl, allowlistRaw)) {
       return c.json({ error: "srat_callback_url not allowed by broker policy" }, 403);
@@ -466,7 +558,7 @@ export function createBrokerApp(opts?: {
     const authUrl = buildAuthUrl(prov, publicUrl, sessionId, codeVerifier);
 
     try {
-      await store.set(sessionId, { provider, sratCallbackUrl, createdAt: Date.now(), codeVerifier }, ttl);
+      await store.set(sessionId, { provider, sratCallbackUrl, createdAt: Date.now(), codeVerifier, instanceId }, ttl);
     } catch (e) {
       if ((e as Error).message.includes("session store full")) {
         return c.json({ error: "too many pending sessions, try again later" }, 429);
@@ -478,12 +570,30 @@ export function createBrokerApp(opts?: {
     return c.json({ auth_url: authUrl.toString(), session_id: sessionId });
   });
 
+  function wantsHtml(c: { req: { header: (n: string) => string | undefined } }): boolean {
+    const accept = (c.req.header("accept") || "").toLowerCase();
+    // Browser navigations always accept html; API tests send no accept or json.
+    // Treat missing accept as html for callback (provider redirect is browser), but keep json for errors when explicitly json.
+    if (!accept) return true;
+    if (accept.includes("text/html")) return true;
+    if (accept.includes("application/json")) return false;
+    return true;
+  }
+
   app.get("/v1/callback", async (c) => {
     setNoStore(c);
+    const locale = pickLocale(c.req.header("accept-language"));
+    const msgs = getMessages(locale);
 
     const code = c.req.query("code") || "";
     const state = c.req.query("state") || "";
     if (!code || !state) {
+      const err = msgs.errorInvalidRequest;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 400 as ContentfulStatusCode);
+      }
       return c.json({ error: "missing code or state" }, 400);
     }
 
@@ -491,10 +601,52 @@ export function createBrokerApp(opts?: {
     const ttl = getSessionTtlSeconds(env);
     const session = await store.get(state);
     if (!session) {
+      const err = msgs.errorSessionExpired;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 410 as ContentfulStatusCode);
+      }
       return c.json({ error: "session not found or expired" }, 410);
     }
     if (session.tokenJson) {
+      const err = msgs.errorSessionExpired;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 410 as ContentfulStatusCode);
+      }
       return c.json({ error: "session not found or expired" }, 410);
+    }
+
+    // Validate instance binding if present (hardened flow). Legacy sessions without instanceId are rejected.
+    if (!session.instanceId) {
+      const err = msgs.errorInstanceNotFound;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 410 as ContentfulStatusCode);
+      }
+      return c.json({ error: "instance not found or expired" }, 410);
+    }
+    const inst = await instanceStore.get(session.instanceId);
+    if (!inst) {
+      const err = msgs.errorInstanceNotFound;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 410 as ContentfulStatusCode);
+      }
+      return c.json({ error: "instance not found or expired" }, 410);
+    }
+    if (session.sratCallbackUrl !== inst.redirectUrl) {
+      const err = msgs.errorRedirectMismatch;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 403 as ContentfulStatusCode);
+      }
+      return c.json({ error: "redirect_url mismatch for instance" }, 403);
     }
 
     const providers = loadProvidersConfig(env);
@@ -502,19 +654,37 @@ export function createBrokerApp(opts?: {
     try {
       prov = getProviderOrThrow(providers, session.provider);
     } catch (e) {
-      return c.json({ error: (e as Error).message }, 400);
+      const err = (e as Error).message;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 400 as ContentfulStatusCode);
+      }
+      return c.json({ error: err }, 400);
     }
 
     let publicUrl2: string;
     try {
       publicUrl2 = getBrokerPublicUrlOrThrow(env);
     } catch (e) {
-      return c.json({ error: (e as Error).message }, 500);
+      const err = (e as Error).message;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, 500 as ContentfulStatusCode);
+      }
+      return c.json({ error: err }, 500);
     }
     const redirectUri = `${publicUrl2}/v1/callback`;
 
     const exchange = await exchangeCodeForToken(prov, code, redirectUri, fetchImpl, session.codeVerifier);
     if ("error" in exchange) {
+      const errMsg = msgs.errorTokenFailed;
+      if (wantsHtml(c)) {
+        const html = renderHtmlPage({ locale, success: false, errorMessage: errMsg });
+        c.header("Content-Type", "text/html; charset=utf-8");
+        return c.html(html, exchange.status as ContentfulStatusCode);
+      }
       if (exchange.error.startsWith("invalid token response")) {
         return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
       }
@@ -536,6 +706,14 @@ export function createBrokerApp(opts?: {
       ttl,
     );
 
+    // Success: render broker-owned HTML page that auto-redirects to the validated HA redirect_url
+    // Keep token server-side (consumed via GET /v1/session/:id); this page is just UX + validation proof.
+    if (wantsHtml(c)) {
+      const html = renderHtmlPage({ locale, success: true, redirectUrl: session.sratCallbackUrl });
+      c.header("Content-Type", "text/html; charset=utf-8");
+      // No-store already set, but ensure html
+      return c.html(html, 200 as ContentfulStatusCode);
+    }
     return c.redirect(session.sratCallbackUrl, 302);
   });
 

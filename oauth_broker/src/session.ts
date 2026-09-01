@@ -1,4 +1,4 @@
-import type { SessionRecord } from "./types.js";
+import type { InstanceRecord, SessionRecord } from "./types.js";
 
 export interface SessionStore {
   get(id: string): Promise<SessionRecord | null>;
@@ -130,6 +130,121 @@ export type D1DatabaseLike = {
   };
   batch?(statements: unknown[]): Promise<unknown[]>;
 };
+
+export interface InstanceStore {
+  get(id: string): Promise<InstanceRecord | null>;
+  set(id: string, data: InstanceRecord, ttlSeconds: number): Promise<void>;
+  delete(id: string): Promise<void>;
+}
+
+export class MemoryInstanceStore implements InstanceStore {
+  private map = new Map<string, { data: InstanceRecord; expiresAt: number }>();
+  static readonly MAX_ENTRIES = 10_000;
+
+  private evictExpired(): void {
+    const now = Date.now();
+    for (const [k, v] of this.map) {
+      if (now > v.expiresAt) this.map.delete(k);
+    }
+  }
+
+  async get(id: string): Promise<InstanceRecord | null> {
+    const entry = this.map.get(id);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+      this.map.delete(id);
+      return null;
+    }
+    return entry.data;
+  }
+
+  async set(id: string, data: InstanceRecord, ttlSeconds: number): Promise<void> {
+    if (this.map.size >= MemoryInstanceStore.MAX_ENTRIES) {
+      this.evictExpired();
+      if (this.map.size >= MemoryInstanceStore.MAX_ENTRIES) {
+        throw new Error("instance store full – too many active instances, retry after expiry");
+      }
+    }
+    const expiresAt = Date.now() + ttlSeconds * 1000;
+    this.map.set(id, { data, expiresAt });
+  }
+
+  async delete(id: string): Promise<void> {
+    this.map.delete(id);
+  }
+
+  size(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map.clear();
+  }
+}
+
+export class KVInstanceStore implements InstanceStore {
+  constructor(
+    private kv: KVNamespaceLike,
+    private prefix = "inst:",
+  ) {}
+
+  private key(id: string): string {
+    return `${this.prefix}${id}`;
+  }
+
+  async get(id: string): Promise<InstanceRecord | null> {
+    const raw = await this.kv.get(this.key(id), { type: "text" });
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as InstanceRecord;
+    } catch {
+      return null;
+    }
+  }
+
+  async set(id: string, data: InstanceRecord, ttlSeconds: number): Promise<void> {
+    await this.kv.put(this.key(id), JSON.stringify(data), { expirationTtl: ttlSeconds });
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.kv.delete(this.key(id));
+  }
+}
+
+export class D1InstanceStore implements InstanceStore {
+  constructor(private db: D1DatabaseLike) {}
+
+  private nowSec(): number {
+    return Math.floor(Date.now() / 1000);
+  }
+
+  async get(id: string): Promise<InstanceRecord | null> {
+    const row = await this.db
+      .prepare("SELECT data, expires_at FROM instances WHERE id = ?")
+      .bind(id)
+      .first<{ data: string; expires_at: number }>();
+    if (!row) return null;
+    if (row.expires_at <= this.nowSec()) {
+      await this.db.prepare("DELETE FROM instances WHERE id = ?").bind(id).run();
+      return null;
+    }
+    try {
+      return JSON.parse(row.data) as InstanceRecord;
+    } catch {
+      return null;
+    }
+  }
+
+  async set(id: string, data: InstanceRecord, ttlSeconds: number): Promise<void> {
+    const expiresAt = this.nowSec() + ttlSeconds;
+    const json = JSON.stringify(data);
+    await this.db.prepare("INSERT OR REPLACE INTO instances (id, data, expires_at) VALUES (?, ?, ?)").bind(id, json, expiresAt).run();
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.db.prepare("DELETE FROM instances WHERE id = ?").bind(id).run();
+  }
+}
 
 export class D1SessionStore implements SessionStore {
   constructor(private db: D1DatabaseLike) {}
