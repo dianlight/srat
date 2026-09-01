@@ -356,7 +356,7 @@ describe("KVNonceStore single-use semantics", () => {
   it("concurrent sets may both succeed due to KV lack of CAS (documents limitation)", async () => {
     // Simulate KV with delayed put to expose race: two concurrent has() both see false before either put
     const map = new Map<string, string>();
-    let putDelay = 5;
+    const putDelay = 5;
     const kv = {
       get: async (k: string) => map.get(k) || null,
       put: async (k: string, v: string) => {
