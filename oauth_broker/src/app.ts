@@ -465,6 +465,7 @@ export function createBrokerApp(opts?: {
     return c.json({ instance_id: instanceId, redirect_url: redirectUrl, client_id: auth.clientId, expires_at: new Date(expiresAt).toISOString(), ttl_seconds: ttl });
   });
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: start validates auth/instance/allowlist/provider and creates PKCE session
   app.post("/v1/start", async (c) => {
     const rawBody = await c.req.text();
     const auth = await verifySratSignature(c, rawBody);
@@ -522,6 +523,23 @@ export function createBrokerApp(opts?: {
     return true;
   }
 
+  function callbackErrorResponse(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Hono Context type varies by route; helper is intentionally generic
+    c: any,
+    locale: string,
+    status: ContentfulStatusCode,
+    htmlMessage: string,
+    jsonError: string,
+  ): Response | Promise<Response> {
+    if (wantsHtml(c)) {
+      const html = renderHtmlPage({ locale: locale as unknown as import("./i18n.js").Locale, success: false, errorMessage: htmlMessage });
+      c.header("Content-Type", "text/html; charset=utf-8");
+      return c.html(html, status);
+    }
+    return c.json({ error: jsonError }, status);
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: OAuth callback orchestrates session/instance/token states with HTML/JSON branching
   app.get("/v1/callback", async (c) => {
     setNoStore(c);
     const locale = pickLocale(c.req.header("accept-language"));
@@ -529,62 +547,26 @@ export function createBrokerApp(opts?: {
     const code = c.req.query("code") || "";
     const state = c.req.query("state") || "";
     if (!code || !state) {
-      const err = msgs.errorInvalidRequest;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 400 as ContentfulStatusCode);
-      }
-      return c.json({ error: "missing code or state" }, 400);
+      return callbackErrorResponse(c, locale, 400, msgs.errorInvalidRequest, "missing code or state");
     }
     const env = getEnv(c);
     const ttl = getSessionTtlSeconds(env);
     const session = await store.get(state);
     if (!session) {
-      const err = msgs.errorSessionExpired;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 410 as ContentfulStatusCode);
-      }
-      return c.json({ error: "session not found or expired" }, 410);
+      return callbackErrorResponse(c, locale, 410, msgs.errorSessionExpired, "session not found or expired");
     }
     if (session.tokenJson) {
-      const err = msgs.errorSessionExpired;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 410 as ContentfulStatusCode);
-      }
-      return c.json({ error: "session not found or expired" }, 410);
+      return callbackErrorResponse(c, locale, 410, msgs.errorSessionExpired, "session not found or expired");
     }
     if (!session.instanceId) {
-      const err = msgs.errorInstanceNotFound;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 410 as ContentfulStatusCode);
-      }
-      return c.json({ error: "instance not found or expired" }, 410);
+      return callbackErrorResponse(c, locale, 410, msgs.errorInstanceNotFound, "instance not found or expired");
     }
     const inst = await instanceStore.get(session.instanceId);
     if (!inst) {
-      const err = msgs.errorInstanceNotFound;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 410 as ContentfulStatusCode);
-      }
-      return c.json({ error: "instance not found or expired" }, 410);
+      return callbackErrorResponse(c, locale, 410, msgs.errorInstanceNotFound, "instance not found or expired");
     }
     if (session.sratCallbackUrl !== inst.redirectUrl) {
-      const err = msgs.errorRedirectMismatch;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 403 as ContentfulStatusCode);
-      }
-      return c.json({ error: "redirect_url mismatch for instance" }, 403);
+      return callbackErrorResponse(c, locale, 403, msgs.errorRedirectMismatch, "redirect_url mismatch for instance");
     }
     const providers = loadProvidersConfig(env);
     let prov: ReturnType<typeof getProviderOrThrow>;
@@ -592,36 +574,19 @@ export function createBrokerApp(opts?: {
       prov = getProviderOrThrow(providers, session.provider);
     } catch (e) {
       const err = (e as Error).message;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 400 as ContentfulStatusCode);
-      }
-      return c.json({ error: err }, 400);
+      return callbackErrorResponse(c, locale, 400, err, err);
     }
     let publicUrl2: string;
     try {
       publicUrl2 = getBrokerPublicUrlOrThrow(env);
     } catch (e) {
       const err = (e as Error).message;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: err });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, 500 as ContentfulStatusCode);
-      }
-      return c.json({ error: err }, 500);
+      return callbackErrorResponse(c, locale, 500, err, err);
     }
     const redirectUri = `${publicUrl2}/v1/callback`;
     const exchange = await exchangeCodeForToken(prov, code, redirectUri, fetchImpl, session.codeVerifier);
     if ("error" in exchange) {
-      const errMsg = msgs.errorTokenFailed;
-      if (wantsHtml(c)) {
-        const html = renderHtmlPage({ locale, success: false, errorMessage: errMsg });
-        c.header("Content-Type", "text/html; charset=utf-8");
-        return c.html(html, exchange.status as ContentfulStatusCode);
-      }
-      if (exchange.error.startsWith("invalid token response")) return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
-      return c.json({ error: exchange.error }, exchange.status as ContentfulStatusCode);
+      return callbackErrorResponse(c, locale, exchange.status as ContentfulStatusCode, msgs.errorTokenFailed, exchange.error);
     }
     const { tokenJson, accountLabel } = buildRcloneEnvelope(exchange.tokenResp);
     await store.set(state, { ...session, tokenJson, accountLabel, clientId: prov.client_id, clientSecret: prov.client_secret, completedAt: Date.now() }, ttl);
