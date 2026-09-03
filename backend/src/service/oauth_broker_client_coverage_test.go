@@ -276,3 +276,38 @@ func TestBrokerClient_Coverage_DeleteClientByID_Success(t *testing.T) {
 	_ = client.RegisterClient(ctx, fake.URL)
 	require.NoError(t, client.DeleteClientByID(ctx, fake.URL, kp2.ClientID))
 }
+
+func TestBrokerClient_Coverage_DoSignedAndDelete_Errors(t *testing.T) {
+	db, _ := gorm.Open(sqlite.Open("file:mem_doerr?mode=memory&cache=shared"), &gorm.Config{})
+	_ = db.AutoMigrate(&dbom.OAuthKeyPair{})
+	client := service.NewBrokerClientWithHTTP(db, http.DefaultClient)
+	ctx := context.Background()
+	_, _ = client.GetKeyPair(ctx)
+	// invalid URL should cause http.NewRequest error inside doSigned
+	_, _, errE := client.StartOAuth(ctx, "http://[invalid", "dropbox", "https://x/cb", "ha-err-url")
+	require.Error(t, errE)
+	// context canceled should cause Do error
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+	_, _, errE = client.StartOAuth(canceledCtx, "https://example.com", "dropbox", "https://x/cb", "ha-canceled")
+	require.Error(t, errE)
+	// DeleteClient failure 500
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v1/clients" && r.Method == "POST" {
+			body, _ := io.ReadAll(r.Body)
+			var req map[string]string
+			_ = json.Unmarshal(body, &req)
+			w.WriteHeader(201)
+			_ = json.NewEncoder(w).Encode(req)
+			return
+		}
+		w.WriteHeader(500)
+		w.Write([]byte(`server error`))
+	}))
+	defer fake.Close()
+	_ = client.RegisterClient(ctx, fake.URL)
+	require.Error(t, client.DeleteClient(ctx, fake.URL))
+	// GetSession with canceled context
+	_, errE = client.GetSession(canceledCtx, "https://example.com", "sess-123")
+	require.Error(t, errE)
+}
