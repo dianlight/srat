@@ -184,6 +184,57 @@ func TestBrokerClient_Coverage_RegisterAndSession_Errors(t *testing.T) {
 		_ = client.RegisterClient(context.Background(), fake.URL)
 		require.Error(t, client.DeleteClientByID(context.Background(), fake.URL, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"))
 	})
+	t.Run("RegisterInstance non-409 RegisterClient failure", func(t *testing.T) {
+		db6, _ := gorm.Open(sqlite.Open("file:mem_reginst500?mode=memory&cache=shared"), &gorm.Config{})
+		_ = db6.AutoMigrate(&dbom.OAuthKeyPair{})
+		fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/clients" {
+				w.WriteHeader(500)
+				w.Write([]byte(`server error`))
+				return
+			}
+			w.WriteHeader(404)
+		}))
+		defer fake.Close()
+		client := service.NewBrokerClientWithHTTP(db6, fake.Client())
+		errE := client.RegisterInstance(context.Background(), fake.URL, "ha-fail-reg", "https://x/cb")
+		require.Error(t, errE)
+		require.Contains(t, errE.Error(), "500")
+	})
+	t.Run("RegisterInstance instance 400", func(t *testing.T) {
+		db7, _ := gorm.Open(sqlite.Open("file:mem_reginst400?mode=memory&cache=shared"), &gorm.Config{})
+		_ = db7.AutoMigrate(&dbom.OAuthKeyPair{})
+		fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/v1/clients" {
+				body, _ := io.ReadAll(r.Body)
+				var req map[string]string
+				_ = json.Unmarshal(body, &req)
+				w.WriteHeader(201)
+				_ = json.NewEncoder(w).Encode(req)
+				return
+			}
+			if r.URL.Path == "/v1/instances/register" {
+				w.WriteHeader(400)
+				w.Write([]byte(`{"error":"bad redirect"}`))
+				return
+			}
+			w.WriteHeader(404)
+		}))
+		defer fake.Close()
+		client := service.NewBrokerClientWithHTTP(db7, fake.Client())
+		errE := client.RegisterInstance(context.Background(), fake.URL, "ha-bad-redirect", "not-a-url")
+		require.Error(t, errE)
+		require.Contains(t, errE.Error(), "400")
+	})
+	t.Run("RegisterInstance GetKeyPair failure", func(t *testing.T) {
+		db8, _ := gorm.Open(sqlite.Open("file:mem_reginst_kpfail?mode=memory&cache=shared"), &gorm.Config{})
+		_ = db8.AutoMigrate(&dbom.OAuthKeyPair{})
+		// corrupt DB to make GetKeyPair fail
+		_ = db8.Create(&dbom.OAuthKeyPair{ID: "default", PrivateKey: "!!!", PublicKey: "!!!", ClientID: "bad"}).Error
+		client := service.NewBrokerClientWithHTTP(db8, http.DefaultClient)
+		errE := client.RegisterInstance(context.Background(), "https://example.com", "ha-kp-fail", "https://x/cb")
+		require.Error(t, errE)
+	})
 }
 
 func TestBrokerClient_Coverage_DeleteClientByID_Success(t *testing.T) {
