@@ -8,8 +8,14 @@ from typing import Any
 
 from homeassistant.components.repairs import ConfirmRepairFlow, RepairsFlow
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import issue_registry as ir
+
+try:
+    from homeassistant.components.repairs.models import RepairsFlowResult
+except ImportError:  # HA < 2026.9 without typed repair results
+    from homeassistant.data_entry_flow import (  # type: ignore[assignment]
+        FlowResult as RepairsFlowResult,
+    )
 
 from .const import DOMAIN
 from .websocket_client import SRATWebSocketClient
@@ -149,7 +155,7 @@ class SRATIssueRepairFlow(ConfirmRepairFlow):
 
     async def async_step_confirm(
         self, user_input: dict[str, str] | None = None
-    ) -> FlowResult:
+    ) -> RepairsFlowResult:
         """Handle confirmation and report successful fix events."""
         result = await super().async_step_confirm(user_input)
         if user_input is not None and self._ws_client is not None:
