@@ -939,6 +939,8 @@ func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e even
 		return err
 	}
 
+	self.patchPartitionAfterFormat(ctx, e.Task.Device, e.Task.FilesystemType, e.Task.Label)
+
 	disk := self.findDiskForDevicePath(e.Task.Device)
 	if disk == nil {
 		slog.DebugContext(ctx, "No disk found to broadcast after format refresh", "device", e.Task.Device)
@@ -953,6 +955,76 @@ func (self *VolumeService) handleFilesystemTaskEvent(ctx context.Context, e even
 	}
 
 	return nil
+}
+
+// patchPartitionAfterFormat overwrites the cached partition name and filesystem
+// type after a successful format. The hardware inventory can stay stale for
+// minutes, so the DiskMap cannot rely on it alone: the requested label carried
+// by the format task is authoritative, with a live GetPartitionLabel read as
+// fallback for empty-label formats.
+func (self *VolumeService) patchPartitionAfterFormat(ctx context.Context, devicePath, fsType, label string) {
+	if self.disks == nil || strings.TrimSpace(devicePath) == "" {
+		return
+	}
+	diskID, partitionID := self.findDiskAndPartitionForDevicePath(devicePath)
+	if diskID == "" || partitionID == "" {
+		slog.DebugContext(ctx, "No partition found to patch after format", "device", devicePath)
+		return
+	}
+	part, ok := self.disks.GetPartition(diskID, partitionID)
+	if !ok {
+		return
+	}
+	patched := part
+	if strings.TrimSpace(fsType) != "" {
+		patched.FsType = new(fsType)
+	}
+	resolvedLabel := strings.TrimSpace(label)
+	if resolvedLabel == "" && self.fs_service != nil {
+		lookupFsType := strings.TrimSpace(fsType)
+		if lookupFsType == "" && part.FsType != nil {
+			lookupFsType = strings.TrimSpace(*part.FsType)
+		}
+		if lookupFsType != "" {
+			if liveLabel, err := self.fs_service.GetPartitionLabel(ctx, strings.TrimSpace(devicePath), lookupFsType); err == nil {
+				resolvedLabel = strings.TrimSpace(liveLabel)
+			} else {
+				slog.WarnContext(ctx, "Failed to re-read partition label after format, keeping cached name", "device", devicePath, "err", err)
+			}
+		}
+	}
+	// Only overwrite the cached name with a non-empty authoritative label.
+	// Empty-label formats keep the hardware value (which falls back to the
+	// partition entry name) to avoid clearing to a wrong empty state.
+	if resolvedLabel != "" {
+		patched.Name = new(resolvedLabel)
+	}
+	// Skip the write when nothing changed to avoid needless cache churn.
+	if (patched.Name == nil && part.Name == nil || patched.Name != nil && part.Name != nil && *patched.Name == *part.Name) &&
+		(patched.FsType == nil && part.FsType == nil || patched.FsType != nil && part.FsType != nil && *patched.FsType == *part.FsType) {
+		return
+	}
+	if err := self.disks.AddPartition(diskID, patched); err != nil {
+		slog.WarnContext(ctx, "Failed to patch partition name after format", "device", devicePath, "disk", diskID, "partition", partitionID, "err", err)
+	}
+}
+
+func (self *VolumeService) findDiskAndPartitionForDevicePath(devicePath string) (string, string) {
+	if self.disks == nil {
+		return "", ""
+	}
+	normalizedDevice := strings.TrimSpace(devicePath)
+	for diskID, disk := range self.disks.Snapshot() {
+		if disk == nil || disk.Partitions == nil {
+			continue
+		}
+		for partitionID, partition := range *disk.Partitions {
+			if strings.TrimSpace(self.disks.GetPartitionDevicePath(&partition)) == normalizedDevice {
+				return diskID, partitionID
+			}
+		}
+	}
+	return "", ""
 }
 
 func (self *VolumeService) findDiskForDevicePath(devicePath string) *dto.Disk {
