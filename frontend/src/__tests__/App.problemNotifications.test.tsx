@@ -16,6 +16,7 @@ const {
   wsStateRef,
   activeToasts,
   getUnreadCount,
+  labFeatureAvailableRef,
 } = vi.hoisted(() => {
   const activeToasts = new Set<string>();
   const getUnreadCount = () => activeToasts.size;
@@ -40,6 +41,7 @@ const {
   });
   const toastUpdateMock = vi.fn((..._args: unknown[]) => undefined);
   const toastIsActiveMock = vi.fn((_id: string) => false);
+  const labFeatureAvailableRef = { value: true };
   const wsStateRef = {
     current: {
       heartbeat: { alive: true },
@@ -55,6 +57,7 @@ const {
     wsStateRef,
     activeToasts,
     getUnreadCount,
+    labFeatureAvailableRef,
   };
 });
 
@@ -101,6 +104,15 @@ vi.mock("../hooks/useSetupWizard", () => ({
   useSetupWizard: () => ({ shouldShow: false, dismiss: () => undefined }),
 }));
 
+vi.mock("../hooks/useLabFeatures", () => ({
+  useLabFeatures: () => ({
+    features: [],
+    isAvailable: (key: string) =>
+      key === "ha_custom_component" ? labFeatureAvailableRef.value : false,
+    isLoading: false,
+  }),
+}));
+
 vi.mock("../components/NavBar", () => ({
   NavBar: () => <div data-testid="mock-navbar">NavBar</div>,
 }));
@@ -143,6 +155,7 @@ function makeProblem(overrides: Record<string, unknown> = {}) {
 describe("App problem notifications - toastId dedup and dismiss", () => {
   beforeEach(async () => {
     wsStateRef.current = { heartbeat: { alive: true } };
+    labFeatureAvailableRef.value = true;
     activeToasts.clear();
     toastErrorMock.mockClear();
     toastWarnMock.mockClear();
@@ -643,4 +656,46 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     },
   );
 
+  it("suppresses custom_component_* toasts when the ha_custom_component lab feature is not active", async () => {
+    labFeatureAvailableRef.value = false;
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({ problem_key: "custom_component_missing" }),
+    };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastDismissMock.mock.calls.length).toBe(1);
+    });
+    expect(toastWarnMock.mock.calls.length).toBe(0);
+    expect(toastErrorMock.mock.calls.length).toBe(0);
+    expect(toastInfoMock.mock.calls.length).toBe(0);
+
+    // Non-custom problems still notify while the lab surface is hidden.
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({ problem_key: "disk_error", severity: "error", title: "Disk error" }),
+    };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastErrorMock.mock.calls.length).toBe(1);
+    });
+  });
 });

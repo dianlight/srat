@@ -12,6 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2/autopatch"
 	"github.com/danielgtaylor/huma/v2/humatest"
 	"github.com/dianlight/srat/api"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -370,6 +371,11 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
 
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+
 	installedVersion := "2026.04.1"
 	connectedVersion := "2026.04.2"
 	status := &dto.HomeAssistantCustomComponentStatus{
@@ -412,6 +418,12 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
 
+	// Ensure lab mode on for the positive path (dev default is on, but make explicit).
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:    dto.HomeAssistantComponentSRAT,
 		InstallPath:  "/homeassistant/custom_components/srat",
@@ -433,9 +445,73 @@ func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHand
 	_, _ = mock.Verify(suite.upgradeService, matchers.Times(1)).GetUpgradeReleaseAsset()
 }
 
+func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler_ForbiddenWhenLabModeOff() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = false
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+	suite.T().Cleanup(func() {
+		cur, err := suite.settingService.Load()
+		if err == nil && cur != nil {
+			cur.ExperimentalLabMode = true
+			_ = suite.settingService.UpdateSettings(cur)
+		}
+	})
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:    dto.HomeAssistantComponentSRAT,
+		InstallPath:  "/homeassistant/custom_components/srat",
+		ManifestPath: "/homeassistant/custom_components/srat/manifest.json",
+		Installed:    false,
+		Connected:    false,
+	}
+
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+
+	rr := api.Get("/settings/homeassistant/custom-component/status")
+	suite.Require().Equal(http.StatusForbidden, rr.Code, "Response body: %s", rr.Body.String())
+}
+
+func (suite *SettingsHandlerSuite) TestGetHomeAssistantCustomComponentStatusHandler_ForbiddenInProductionEvenWithLabOn() {
+	oldVersion := config.Version
+	config.Version = "1.0.0"
+	suite.T().Cleanup(func() { config.Version = oldVersion })
+
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Component:    dto.HomeAssistantComponentSRAT,
+		InstallPath:  "/homeassistant/custom_components/srat",
+		ManifestPath: "/homeassistant/custom_components/srat/manifest.json",
+		Installed:    false,
+		Connected:    false,
+	}
+
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())).ThenReturn(nil)
+
+	rr := api.Get("/settings/homeassistant/custom-component/status")
+	suite.Require().Equal(http.StatusForbidden, rr.Code, "Response body: %s", rr.Body.String())
+}
+
 func (suite *SettingsHandlerSuite) TestInstallHomeAssistantCustomComponentHandler() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
+
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
 
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:        dto.HomeAssistantComponentSRAT,
@@ -466,6 +542,11 @@ func (suite *SettingsHandlerSuite) TestUpgradeHomeAssistantCustomComponentHandle
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
 
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:        dto.HomeAssistantComponentSRAT,
 		InstallPath:      "/homeassistant/custom_components/srat",
@@ -495,6 +576,11 @@ func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHand
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
 
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = true
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+
 	status := &dto.HomeAssistantCustomComponentStatus{
 		Component:    dto.HomeAssistantComponentSRAT,
 		InstallPath:  "/homeassistant/custom_components/srat",
@@ -515,6 +601,32 @@ func (suite *SettingsHandlerSuite) TestUninstallHomeAssistantCustomComponentHand
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
 	//	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Any[*dto.HomeAssistantCustomComponentStatus]())
 	//_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).UpsertRestartRequiredRepair(mock.AnyContext())
+}
+
+func (suite *SettingsHandlerSuite) TestCustomComponentMutations_ForbiddenWhenLabModeOff() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+
+	current, loadErr := suite.settingService.Load()
+	suite.Require().NoError(loadErr)
+	current.ExperimentalLabMode = false
+	suite.Require().NoError(suite.settingService.UpdateSettings(current))
+	suite.T().Cleanup(func() {
+		cur, err := suite.settingService.Load()
+		if err == nil && cur != nil {
+			cur.ExperimentalLabMode = true
+			_ = suite.settingService.UpdateSettings(cur)
+		}
+	})
+
+	rr := api.Post("/settings/homeassistant/custom-component/install", map[string]any{})
+	suite.Require().Equal(http.StatusForbidden, rr.Code, "install response: %s", rr.Body.String())
+
+	rr = api.Post("/settings/homeassistant/custom-component/upgrade", map[string]any{})
+	suite.Require().Equal(http.StatusForbidden, rr.Code, "upgrade response: %s", rr.Body.String())
+
+	rr = api.Delete("/settings/homeassistant/custom-component")
+	suite.Require().Equal(http.StatusForbidden, rr.Code, "uninstall response: %s", rr.Body.String())
 }
 
 func (suite *SettingsHandlerSuite) TestGetAppConfigHandler_AutoDismissesRepairWhenRestartNotRequired() {

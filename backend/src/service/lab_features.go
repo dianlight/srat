@@ -1,5 +1,11 @@
 package service
 
+import (
+	"strings"
+
+	"github.com/dianlight/srat/config"
+)
+
 // LabFeatureStatus classifies the maturity tier of a lab feature.
 type LabFeatureStatus string
 
@@ -66,4 +72,31 @@ func (r *LabFeatureRegistry) All() []LabFeature {
 		out = append(out, f)
 	}
 	return out
+}
+
+// IsHaCustomComponentProblemKey reports whether a problem/repair key belongs
+// to the SRAT custom-component lab surface (missing install/connection or
+// restart required). Prefix match so future custom_component_* keys inherit
+// the same lab gating.
+func IsHaCustomComponentProblemKey(problemKey string) bool {
+	return strings.HasPrefix(strings.TrimSpace(problemKey), "custom_component_")
+}
+
+// IsHaCustomComponentLabEnabled reports whether the ha_custom_component alpha
+// lab feature is active: omitted in production builds and otherwise gated by
+// settings.experimental_lab_mode. Fail-closed on nil service, load errors or
+// nil settings, so no notify/repair/alert is raised when lab mode is off or
+// the feature is not part of the build.
+func IsHaCustomComponentLabEnabled(settingSvc SettingServiceInterface) bool {
+	if config.Environment() == "production" {
+		return false
+	}
+	if settingSvc == nil {
+		return false
+	}
+	settings, err := settingSvc.Load()
+	if err != nil || settings == nil {
+		return false
+	}
+	return settings.ExperimentalLabMode
 }

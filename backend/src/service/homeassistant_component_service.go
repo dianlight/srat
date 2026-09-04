@@ -41,6 +41,7 @@ type HomeAssistantComponentService struct {
 	ctx            context.Context
 	state          *dto.ContextState
 	problemService ProblemServiceInterface
+	settingService SettingServiceInterface
 }
 
 type HomeAssistantComponentServiceProps struct {
@@ -48,6 +49,7 @@ type HomeAssistantComponentServiceProps struct {
 	Ctx            context.Context
 	State          *dto.ContextState
 	ProblemService ProblemServiceInterface
+	SettingService SettingServiceInterface `optional:"true"`
 }
 
 // NewHomeAssistantComponentService builds a status service for SRAT custom component.
@@ -56,7 +58,15 @@ func NewHomeAssistantComponentService(in HomeAssistantComponentServiceProps) Hom
 		ctx:            in.Ctx,
 		state:          in.State,
 		problemService: in.ProblemService,
+		settingService: in.SettingService,
 	}
+}
+
+// isCustomComponentLabEnabled reports whether the ha_custom_component alpha
+// lab feature is active. Delegates to the shared lab-features helper so all
+// custom-component surfaces share one gate.
+func (s *HomeAssistantComponentService) isCustomComponentLabEnabled() bool {
+	return IsHaCustomComponentLabEnabled(s.settingService)
 }
 
 type customComponentManifest struct {
@@ -148,6 +158,15 @@ func (s *HomeAssistantComponentService) Uninstall(ctx context.Context) error {
 }
 
 func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.Context) error {
+	if !s.isCustomComponentLabEnabled() {
+		// Lab mode off or alpha feature not in this build: never raise the
+		// restart repair, and clean up any stale record so the dashboard,
+		// toasts and HA notifications stay silent.
+		if s.problemService != nil {
+			_ = s.dismissRepairIssue(ctx, customComponentRestartRepairID)
+		}
+		return nil
+	}
 	_, err := s.problemService.Upsert(&dto.Problem{
 		ProblemKey:     customComponentRestartRepairID,
 		Title:          "Home Assistant restart required",
@@ -186,6 +205,17 @@ func (s *HomeAssistantComponentService) dismissRepairIssue(ctx context.Context, 
 
 func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistantCustomComponentStatus) error {
 	if status == nil {
+		return nil
+	}
+
+	if !s.isCustomComponentLabEnabled() {
+		// Lab mode off or alpha feature not in this build: never raise the
+		// missing-component problem, and dismiss any stale records so the
+		// dashboard, toasts and HA notifications stay silent.
+		if s.problemService != nil {
+			_ = s.dismissRepairIssue(s.ctx, "custom_component_missing")
+			_ = s.dismissRepairIssue(s.ctx, customComponentRestartRepairID)
+		}
 		return nil
 	}
 

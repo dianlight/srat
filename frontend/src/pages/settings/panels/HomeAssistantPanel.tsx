@@ -18,11 +18,18 @@ type HomeAssistantPanelProps = {
 export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
   const { control, watch } = useFormContext<ApiSettings>();
   const { data: capabilities } = useGetApiCapabilitiesQuery();
-  const { data: componentStatus } =
-    useGetApiSettingsHomeassistantCustomComponentStatusQuery();
   const commonProps = { control, disabled: readOnly };
   const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
   const { isAvailable: labFeatureAvailable } = useLabFeatures();
+  const customComponentLabActive =
+    experimentalLabMode && labFeatureAvailable("ha_custom_component");
+  // Skip the status query when the alpha lab surface is hidden so the UI
+  // does not spam a 403-gated endpoint while lab mode is off or in
+  // production builds.
+  const { data: componentStatus } =
+    useGetApiSettingsHomeassistantCustomComponentStatusQuery(undefined, {
+      skip: !customComponentLabActive,
+    });
   const mdnsEnabled = Boolean(watch("mdns_registration"));
   const isComponentConnected = Boolean(
     componentStatus &&
@@ -102,7 +109,7 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
 
       {/* Custom Component Panel — ALPHA lab feature: only in dev/prerelease
           builds (registry drops it in production), AND behind Lab Mode. */}
-      {experimentalLabMode && labFeatureAvailable("ha_custom_component") ? (
+      {customComponentLabActive ? (
         <HomeAssistantCustomComponentPanel readOnly={readOnly} />
       ) : null}
 

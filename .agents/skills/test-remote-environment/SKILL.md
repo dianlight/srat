@@ -157,6 +157,23 @@ mise //backend:build:remote
 - Wait for the message `Remote build and deployment completed.` before proceeding.
 - If `HOMEASSISTANT_IP` is not set, ask the user or check `.env`/shell profile.
 
+### Step 1a — Confirm the new binary actually executes (MANDATORY)
+
+The s6 `srat/run` script prefers `/usr/local/bin/srat-server-musl` whenever it exists, so a static-only deploy installs but never runs. And the develop-channel updater refuses binaries that semver-compare older than the running one (e.g. `2026.8.0-dev.99` < `2026.8.0-rc13` because `dev` < `rc`), logging `same version or older as current, skipping installation` with no restart. Never trust a deploy from transfer logs alone:
+
+```bash
+# 1. Which variant executes right now (want your just-built file: fresh mtime)?
+ssh -p 22222 root@$HOMEASSISTANT_IP 'ls -la /mnt/data/supervisor/app_configs/local_sambanas2/upgrade/'
+ssh root@$HOMEASSISTANT_IP 'docker exec app_local_sambanas2 sh -c "ps -o pid,etime,args | grep srat-server | grep -v grep"'
+# 2. Deployed-build pre-check: a version-gated endpoint must flip state.
+#    Example: a newly added route answers 200 now (404 on the old binary):
+curl -s -o /dev/null -w '%{http_code}\n' http://$HOMEASSISTANT_IP:3000/api/lab_features
+# 3. New boot line carries the expected version/environment:
+ssh root@$HOMEASSISTANT_IP 'ha addons logs local_sambanas2' | grep -a 'telemetry configured' | tail -n1
+```
+
+If the process predates the transfer, the endpoint still 404s, or the version line is stale: deploy the missing variant too (musl via `build --zig`, which the launcher prefers) and/or rebuild with a version that compares newer than the running one (core bump, e.g. `2026.8.1-dev.1` over `2026.8.0-rc13`; `-dev` alone still classifies `development` via `EnvironmentFromVersion`). Only proceed to Step 2 when all three checks agree.
+
 ### Step 2 — Restart the addon to pick up the new binary
 
 Use the Home Assistant MCP to restart the addon:
@@ -491,6 +508,9 @@ All cases done → Step 9 Summary
 | `smbpasswd -L` fails / shows help | `smbpasswd -L` is broken in the addon container | Use `pdbedit -a -u <username>` instead to set Samba passwords; `pdbedit -L` to list existing users |
 | No test cases found in docs/test/ | Fresh repo or cases not yet created | Invoke `test-plan` skill to scaffold cases before building |
 | User wants more coverage | Func-id gaps detected | Delegate to `test-plan`, then re-run remote test with new manifest |
+| Deploy transferred but old code still runs; `lab_features` still 404s or version line stale | s6 `srat/run` prefers `srat-server-musl`; static-only deploy never executes | Deploy the musl variant too (`build --zig`); verify with Step 1a (`ps` + endpoint flip + version line) |
+| `same version or older as current, skipping installation` in addon logs, no restart | Updater refuses semver-older binaries (`2026.8.0-dev.99` < `2026.8.0-rc13`); `-dev` alone does not imply newer | Rebuild with a version comparing newer than running (core bump, e.g. `2026.8.1-dev.1` still classifies `development`); same-version reinstalls are allowed on the develop channel |
+| Host `/dev/root` 100% full (`df -h /`); `docker exec` or writes fail | 253 MB rootfs fills easily; zram `/tmp` is only 15 MB | Never write to `/` or `/tmp` on the host and never use `docker cp` for large files; transfer straight into `/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/` (bind-mount, plenty of space) via tmp-file + `chmod 0755` + atomic `mv` |
 
 ## Increase Custom Component Verbosity
 
