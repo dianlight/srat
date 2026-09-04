@@ -316,6 +316,16 @@ When testing features that modify backend state (config saves, DB writes) and th
 - `/api/volumes` reads from `HardwareService` cache (may be stale)
 - Result: individual endpoint shows correct data, volumes endpoint shows stale `supported=false`
 
+**Known pattern — DiskMap partition name after format/label (see #1063):**
+- `POST /filesystem/format` and `PUT /filesystem/label` complete at FS level, but the post-format volume-cache refresh may not update the in-memory `DiskMap` partition `Name`
+- `GET /filesystem/label?partition_id=<id>` reads the live filesystem (fresh)
+- `GET /api/volumes` partition `name` may still show the old label (stale)
+- Result: Volumes tree shows the old label even though `blkid`/`lsblk` and the label endpoint show the new one
+
+**Mandatory freshness assertion after any format or set-label op** (before declaring a tree/label check passed):
+1. Within 30s of the format/label task completing, assert `GET /api/volumes` partition `name` equals `GET /filesystem/label?partition_id=<id>` (`label` field)
+2. If they differ after 30s, do NOT retry the format — treat as a stale-DiskMap bug: file it (see #1063), then restart the addon to clear the cache and re-verify
+
 **Verification approach:**
 1. After a state-mutating action, restart the addon to clear all in-memory caches:
    ```
@@ -329,6 +339,7 @@ When testing features that modify backend state (config saves, DB writes) and th
 **When to apply this step:**
 - Testing config save flows (HDIdle, shares, users, settings)
 - Testing any feature where a POST/PUT is followed by a GET on a different endpoint
+- Testing format/label flows (filesystem ops) — the mandatory freshness assertion above applies
 - Investigating data inconsistencies between individual and list endpoints
 
 ### Handling Changes to Test Cases During Execution
@@ -474,6 +485,7 @@ All cases done → Step 9 Summary
 | WebSocket not connecting | Proxy / CORS | Check `mise run //frontend:dev:remote` stdout for proxy errors |
 | Browser console CORS errors | API_URL mismatch | Verify `HOMEASSISTANT_IP` matches `API_URL` in `.mise.toml` `dev:remote` |
 | Individual API returns correct data but list API returns stale/defaults | In-memory cache stale (e.g., HardwareService 30-min cache) | Restart addon to clear cache, re-read from list endpoint; file bug if `Save*` methods don't call `Invalidate*` |
+| Volumes tree still shows old label after format, but `GET /filesystem/label` and `blkid` show the new label | Stale in-memory `DiskMap` partition `Name` — post-format refresh doesn't update it (see #1063) | Do NOT re-format; restart addon to clear cache and re-verify tree; file bug (post-format refresh must set `DiskMap` name from label + emit disk update) |
 | UI panel hidden despite correct DB data | Backend cache stale → `supported=false` → frontend visibility gate blocks rendering | Restart addon, verify panel appears; report as cache invalidation bug |
 | Direct API access needed | Cannot reach backend API externally | Use `docker exec addon_local_sambanas2 curl -sL http://localhost:64289/api/...` from the HA host (no auth required — internal-only API) |
 | `smbpasswd -L` fails / shows help | `smbpasswd -L` is broken in the addon container | Use `pdbedit -a -u <username>` instead to set Samba passwords; `pdbedit -L` to list existing users |
