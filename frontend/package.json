@@ -36,8 +36,8 @@
     "@types/react-syntax-highlighter": "15.5.13",
     "@types/semver": "7.8.0",
     "@vitejs/plugin-react": "6.1.1",
-    "@vitest/browser-playwright": "4.1.11",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/browser-playwright": "5.0.0",
+    "@vitest/coverage-v8": "5.0.0",
     "eslint": "10.9.1",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-testing-library": "7.16.2",
@@ -45,7 +45,7 @@
     "msw": "2.15.0",
     "msw-auto-mock": "0.32.1",
     "typescript": "7.0.2",
-    "vitest": "4.1.11",
+    "vitest": "5.0.0",
     "vitest-browser-react": "2.2.0"
   },
   "peerDependencies": {
