@@ -279,6 +279,85 @@ func (suite *VolumeServiceTestSuite) TestFormatSuccessEventRefreshesPartitionCac
 	suite.Equal(updatedName, *afterPart.Name)
 }
 
+func (suite *VolumeServiceTestSuite) TestFormatSuccessWithStaleHardwareUpdatesLabelFromTask() {
+	diskID := "disk-format-stale"
+	partitionID := "disk-format-stale-part1"
+	devicePath := "/dev/sdz9"
+	staleFsType := "ext4"
+	staleName := "Test123"
+	newFsType := "ext4"
+	newLabel := "SRATFMT02"
+
+	staleDisk := func() map[string]dto.Disk {
+		return map[string]dto.Disk{
+			diskID: {
+				Id:    &diskID,
+				Model: new("Stale Format Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:         &partitionID,
+						DiskId:     &diskID,
+						DevicePath: new(devicePath),
+						FsType:     &staleFsType,
+						Name:       &staleName,
+					},
+				},
+			},
+		}
+	}
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenReturn(staleDisk(), nil).ThenReturn(staleDisk(), nil).Verify(matchers.AtLeastOnce())
+
+	suite.hardwareService.InvalidateHardwareInfo()
+	disksBefore, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+	suite.Require().Len(disksBefore, 1)
+	beforePart, ok := (*disksBefore[0].Partitions)[partitionID]
+	suite.Require().True(ok, "expected partition to be present before refresh")
+	suite.Require().NotNil(beforePart.Name)
+	suite.Equal(staleName, *beforePart.Name)
+
+	diskUpdate := make(chan struct{}, 1)
+	unsubscribe := suite.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
+		if event.Type == events.EventTypes.UPDATE && event.Disk != nil && event.Disk.Id != nil && *event.Disk.Id == diskID {
+			select {
+			case diskUpdate <- struct{}{}:
+			default:
+			}
+		}
+		return nil
+	})
+	defer unsubscribe()
+
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Type: events.EventTypes.STOP,
+		Task: &dto.FilesystemTask{
+			Device:         devicePath,
+			Operation:      "format",
+			FilesystemType: newFsType,
+			Status:         "success",
+			Message:        "Format operation completed successfully for " + devicePath,
+			Progress:       100,
+			Label:          newLabel,
+		},
+	})
+
+	select {
+	case <-diskUpdate:
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for disk refresh event after format success with stale hardware")
+	}
+
+	disksAfter, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+	suite.Require().Len(disksAfter, 1)
+	afterPart, ok := (*disksAfter[0].Partitions)[partitionID]
+	suite.Require().True(ok, "expected partition to be present after refresh")
+	suite.Require().NotNil(afterPart.Name)
+	suite.Equal(newLabel, *afterPart.Name)
+	suite.Require().NotNil(afterPart.FsType)
+	suite.Equal(newFsType, *afterPart.FsType)
+}
+
 // --- MountVolume Tests ---
 
 func (suite *VolumeServiceTestSuite) TestMountUnmountVolume_Success() {

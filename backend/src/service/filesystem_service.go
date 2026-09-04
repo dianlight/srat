@@ -585,6 +585,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 					FilesystemType: fsType,
 					Status:         "start",
 					Message:        fmt.Sprintf("Starting format operation for %s as %s", devicePath, fsType),
+					Label:          options.Label,
 				},
 			})
 		}
@@ -632,6 +633,7 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Message:        message,
 						Progress:       percentual,
 						Notes:          currentNotes,
+						Label:          options.Label,
 					},
 				})
 			}
@@ -680,11 +682,12 @@ func (s *FilesystemService) FormatPartition(ctx context.Context, devicePath, fsT
 						Message:        fmt.Sprintf("Format operation completed successfully for %s", devicePath),
 						Progress:       100,
 						Notes:          formatFinalNotes,
+						Label:          options.Label,
 					},
 				})
 			}
 			// Log success
-			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType)
+			slog.InfoContext(s.ctx, "Format operation completed successfully", "device", devicePath, "fsType", fsType, "label", options.Label)
 		}
 	})
 
