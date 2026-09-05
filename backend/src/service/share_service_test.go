@@ -581,6 +581,58 @@ func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
 	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
 }
 
+// TestCreateShareNamePatternEdgeCases covers shareNamePattern validation
+// (issue #E01): empty, Unicode, uppercase, max-length, and slash/space/special chars.
+func (suite *ShareServiceSuite) TestCreateShareNamePatternEdgeCases() {
+	maxValid128 := func() string { b := make([]byte, 128); for i := range b { b[i] = 'A' }; return string(b) }()
+	tooLong129 := maxValid128 + "A"
+	tests := []struct {
+		name       string
+		shareName  string
+		shouldPass bool
+	}{
+		{"empty rejected", "", false},
+		{"unicode rejected", "tëst_üñîcode", false},
+		{"unicode chinese rejected", "测试共享", false},
+		{"uppercase allowed", "TEST_UPPERCASE", true},
+		{"lowercase allowed", "test_lowercase", true},
+		{"mixed case with hyphen allowed", "Test-Valid_123", true},
+		{"slash rejected", "a/b", false},
+		{"space rejected", "test share", false},
+		{"dollar rejected", "test$share", false},
+		{"colon rejected", "test:share", false},
+		{"max length 128 valid pattern", maxValid128, true},
+		{"129 rejected", tooLong129, false},
+	}
+	for _, tc := range tests {
+		// Setup mock for passing cases before CreateShare
+		if tc.shouldPass {
+			mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{Username: "homeassistant"}, nil)
+		}
+		share := dto.SharedResource{
+			Name:     tc.shareName,
+			Disabled: new(false),
+			MountPointData: &dto.MountPointData{
+				Path:     "/mnt/x",
+				Type:     "ADDON",
+				DeviceId: "device",
+			},
+		}
+		created, err := suite.shareService.CreateShare(share)
+		if tc.shouldPass {
+			suite.Require().NoError(err, "expected success for %q", tc.shareName)
+			suite.Require().NotNil(created)
+			suite.Equal(tc.shareName, created.Name)
+			// cleanup valid shares to avoid polluting DB for other tests
+			_ = suite.shareService.DeleteShare(tc.shareName)
+		} else {
+			suite.Nil(created)
+			suite.Error(err)
+			suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation for %q, got %v", tc.shareName, err)
+		}
+	}
+}
+
 func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
 	// Setup: Mock GetAdmin to return the admin user
 	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{

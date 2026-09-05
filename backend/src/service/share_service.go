@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"regexp"
 	"sync"
 
 	"github.com/dianlight/srat/converter"
@@ -281,12 +282,19 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 // turning DB constraint failures into a clean client error (issues #901-#903).
 // requireMountData enforces that a share must carry a mount point with a path
 // (used on create; updates may keep the existing mount point).
+var shareNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+
 func validateShareData(share dto.SharedResource, requireMountData bool) errors.E {
 	if requireMountData && share.Name == "" {
 		return errors.WithStack(dto.ErrorShareValidation)
 	}
-	if share.Name != "" && len(share.Name) > 128 {
-		return errors.WithStack(dto.ErrorShareValidation)
+	if share.Name != "" {
+		if len(share.Name) > 128 {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
+		if !shareNamePattern.MatchString(share.Name) {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
 	}
 	if requireMountData && (share.MountPointData == nil || share.MountPointData.Path == "") {
 		return errors.WithStack(dto.ErrorShareValidation)

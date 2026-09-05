@@ -154,6 +154,11 @@ type FilesystemTask struct {
 	// FilesystemType is the filesystem type being used
 	FilesystemType string `json:"filesystemType,omitempty"`
 
+	// Label is the filesystem label requested for a format operation.
+	// It lets post-format cache refresh patch the partition name without
+	// waiting for the hardware inventory to observe the new label.
+	Label string `json:"label,omitempty"`
+
 	// Status is the current status ("start", "success", "failure")
 	Status string `json:"status"`
 

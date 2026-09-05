@@ -20,6 +20,7 @@ import {
   SetupWizard,
   WizardOpenContext,
 } from "./components/wizard/SetupWizard";
+import { useLabFeatures } from "./hooks/useLabFeatures";
 import { useSetupWizard } from "./hooks/useSetupWizard";
 import {
   type CommandExecutionSnapshot,
@@ -82,6 +83,7 @@ export function App() {
   const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
   const { data: appConfigResponse } = useGetApiSettingsAppConfigQuery();
   const [restartAddon] = usePutApiRestartMutation();
+  const { isAvailable: labFeatureAvailable } = useLabFeatures();
   const { shouldShow: shouldShowWizard, dismiss: dismissWizard } =
     useSetupWizard();
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -405,6 +407,17 @@ export function App() {
       return;
     }
     const toastId = `problem-${problem.problem_key}`;
+    // Suppress custom-component notify when the ha_custom_component alpha
+    // lab feature is not active (lab mode off or omitted from production
+    // builds). Dismiss any stale toast so nothing lingers.
+    if (
+      problem.problem_key.startsWith("custom_component_") &&
+      !labFeatureAvailable("ha_custom_component")
+    ) {
+      toast.dismiss(toastId);
+      problemToastSeenRef.current.delete(problem.problem_key);
+      return;
+    }
     const isDismissed =
       problem.status === Status.Dismissed ||
       problem.status === Status.Deleted ||
@@ -445,7 +458,7 @@ export function App() {
         autoClose: false,
       } as unknown as Record<string, unknown>);
     }
-  }, [evdata?.problem]);
+  }, [evdata?.problem, labFeatureAvailable]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null

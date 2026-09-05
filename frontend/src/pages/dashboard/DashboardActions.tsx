@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import IssueCard from "../../components/IssueCard";
+import { useLabFeatures } from "../../hooks/useLabFeatures";
 import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import {
@@ -30,16 +31,26 @@ export function DashboardActions() {
   const { data: evdata } = useGetServerEventsQuery();
   const { data: problems } = useGetApiProblemsQuery();
   const [dismissProblem] = useDeleteApiProblemsByProblemKeyMutation();
+  const { isAvailable: labFeatureAvailable } = useLabFeatures();
+  const customComponentLabActive = labFeatureAvailable("ha_custom_component");
 
   const mergedProblems = useMemo(() => {
     const baseProblems = Array.isArray(problems) ? problems : [];
 
+    const isSuppressed = (problemKey?: string | null) =>
+      Boolean(problemKey?.startsWith("custom_component_")) &&
+      !customComponentLabActive;
+
+    const visibleBase = customComponentLabActive
+      ? baseProblems
+      : baseProblems.filter((problem) => !isSuppressed(problem?.problem_key));
+
     const incomingProblem = evdata?.problem;
-    if (!incomingProblem) {
-      return baseProblems;
+    if (!incomingProblem || isSuppressed(incomingProblem.problem_key)) {
+      return visibleBase;
     }
 
-    const existingIndex = baseProblems.findIndex(
+    const existingIndex = visibleBase.findIndex(
       (problem) => problem?.problem_key === incomingProblem.problem_key,
     );
 
@@ -49,22 +60,22 @@ export function DashboardActions() {
 
     if (isRemovedStatus) {
       if (existingIndex < 0) {
-        return baseProblems;
+        return visibleBase;
       }
 
-      return baseProblems.filter(
+      return visibleBase.filter(
         (problem) => problem?.problem_key !== incomingProblem.problem_key,
       );
     }
 
     if (existingIndex < 0) {
-      return [incomingProblem, ...baseProblems];
+      return [incomingProblem, ...visibleBase];
     }
 
-    return baseProblems.map((problem, index) =>
+    return visibleBase.map((problem, index) =>
       index === existingIndex ? incomingProblem : problem,
     );
-  }, [problems, evdata?.problem]);
+  }, [problems, evdata?.problem, customComponentLabActive]);
 
   useEffect(() => {
     const handleDashboardStep3 = () => {
