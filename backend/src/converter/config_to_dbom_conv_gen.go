@@ -52,6 +52,9 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 		pString := source.TimeMachineMaxSize
 		target.TimeMachineMaxSize = &pString
 	}
+	if source.Subfolder != "" {
+		target.Subfolder = source.Subfolder
+	}
 	if source.Usage != "" {
 		target.Usage = string(source.Usage)
 	}
@@ -107,6 +110,9 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
+	}
+	if source.Subfolder != "" {
+		target.Subfolder = source.Subfolder
 	}
 	if source.Path != "" {
 		pString := source.Path

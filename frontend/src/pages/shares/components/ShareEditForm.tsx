@@ -25,6 +25,7 @@ import {
   SwitchElement,
   TextFieldElement,
 } from "react-hook-form-mui";
+import { useLabMode } from "../../../hooks/useLabMode";
 import { useVolume } from "../../../hooks/volumeHook";
 import default_json from "../../../json/default_config.json";
 import {
@@ -74,6 +75,7 @@ export function ShareEditForm({
     testOverrides?.useGetApiUsersQuery ?? useGetApiUsersQuery;
   const useVolumeHook = testOverrides?.useVolume ?? useVolume;
   const { data: users, isLoading: usLoading } = useUsersQuery();
+  const { labMode } = useLabMode();
   const { disks: volumes, isLoading: vlLoading } = useVolumeHook();
   const [editName, setEditName] = useState(shareData?.org_name === undefined);
   const [activeCasingIndex, setActiveCasingIndex] = useState(0);
@@ -117,6 +119,7 @@ export function ShareEditForm({
               })
             : "MAX"),
         usage: shareData?.usage || Usage.None,
+        subfolder: shareData?.subfolder || "",
         veto_files: shareData?.veto_files || [],
         disabled: shareData?.disabled,
       },
@@ -425,6 +428,20 @@ export function ShareEditForm({
               )}
             />
           </Grid>
+
+          {labMode && watch("usage") !== Usage.Internal && (
+            <Grid size={{ xs: 12 }}>
+              <TextFieldElement
+                size="small"
+                label="Subfolder (optional)"
+                name="subfolder"
+                fullWidth
+                disabled={isDisabled}
+                control={control}
+                helperText="Relative path within the volume (e.g., 'movies' or 'photos/2024')"
+              />
+            </Grid>
+          )}
 
           {watch("mount_point_data")?.is_write_supported && (
             <Grid size={{ xs: 12, sm: 6 }}>
