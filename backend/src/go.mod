@@ -38,7 +38,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
-	github.com/shirou/gopsutil/v4 v4.26.7
+	github.com/shirou/gopsutil/v4 v4.26.8
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/stretchr/testify v1.12.1
 	github.com/teivah/broadcast v0.1.0

@@ -135,6 +135,28 @@ func (suite *ProblemHABridgeSuite) TestConnectedErrorDoesNotCreatePersistentNoti
 	)
 }
 
+func (suite *ProblemHABridgeSuite) TestCustomComponentProblemSuppressedWhenLabNotActive() {
+	// Suite provides no SettingService, so the lab gate is fail-closed off.
+	suite.state.HAWsComponent = nil
+	suite.events.EmitProblem(events.ProblemEvent{
+		Type: events.EventTypes.ADD,
+		Problem: &dto.Problem{
+			ProblemKey:   "custom_component_missing",
+			Title:        "Home Assistant SRAT custom component missing and disconnected",
+			Description:  "missing",
+			Severity:     dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+			Status:       dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,
+			IsPersistent: true,
+		},
+	})
+
+	_ = mock.Verify(suite.haSvc, matchers.Times(0)).CreatePersistentNotification(
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[string](),
+	)
+}
+
 func (suite *ProblemHABridgeSuite) TestOfflineQueueFlushesWhenHABecomesReady() {
 	calls := make(chan string, 4)
 	mock.When(

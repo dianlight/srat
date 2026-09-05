@@ -296,15 +296,16 @@ export function SharesTreeView({
                     sx={{ fontSize: "0.7rem", height: 16 }}
                   />
                 )}
-                {!shareProps.mount_point_data?.is_write_supported && (
-                  <Chip
-                    label="Read-Only"
-                    size="small"
-                    variant="outlined"
-                    color="secondary"
-                    sx={{ fontSize: "0.7rem", height: 16 }}
-                  />
-                )}
+                {shareProps.mount_point_data?.is_write_supported === false &&
+                  !shareProps.mount_point_data?.invalid && (
+                    <Chip
+                      label="Read-Only"
+                      size="small"
+                      variant="outlined"
+                      color="secondary"
+                      sx={{ fontSize: "0.7rem", height: 16 }}
+                    />
+                  )}
                 {LEGACY_STANDARD_SHARE_NAMES.has(shareName) && (
                   <Chip
                     size="small"

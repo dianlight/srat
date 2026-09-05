@@ -52,11 +52,23 @@ export function getPartitionActionItems({
   onSetFilesystemLabel,
   onFormatPartition,
 }: PartitionActionOptions): PartitionActionItem[] | null {
+  // #1073: stale orphan rows (invalid + unmounted, e.g. a legacy dashes path
+  // left behind after the wizard suggestion switched to underscores) must not
+  // count toward the multi-mount guard nor shadow the live entry below. Only
+  // non-orphan entries gate visibility; the primary entry prefers mounted.
+  const mountEntries = Object.values(partition.mount_point_data || {});
+  const liveEntries = mountEntries.filter(
+    (entry) =>
+      !(
+        (entry as MountPointData)?.invalid &&
+        !(entry as MountPointData)?.is_mounted
+      ),
+  );
   if (
     protectedMode ||
     partition.name?.startsWith("hassos-") ||
     Object.values(partition.host_mount_point_data || {}).length > 0 ||
-    Object.values(partition.mount_point_data || {}).length > 1
+    liveEntries.length > 1
   ) {
     return null;
   }
@@ -65,7 +77,10 @@ export function getPartitionActionItems({
   const mountPointData = partition.mount_point_data || {};
   const keys = Object.keys(mountPointData);
 
-  const mpd = mountPointData[keys[0]] as MountPointData;
+  const liveMpd = (liveEntries[0] ?? mountEntries[0]) as MountPointData;
+  // Fall back to the legacy first-key lookup when the map is non-empty but
+  // the live pick is missing (keeps array-shaped test fixtures working).
+  const mpd = liveMpd ?? (mountPointData[keys[0]] as MountPointData);
   const isMounted = mpd?.is_mounted;
   const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
   const hasShare = mpd?.share !== null && mpd?.share !== undefined;

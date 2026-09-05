@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/danielgtaylor/huma/v2"
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/service"
@@ -20,6 +21,7 @@ type SettingsHanler struct {
 	haService      service.HomeAssistantServiceInterface
 	upgradeService service.UpgradeServiceInterface
 	eventBus       events.EventBusInterface
+	labRegistry    *service.LabFeatureRegistry
 }
 
 // NewSettingsHanler creates a new settings handler.
@@ -38,8 +40,36 @@ func NewSettingsHanler(
 	p.haService = haService
 	p.upgradeService = upgradeService
 	p.eventBus = eventBus
+	p.labRegistry = service.NewLabFeatureRegistry()
 
 	return p
+}
+
+// requireCustomComponentLabFeature returns 403 unless the ha_custom_component
+// alpha lab feature is active: omitted in production builds and otherwise
+// gated by settings.experimental_lab_mode. Matches the lab_features API
+// availability contract so the endpoints cannot raise missing-component
+// notify/repair/alerts when lab mode is off or the feature is not in the build.
+func (self *SettingsHanler) requireCustomComponentLabFeature() error {
+	feature, ok := self.labRegistry.Get("ha_custom_component")
+	if !ok {
+		return huma.Error404NotFound("unknown lab feature", nil)
+	}
+	if feature.Status == service.StatusAlpha && config.Environment() == "production" {
+		return huma.Error403Forbidden(
+			"alpha feature not available in release builds", nil)
+	}
+	settings, err := self.settingService.Load()
+	if err != nil {
+		return huma.Error500InternalServerError("Failed to read settings", err)
+	}
+	if settings == nil || !settings.ExperimentalLabMode {
+		return huma.Error403Forbidden(
+			"Home Assistant custom component endpoints require Lab Mode (set experimental_lab_mode=true in settings)",
+			dto.ErrorLabModeRequired,
+		)
+	}
+	return nil
 }
 
 // RegisterSettings registers the settings-related endpoints with the provided API.
@@ -73,6 +103,14 @@ func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Co
 		return nil, huma.Error500InternalServerError("Failed to inspect Home Assistant custom component status: %v", err)
 	}
 
+	if gateErr := self.requireCustomComponentLabFeature(); gateErr != nil {
+		// Lab mode off or alpha feature not in this build: SyncIssueStatus
+		// is itself gated and dismisses stale records, so run it
+		// best-effort for cleanup before returning 403 without raising.
+		_ = self.haComponentSvc.SyncIssueStatus(status)
+		return nil, gateErr
+	}
+
 	syncErr := self.haComponentSvc.SyncIssueStatus(status)
 	if syncErr != nil {
 		return nil, huma.Error500InternalServerError("Failed to synchronize Home Assistant component issue state: %v", syncErr)
@@ -101,6 +139,9 @@ func (self *SettingsHanler) GetHomeAssistantCustomComponentStatus(ctx context.Co
 func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
+	if gateErr := self.requireCustomComponentLabFeature(); gateErr != nil {
+		return nil, gateErr
+	}
 	err := self.haComponentSvc.InstallOrUpgrade(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
@@ -143,6 +184,9 @@ func (self *SettingsHanler) InstallHomeAssistantCustomComponent(ctx context.Cont
 func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
+	if gateErr := self.requireCustomComponentLabFeature(); gateErr != nil {
+		return nil, gateErr
+	}
 	err := self.haComponentSvc.InstallOrUpgrade(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to install Home Assistant custom component: %v", err)
@@ -183,6 +227,9 @@ func (self *SettingsHanler) UpgradeHomeAssistantCustomComponent(ctx context.Cont
 func (self *SettingsHanler) UninstallHomeAssistantCustomComponent(ctx context.Context, input *struct{}) (*struct {
 	Body dto.HomeAssistantCustomComponentStatus
 }, error) {
+	if gateErr := self.requireCustomComponentLabFeature(); gateErr != nil {
+		return nil, gateErr
+	}
 	err := self.haComponentSvc.Uninstall(ctx)
 	if err != nil {
 		return nil, huma.Error500InternalServerError("Failed to uninstall Home Assistant custom component: %v", err)

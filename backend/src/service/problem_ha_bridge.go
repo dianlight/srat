@@ -26,11 +26,12 @@ type problemNotificationAction struct {
 }
 
 type ProblemHABridge struct {
-	ctx         context.Context
-	state       *dto.ContextState
-	eventBus    events.EventBusInterface
-	haService   HomeAssistantServiceInterface
-	broadcaster BroadcasterServiceInterface
+	ctx            context.Context
+	state          *dto.ContextState
+	eventBus       events.EventBusInterface
+	haService      HomeAssistantServiceInterface
+	broadcaster    BroadcasterServiceInterface
+	settingService SettingServiceInterface
 
 	mu    sync.Mutex
 	queue []problemNotificationAction
@@ -38,21 +39,23 @@ type ProblemHABridge struct {
 
 type ProblemHABridgeParams struct {
 	fx.In
-	Ctx         context.Context
-	State       *dto.ContextState
-	EventBus    events.EventBusInterface
-	HAService   HomeAssistantServiceInterface `optional:"true"`
-	Broadcaster BroadcasterServiceInterface   `optional:"true"`
+	Ctx            context.Context
+	State          *dto.ContextState
+	EventBus       events.EventBusInterface
+	HAService      HomeAssistantServiceInterface `optional:"true"`
+	Broadcaster    BroadcasterServiceInterface   `optional:"true"`
+	SettingService SettingServiceInterface       `optional:"true"`
 }
 
 func NewProblemHABridge(lc fx.Lifecycle, params ProblemHABridgeParams) ProblemHABridgeInterface {
 	bridge := &ProblemHABridge{
-		ctx:         params.Ctx,
-		state:       params.State,
-		eventBus:    params.EventBus,
-		haService:   params.HAService,
-		broadcaster: params.Broadcaster,
-		queue:       make([]problemNotificationAction, 0),
+		ctx:            params.Ctx,
+		state:          params.State,
+		eventBus:       params.EventBus,
+		haService:      params.HAService,
+		broadcaster:    params.Broadcaster,
+		settingService: params.SettingService,
+		queue:          make([]problemNotificationAction, 0),
 	}
 
 	var unsubscribe func()
@@ -75,6 +78,20 @@ func NewProblemHABridge(lc fx.Lifecycle, params ProblemHABridgeParams) ProblemHA
 
 func (b *ProblemHABridge) handleProblemEvent(ctx context.Context, event events.ProblemEvent) errors.E {
 	if event.Problem == nil {
+		return nil
+	}
+
+	// Suppress custom-component notify/repair/alerts when the
+	// ha_custom_component alpha lab feature is not active (lab mode off or
+	// production build where the feature is omitted). Terminal events still
+	// dismiss any stale HA notification so nothing lingers.
+	if IsHaCustomComponentProblemKey(event.Problem.ProblemKey) && !b.isCustomComponentLabEnabled() {
+		notificationID, _, _ := toNotificationPayload(event.Problem)
+		if b.canUseHA() {
+			_ = b.haService.DismissPersistentNotification(notificationID)
+		} else {
+			b.enqueue(problemNotificationAction{dismiss: true, id: notificationID})
+		}
 		return nil
 	}
 
@@ -162,6 +179,12 @@ func (b *ProblemHABridge) canUseHA() bool {
 func (b *ProblemHABridge) isComponentConnected() bool {
 	return b.state != nil && b.state.HAWsComponent != nil &&
 		b.state.HAWsComponent.Component == dto.HomeAssistantComponentSRAT
+}
+
+// isCustomComponentLabEnabled delegates to the shared lab-features helper so
+// all custom-component surfaces share one gate.
+func (b *ProblemHABridge) isCustomComponentLabEnabled() bool {
+	return IsHaCustomComponentLabEnabled(b.settingService)
 }
 
 func isRepairSeverity(severity dto.ProblemSeverity) bool {

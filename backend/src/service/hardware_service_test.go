@@ -464,7 +464,9 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_DeviceWithChildrenSynthes
 		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdc"))
 
 	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
-		suite.Equal("/dev/sdc", devPath)
+		// Child synthesis skips the whole-disk probe; the per-partition
+		// fallback (#1072) probes /dev/sdc1. No magic here keeps FsType nil.
+		suite.Equal("/dev/sdc1", devPath)
 		return "", 0, nil
 	})
 
@@ -745,6 +747,164 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_RawWholeDiskIgnoresStaleU
 		suite.Equal("sdd", *part.LegacyDeviceName)
 		suite.Equal("/dev/disk/by-id/usb-TESTRAW_456", *part.DevicePath)
 		suite.Nil(part.FsType, "Raw whole-disk partition must not use stale udev FsType")
+	}
+}
+
+// TestGetHardwareInfo_EmptyIDFSTYPEFallsBackToProbe reproduces issue #1072:
+// a healthy ext4 USB partition (sdc1) whose Supervisor udev entry carries no
+// ID_FS_TYPE must still report FsType via the FSFromBlock magic probe so
+// /api/volumes shows type ext4 and canMount true downstream.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyIDFSTYPEFallsBackToProbe() {
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-usb"),
+						Serial: new("USB123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-usb-TEST_123-part1"),
+								Name:        new("sdc1"),
+								Device:      new("/dev/sdc1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sdc"),
+						DevPath: new("/dev/sdc"),
+						ById:    new("/dev/disk/by-id/usb-TEST_123"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("USB123"),
+						},
+						Children: &[]string{
+							"/sys/devices/pci0000:00/0000:00:14.0/usb1/1-2/1-2:1.0/host2/target2:0:0/2:0:0:0/block/sdc/sdc1",
+						},
+					},
+					{
+						Name:       new("sdc1"),
+						DevPath:    new("/dev/sdc1"),
+						ById:       new("/dev/disk/by-id/usb-TEST_123-part1"),
+						Attributes: &hardware.Attributes{
+							// Intentionally no IDFSTYPE: Supervisor reports
+							// empty udev fstype while blkid sees ext4.
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sdc"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdc"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		if devPath == "/dev/sdc1" {
+			return "ext4", 0, nil
+		}
+		return "", 0, nil
+	})
+
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1)
+	disk, ok := disks["usb-TEST_123"]
+	suite.Require().True(ok, "disk should be present by by-id name")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Require().Len(*disk.Partitions, 1)
+	for _, part := range *disk.Partitions {
+		suite.Equal("sdc1", *part.LegacyDeviceName)
+		suite.Equal("/dev/sdc1", *part.LegacyDevicePath)
+		suite.Equal("/dev/disk/by-id/usb-TEST_123-part1", *part.DevicePath)
+		suite.Require().NotNil(part.FsType, "empty IDFSTYPE must fall back to FS probe")
+		suite.Equal("ext4", *part.FsType)
+	}
+}
+
+// TestGetHardwareInfo_MissingDeviceEntryFallsBackToLegacyProbe reproduces the
+// observed #1072 remote state: sdc1 present in drive.Filesystems with
+// LegacyDevicePath /dev/sdc1 but no matching Devices entry, leaving DevicePath
+// nil and FsType nil. The fallback must probe LegacyDevicePath for ext4 and
+// reconstruct DevicePath from the by-id partition Id.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryFallsBackToLegacyProbe() {
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-usb"),
+						Serial: new("USB123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-usb-TEST_123-part1"),
+								Name:        new("sdc1"),
+								Device:      new("/dev/sdc1"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sdc"),
+						DevPath: new("/dev/sdc"),
+						ById:    new("/dev/disk/by-id/usb-TEST_123"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("USB123"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sdc"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdc"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		if devPath == "/dev/sdc1" {
+			return "ext4", 0, nil
+		}
+		return "", 0, nil
+	})
+
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.NotNil(disks)
+	suite.Len(disks, 1)
+	disk, ok := disks["usb-TEST_123"]
+	suite.Require().True(ok, "disk should be present by by-id name")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Require().Len(*disk.Partitions, 1)
+	for _, part := range *disk.Partitions {
+		suite.Equal("sdc1", *part.LegacyDeviceName)
+		suite.Equal("/dev/sdc1", *part.LegacyDevicePath)
+		suite.Require().NotNil(part.DevicePath, "missing device entry must reconstruct DevicePath")
+		suite.Equal("/dev/disk/by-id/usb-TEST_123-part1", *part.DevicePath)
+		suite.Require().NotNil(part.FsType, "missing device entry must fall back to legacy probe")
+		suite.Equal("ext4", *part.FsType)
 	}
 }
 

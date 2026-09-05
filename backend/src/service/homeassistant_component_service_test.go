@@ -10,23 +10,46 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
+	tozderrors "gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 )
 
+type stubLabSettingService struct {
+	labMode bool
+	loadErr tozderrors.E
+}
+
+func (s *stubLabSettingService) Load() (*dto.Settings, tozderrors.E) {
+	if s.loadErr != nil {
+		return nil, s.loadErr
+	}
+	return &dto.Settings{ExperimentalLabMode: s.labMode}, nil
+}
+
+func (s *stubLabSettingService) UpdateSettings(*dto.Settings) tozderrors.E {
+	return nil
+}
+
+func (s *stubLabSettingService) SetCommandExists(func(cmd []string) bool) {}
+
+func (s *stubLabSettingService) DumpTable() (string, tozderrors.E) { return "", nil }
+
 type HomeAssistantComponentServiceSuite struct {
 	suite.Suite
-	app        *fxtest.App
-	state      *dto.ContextState
-	service    service.HomeAssistantComponentServiceInterface
-	problemSvc service.ProblemServiceInterface
-	tempRoot   string
+	app         *fxtest.App
+	state       *dto.ContextState
+	service     service.HomeAssistantComponentServiceInterface
+	problemSvc  service.ProblemServiceInterface
+	settingStub *stubLabSettingService
+	tempRoot    string
 }
 
 func TestHomeAssistantComponentServiceSuite(t *testing.T) {
@@ -38,6 +61,7 @@ func (suite *HomeAssistantComponentServiceSuite) SetupTest() {
 	suite.state = &dto.ContextState{
 		CustomComponentsPath: suite.tempRoot,
 	}
+	suite.settingStub = &stubLabSettingService{labMode: true}
 
 	suite.app = fxtest.New(suite.T(),
 		fx.Provide(
@@ -46,6 +70,7 @@ func (suite *HomeAssistantComponentServiceSuite) SetupTest() {
 				return context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 			},
 			func() *dto.ContextState { return suite.state },
+			func() service.SettingServiceInterface { return suite.settingStub },
 			mock.Mock[service.ProblemServiceInterface],
 			service.NewHomeAssistantComponentService,
 		),
@@ -273,6 +298,50 @@ func (suite *HomeAssistantComponentServiceSuite) TestGetStatus_CanUpgrade_Instal
 	suite.Require().NoError(err)
 	suite.True(status.Installed)
 	suite.False(status.CanUpgrade, "CanUpgrade must be false when installed version equals latest version")
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_SuppressedWhenLabModeOff() {
+	suite.settingStub.labMode = false
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed: false,
+		Connected: false,
+	}
+
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).ThenReturn(nil)
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_SuppressedInProductionEvenWithLabOn() {
+	oldVersion := config.Version
+	config.Version = "1.0.0"
+	suite.T().Cleanup(func() { config.Version = oldVersion })
+	suite.settingStub.labMode = true
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed: false,
+		Connected: false,
+	}
+
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).ThenReturn(nil)
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_SuppressedWhenLabModeOff() {
+	suite.settingStub.labMode = false
+
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).ThenReturn(nil)
+
+	err := suite.service.UpsertRestartRequiredRepair(context.Background())
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
 }
 
 func createCustomComponentArchive(t *testing.T, files map[string]string) []byte {

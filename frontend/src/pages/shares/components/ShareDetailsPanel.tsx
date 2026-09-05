@@ -257,9 +257,17 @@ export function ShareDetailsPanel({
                     Write Support
                   </Typography>
                   <Chip
-                    label={mountData?.is_write_supported ? "Yes" : "Read-Only"}
+                    label={
+                      mountData?.is_write_supported === false &&
+                      !mountData?.invalid
+                        ? "Read-Only"
+                        : "Yes"
+                    }
                     color={
-                      mountData?.is_write_supported ? "success" : "warning"
+                      mountData?.is_write_supported === false &&
+                      !mountData?.invalid
+                        ? "warning"
+                        : "success"
                     }
                     size="small"
                   />

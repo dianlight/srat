@@ -3,8 +3,11 @@ package service_test
 import (
 	"testing"
 
+	"github.com/dianlight/srat/config"
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/stretchr/testify/require"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 func TestNewLabFeatureRegistryContainsAllTiers(t *testing.T) {
@@ -44,4 +47,48 @@ func TestLabFeatureRegistryAllReturnsEveryFeature(t *testing.T) {
 	require.Equal(t, service.StatusAlpha, keys["ha_custom_component"])
 	require.Equal(t, service.StatusBeta, keys["smb_over_quic"])
 	require.Equal(t, service.StatusBeta, keys["addon_mdns"])
+}
+
+type stubLabSettingLoader struct {
+	settings *dto.Settings
+	err      tozderrors.E
+}
+
+func (s *stubLabSettingLoader) Load() (*dto.Settings, tozderrors.E) {
+	return s.settings, s.err
+}
+
+func (s *stubLabSettingLoader) UpdateSettings(*dto.Settings) tozderrors.E {
+	return nil
+}
+
+func (s *stubLabSettingLoader) SetCommandExists(func(cmd []string) bool) {}
+
+func (s *stubLabSettingLoader) DumpTable() (string, tozderrors.E) { return "", nil }
+
+func TestIsHaCustomComponentProblemKey(t *testing.T) {
+	require.True(t, service.IsHaCustomComponentProblemKey("custom_component_missing"))
+	require.True(t, service.IsHaCustomComponentProblemKey("custom_component_restart_required"))
+	require.True(t, service.IsHaCustomComponentProblemKey("  custom_component_x  "))
+	require.False(t, service.IsHaCustomComponentProblemKey("disk_error"))
+	require.False(t, service.IsHaCustomComponentProblemKey(""))
+}
+
+func TestIsHaCustomComponentLabEnabled(t *testing.T) {
+	oldVersion := config.Version
+	t.Cleanup(func() { config.Version = oldVersion })
+
+	// Production always disabled, even with lab on.
+	config.Version = "1.0.0"
+	require.False(t, service.IsHaCustomComponentLabEnabled(&stubLabSettingLoader{settings: &dto.Settings{ExperimentalLabMode: true}}))
+
+	// Non-production follows lab mode.
+	config.Version = "0.0.0-dev.0"
+	require.True(t, service.IsHaCustomComponentLabEnabled(&stubLabSettingLoader{settings: &dto.Settings{ExperimentalLabMode: true}}))
+	require.False(t, service.IsHaCustomComponentLabEnabled(&stubLabSettingLoader{settings: &dto.Settings{ExperimentalLabMode: false}}))
+
+	// Fail-closed on nil service, load error and nil settings.
+	require.False(t, service.IsHaCustomComponentLabEnabled(nil))
+	require.False(t, service.IsHaCustomComponentLabEnabled(&stubLabSettingLoader{settings: nil, err: tozderrors.New("boom")}))
+	require.False(t, service.IsHaCustomComponentLabEnabled(&stubLabSettingLoader{settings: nil}))
 }
