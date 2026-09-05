@@ -1,0 +1,72 @@
+name = "srat-oauth-broker"
+main = "src/index.ts"
+compatibility_date = "2025-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# D1 database for atomic single-use sessions (preferred over KV).
+# Create with: wrangler d1 create srat-oauth-broker --env staging
+#              wrangler d1 create srat-oauth-broker --env production
+# Then paste database_id below and run: wrangler d1 migrations apply srat-oauth-broker --env staging|production
+# Migration file: oauth_broker/migrations/0001_create_sessions.sql
+#
+# KV namespace kept as fallback (eventually consistent, non-atomic consume).
+# Create with: wrangler kv namespace create "OAUTH_SESSIONS" [--env staging|production]
+# Then paste the IDs below per environment.
+
+[vars]
+# BROKER_PUBLIC_URL is set per environment (staging vs production) via vars or secrets
+# SESSION_TTL is in seconds (default 600 = 10m)
+SESSION_TTL = "600"
+# Optional allowlist for srat_callback_url (comma glob CSV, e.g. "https://*.srat.example/*,https://srat.example/*")
+# Empty = allow any https (default, see README trade-off). Set to restrict.
+# BROKER_ALLOWED_CALLBACK_PATTERNS = "https://*.example.com/*"
+
+# Optional Cloudflare Rate Limiting binding (Both mode: in-app fallback always active)
+# Create with: wrangler ratelimit create broker-ratelimit --period 60 --limit 20
+# Then uncomment:
+# [[ratelimits]]
+# binding = "RATE_LIMITER"
+# namespace_id = "REPLACE_WITH_RATELIMIT_NAMESPACE_ID"
+
+[env.staging]
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-staging.lucio-tarantino.workers.dev", SESSION_TTL = "600" }
+kv_namespaces = [
+  { binding = "OAUTH_SESSIONS", id = "f8b827aa57414209bc24c230905c0037" },
+]
+# D1 — preferred (atomic DELETE ... RETURNING). Requires database_id after `wrangler d1 create`.
+[[env.staging.d1_databases]]
+binding = "OAUTH_SESSIONS_DB"
+database_name = "srat-oauth-broker-staging"
+database_id = "5c07d44a-29eb-4988-b75e-16ef1bdeceab"
+
+
+[env.production]
+vars = { BROKER_PUBLIC_URL = "https://srat-oauth-broker-production.lucio-tarantino.workers.dev", SESSION_TTL = "600", ENV = "production" }
+kv_namespaces = [
+  { binding = "OAUTH_SESSIONS", id = "64340357ce71418daf0e6c41ddfafea7" },
+]
+[[env.production.d1_databases]]
+binding = "OAUTH_SESSIONS_DB"
+database_name = "srat-oauth-broker"
+database_id = "c9ce34bc-c254-45ef-8278-5e626d77147e"
+
+# Secrets (never commit):
+# # per-install Ed25519 – no shared secret
+# wrangler secret put DROPBOX_CLIENT_ID --env staging|production
+# wrangler secret put DROPBOX_CLIENT_SECRET --env staging|production
+# wrangler secret put BROKER_PROVIDERS_JSON --env staging|production  # optional generic providers JSON
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1

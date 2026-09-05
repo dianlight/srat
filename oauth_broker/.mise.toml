@@ -1,0 +1,65 @@
+[deps.bun]
+auto = true
+
+[tools]
+"npm:wrangler" = "latest"
+
+[tasks]
+prepare = "bun install"
+
+[tasks.build]
+description = "Typecheck broker (no emit, Workers bundles via wrangler)"
+run = "bun tsc --noEmit"
+quiet = true
+
+[tasks.lint]
+run = "bunx biome check ."
+quiet = true
+
+[tasks.format]
+run = "bunx biome check --write ."
+quiet = true
+
+[tasks.test]
+description = "Run broker tests on Bun runtime (~2x faster, no coverage)"
+run = [
+  "bun tsc --noEmit",
+  "bunx --bun vitest run --reporter=verbose",
+]
+quiet = true
+
+[tasks."test:ci"]
+description = "Run broker tests on Node runtime for coverage merging (CI, ≥70% gate)"
+env = { GITHUB_ACTIONS = true }
+run = [
+  "bun tsc --noEmit",
+  "bunx vitest run --coverage --reporter=verbose",
+]
+quiet = true
+
+[tasks."test:coverage"]
+description = "Run broker tests with coverage on Node runtime (local)"
+run = [
+  "bun tsc --noEmit",
+  "bunx vitest run --coverage --reporter=verbose",
+]
+quiet = true
+
+[tasks."deploy:worker"]
+description = "Deploy to Cloudflare Workers (requires CLOUDFLARE_API_TOKEN + wrangler secrets)"
+run = "bunx wrangler deploy --env {{env.ENV | default(value='production')}}"
+quiet = true
+
+[tasks."deploy:render"]
+description = "Build for Render (Hono Node service, PORT from env)"
+run = "bun tsc --noEmit && echo 'Render deploy: push to Render via deploy hook or docker'"
+quiet = true
+
+[tasks.dev]
+description = "Run local Hono Node server (PORT=8080)"
+run = "bun run src/index.ts"
+quiet = true
+
+[tasks."dev:worker"]
+run = "bunx wrangler dev"
+quiet = true
