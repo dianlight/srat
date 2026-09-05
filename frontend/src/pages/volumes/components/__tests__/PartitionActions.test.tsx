@@ -1025,6 +1025,50 @@ describe("PartitionActions component", () => {
         expect(screen.queryAllByLabelText("set label")).toHaveLength(0);
     });
 
+    it("still offers actions for one live + one stale orphan entry (#1073)", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const user = userEvent.setup();
+        const { PartitionActions } = await import("../PartitionActions");
+
+        // Mirrors the WD-part2 duplicate: a stale dashes orphan (invalid,
+        // unmounted, no share) plus the live underscores mount (mounted).
+        // The old length>1 guard hid every action; the narrowed guard must
+        // keep offering unmount for the live entry.
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/mnt/ata-WD-part2",
+                    is_mounted: false,
+                    invalid: true,
+                },
+                {
+                    path: "/mnt/ata_WD_part2",
+                    is_mounted: true,
+                    is_to_mount_at_startup: true,
+                },
+            ],
+        });
+
+        render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => { },
+                onMount: () => { },
+                onUnmount: () => { },
+                onCreateShare: () => { },
+                onGoToShare: () => { },
+            })
+        );
+
+        await openMenuIfNeeded(screen, user);
+
+        const unmountButtons = screen.getAllByLabelText("unmount partition");
+        expect(unmountButtons.length).toBeGreaterThanOrEqual(1);
+    });
+
     it("renders all action icons with consistent size classes (coherence)", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
