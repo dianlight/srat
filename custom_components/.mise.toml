@@ -10,7 +10,7 @@ _.python.venv = { path = ".venv", create = true }
 
 [hooks]
 # Ogni volta che entri nella cartella o il file cambia, esegue l'installazione
-enter = "pip install -r requirements_dev.txt"
+enter = ".venv/bin/python -m pip install -r requirements_dev.txt"
 
 [tasks]
 check = "mise run format-check && mise run lint && mise run typecheck && mise run test"
@@ -82,7 +82,7 @@ run = "{{config_root}}/.venv/bin/python -m pytest tests -v -c pyproject.toml --c
 
 [tasks.prepare]
 alias = "install-dev"
-run = "pip install -r requirements_dev.txt"
+run = "{{config_root}}/.venv/bin/python -m pip install -r {{config_root}}/requirements_dev.txt"
 
 [tasks.hassfest]
 usage = '''
