@@ -420,17 +420,28 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 								} else if device.Attributes.IDPARTENTRYNAME != nil {
 									partition.Name = device.Attributes.IDPARTENTRYNAME
 								}
-								// Prefer the fallback probe result for synthesized
-								// whole-disk filesystems: udev ID_FS_TYPE can be stale
-								// after a disk's filesystem was removed. Real child
-								// partitions (not in wholeDiskProbeFstypeByID) keep
-								// the existing IDFSTYPE behavior.
-								if probeFstype, ok := wholeDiskProbeFstypeByID[*device.ById]; ok {
-									if probeFstype != "" {
-										partition.FsType = &probeFstype
-									}
-								} else if device.Attributes.IDFSTYPE != nil {
-									partition.FsType = device.Attributes.IDFSTYPE
+							}
+							// Prefer the fallback probe result for synthesized
+							// whole-disk filesystems: udev ID_FS_TYPE can be stale
+							// after a disk's filesystem was removed. Real child
+							// partitions (not in wholeDiskProbeFstypeByID) keep
+							// the existing IDFSTYPE behavior.
+							if probeFstype, ok := wholeDiskProbeFstypeByID[*device.ById]; ok {
+								if probeFstype != "" {
+									partition.FsType = &probeFstype
+								}
+							} else if device.Attributes != nil && device.Attributes.IDFSTYPE != nil && *device.Attributes.IDFSTYPE != "" {
+								partition.FsType = device.Attributes.IDFSTYPE
+							} else if device.DevPath != nil && *device.DevPath != "" && h.fsProbeFunc != nil {
+								// Issue #1072: Supervisor udev entry reports no
+								// ID_FS_TYPE while blkid sees a healthy FS.
+								// Probe magic directly so /api/volumes reports
+								// the real type and canMount resolves true.
+								if probed, _, probeErr := h.fsProbeFunc(*device.DevPath); probeErr == nil && probed != "" {
+									partition.FsType = new(probed)
+									tlog.DebugContext(h.ctx, "Recovered missing fstype via FS probe", "device", *device.DevPath, "fstype", probed)
+								} else if probeErr != nil {
+									tlog.DebugContext(h.ctx, "FS probe failed for partition with empty fstype", "device", *device.DevPath, "error", probeErr)
 								}
 							}
 							if partition.Name != nil {
@@ -443,6 +454,45 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 						}
 					}
 				}
+			}
+		}
+		// Issue #1072 follow-up: Supervisor may omit the Devices entry for a
+		// partition entirely (observed: sdc1 present in drive.Filesystems with
+		// LegacyDevicePath /dev/sdc1 but no matching device, leaving
+		// DevicePath nil and FsType nil). Recover via LegacyDevicePath probe
+		// and reconstruct DevicePath from the by-id partition Id.
+		if diskDto.Partitions != nil {
+			for pid, part := range *diskDto.Partitions {
+				partition := part
+				needsDevicePath := partition.DevicePath == nil || *partition.DevicePath == ""
+				needsFsType := partition.FsType == nil || *partition.FsType == ""
+				if !needsDevicePath && !needsFsType {
+					continue
+				}
+				if partition.LegacyDeviceName == nil || *partition.LegacyDeviceName == "" {
+					continue
+				}
+				if needsDevicePath && partition.Id != nil && *partition.Id != "" {
+					trimmed := strings.TrimSpace(*partition.Id)
+					trimmed = strings.TrimPrefix(trimmed, "by-id-")
+					if trimmed != "" && !strings.HasPrefix(trimmed, "by-uuid-") {
+						reconstructed := "/dev/disk/by-id/" + trimmed
+						partition.DevicePath = new(reconstructed)
+						tlog.DebugContext(h.ctx, "Reconstructed missing device path from partition id", "partition_id", *partition.Id, "device_path", reconstructed)
+					}
+				}
+				if needsFsType && partition.LegacyDevicePath != nil && *partition.LegacyDevicePath != "" && h.fsProbeFunc != nil {
+					if probed, _, probeErr := h.fsProbeFunc(*partition.LegacyDevicePath); probeErr == nil && probed != "" {
+						partition.FsType = new(probed)
+						tlog.DebugContext(h.ctx, "Recovered missing fstype via legacy device probe", "device", *partition.LegacyDevicePath, "fstype", probed)
+					} else if probeErr != nil {
+						tlog.DebugContext(h.ctx, "Legacy device probe failed for partition with missing device entry", "device", *partition.LegacyDevicePath, "error", probeErr)
+					}
+				}
+				if partition.DiskId == nil || *partition.DiskId == "" {
+					partition.DiskId = diskDto.Id
+				}
+				(*diskDto.Partitions)[pid] = partition
 			}
 		}
 		// Ensure disk has an ID to use as map key
