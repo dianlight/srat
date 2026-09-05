@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -576,7 +577,16 @@ func (self *VolumeService) GetVolumesData() ([]*dto.Disk, errors.E) {
 	return self.disks.All(), nil
 }
 
-// loadMountPointFromDB loads mount point data from the database for a partition
+// loadMountPointFromDB loads mount point data from the database for a partition.
+// Before converting it reconciles legacy rows (#1073): dashes-path rows that
+// normalize to an already-persisted underscores sibling for the same device
+// are collision-merged onto the live row (survivor keeps its own path, share
+// FK and DeviceId; only empty survivor config is backfilled), and rows that
+// are unmounted, not startup-mounted, share-less and missing on disk are
+// hard-deleted as stale orphans. Evicted rows are also removed from the
+// in-memory cache and a MountPoint REMOVE event is emitted per eviction so
+// the broadcaster pushes a fresh snapshot instead of a phantom entry. The
+// returned map contains only the surviving rows.
 func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string]*dto.MountPointData, errors.E) {
 	if part.Id == nil || *part.Id == "" {
 		return nil, nil
@@ -596,6 +606,10 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string
 	}
 
 	tlog.TraceContext(self.ctx, "Found mount point records in DB for device", "device", *part.Id, "name", part.Name, "count", len(dmp))
+	dmp = self.reconcileMountPointRows(part, dmp)
+	if len(dmp) == 0 {
+		return make(map[string]*dto.MountPointData), nil
+	}
 	mountData, convErr := self.convDto.MountPointPathsToMountPointDataMap(dmp)
 	if convErr != nil {
 		slog.ErrorContext(self.ctx, "Failed to convert mount point data", "device", *part.Id, "err", convErr)
@@ -604,6 +618,158 @@ func (self *VolumeService) loadMountPointFromDB(part *dto.Partition) (map[string
 
 	tlog.TraceContext(self.ctx, "Loaded mount point from repository", "device", *part.Id, "mountData", mountData)
 	return mountData, nil
+}
+
+// normalizeMountPath collapses legacy dash-separated mount basenames to the
+// underscore form produced by the current frontend suggestion
+// (VolumeMountDialog replaces only whitespace-ish runes with "_", while the
+// older wizard helper replaced every [^a-zA-Z0-9]+ run with "_"). Only the
+// basename is normalized: "/mnt/ata-WD-part2" becomes "/mnt/ata_WD_part2".
+// Non-/mnt paths and names without dashes pass through unchanged.
+func normalizeMountPath(path string) string {
+	base := filepath.Base(path)
+	if !strings.Contains(base, "-") || !strings.HasPrefix(path, "/mnt/") {
+		return path
+	}
+	return filepath.Join("/mnt", strings.ReplaceAll(base, "-", "_"))
+}
+
+// mountRowIsStaleOrphan reports whether a persisted row is safe to hard-delete:
+// unmounted, not wanted at startup, share-less (checked via the preloaded
+// ExportedShare — nil or zero Name), missing on disk (IsInvalid is derived
+// from isPathDirNotExists during DTO conversion) and an ADDON mount (HOST
+// rows are never pruned here).
+func mountRowIsStaleOrphan(md *dto.MountPointData) bool {
+	if md == nil || md.IsMounted || md.Share != nil {
+		return false
+	}
+	if md.Type != "" && md.Type != "ADDON" {
+		return false
+	}
+	if md.IsToMountAtStartup != nil && *md.IsToMountAtStartup {
+		return false
+	}
+	return md.IsInvalid
+}
+
+// reconcileMountPointRows merges dash/underscore collisions and prunes stale
+// orphans for one partition's persisted rows (#1073). Only duplicate rows are
+// touched: a singleton row is always kept, so a user-created but not-yet-
+// mounted config (unmounted, dir missing, no share, no startup flag) is never
+// deleted out from under the mount dialog. The DB delete uses a hard Unscoped
+// delete: the MountPointPath model carries DeletedAt (soft delete), but a
+// soft-deleted row keeps its (path, root) primary key and would be
+// resurrected by persistMountPoint's OnConflict UpdateAll upsert.
+// Share-bearing rows are never merged or pruned here — deleting them would
+// orphan the exported_shares FK instead. Every eviction also drops the row
+// from the in-memory DiskMap cache and emits a Disk UPDATE event so
+// subscribers broadcast a fresh snapshot. The surviving rows are returned.
+func (self *VolumeService) reconcileMountPointRows(part *dto.Partition, rows []dbom.MountPointPath) []dbom.MountPointPath {
+	if len(rows) <= 1 || part.Id == nil {
+		return rows
+	}
+	mountData, convErr := self.convDto.MountPointPathsToMountPointDataMap(rows)
+	if convErr != nil {
+		slog.WarnContext(self.ctx, "Skipping mount point reconciliation, conversion failed", "device", *part.Id, "err", convErr)
+		return rows
+	}
+	// Index raw rows by path for O(1) survivor/orphan lookups below.
+	byPath := make(map[string]int, len(rows))
+	for i := range rows {
+		byPath[rows[i].Path] = i
+	}
+	evicted := make(map[string]bool, len(rows))
+	mergeInto := func(stalePath, livePath string) {
+		stale, ok := mountData[stalePath]
+		if !ok || evicted[stalePath] {
+			return
+		}
+		live, ok := mountData[livePath]
+		if !ok || evicted[livePath] {
+			return
+		}
+		// Preserve automount intent: if the survivor is not startup-mounted
+		// but the legacy row was, carry the flag over. The survivor keeps
+		// its own path, share FK and DeviceId; only the flag migrates.
+		// (DB round-trips an unset flag as false, so compare by value, not
+		// by nilness.)
+		liveStartup := live.IsToMountAtStartup != nil && *live.IsToMountAtStartup
+		staleStartup := stale.IsToMountAtStartup != nil && *stale.IsToMountAtStartup
+		if !liveStartup && staleStartup {
+			t := true
+			live.IsToMountAtStartup = &t
+			dbLive := rows[byPath[livePath]]
+			dbLive.IsToMountAtStartup = &t
+			if err := self.db.WithContext(self.ctx).Save(&dbLive).Error; err != nil {
+				slog.WarnContext(self.ctx, "Failed to persist merged mount config", "live_path", livePath, "err", err)
+			} else {
+				rows[byPath[livePath]] = dbLive
+			}
+		}
+		self.evictMountPointRow(part, stalePath)
+		evicted[stalePath] = true
+	}
+	// Collision merge: legacy dashes row normalizes onto the live sibling.
+	// Only unmounted, share-less losers are evicted — a mounted row is live
+	// by definition and must never be auto-deleted here.
+	for _, row := range rows {
+		if row.ExportedShare != nil && row.ExportedShare.Name != "" {
+			continue
+		}
+		if normalized := normalizeMountPath(row.Path); normalized != row.Path {
+			if live, ok := byPath[normalized]; ok && live != byPath[row.Path] &&
+				(rows[live].ExportedShare == nil || rows[live].ExportedShare.Name == "") {
+				if staleMD, ok := mountData[row.Path]; ok && staleMD != nil && staleMD.IsMounted {
+					slog.WarnContext(self.ctx, "Keeping mounted dash-path row despite underscore collision", "path", row.Path, "live_path", normalized)
+					continue
+				}
+				mergeInto(row.Path, normalized)
+			}
+		}
+	}
+	// Stale orphans: anything left that is unmounted, unwanted at startup,
+	// share-less and missing on disk goes. Only runs when duplicates exist
+	// (guarded above), so a singleton pending config is never deleted.
+	for path, md := range mountData {
+		if evicted[path] || !mountRowIsStaleOrphan(md) {
+			continue
+		}
+		self.evictMountPointRow(part, path)
+		evicted[path] = true
+	}
+	if len(evicted) == 0 {
+		return rows
+	}
+	survivors := rows[:0]
+	for _, row := range rows {
+		if !evicted[row.Path] {
+			survivors = append(survivors, row)
+		}
+	}
+	return survivors
+}
+
+// evictMountPointRow hard-deletes one persisted mount row and drops it from the
+// in-memory cache. It emits a Disk UPDATE (never a MountPoint event:
+// handleMountPointEvent persists every MountPoint event it sees, so emitting
+// one here would resurrect the deleted row via upsert) so subscribers
+// broadcast a fresh snapshot without the phantom entry.
+func (self *VolumeService) evictMountPointRow(part *dto.Partition, path string) {
+	root := "/"
+	if self.db.WithContext(self.ctx).Unscoped().Where("path = ? AND root = ?", path, root).Delete(&dbom.MountPointPath{}).Error != nil {
+		slog.WarnContext(self.ctx, "Failed to delete stale mount point row", "device", *part.Id, "path", path)
+		return
+	}
+	slog.InfoContext(self.ctx, "Pruned stale mount point row", "device", *part.Id, "path", path)
+	if part.DiskId != nil {
+		self.disks.RemoveMountPoint(*part.DiskId, *part.Id, path)
+		if disk, ok := self.disks.Get(*part.DiskId); ok && disk != nil {
+			_ = self.eventBus.EmitDisk(events.DiskEvent{
+				Event: events.Event{Type: events.EventTypes.UPDATE},
+				Disk:  disk,
+			})
+		}
+	}
 }
 
 // loadMountPointFromDBByPath loads a single mount point configuration from the
