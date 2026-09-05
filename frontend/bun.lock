@@ -52,7 +52,7 @@
         "@babel/preset-typescript": "8.0.1",
         "@biomejs/biome": "2.5.11",
         "@code-inspector/core": "2.0.8",
-        "@happy-dom/global-registrator": "20.13.0",
+        "@happy-dom/global-registrator": "20.13.1",
         "@hookform/devtools": "4.4.0",
         "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
         "@testing-library/dom": "10.4.1",
@@ -308,7 +308,7 @@
 
     "@fortawesome/react-fontawesome": ["@fortawesome/react-fontawesome@3.5.0", "", { "peerDependencies": { "@fortawesome/fontawesome-svg-core": "~6 || ~7", "react": "^18.0.0 || ^19.0.0" } }, "sha512-63mlRr6fiBbJ0wjr1Cf6dsDGtP2lNvk9lnatKgxs/fIkhslsZT291hIUzJkuUkI9yr69ZvWnWfgb2qXm4QyVaA=="],
 
-    "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.13.0", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.13.0" } }, "sha512-+flzajnX7FvSWmUdvwQuFPWN/Z5v3AIePxRqocpbOZfXR53EbJgCNmzdzKrxUzp3E13Yb6b6WNDyUD9H+/zUZg=="],
+    "@happy-dom/global-registrator": ["@happy-dom/global-registrator@20.13.1", "", { "dependencies": { "@types/node": ">=20.0.0", "happy-dom": "^20.13.1" } }, "sha512-++oy0RegDCvcPk5P48kNCmA/mPoTx8/BKscBAQc0lh62Aiqzf6+P336FkNpoIPbmrkxq8UtVRbetvCNBrRIDYw=="],
 
     "@hono/node-server": ["@hono/node-server@2.1.1", "", { "peerDependencies": { "hono": "^4" } }, "sha512-ELuehkj5VCBdgEw9zs+ivkKwyzzUCSQuE96YmiPvn1ECBoZCczbFXJLeEGMTYjphP6gydh4pHMqEYPVMYUVgQg=="],
 
