@@ -306,6 +306,18 @@ func (ms *VolumeService) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// Reject paths the database cannot persist before any OS work (#1091).
+	// Without this guard a colon path mounts at the OS level, returns
+	// success, then fails async persistence and loses state on restart.
+	if err := dbom.ValidateMountPointPath(md.Path); err != nil {
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"Message", err.Error(),
+			"SuggestedPath", dbom.SuggestSanitizedMountPointPath(md.Path),
+		)
+	}
+
 	if md.Root == "" {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"DeviceId", md.DeviceId,

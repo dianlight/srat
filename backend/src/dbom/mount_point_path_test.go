@@ -108,3 +108,16 @@ func TestMountPointPathWithValidCharacters(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateMountPointPath_ColonRejected(t *testing.T) {
+	err := dbom.ValidateMountPointPath("/mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid characters")
+}
+
+func TestSuggestSanitizedMountPointPath(t *testing.T) {
+	assert.Equal(t, "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1",
+		dbom.SuggestSanitizedMountPointPath("/mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1"))
+	assert.Equal(t, "/mnt/valid_path-1.0",
+		dbom.SuggestSanitizedMountPointPath("/mnt/valid_path-1.0"))
+}
