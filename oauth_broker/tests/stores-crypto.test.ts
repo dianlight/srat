@@ -14,6 +14,7 @@ import {
   MemorySessionStore,
 } from "../src/session.js";
 import { bodyHashBase64Url, buildStringToSign, computeClientId, generateEd25519KeyPair, isValidClientId, isValidNonce, isValidPublicKeyB64Url, parseSratSignature, verifyEd25519 } from "../src/crypto.js";
+import type { D1DatabaseLike } from "../src/session.js";
 
 describe("crypto helpers", () => {
   it("computeClientId and isValid", async () => {
@@ -387,7 +388,7 @@ describe("KVNonceStore single-use semantics", () => {
 describe("D1NonceStore single-use atomic semantics", () => {
   it("first set true, second false, has true within TTL", async () => {
     const db = createFakeD1ForNonces();
-    const s = new D1NonceStore(db as any);
+    const s = new D1NonceStore(db as unknown as D1DatabaseLike);
     expect(await s.set("nonce-d1-12345678901234", 600)).toBe(true);
     expect(await s.has("nonce-d1-12345678901234")).toBe(true);
     expect(await s.set("nonce-d1-12345678901234", 600)).toBe(false);
@@ -396,7 +397,7 @@ describe("D1NonceStore single-use atomic semantics", () => {
 
   it("concurrent sets: only one wins via PK uniqueness", async () => {
     const db = createFakeD1ForNonces();
-    const s = new D1NonceStore(db as any);
+    const s = new D1NonceStore(db as unknown as D1DatabaseLike);
     const [a, b] = await Promise.all([s.set("nonce-d1-conc-1234567890", 600), s.set("nonce-d1-conc-1234567890", 600)]);
     expect([a, b].filter(Boolean).length).toBe(1);
     expect(await s.has("nonce-d1-conc-1234567890")).toBe(true);
@@ -406,7 +407,7 @@ describe("D1NonceStore single-use atomic semantics", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const db = createFakeD1ForNonces();
-    const s = new D1NonceStore(db as any);
+    const s = new D1NonceStore(db as unknown as D1DatabaseLike);
     expect(await s.set("nonce-d1-exp-1234567890", 10)).toBe(true);
     expect(await s.has("nonce-d1-exp-1234567890")).toBe(true);
     vi.advanceTimersByTime(11_000);
@@ -422,12 +423,12 @@ describe("D1NonceStore single-use atomic semantics", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const db = createFakeD1ForNonces();
-    const s = new D1NonceStore(db as any);
+    const s = new D1NonceStore(db as unknown as D1DatabaseLike);
     await s.set("nonce-d1-prune-1234567890", 5);
     vi.advanceTimersByTime(6_000);
     expect(await s.has("nonce-d1-prune-1234567890")).toBe(false);
     // map should be empty after prune
-    expect((db as any)._nonces.size).toBe(0);
+    expect(db._nonces.size).toBe(0);
     vi.useRealTimers();
   });
 });
@@ -435,7 +436,7 @@ describe("D1NonceStore single-use atomic semantics", () => {
 describe("D1ClientStore / D1InstanceStore / D1SessionStore / KV stores coverage", () => {
   it("D1ClientStore set/get/delete", async () => {
     const db = createFakeD1Full();
-    const s = new D1ClientStore(db as any);
+    const s = new D1ClientStore(db as unknown as D1DatabaseLike);
     await s.set("cid-d1", { clientId: "cid-d1", publicKey: "pub-d1", createdAt: Date.now() });
     expect((await s.get("cid-d1"))?.publicKey).toBe("pub-d1");
     await s.delete("cid-d1");
@@ -446,7 +447,7 @@ describe("D1ClientStore / D1InstanceStore / D1SessionStore / KV stores coverage"
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const db = createFakeD1Full();
-    const s = new D1InstanceStore(db as any);
+    const s = new D1InstanceStore(db as unknown as D1DatabaseLike);
     await s.set("inst-d1", { instanceId: "inst-d1", redirectUrl: "https://x/cb", createdAt: Date.now(), clientId: "cid" }, 10);
     expect((await s.get("inst-d1"))?.clientId).toBe("cid");
     vi.advanceTimersByTime(11_000);
@@ -462,15 +463,15 @@ describe("D1ClientStore / D1InstanceStore / D1SessionStore / KV stores coverage"
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const db = createFakeD1Full();
-    const s = new D1SessionStore(db as any);
-    await s.set("sess-d1", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now(), tokenJson: `{"a":1}` } as any, 10);
+    const s = new D1SessionStore(db as unknown as D1DatabaseLike);
+    await s.set("sess-d1", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now(), tokenJson: `{"a":1}` }, 10);
     expect((await s.get("sess-d1"))?.provider).toBe("dropbox");
     const consumed = await s.consume("sess-d1");
     expect(consumed?.provider).toBe("dropbox");
     expect(await s.get("sess-d1")).toBeNull();
     expect(await s.consume("sess-d1")).toBeNull();
     // expiry path
-    await s.set("sess-exp", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() } as any, 5);
+    await s.set("sess-exp", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() }, 5);
     vi.advanceTimersByTime(6_000);
     expect(await s.get("sess-exp")).toBeNull();
     expect(await s.consume("sess-exp")).toBeNull();
@@ -487,7 +488,7 @@ describe("D1ClientStore / D1InstanceStore / D1SessionStore / KV stores coverage"
     expect(await inst.get("inst-kv")).toBeNull();
 
     const sess = new KVSessionStore(kv);
-    await sess.set("sess-kv", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() } as any, 600);
+    await sess.set("sess-kv", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() }, 600);
     expect((await sess.get("sess-kv"))?.provider).toBe("dropbox");
     const c = await sess.consume("sess-kv");
     expect(c?.provider).toBe("dropbox");
@@ -498,11 +499,11 @@ describe("D1ClientStore / D1InstanceStore / D1SessionStore / KV stores coverage"
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
     const s = new MemorySessionStore();
-    await s.set("mem-sess", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() } as any, 5);
+    await s.set("mem-sess", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() }, 5);
     expect((await s.get("mem-sess"))?.provider).toBe("dropbox");
     expect((await s.consume("mem-sess"))?.provider).toBe("dropbox");
     expect(await s.consume("mem-sess")).toBeNull();
-    await s.set("mem-exp", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() } as any, 5);
+    await s.set("mem-exp", { provider: "dropbox", sratCallbackUrl: "https://x/cb", createdAt: Date.now() }, 5);
     vi.advanceTimersByTime(6_000);
     expect(await s.get("mem-exp")).toBeNull();
     expect(await s.consume("mem-exp")).toBeNull();
@@ -539,27 +540,27 @@ describe("session stores JSON parse error branches", () => {
 
   it("D1ClientStore get returns null on corrupt JSON", async () => {
     const db = createFakeD1Full();
-    const s = new D1ClientStore(db as any);
+    const s = new D1ClientStore(db as unknown as D1DatabaseLike);
     // directly corrupt underlying map
-    (db as any)._clients.set("bad-cid", "not-json{{{");
+    db._clients.set("bad-cid", "not-json{{{");
     expect(await s.get("bad-cid")).toBeNull();
   });
 
   it("D1InstanceStore get returns null on corrupt JSON", async () => {
     const db = createFakeD1Full();
-    const s = new D1InstanceStore(db as any);
-    (db as any)._instances.set("bad-inst", { data: "<<corrupt>>", expires_at: Math.floor(Date.now() / 1000) + 600 });
+    const s = new D1InstanceStore(db as unknown as D1DatabaseLike);
+    db._instances.set("bad-inst", { data: "<<corrupt>>", expires_at: Math.floor(Date.now() / 1000) + 600 });
     expect(await s.get("bad-inst")).toBeNull();
   });
 
   it("D1SessionStore get and consume return null on corrupt JSON", async () => {
     const db = createFakeD1Full();
-    const s = new D1SessionStore(db as any);
+    const s = new D1SessionStore(db as unknown as D1DatabaseLike);
     const future = Math.floor(Date.now() / 1000) + 600;
-    (db as any)._sessions.set("bad-sess", { data: "{not-json", expires_at: future });
+    db._sessions.set("bad-sess", { data: "{not-json", expires_at: future });
     expect(await s.get("bad-sess")).toBeNull();
     // corrupt consume: put again with bad data, consume should catch JSON.parse
-    (db as any)._sessions.set("bad-sess2", { data: "[[[", expires_at: future });
+    db._sessions.set("bad-sess2", { data: "[[[", expires_at: future });
     expect(await s.consume("bad-sess2")).toBeNull();
     // ensure pruned after consume? still null on second consume
     expect(await s.consume("bad-sess2")).toBeNull();
@@ -567,12 +568,12 @@ describe("session stores JSON parse error branches", () => {
 
   it("D1SessionStore consume returns null when row.data missing (expired or not found)", async () => {
     const db = createFakeD1Full();
-    const s = new D1SessionStore(db as any);
+    const s = new D1SessionStore(db as unknown as D1DatabaseLike);
     // no row
     expect(await s.consume("nope")).toBeNull();
     // row with empty data
     const future = Math.floor(Date.now() / 1000) + 600;
-    (db as any)._sessions.set("empty-data", { data: "", expires_at: future });
+    db._sessions.set("empty-data", { data: "", expires_at: future });
     // empty string is falsy -> row?.data is missing -> null path
     expect(await s.consume("empty-data")).toBeNull();
   });

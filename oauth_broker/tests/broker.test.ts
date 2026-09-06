@@ -484,7 +484,7 @@ describe("broker endpoints", () => {
       const headers = await signedHeaders(kp, "GET", honoPath, "");
       const res = await app2.request(`/v1/session/${encoded}`, { headers });
       expect(res.status).toBe(400);
-      expect((await res.json() as any).error).toMatch(/invalid session_id/);
+      expect((await res.json() as { error?: unknown }).error).toMatch(/invalid session_id/);
     });
   });
 

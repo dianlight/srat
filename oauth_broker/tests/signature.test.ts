@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { createTestApp, generateTestKeyPair, jsonBody, registerClient } from "./utils.js";
+import type { TestApp } from "./utils.js";
 import { __clearRateLimitBucketsForTests } from "../src/app.js";
 import { bodyHashBase64Url, buildStringToSign, signStringToSign } from "../src/crypto.js";
 
@@ -13,7 +14,7 @@ describe("SRAT-Signature auth (new contract)", () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  async function signedRequest(app: any, method: string, path: string, body: string, key = kp) {
+  async function signedRequest(app: TestApp, method: string, path: string, body: string, key = kp) {
     const t = String(Math.floor(Date.now() / 1000));
     const nonce = `sig-test-${Math.random().toString(36).slice(2, 8)}-${Date.now()}`;
     const bh = bodyHashBase64Url(body);
