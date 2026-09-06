@@ -3,6 +3,7 @@ import { createBrokerApp, base64UrlEncode, isValidSratCallbackUrl, generateCodeV
 import { MemorySessionStore, MemoryInstanceStore, MemoryClientStore, MemoryNonceStore } from "../src/session.js";
 
 import { testEnv, createTestApp, generateTestKeyPair, registerClient, signedHeaders } from "./utils.js";
+import type { ProviderConfig } from "../src/types.js";
 
 describe("app.ts – patch 75% → 85% (40 missing +53 partials)", () => {
   beforeEach(() => __clearRateLimitBucketsForTests());
@@ -33,7 +34,7 @@ describe("app.ts – patch 75% → 85% (40 missing +53 partials)", () => {
   });
 
   it("buildAuthUrl", () => {
-    const prov = { authorize_url: "https://auth.example.com/authorize", token_url: "https://auth.example.com/token", client_id: "id", client_secret: "sec" } as any;
+    const prov: ProviderConfig & { authorize_url: string; token_url: string } = { authorize_url: "https://auth.example.com/authorize", token_url: "https://auth.example.com/token", client_id: "id", client_secret: "sec" };
     const url = buildAuthUrl(prov, "https://broker.example.com", "sess-123", "verifier123");
     expect(url.toString()).toContain("sess-123");
     const url2 = buildAuthUrl(prov, "https://broker.example.com", "sess-456");
@@ -41,14 +42,14 @@ describe("app.ts – patch 75% → 85% (40 missing +53 partials)", () => {
   });
 
   it("exchangeCodeForToken – invalid JSON and !ok", async () => {
-    const prov = { token_url: "https://tok.example.com/token" } as any;
+    const prov: ProviderConfig & { authorize_url: string; token_url: string } = { authorize_url: "https://auth.example.com/authorize", token_url: "https://tok.example.com/token", client_id: "id", client_secret: "sec" };
     const badFetch = async () => new Response("not-json", { status: 200 }) as unknown as Response;
     const res = await exchangeCodeForToken(prov, "code", "https://broker.example.com/v1/callback", badFetch as unknown as typeof fetch, "ver");
     expect(res).toHaveProperty("error");
-    expect((res as any).status).toBe(502);
+    expect(res).toMatchObject({ status: 502 });
     const errFetch = async () => new Response(JSON.stringify({ error: "invalid_grant", error_description: "bad code" }), { status: 400 }) as unknown as Response;
     const res2 = await exchangeCodeForToken(prov, "code", "https://broker.example.com/v1/callback", errFetch as unknown as typeof fetch, "ver");
-    expect((res2 as any).status).toBe(502);
+    expect(res2).toMatchObject({ status: 502 });
   });
 
   it("POST /v1/clients – invalid json, 409 different pubkey, 200 same pubkey, rotate 501", async () => {

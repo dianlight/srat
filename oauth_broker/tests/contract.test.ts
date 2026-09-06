@@ -139,7 +139,7 @@ describe("contract: SRAT Go client compatibility (broker_test.go)", () => {
     // Intentional fail-closed: empty BROKER_DISABLE_AUTH must stay — do not migrate to signed (tests fail-closed without sig)
     const failClosedEnv = testEnv({ BROKER_DISABLE_AUTH: "" });
     // ensure no disable flag — intentional, do not add BROKER_DISABLE_AUTH
-    delete (failClosedEnv as any).BROKER_DISABLE_AUTH;
+    delete failClosedEnv.BROKER_DISABLE_AUTH;
     const { app: appFailClosed } = createTestApp(failClosedEnv, { store: new MemorySessionStore(), instanceStore: new MemoryInstanceStore() });
     const devFail = await appFailClosed.request("/v1/start", {
       method: "POST",
@@ -172,7 +172,7 @@ describe("contract: SRAT Go client compatibility (broker_test.go)", () => {
     const headers = await signedHeaders(kp, "GET", honoPath, "");
     const res = await app.request(`/v1/session/${encoded}`, { headers });
     expect(res.status).toBe(400);
-    expect((await res.json() as any).error).toMatch(/invalid session_id/);
+    expect((await res.json() as { error?: unknown }).error).toMatch(/invalid session_id/);
   });
 
   it("expiry wraps as RFC3339 UTC (now + expires_in)", async () => {

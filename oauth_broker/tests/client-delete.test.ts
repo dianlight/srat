@@ -75,7 +75,7 @@ describe("DELETE /v1/clients", () => {
       headers: delHeaders,
     });
     expect(delRes.status).toBe(200);
-    const delBody = (await delRes.json()) as any;
+    const delBody = (await delRes.json()) as { deleted?: unknown; client_id?: unknown };
     expect(delBody.deleted).toBe(true);
     expect(delBody.client_id).toBe(kp.clientId);
 
