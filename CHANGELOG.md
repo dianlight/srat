@@ -21,6 +21,13 @@
 
 ### 🐛 Bug Fixes
 
+- **Colon mount paths rejected with a suggested retry**: mount point paths
+  containing `:` are now rejected up front by a shared `ValidateMountPointPath`
+  check (used by both the DB layer and the volume service) instead of failing
+  later with an obscure error. The 406 response carries a `SuggestedPath` hint
+  with the colon stripped, and the UI confirm dialog offers a one-click retry
+  with the suggested path.
+
 ### 🏗 Chore
 
 ## 2026.8.0-rc13
