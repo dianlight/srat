@@ -1,22 +1,319 @@
 name: Pull request update
 
+# Rebase-first autoupdate for labelled PRs.
+# 1. Tries a clean `git rebase origin/main` + `push --force-with-lease`.
+# 2. Only on conflict, runs opencode to resolve — push allowed IFF 100% confident.
+# 3. Otherwise aborts, labels `needs-manual-rebase`, and comments for a human.
+#
+# Model resolution uses .github/scripts/resolve-model.sh with
+# workflow=pr-update job=rebase tier=go, so the central
+# data/model-config.json needs a `pr-update.rebase` entry
+# (go + free). If resolution fails the PR is left labelled for manual rebase.
+
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: "Single PR number to update (empty = all labelled PRs)"
+        required: false
+        default: ""
+
+concurrency:
+  group: pr-update-collect-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  autoupdate:
+  collect:
+    name: Collect candidate PRs
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
-      pull-requests: write
-      contents: write
+      pull-requests: read
+    outputs:
+      prs: ${{ steps.filter.outputs.prs }}
     steps:
-      - name: Update pull requests
-        uses: docker://chinthakagodawita/autoupdate-action:v1@sha256:53d7013ad4689b703d2715d4b17d4901bb0a385e495e0b481f37adbe9b3cc3fc
+      - name: Find labelled PRs targeting main
+        id: filter
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MANUAL_PR: ${{ inputs.pr }}
+        run: |
+          if [[ -n "$MANUAL_PR" ]]; then
+            echo "Manual run for PR #$MANUAL_PR — skipping label filter."
+            echo "prs=[\"$MANUAL_PR\"]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          PRS=$(gh pr list --base main --state open --limit 100 \
+            --json number,headRefName,isCrossRepository,isDraft,labels \
+            --jq '
+              [.[]
+               | select(.isDraft | not)
+               | select(.isCrossRepository | not)
+               | select(
+                   ([.labels[].name] | any(. == "autoupdate" or . == "keep up-to-date" or . == "integration" or . == "ready to merge"))
+                   and
+                   ([.labels[].name] | any(. == "dependencies" or . == "wontfix") | not)
+                 )
+               | .number]
+            ')
+          echo "Candidate PRs: $PRS"
+          echo "prs=$PRS" >> "$GITHUB_OUTPUT"
+
+  rebase:
+    name: "Rebase PR #${{ matrix.pr }}"
+    needs: collect
+    if: needs.collect.outputs.prs != '[]' && needs.collect.outputs.prs != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: pr-update-${{ matrix.pr }}
+      cancel-in-progress: false
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        pr: ${{ fromJSON(needs.collect.outputs.prs) }}
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Gather PR info
+        id: info
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_JSON=$(gh pr view "${{ matrix.pr }}" \
+            --json headRefName,isCrossRepository,isDraft,baseRefName,labels,maintainerCanModify)
+          echo "$PR_JSON" | jq .
+          BRANCH=$(echo "$PR_JSON" | jq -r .headRefName)
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          if [[ "$(echo "$PR_JSON" | jq -r .isDraft)" == "true" ]]; then
+            echo "skip=draft" >> "$GITHUB_OUTPUT"
+          elif [[ "$(echo "$PR_JSON" | jq -r .isCrossRepository)" == "true" ]]; then
+            echo "skip=fork" >> "$GITHUB_OUTPUT"
+          elif [[ "$(echo "$PR_JSON" | jq -r .baseRefName)" != "main" ]]; then
+            echo "skip=not-main" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment and skip forks / drafts / non-main
+        if: steps.info.outputs.skip != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "${{ steps.info.outputs.skip }}" in
+            fork)
+              MSG="⚠️ **pr-update skipped (fork)** — this PR comes from a fork "
+              MSG+="without push access. Please rebase onto \`main\` in your fork: "
+              MSG+="\`git fetch upstream main && git rebase upstream/main && "
+              MSG+="git push --force-with-lease\`."
+              ;;
+            draft)
+              MSG="ℹ️ **pr-update skipped (draft)** — rebase will run once the PR is marked ready for review."
+              ;;
+            *)
+              MSG="ℹ️ **pr-update skipped** — PR does not target \`main\`. No action taken."
+              ;;
+          esac
+          # Post once per day max: skip if the last bot comment already has our marker.
+          LAST=$(gh pr view "${{ matrix.pr }}" --json comments --jq '[.comments[].body] | map(select(contains("<!-- srat-pr-update-skip -->"))) | last // ""')
+          if [[ -z "$LAST" ]]; then
+            gh pr comment "${{ matrix.pr }}" --body "<!-- srat-pr-update-skip -->$MSG"
+          else
+            echo "::notice::Skip comment already present, not re-posting."
+          fi
+
+      - name: Attempt clean rebase onto main
+        id: rebase
+        if: steps.info.outputs.skip == ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ steps.info.outputs.branch }}"
+          git fetch --no-tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+          git checkout -B "$BRANCH" "origin/$BRANCH"
+          OLD_SHA=$(git rev-parse HEAD)
+          echo "old_sha=$OLD_SHA" >> "$GITHUB_OUTPUT"
+          git fetch origin main
+          if git rebase origin/main; then
+            NEW_SHA=$(git rev-parse HEAD)
+            if [[ "$NEW_SHA" == "$OLD_SHA" ]]; then
+              echo "::notice::PR #${{ matrix.pr }} already up to date ($OLD_SHA)."
+              echo "result=up-to-date" >> "$GITHUB_OUTPUT"
+            else
+              git push --force-with-lease origin "HEAD:$BRANCH"
+              echo "::notice::PR #${{ matrix.pr }} rebased $OLD_SHA → $NEW_SHA and pushed."
+              echo "result=clean" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            git rebase --abort || true
+            echo "::warning::PR #${{ matrix.pr }} has conflicts — handing to opencode."
+            echo "result=conflict" >> "$GITHUB_OUTPUT"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve model
+        id: resolve
+        if: steps.rebase.outputs.result == 'conflict'
+        continue-on-error: true
+        env:
+          TIER: go
+        run: |
+          chmod +x .github/scripts/resolve-model.sh 2>/dev/null || true
+          .github/scripts/resolve-model.sh pr-update rebase "${TIER}"
+
+      - name: Resolve model failure feedback
+        if: steps.rebase.outputs.result == 'conflict' && steps.resolve.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BODY="<!-- srat-pr-update-conflict -->⚠️ **Rebase conflict — manual action needed.** "
+          BODY+="\`main\` moved ahead and the branch conflicts. "
+          BODY+="Model resolution failed so no automatic resolution was attempted. "
+          BODY+="Please rebase locally: \`git fetch origin main && git rebase origin/main\`."
+          gh pr comment "${{ matrix.pr }}" --body "$BODY"
+          gh pr edit "${{ matrix.pr }}" --add-label "needs-manual-rebase" 2>/dev/null || true
+
+      - name: Run opencode (conflict resolution, 100% confidence only)
+        id: opencode
+        if: steps.rebase.outputs.result == 'conflict' && steps.resolve.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 25
+        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_FILTER: "labelled"
-          PR_LABELS: "autoupdate,keep up-to-date,integration,ready to merge"
-          EXCLUDED_LABELS: "dependencies,wontfix"
-          MERGE_METHOD: "merge"
+          PR_NUMBER: ${{ matrix.pr }}
+          PR_BRANCH: ${{ steps.rebase.outputs.branch }}
+          OLD_SHA: ${{ steps.rebase.outputs.old_sha }}
+        with:
+          model: ${{ steps.resolve.outputs.MODEL }}
+          use_github_token: true
+          share: ${{ github.event.repository.private == false }}
+          prompt: |
+            You are the SRAT pr-update conflict resolver for PR #$PR_NUMBER (branch `$PR_BRANCH`, base `main`).
+
+            ## Goal
+            Rebase the PR branch onto latest `origin/main`. Push the rebased branch
+            ONLY if you are 100% confident every conflict resolution preserves
+            both sides' intent. Otherwise abort cleanly and hand to a human.
+
+            ## Setup (run first)
+            ```bash
+            git fetch --no-tags --prune origin "+refs/heads/*:refs/remotes/origin/*"
+            git checkout -B "$PR_BRANCH" "origin/$PR_BRANCH"
+            git fetch origin main
+            git rebase origin/main || true
+            git status --short --branch
+            ```
+
+            ## Confidence rule (strict — push IFF 100%)
+            Resolve a hunk ONLY when it is mechanical and intent-preserving:
+            - import ordering, formatting, whitespace, generated lockfiles/manifests
+            - both sides added disjoint lines/blocks with no semantic overlap
+            - one side renamed without behaviour change and the other only adapted call sites
+            NEVER guess when:
+            - both sides changed the same logic differently
+            - one side deleted code the other modified
+            - behaviour, API shape, migration, or config semantics differ
+            - a test expectation conflicts with implementation
+            If ANY hunk falls in the NEVER bucket, or you feel any doubt: STOP, abort, do not push.
+
+            ## Resolve path (only when 100% on every hunk)
+            1. For each conflicted file: read both sides (`git show :2:`, `:3:`), apply the intent-preserving merge, `git add` the file.
+            2. `git -c core.editor=true rebase --continue` until `git status` shows no rebase in progress.
+            3. Verify ALL of these pass, else abort:
+               - `test ! -d .git/rebase-merge && test ! -d .git/rebase-apply`
+               - `git grep -n '<<<<<<<\|=======$\|>>>>>>>' -- . && exit 1 || true` (must find nothing)
+               - `git diff --check` (must be empty)
+            4. `echo 100 > /tmp/rebase-confidence`
+            5. `git push --force-with-lease origin "HEAD:$PR_BRANCH"`
+            6. Comment success:
+               ```bash
+               gh pr comment "$PR_NUMBER" --body "<!-- srat-pr-update-conflict -->✅ **Rebased onto main \
+                 with automatic conflict resolution** (100% confidence, mechanical merge). \
+                 Please review the merge commit before merging."
+               gh pr edit "$PR_NUMBER" --remove-label "needs-manual-rebase" 2>/dev/null || true
+               ```
+
+            ## Abort path (any doubt, verification failure, or push risk)
+            1. `git rebase --abort || true; git reset --hard "origin/$PR_BRANCH" || true`
+            2. `echo ABORT > /tmp/rebase-confidence`
+            3. `git push --dry-run --force-with-lease origin "HEAD:$PR_BRANCH" || true` (read-only sanity check, never push conflicted state)
+            4. Comment + label (do NOT push code changes):
+               ```bash
+               CONFLICTS=$(git diff --name-only --diff-filter=U 2>/dev/null | head -20)
+               git rebase --abort 2>/dev/null || true
+               gh pr comment "$PR_NUMBER" --body "<!-- srat-pr-update-conflict -->⚠️ **Rebase conflict \
+                 — manual action needed.** Automatic resolution was not 100% safe so nothing was pushed. \
+                 Conflicting areas: ${CONFLICTS:-see job log}. Please rebase locally: \
+                 \`git fetch origin main && git rebase origin/main\`."
+               gh pr edit "$PR_NUMBER" --add-label "needs-manual-rebase" 2>/dev/null || true
+               ```
+            5. Exit 0 — aborting is a successful safe outcome, not a failure.
+
+            ## Constraints
+            - Never push conflict markers, never use `git push --force` (only `--force-with-lease`), never merge `main` into the branch (rebase only).
+            - Never change workflow files, CI config, or version metadata to "fix" a conflict.
+            - Branch `$PR_BRANCH` only — never commit to `main`.
+
+      - name: Verify outcome and ensure label/comment state
+        if: steps.rebase.outputs.result == 'conflict'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sleep 10
+          CONFIDENCE="$(cat /tmp/rebase-confidence 2>/dev/null || echo MISSING)"
+          echo "Opencode confidence marker: $CONFIDENCE"
+          git fetch --no-tags origin "+refs/heads/*:refs/remotes/origin/*" 2>/dev/null || true
+          STATE=$(gh pr view "${{ matrix.pr }}" --json mergeStateStatus,mergeable,labels --jq '{s: .mergeStateStatus, m: .mergeable, l: [.labels[].name]}' 2>/dev/null || echo '{}')
+          echo "PR state: $STATE"
+          STATUS=$(echo "$STATE" | jq -r .s)
+          MERGEABLE=$(echo "$STATE" | jq -r .m)
+          if [[ "$CONFIDENCE" == "100" ]] && [[ "$STATUS" == "CLEAN" || "$STATUS" == "HAS_HOOKS" || "$STATUS" == "UNSTABLE" ]] && [[ "$MERGEABLE" == "MERGEABLE" ]]; then
+            echo "::notice::PR #${{ matrix.pr }} resolved and mergeable."
+            gh pr edit "${{ matrix.pr }}" --remove-label "needs-manual-rebase" 2>/dev/null || true
+          else
+            echo "::warning::PR #${{ matrix.pr }} still needs manual rebase (confidence=$CONFIDENCE state=$STATUS mergeable=$MERGEABLE)."
+            # Fallback comment/label if opencode failed before posting (idempotent via marker check).
+            EXISTING=$(gh pr view "${{ matrix.pr }}" --json comments --jq '[.comments[].body] | map(select(contains("srat-pr-update-conflict"))) | length')
+            if [[ "$EXISTING" == "0" ]]; then
+              BODY="<!-- srat-pr-update-conflict -->⚠️ **Rebase conflict — manual action needed.** "
+              BODY+="\`main\` moved ahead and the branch conflicts. "
+              BODY+="Automatic resolution was not applied (not 100% safe). "
+              BODY+="Please rebase locally: \`git fetch origin main && git rebase origin/main\`."
+              gh pr comment "${{ matrix.pr }}" --body "$BODY" || true
+            fi
+            gh pr edit "${{ matrix.pr }}" --add-label "needs-manual-rebase" 2>/dev/null || true
+          fi
+
+      - name: Job summary
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### pr-update #${{ matrix.pr }}"
+            echo ""
+            echo "- skip: \`${{ steps.info.outputs.skip }}\`"
+            echo "- rebase: \`${{ steps.rebase.outputs.result }}\`"
+            echo "- confidence: \`$(cat /tmp/rebase-confidence 2>/dev/null || echo n/a)\`"
+            echo "- run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"
