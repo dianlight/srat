@@ -84,6 +84,13 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 		} else if errors.Is(errE, dto.ErrorDeviceNotFound) {
 			return nil, huma.Error404NotFound("Device Not Found", errE)
 		} else if errors.Is(errE, dto.ErrorInvalidParameter) {
+			if errE.Details() != nil {
+				var errMessage strings.Builder
+				for key, value := range errE.Details() {
+					errMessage.WriteString(fmt.Sprintf("%s: %v\n", key, value))
+				}
+				return nil, huma.Error406NotAcceptable(errMessage.String(), errE)
+			}
 			return nil, huma.Error406NotAcceptable("Invalid Parameter", errE)
 		} else if errors.Is(errE, dto.ErrorOperationNotPermittedInProtectedMode) {
 			return nil, huma.Error403Forbidden("Operation not permitted in protected mode", errE)

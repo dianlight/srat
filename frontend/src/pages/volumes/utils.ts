@@ -115,3 +115,28 @@ export function getRealPartitions(disk: Disk): Partition[] {
     (partition) => !isSynthesizedWholeDiskPartition(disk, partition),
   );
 }
+
+// extractSuggestedMountPath parses a mount-failure payload for the backend's
+// SuggestedPath hint (#1091). The 406 detail embeds service Details as
+// "Key: value" lines, so scan detail plus any nested error messages.
+export function extractSuggestedMountPath(errorData: unknown): string | undefined {
+  if (!errorData || typeof errorData !== "object") return undefined;
+  const data = errorData as Record<string, unknown>;
+  const texts: string[] = [];
+  if (typeof data.detail === "string") texts.push(data.detail);
+  if (typeof data.message === "string") texts.push(data.message);
+  const nested = data.errors;
+  if (Array.isArray(nested)) {
+    for (const entry of nested) {
+      if (entry && typeof entry === "object") {
+        const message = (entry as Record<string, unknown>).message;
+        if (typeof message === "string") texts.push(message);
+      }
+    }
+  }
+  for (const text of texts) {
+    const match = /SuggestedPath:\s*(\S+)/.exec(text);
+    if (match?.[1]) return match[1];
+  }
+  return undefined;
+}

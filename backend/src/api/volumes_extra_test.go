@@ -139,6 +139,33 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	suite.Require().Equal(http.StatusInternalServerError, resp4.Code)
 }
 
+// TestMountVolumeInvalidPathExposesSuggestedPath verifies that a mount path
+// rejected for invalid characters (#1091) surfaces the SuggestedPath hint in
+// the 406 response body so UI clients can offer one-click retry.
+func (suite *VolumeHandlerSuite) TestMountVolumeInvalidPathExposesSuggestedPath() {
+	ctrl := mock.NewMockController(suite.T())
+
+	invalidErr := errors.WithDetails(dto.ErrorInvalidParameter,
+		"DeviceId", "pippo",
+		"Path", "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1",
+		"Message", "path contains invalid characters",
+		"SuggestedPath", "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1",
+	)
+	vmock := mock.Mock[service.VolumeServiceInterface](ctrl)
+	mock.When(vmock.MountVolume(mock.Any[*dto.MountPointData]())).ThenReturn(invalidErr)
+	h := api.NewVolumeHandler(vmock, suite.mockShareSvc, &dto.ContextState{})
+	_, apiInst := humatest.New(suite.T())
+	h.RegisterVolumeHandlers(apiInst)
+	resp := apiInst.Post("/volume/mount", dto.MountPointData{
+		Path: "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1",
+		Root: "/",
+		Type: "HOST",
+	})
+	suite.Require().Equal(http.StatusNotAcceptable, resp.Code)
+	suite.Contains(resp.Body.String(), "SuggestedPath")
+	suite.Contains(resp.Body.String(), "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1")
+}
+
 // TestMutatingEndpoints_ForbiddenInReadOnlyMode verifies that all three mutating
 // volume endpoints (mount, umount, patch) reject requests with 403 when the
 // handler runs in ReadOnlyMode, without touching the service layer.

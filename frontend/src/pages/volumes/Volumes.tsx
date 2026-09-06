@@ -39,6 +39,7 @@ import {
 import { getTourVolumeSelection } from "./tourSelection";
 import {
   decodeEscapeSequence,
+  extractSuggestedMountPath,
   getDiskIdentifier,
   getPartitionIdentifier,
 } from "./utils";
@@ -363,34 +364,78 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
       device_id: selectedPartition.id,
     };
 
-    return mountVolume({
-      mountPointData: submitData,
-    })
-      .unwrap()
-      .then((res) => {
-        toast.info(
-          `Volume ${(res as MountPointData).path || selectedPartition.name} mounted successfully.`,
-        );
-      })
-      .catch((err) => {
-        console.error("Mount Error:", err);
-        const errorData = err?.data || {};
-        const errorMsg =
-          errorData?.detail ||
-          errorData?.message ||
-          err?.status ||
-          "Unknown mount error";
-        const errorCode = errorData?.status || "Error";
-        toast.error(`${errorCode}: ${errorMsg}`, {
-          data: { error: errorData || err },
-        });
-      })
-      .finally(() => {
-        setSelectedPartition(undefined);
-        setSelectedDisk(undefined);
-        setSelectedPartitionId(undefined);
-        setShowMount(false);
+    const clearMountSelection = () => {
+      setSelectedPartition(undefined);
+      setSelectedDisk(undefined);
+      setSelectedPartitionId(undefined);
+      setShowMount(false);
+    };
+
+    const showMountError = (errorData: unknown, err: unknown) => {
+      console.error("Mount Error:", err);
+      const data = (errorData ?? {}) as Record<string, unknown>;
+      const errorMsg =
+        (typeof data.detail === "string" && data.detail) ||
+        (typeof data.message === "string" && data.message) ||
+        (err as { status?: unknown })?.status ||
+        "Unknown mount error";
+      const errorCode =
+        (typeof data.status === "number" && data.status) || "Error";
+      toast.error(`${String(errorCode)}: ${String(errorMsg)}`, {
+        data: { error: (errorData ?? err) as unknown },
       });
+    };
+
+    const attemptMount = (
+      payload: MountPointData,
+      allowSuggestionRetry: boolean,
+    ): Promise<void> =>
+      mountVolume({
+        mountPointData: payload,
+      })
+        .unwrap()
+        .then((res) => {
+          toast.info(
+            `Volume ${(res as MountPointData).path || selectedPartition.name} mounted successfully.`,
+          );
+        })
+        .catch((err): Promise<void> => {
+          const errorData = err?.data || {};
+          const suggested = extractSuggestedMountPath(errorData);
+          if (
+            allowSuggestionRetry &&
+            suggested &&
+            suggested !== payload.path
+          ) {
+            return confirm({
+              title: "Invalid mount path",
+              description: `The path ${payload.path} contains characters the database cannot store. Retry with the suggested path ${suggested}?`,
+              confirmationText: "Use suggested path",
+              cancellationText: "Cancel",
+            }).then(({ reason }): Promise<void> => {
+              if (reason === "confirm") {
+                return attemptMount(
+                  { ...payload, path: suggested },
+                  false,
+                );
+              }
+              showMountError(
+                {
+                  ...(typeof errorData === "object" && errorData !== null
+                    ? errorData
+                    : {}),
+                  detail: `${payload.path} is invalid. Suggested path: ${suggested}`,
+                },
+                err,
+              );
+              return Promise.resolve();
+            });
+          }
+          showMountError(errorData, err);
+          return Promise.resolve();
+        });
+
+    return attemptMount(submitData, true).finally(clearMountSelection);
   }
 
   function handleCreateShare(partition: Partition) {
