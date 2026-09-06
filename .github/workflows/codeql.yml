@@ -49,6 +49,13 @@ jobs:
         working-directory: backend
         run: mise run metadata --version=0.0.0
 
+      # The committed vendor tree is pristine; backend builds require the
+      # vendored dependency patches (e.g. hd-idle CheckAtaDevice). Apply
+      # them before the traced build, like every other backend build path.
+      - name: Apply vendor patches
+        working-directory: backend
+        run: mise run patch
+
       # Run the traced build from within the Go module root so the CodeQL
       # extractor can resolve source paths correctly (CGO_ENABLED=0
       # matches the release builds).
