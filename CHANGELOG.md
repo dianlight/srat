@@ -6,6 +6,110 @@
 
 ### ✨ Features
 
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## 2026.9.0-rc14
+
+### ✨ Features
+
 - **Lab feature registry with maturity tiers**: lab-gated features now flow
   through a central registry (`GET /api/lab_features`) that assigns each feature
   an alpha or beta tier and computes availability server-side. Beta features are
@@ -20,6 +124,13 @@
   HDIdle's `useLabMode()` is now a thin wrapper over it.
 
 ### 🐛 Bug Fixes
+
+- **Colon mount paths rejected with a suggested retry**: mount point paths
+  containing `:` are now rejected up front by a shared `ValidateMountPointPath`
+  check (used by both the DB layer and the volume service) instead of failing
+  later with an obscure error. The 406 response carries a `SuggestedPath` hint
+  with the colon stripped, and the UI confirm dialog offers a one-click retry
+  with the suggested path.
 
 ### 🏗 Chore
 
@@ -427,4 +538,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-08-24T10:44:46Z -->
+<!-- release-timestamp: 2026-09-06T16:28:45Z -->

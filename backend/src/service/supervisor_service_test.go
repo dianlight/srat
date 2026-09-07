@@ -1,7 +1,9 @@
 package service_test
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -1092,4 +1094,135 @@ func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_MountsEligibleAnd
 	_, _ = mock.Verify(suite.mountClient, matchers.Times(3)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 	// One orphan share should be unmounted
 	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+}
+
+// TestNetworkMountAllShares_ErrorLogRedactsShareDetails ensures mount errors
+// log only the share name, never password bytes or user topology (issue #1129).
+func (suite *SupervisorServiceSuite) TestNetworkMountAllShares_ErrorLogRedactsShareDetails() {
+	password := "s3cr3t-pw-1129-xyz"
+	shares := []dto.SharedResource{
+		{
+			Name:  "media1",
+			Usage: "media",
+			Users: []dto.User{
+				{Username: "leakcheckuser", Password: new(dto.NewSecret(password))},
+			},
+			Status: &dto.SharedResourceStatus{IsValid: true},
+		},
+	}
+
+	errorResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 500},
+		Body:         []byte(`{"error":"internal server error"}`),
+	}
+	emptyResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{Data: &struct {
+			DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+			Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+		}{Mounts: &[]mount.Mount{}}},
+	}
+
+	mock.When(suite.shareService.ListShares()).
+		ThenReturn(shares, nil).
+		ThenReturn([]dto.SharedResource{}, nil).
+		ThenReturn([]dto.SharedResource{}, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(errorResp, nil).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(emptyResp, nil)
+
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	err := suite.supervisorService.NetworkMountAllShares(context.Background())
+
+	suite.NoError(err)
+	out := buf.String()
+	suite.Contains(out, "media1")
+	suite.NotContains(out, password, "mount error log must not contain password bytes")
+	suite.NotContains(out, "leakcheckuser", "mount error log must not contain user topology")
+}
+
+// TestNetworkUnmountAllShares_ErrorLogRedactsShareDetails ensures unmount errors
+// log only the share name, never password bytes or user topology (issue #1129).
+func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_ErrorLogRedactsShareDetails() {
+	password := "s3cr3t-pw-1129-xyz"
+	shares := []dto.SharedResource{
+		{
+			Name:  "backup3",
+			Usage: "backup",
+			Users: []dto.User{
+				{Username: "leakcheckuser", Password: new(dto.NewSecret(password))},
+			},
+			Status: &dto.SharedResourceStatus{IsValid: true},
+		},
+	}
+
+	mountedResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{Name: new("backup3"), Server: new("172.30.32.1")},
+				},
+			},
+		},
+	}
+	emptyResp := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{Data: &struct {
+			DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+			Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+		}{Mounts: &[]mount.Mount{}}},
+	}
+
+	mock.When(suite.shareService.ListShares()).
+		ThenReturn(shares, nil).
+		ThenReturn([]dto.SharedResource{}, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(mountedResp, nil).
+		ThenReturn(emptyResp, nil).
+		ThenReturn(emptyResp, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"error":"fail"}`)}, nil)
+
+	var buf bytes.Buffer
+	old := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&buf, nil)))
+	defer slog.SetDefault(old)
+
+	err := suite.supervisorService.NetworkUnmountAllShares(context.Background())
+
+	suite.Error(err)
+	out := buf.String()
+	suite.Contains(out, "backup3")
+	suite.NotContains(out, password, "unmount error log must not contain password bytes")
+	suite.NotContains(out, "leakcheckuser", "unmount error log must not contain user topology")
 }

@@ -390,7 +390,7 @@ func (self *SupervisorService) NetworkMountAllShares(ctx context.Context) errors
 			case "media", "share", "backup":
 				err = self.NetworkMountShare(ctx, share)
 				if err != nil {
-					slog.ErrorContext(ctx, "Mounting error", "share", share, "err", err)
+					slog.ErrorContext(ctx, "Mounting error", "share", share.Name, "err", err)
 				}
 			}
 		}
@@ -450,7 +450,7 @@ func (self *SupervisorService) NetworkUnmountAllShares(ctx context.Context) (err
 		case "media", "share", "backup":
 			err = self.NetworkUnmountShare(ctx, share.Name)
 			if err != nil {
-				slog.ErrorContext(ctx, "Unmounting error", "share", share, "err", err)
+				slog.ErrorContext(ctx, "Unmounting error", "share", share.Name, "err", err)
 			}
 		}
 	}

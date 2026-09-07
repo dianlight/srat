@@ -458,6 +458,137 @@ func (pt *progressTracker) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// validateZipEntryName rejects absolute entry names and dot-dot segments.
+// Zip entry names always use forward slashes, so normalize before splitting.
+func validateZipEntryName(name string) errors.E {
+	if name == "" {
+		return errors.Errorf("empty file name in update package")
+	}
+	slashName := filepath.ToSlash(name)
+	if filepath.IsAbs(name) || strings.HasPrefix(slashName, "/") {
+		return errors.Errorf("illegal file path: %s", name)
+	}
+	if len(slashName) >= 2 && slashName[1] == ':' {
+		return errors.Errorf("illegal file path: %s", name)
+	}
+	for _, seg := range strings.Split(slashName, "/") {
+		if seg == ".." {
+			return errors.Errorf("illegal file path: %s", name)
+		}
+	}
+	return nil
+}
+
+// validateSymlinkTarget rejects empty, absolute, and dot-dot-escaping targets.
+// Only bare or dest-contained relative targets are kept so symlink support remains
+// for entries like srat-server -> srat-server-static.
+func validateSymlinkTarget(target string) errors.E {
+	if target == "" {
+		return errors.Errorf("empty symlink target in update package")
+	}
+	if strings.ContainsRune(target, 0) {
+		return errors.Errorf("illegal symlink target: %s", target)
+	}
+	slashTarget := filepath.ToSlash(target)
+	if filepath.IsAbs(target) || strings.HasPrefix(slashTarget, "/") {
+		return errors.Errorf("illegal symlink target: %s", target)
+	}
+	if len(slashTarget) >= 2 && slashTarget[1] == ':' {
+		return errors.Errorf("illegal symlink target: %s", target)
+	}
+	for _, seg := range strings.Split(slashTarget, "/") {
+		if seg == ".." {
+			return errors.Errorf("illegal symlink target: %s", target)
+		}
+	}
+	return nil
+}
+
+// checkZipPath ensures the syntactic join of dest and entry stays inside dest.
+// It keeps the Clean+Separator prefix check (recognized by CodeQL go/zipslip)
+// and adds a filepath.Rel verdict so relative dests such as "." are handled.
+func checkZipPath(dest, path string) errors.E {
+	cleanDest := filepath.Clean(dest)
+	cleanPath := filepath.Clean(path)
+	if cleanDest != "." {
+		if cleanPath != cleanDest && !strings.HasPrefix(cleanPath, cleanDest+string(os.PathSeparator)) {
+			return errors.Errorf("illegal file path: %s", path)
+		}
+	}
+	rel, err := filepath.Rel(cleanDest, cleanPath)
+	if err != nil {
+		return errors.Wrapf(err, "failed to resolve zip entry path: %s", path)
+	}
+	if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return errors.Errorf("illegal file path: %s", path)
+	}
+	return nil
+}
+
+// checkResolvedDir re-resolves an on-disk parent directory with EvalSymlinks and
+// ensures it is still inside dest. This closes the bypass where a zip entry or a
+// pre-planted symlink such as subdir/parent -> .. redirects later entries outside.
+func checkResolvedDir(dest, dir string) (string, errors.E) {
+	cleanDest := filepath.Clean(dest)
+	if evalDest, err := filepath.EvalSymlinks(cleanDest); err == nil {
+		cleanDest = evalDest
+	}
+	resolvedDir, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to resolve parent dir for zip entry")
+	}
+	resolvedDir = filepath.Clean(resolvedDir)
+	if resolvedDir == cleanDest {
+		return resolvedDir, nil
+	}
+	if !strings.HasPrefix(resolvedDir, cleanDest+string(os.PathSeparator)) {
+		return "", errors.Errorf("illegal file path after symlink resolution: %s", resolvedDir)
+	}
+	rel, err := filepath.Rel(cleanDest, resolvedDir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to resolve zip entry path: %s", resolvedDir)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", errors.Errorf("illegal file path after symlink resolution: %s", resolvedDir)
+	}
+	return resolvedDir, nil
+}
+
+// checkSymlinkTargetInDir ensures a validated relative target cannot escape dest,
+// including traversal through an intermediate symlink planted by an earlier entry.
+func checkSymlinkTargetInDir(dest, resolvedDir, target string) errors.E {
+	finalPath := filepath.Join(resolvedDir, filepath.FromSlash(target))
+	cleanDest := filepath.Clean(dest)
+	if evalDest, err := filepath.EvalSymlinks(cleanDest); err == nil {
+		cleanDest = evalDest
+	}
+	cleanFinal := filepath.Clean(finalPath)
+	if cleanFinal != cleanDest && !strings.HasPrefix(cleanFinal, cleanDest+string(os.PathSeparator)) {
+		return errors.Errorf("illegal symlink target: %s", target)
+	}
+	// Walk existing ancestors so a planted link -> outside is caught even when the
+	// syntactic join looks contained.
+	current := cleanFinal
+	for {
+		if _, err := os.Lstat(current); err == nil {
+			resolved, err := filepath.EvalSymlinks(current)
+			if err != nil {
+				return errors.Wrapf(err, "failed to resolve symlink target: %s", target)
+			}
+			resolved = filepath.Clean(resolved)
+			if resolved != cleanDest && !strings.HasPrefix(resolved, cleanDest+string(os.PathSeparator)) {
+				return errors.Errorf("illegal symlink target: %s", target)
+			}
+			return nil
+		}
+		parent := filepath.Dir(current)
+		if parent == current || parent == resolvedDir || parent == cleanDest {
+			return nil
+		}
+		current = parent
+	}
+}
+
 func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, errors.E) {
 
 	// Verify file validity
@@ -467,6 +598,9 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	if f.FileInfo().IsDir() {
 		return nil, errors.Errorf("directories are not supported in update package: %s", f.Name)
 	}
+	if err := validateZipEntryName(f.Name); err != nil {
+		return nil, err
+	}
 
 	// Handle symlinks: extract them without requiring a signature comment.
 	// Zip symlinks (stored with zip -y) have ModeSymlink set; their content is the link target.
@@ -474,25 +608,35 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 		path := filepath.Join(dest, f.Name)
 
 		// Check for ZipSlip vulnerability
-		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) && dest != "." {
-			return nil, errors.Errorf("illegal file path: %s", path)
+		if err := checkZipPath(dest, path); err != nil {
+			return nil, err
 		}
 
 		if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
 			return nil, errors.WithStack(err)
 		}
+		resolvedDir, resolveErr := checkResolvedDir(dest, filepath.Dir(path))
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
 
-		rc, err := f.Open()
-		if err != nil {
-			return nil, errors.WithStack(err)
+		rc, openErr := f.Open()
+		if openErr != nil {
+			return nil, errors.WithStack(openErr)
 		}
 		defer rc.Close()
 
-		targetBytes, err := io.ReadAll(rc)
-		if err != nil {
-			return nil, errors.WithStack(err)
+		targetBytes, readErr := io.ReadAll(rc)
+		if readErr != nil {
+			return nil, errors.WithStack(readErr)
 		}
 		target := strings.TrimSpace(string(targetBytes))
+		if err := validateSymlinkTarget(target); err != nil {
+			return nil, err
+		}
+		if err := checkSymlinkTargetInDir(dest, resolvedDir, target); err != nil {
+			return nil, err
+		}
 
 		// Remove any existing file or symlink at this path before creating the new one
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
@@ -519,12 +663,24 @@ func (self *UpgradeService) extractFile(f *zip.File, dest string) (*UpdateFile, 
 	path := filepath.Join(dest, f.Name)
 
 	// Check for ZipSlip vulnerability
-	if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) && dest != "." {
-		return nil, errors.Errorf("illegal file path: %s", path)
+	if err := checkZipPath(dest, path); err != nil {
+		return nil, err
 	}
 
-	// Ensure parent directory exists
+	// Ensure parent directory exists, then re-verify after symlink resolution
+	// so a planted dir symlink cannot redirect the write outside dest.
 	if err := os.MkdirAll(filepath.Dir(path), os.ModePerm); err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if _, err := checkResolvedDir(dest, filepath.Dir(path)); err != nil {
+		return nil, err
+	}
+	// Never follow a pre-existing symlink at the final file path.
+	if info, err := os.Lstat(path); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.Errorf("illegal file path: %s", path)
+		}
+	} else if !os.IsNotExist(err) {
 		return nil, errors.WithStack(err)
 	}
 
