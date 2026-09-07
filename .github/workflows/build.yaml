@@ -756,7 +756,11 @@ jobs:
         id: detect
         run: |
           COMMIT_MSG=$(git log -1 --format=%s HEAD)
-          if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ (.+)$ ]]; then
+          # Only treat chore(release): <valid version> as a release commit.
+          # The reset commit ("chore(release): reset changelog for next
+          # development cycle") must NOT match, otherwise every reset
+          # triggers another reset -> infinite dev-tag loop.
+          if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ ([0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?)$ ]]; then
             echo "is_release=true" >> "$GITHUB_OUTPUT"
             echo "Release commit detected: $COMMIT_MSG"
           else
