@@ -311,7 +311,7 @@ describe("SharesTreeView component", () => {
                 invalid: true,
                 invalid_error: "legacy volume no longer mounted",
               }),
-              status: { is_valid: true },
+              status: { is_valid: true, is_hidden: false },
               disabled: false,
             },
           }}
@@ -344,7 +344,7 @@ describe("SharesTreeView component", () => {
               mount_point_data: mountPointData({
                 invalid: false,
               }),
-              status: { is_valid: false },
+              status: { is_valid: false, is_hidden: false },
               disabled: false,
             },
           }}
@@ -365,5 +365,43 @@ describe("SharesTreeView component", () => {
     expect(tooltip.textContent).toContain(
       "Share directory is missing or not available",
     );
+  });
+
+  it("hides shares annotated as hidden by standard_share_names mode", async () => {
+    const { overrides } = setupOverrides();
+    const store = await createTestStore();
+
+    render(
+      <Provider store={store}>
+        <SharesTreeView
+          shares={{
+            addons: {
+              name: "addons",
+              usage: Usage.Internal,
+              mount_point_data: mountPointData(),
+              status: { is_valid: true, is_hidden: false },
+              disabled: false,
+            },
+            local_apps: {
+              name: "local_apps",
+              usage: Usage.Internal,
+              mount_point_data: mountPointData(),
+              status: { is_valid: true, is_hidden: true },
+              disabled: false,
+            },
+          }}
+          expandedItems={["group-internal"]}
+          onExpandedItemsChange={() => {}}
+          selectedShareKey={undefined}
+          onShareSelect={() => {}}
+          testOverrides={overrides}
+        />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("addons")).toBeTruthy();
+    });
+    expect(screen.queryByLabelText("local_apps")).toBeNull();
   });
 });

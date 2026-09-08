@@ -118,6 +118,12 @@ export function SharesTreeView({
     const groups: Record<string, Array<[string, SharedResource]>> = {};
 
     Object.entries(shares).forEach(([shareKey, shareProps]) => {
+      // Issue #1142: hide shares annotated as hidden by the
+      // standard_share_names mode; smb.conf omits them as well.
+      if (shareProps.status?.is_hidden === true) {
+        return;
+      }
+
       const usageGroup = shareProps.usage || Usage.None;
 
       if (protectedMode && usageGroup !== Usage.Internal) {

@@ -29,8 +29,9 @@ const (
 	sgAtaProtoNonData = 3 << 1
 	ataUsingLba       = 1 << 6
 
-	ataOpStandbyNow1 = 0xe0 // https://wiki.osdev.org/ATA/ATAPI_Power_Management
-	ataOpStandbyNow2 = 0x94 // Retired in ATA4. Did not coexist with ATAPI.
+	ataOpStandbyNow1    = 0xe0 // https://wiki.osdev.org/ATA/ATAPI_Power_Management
+	ataOpStandbyNow2    = 0x94 // Retired in ATA4. Did not coexist with ATAPI.
+	ataOpCheckPowerMode = 0xe5 // ATA CHECK POWER MODE - read-only probe (no spindown)
 )
 
 func StopAtaDevice(device string, debug bool) error {
@@ -59,6 +60,45 @@ func StopAtaDevice(device string, debug bool) error {
 			if err = sendAtaCommand(f, ataOpStandbyNow2, debug); err != nil {
 				return err
 			}
+		}
+	}
+
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("cannot close file %s. Error: %s", device, err)
+	}
+	return nil
+}
+
+// CheckAtaDevice probes whether a device supports ATA PASS-THROUGH by issuing
+// a read-only CHECK POWER MODE (0xE5) command. Unlike StopAtaDevice, this does
+// NOT spin down the disk — it is safe to call during device support detection.
+// The error semantics are identical to StopAtaDevice: devices that do not
+// support ATA PASS-THROUGH return an error containing
+// "INVALID COMMAND OPERATION CODE".
+func CheckAtaDevice(device string, debug bool) error {
+	f, err := openDevice(device)
+	if err != nil {
+		return err
+	}
+
+	switch NewAtaDevice(device, debug).deviceType() {
+	case Jmicron:
+		// Jmicron USB bridges have no read-only ATA power-mode probe via the
+		// vendor command set. jmicronGetRegisters() is a read-only register
+		// read that confirms the bridge responds without issuing a standby.
+		if err = sendSgio(f, jmicronGetRegisters(), debug); err != nil {
+			return err
+		}
+		if debug {
+			fmt.Println(" issuing check power mode (jmicron read registers)")
+		}
+		return nil
+	default:
+		if debug {
+			fmt.Println(" issuing check power mode")
+		}
+		if err = sendAtaCommand(f, ataOpCheckPowerMode, debug); err != nil {
+			return err
 		}
 	}
 

@@ -107,6 +107,7 @@ type ShareService struct {
 	eventBus         events.EventBusInterface
 	sharesQueueMutex *sync.RWMutex
 	dbomConv         converter.DtoToDbomConverterImpl
+	settingService   SettingServiceInterface
 	//defaultConfig    *config.DefaultConfig
 }
 
@@ -120,6 +121,7 @@ type ShareServiceParams struct {
 	//MountRepo         repository.MountPointPathRepositoryInterface
 	EventBus events.EventBusInterface
 	//DefaultConfig *config.DefaultConfig
+	SettingService SettingServiceInterface `optional:"true"`
 }
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
@@ -134,6 +136,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		//defaultConfig:    in.DefaultConfig,
 		sharesQueueMutex: &sync.RWMutex{},
 		dbomConv:         converter.DtoToDbomConverterImpl{},
+		settingService:   in.SettingService,
 	}
 	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
@@ -234,6 +237,7 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShares []dto.SharedResource
+	mode := s.currentStandardShareNamesMode()
 	for _, share := range shares {
 		dtoShare, err := conv.ExportedShareToSharedResource(share)
 		if err != nil {
@@ -246,6 +250,8 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 			slog.Error("Error verifying share", "share", dtoShare.Name, "err", err)
 			continue
 		}
+
+		s.annotateStandardShareHiddenWithMode(&dtoShare, mode)
 
 		dtoShares = append(dtoShares, dtoShare)
 	}
@@ -274,6 +280,8 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
+	s.annotateStandardShareHidden(&dtoShare)
 
 	return &dtoShare, nil
 }
@@ -354,6 +362,8 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
+	s.annotateStandardShareHidden(&dtoShare)
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.ADD,
@@ -470,6 +480,8 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
+	s.annotateStandardShareHidden(&createdDtoShare)
+
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
 		Share: &createdDtoShare,
@@ -537,6 +549,8 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
+	s.annotateStandardShareHidden(&dtoShare)
 
 	return &dtoShare, nil
 }
@@ -615,6 +629,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
+	s.annotateStandardShareHidden(&dtoShare)
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
@@ -641,6 +656,36 @@ func standardShareDir(name string) (string, bool) {
 		return "/" + name, true
 	}
 	return "", false
+}
+
+// currentStandardShareNamesMode loads the mode best-effort; failures and a
+// missing setting service default to both (visible) so listing never fails
+// because of annotation (issue #1142).
+func (s *ShareService) currentStandardShareNamesMode() dto.StandardShareNamesMode {
+	if s.settingService == nil {
+		return dto.StandardShareNamesModeBoth
+	}
+	settings, err := s.settingService.Load()
+	if err != nil || settings == nil {
+		return dto.StandardShareNamesModeBoth
+	}
+	return settings.StandardShareNames
+}
+
+// annotateStandardShareHiddenWithMode marks mode-hidden standard shares.
+func (s *ShareService) annotateStandardShareHiddenWithMode(share *dto.SharedResource, mode dto.StandardShareNamesMode) {
+	if share == nil {
+		return
+	}
+	if share.Status == nil {
+		share.Status = &dto.SharedResourceStatus{}
+	}
+	share.Status.IsHidden = dto.IsStandardShareHidden(share.Name, mode)
+}
+
+// annotateStandardShareHidden loads the mode once and annotates the share.
+func (s *ShareService) annotateStandardShareHidden(share *dto.SharedResource) {
+	s.annotateStandardShareHiddenWithMode(share, s.currentStandardShareNamesMode())
 }
 
 // VerifyShare checks the validity of a share and disables it if invalid
