@@ -1356,7 +1356,7 @@ export type CommandExecutionSnapshot = {
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  command_type: Command_type;
+  command_type?: Command_type;
   device_path?: string;
   disk_id?: string;
   enabled: Enabled;
@@ -1383,10 +1383,10 @@ export type JsonPatchOp = {
 export type HdIdleDeviceStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  last_io_at: string;
+  last_io_at?: string;
   name?: string;
-  spin_down_at: string;
-  spin_up_at: string;
+  spin_down_at?: string;
+  spin_up_at?: string;
   spun_down: boolean;
 };
 export type HdIdleDeviceSupport = {
@@ -1564,6 +1564,7 @@ export type FilesystemTask = {
   device: string;
   error?: string;
   filesystemType?: string;
+  label?: string;
   message?: string;
   notes?: string[] | null;
   operation: string;
@@ -1977,6 +1978,7 @@ export type User = {
 };
 export type SharedResourceStatus = {
   is_ha_mounted?: boolean;
+  is_hidden: boolean;
   is_valid: boolean;
 };
 export type SharedResource = {

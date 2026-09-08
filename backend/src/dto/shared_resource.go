@@ -19,4 +19,7 @@ type SharedResource struct {
 type SharedResourceStatus struct {
 	IsValid     bool `json:"is_valid" default:"false" read-only:"true"`
 	IsHAMounted bool `json:"is_ha_mounted,omitempty" default:"false" read-only:"true"`
+	// IsHidden marks standard shares hidden by the standard_share_names mode
+	// (issue #1142). Annotated, never persisted; zero value visible.
+	IsHidden bool `json:"is_hidden" default:"false" read-only:"true"`
 }

@@ -122,7 +122,7 @@ describe("ShareActions component", () => {
                 path: "",
                 type: Type.Host,
             },
-            status: { is_valid: true },
+            status: { is_valid: true, is_hidden: false },
         };
 
         render(
@@ -194,7 +194,7 @@ describe("ShareActions component", () => {
                 path: "/mnt/test",
                 type: Type.Host,
             },
-            status: { is_valid: false },
+            status: { is_valid: false, is_hidden: false },
         };
 
         render(
