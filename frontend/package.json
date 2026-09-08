@@ -119,7 +119,7 @@
     "tree-sitter",
     "tree-sitter-json"
   ],
-  "packageManager": "bun@1.4.1",
+  "packageManager": "bun@1.4.2",
   "engines": {
     "bun": ">=1.4.0"
   },
