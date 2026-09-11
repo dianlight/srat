@@ -297,13 +297,27 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "SmartMode_None",
+			name: "SmartOn_False",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{SmartMode: dto.SmartModes.SMARTMODENONE}
+				return dto.Settings{SmartOn: new(false)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
-				suite.Equal(dto.SmartModes.SMARTMODENONE, loaded.SmartMode)
+				suite.NotNil(loaded.SmartOn)
+				suite.False(*loaded.SmartOn)
+				suite.False(loaded.SmartEnabled())
+			},
+		},
+		{
+			name: "SmartOn_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{SmartOn: new(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.SmartOn)
+				suite.True(*loaded.SmartOn)
+				suite.True(loaded.SmartEnabled())
 			},
 		},
 		{

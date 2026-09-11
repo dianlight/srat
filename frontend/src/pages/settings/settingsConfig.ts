@@ -64,7 +64,7 @@ export const categories: {
     "compatibility_mode",
     "allow_guest",
     "mdns_registration",
-    "smart_mode",
+    "smart_on",
     "experimental_lab_mode",
   ],
   Network: {

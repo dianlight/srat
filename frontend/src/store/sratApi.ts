@@ -1259,6 +1259,8 @@ export type SystemCapabilities = {
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
   samba_version_sufficient: boolean;
+  /** Active SMART backend: direct (lib) or legacy (smartctl exec) */
+  smart_backend: string;
   /** Whether NFS is supported */
   support_nfs: boolean;
   /** Whether SMB over QUIC is supported */
@@ -1883,7 +1885,7 @@ export type Settings = {
   local_master?: boolean;
   mdns_registration?: boolean;
   multi_channel?: boolean;
-  smart_mode: Smart_mode;
+  smart_on?: boolean;
   smb_over_quic?: boolean;
   standard_share_names: Standard_share_names;
   telemetry_mode: Telemetry_mode;
@@ -2154,11 +2156,6 @@ export enum Disk_type {
 export enum Status2 {
   Alpha = "alpha",
   Beta = "beta",
-}
-export enum Smart_mode {
-  None = "none",
-  Legacy = "legacy",
-  Direct = "direct",
 }
 export enum Standard_share_names {
   Old = "old",

@@ -380,12 +380,12 @@ export function VolumeDetailsPanel({
           disk.is_rotational === true && (
             <HDIdleDiskSettings disk={disk} readOnly={readOnly} />
           )}
-        {/* Only render SmartStatusPanel if settings are loaded and smart_mode is not "none" */}
+        {/* Only render SmartStatusPanel if settings are loaded and SMART is on */}
         {disk &&
           !partition &&
           !settingsLoading &&
           settings &&
-          (settings as Settings).smart_mode !== "none" &&
+          (settings as Settings).smart_on !== false &&
           disk.smart_info?.supported && (
             <SmartStatusPanel
               smartInfo={disk.smart_info}

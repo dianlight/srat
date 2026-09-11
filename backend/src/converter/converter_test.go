@@ -543,26 +543,32 @@ func TestConfigToDto_TimeMachineSupportFromFS_AllTypes(t *testing.T) {
 	}
 }
 
-func TestConfigSmartModeFromConfig_ExplicitSmartModeWins(t *testing.T) {
-	result := configSmartModeFromConfig(config.Config{
+func TestConfigSmartOnFromConfig_ExplicitSmartModeWins(t *testing.T) {
+	result := configSmartOnFromConfig(config.Config{
 		SmartMode: "none",
 		Smart:     true,
 	})
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, result)
+	require.NotNil(t, result)
+	assert.False(t, *result)
 }
 
-func TestConfigSmartModeFromConfig_DisableSmartBackcompat(t *testing.T) {
+func TestConfigSmartOnFromConfig_DisableSmartBackcompat(t *testing.T) {
 	disabled := true
-	result := configSmartModeFromConfig(config.Config{
+	result := configSmartOnFromConfig(config.Config{
 		Smart:        true,
 		DisableSmart: &disabled,
 	})
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, result)
+	require.NotNil(t, result)
+	assert.False(t, *result)
 }
 
-func TestConfigSmartModeFromConfig_FallsBackToLegacySmartFlag(t *testing.T) {
-	assert.Equal(t, dto.SmartModes.SMARTMODELEGACY, configSmartModeFromConfig(config.Config{Smart: true}))
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, configSmartModeFromConfig(config.Config{Smart: false}))
+func TestConfigSmartOnFromConfig_FallsBackToLegacySmartFlag(t *testing.T) {
+	on := configSmartOnFromConfig(config.Config{Smart: true})
+	require.NotNil(t, on)
+	assert.True(t, *on)
+	off := configSmartOnFromConfig(config.Config{Smart: false})
+	require.NotNil(t, off)
+	assert.False(t, *off)
 }
 
 func TestConfigToDto_FSTypeIsWriteSupported(t *testing.T) {

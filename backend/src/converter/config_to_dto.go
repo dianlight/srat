@@ -68,7 +68,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update target
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
-	// goverter:map . SmartMode | configSmartModeFromConfig
+	// goverter:map . SmartOn | configSmartOnFromConfig
 	// goverter:ignore HASmbPassword ExperimentalLabMode StandardShareNames
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
@@ -179,24 +179,20 @@ func TimeMachineSupportFromFS(fsType string) *dto.TimeMachineSupport {
 	}
 }
 
-// configSmartModeFromConfig converts the legacy boolean SMART fields in Config to the new SmartMode enum.
-// Priority: if SmartMode is explicitly set in the config, use it; otherwise derive from the
-// legacy DisableSmart/Smart booleans (false=legacy, true=none).
-func configSmartModeFromConfig(source config.Config) dto.SmartMode {
-	if source.SmartMode != "" {
-		mode, err := dto.ParseSmartMode(source.SmartMode)
-		if err == nil {
-			return mode
-		}
+// configSmartOnFromConfig converts the legacy SMART fields in Config to the new SmartOn bool.
+// Priority: if SmartMode is explicitly set in the config, "none" means off,
+// anything else means on; otherwise derive from the legacy DisableSmart/Smart
+// booleans (Smart=false or DisableSmart=true means off, default on).
+func configSmartOnFromConfig(source config.Config) *bool {
+	switch source.SmartMode {
+	case "none":
+		return new(false)
+	case "legacy", "direct":
+		return new(true)
 	}
 	if source.DisableSmart != nil {
-		if *source.DisableSmart {
-			return dto.SmartModes.SMARTMODENONE
-		}
-		return dto.SmartModes.SMARTMODELEGACY
+		off := *source.DisableSmart
+		return new(!off)
 	}
-	if !source.Smart {
-		return dto.SmartModes.SMARTMODENONE
-	}
-	return dto.SmartModes.SMARTMODELEGACY
+	return new(source.Smart)
 }

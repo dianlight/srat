@@ -28,7 +28,6 @@ import {
   type InterfaceStat,
   type MountPointData,
   type Settings,
-  Smart_mode,
   Standard_share_names,
   Telemetry_mode,
   Type,
@@ -351,7 +350,7 @@ export function SetupWizard({
         ...(isValidSettings(settings)
           ? settings
           : {
-              smart_mode: Smart_mode.None,
+              smart_on: false,
               standard_share_names: Standard_share_names.Both,
               telemetry_mode: Telemetry_mode.Errors,
             }),

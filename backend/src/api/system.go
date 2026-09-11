@@ -222,6 +222,10 @@ func (handler *SystemHanler) GetCapabilitiesHandler(ctx context.Context, input *
 		capabilities.LibSmartAvailable = handler.apiCtx.LibSmartAvailable
 		capabilities.LibSmartUnavailableReason = handler.apiCtx.LibSmartUnavailableReason
 	}
+	capabilities.SmartBackend = "legacy"
+	if capabilities.LibSmartAvailable {
+		capabilities.SmartBackend = "direct"
+	}
 
 	return &struct{ Body dto.SystemCapabilities }{Body: capabilities}, nil
 }

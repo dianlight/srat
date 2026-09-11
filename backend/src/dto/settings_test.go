@@ -31,7 +31,7 @@ func TestSettings_AllFields(t *testing.T) {
 		ExportStatsToHA:     &exportStats,
 		HAUseNFS:            &haUseNFS,
 		SMBoverQUIC:         &smbOverQUIC,
-		SmartMode:           dto.SmartModes.SMARTMODENONE,
+		SmartOn:             new(true),
 		ExperimentalLabMode: true,
 	}
 
@@ -56,7 +56,9 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.True(t, *settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -76,7 +78,8 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.Nil(t, settings.ExportStatsToHA)
 	assert.Nil(t, settings.HAUseNFS)
 	assert.Nil(t, settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.Nil(t, settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.False(t, settings.ExperimentalLabMode)
 }
 
@@ -125,7 +128,7 @@ func TestSettings_BooleanPointers(t *testing.T) {
 		ExportStatsToHA:     &falseVal,
 		HAUseNFS:            &trueVal,
 		SMBoverQUIC:         &trueVal,
-		SmartMode:           dto.SmartModes.SMARTMODENONE,
+		SmartOn:             &falseVal,
 		ExperimentalLabMode: true,
 	}
 
@@ -133,7 +136,9 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	assert.False(t, *settings.ExportStatsToHA)
 	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.False(t, *settings.SmartOn)
+	assert.False(t, settings.SmartEnabled())
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -163,7 +168,9 @@ func TestSettings_DefaultValues(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.True(t, *settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.False(t, settings.ExperimentalLabMode)
 }
 

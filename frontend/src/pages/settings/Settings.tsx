@@ -28,7 +28,6 @@ import { useOpenWizard } from "../../components/wizard/SetupWizard";
 import { TabIDs } from "../../store/locationState";
 import {
   type Settings as ApiSettings,
-  Smart_mode,
   useGetApiSettingsQuery,
   usePutApiSettingsMutation,
 } from "../../store/sratApi";
@@ -95,7 +94,7 @@ export function Settings() {
   const methods = useForm({
     mode: "onBlur",
     values: globalConfig as ApiSettings,
-    defaultValues: { smart_mode: Smart_mode.Legacy },
+    defaultValues: { smart_on: true },
     disabled: readOnly,
   });
   const { handleSubmit, reset, formState } = methods;
