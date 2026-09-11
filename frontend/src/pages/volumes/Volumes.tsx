@@ -402,11 +402,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
         .catch((err): Promise<void> => {
           const errorData = err?.data || {};
           const suggested = extractSuggestedMountPath(errorData);
-          if (
-            allowSuggestionRetry &&
-            suggested &&
-            suggested !== payload.path
-          ) {
+          if (allowSuggestionRetry && suggested && suggested !== payload.path) {
             return confirm({
               title: "Invalid mount path",
               description: `The path ${payload.path} contains characters the database cannot store. Retry with the suggested path ${suggested}?`,
@@ -414,10 +410,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
               cancellationText: "Cancel",
             }).then(({ reason }): Promise<void> => {
               if (reason === "confirm") {
-                return attemptMount(
-                  { ...payload, path: suggested },
-                  false,
-                );
+                return attemptMount({ ...payload, path: suggested }, false);
               }
               showMountError(
                 {
