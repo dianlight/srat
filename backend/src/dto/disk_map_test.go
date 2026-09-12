@@ -860,9 +860,9 @@ func TestDiskMap_GetPartitionDevicePath(t *testing.T) {
 	assert.Equal(t, legacyName, m.GetPartitionDevicePath(p))
 
 	p.LegacyDeviceName = nil
-	assert.Equal(t, "", m.GetPartitionDevicePath(p))
+	assert.Empty(t, m.GetPartitionDevicePath(p))
 
-	assert.Equal(t, "", m.GetPartitionDevicePath(nil))
+	assert.Empty(t, m.GetPartitionDevicePath(nil))
 }
 
 func TestDiskMap_GetPartitionByID(t *testing.T) {

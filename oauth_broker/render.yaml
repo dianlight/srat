@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: srat-oauth-broker
+    runtime: node # Node runtime includes Bun (build+runtime); no bun env exists
+    plan: free
+    rootDir: oauth_broker
+    buildCommand: bun install && bun tsc --noEmit
+    startCommand: bun run src/index.ts
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: BROKER_PUBLIC_URL
+        sync: false # set to https://<your-render-url>.onrender.com
+      - key: SESSION_TTL
+        value: 600
+      - key: BROKER_DISABLE_AUTH
+        value: false
+      - key: DROPBOX_CLIENT_ID
+        sync: false
+      - key: DROPBOX_CLIENT_SECRET
+        sync: false
+      # Optional: generic providers JSON
+      # - key: BROKER_PROVIDERS_JSON
+      #   sync: false
+      # Optional: providers file path
+      # - key: BROKER_PROVIDERS_FILE
+      #   sync: false
+      # Optional: restrict srat_callback_url to glob CSV (empty = any https)
+      # - key: BROKER_ALLOWED_CALLBACK_PATTERNS
+      #   value: "https://*.example.com/*"
+    healthCheckPath: /v1/healthz
