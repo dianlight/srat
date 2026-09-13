@@ -84,14 +84,36 @@ export function Shares() {
       return false; // Disable if data is loading or not available
     }
 
+    // Mirror the create dialog's Volume options (ShareEditForm): skip system
+    // partitions backed by host mounts and paths that already host a share,
+    // so the button is only enabled when a share can actually be created
+    // (issue #1162 — e.g. protection mode leaves no selectable volume).
+    const sharedPaths = new Set(
+      Object.values(shares)
+        .map((share) => share?.mount_point_data?.path)
+        .filter((path): path is string => Boolean(path)),
+    );
+
     for (const disk of volumes) {
       const partitions = Object.values(disk.partitions || {});
       if (partitions.length > 0) {
         for (const partition of partitions) {
+          if (
+            partition?.system &&
+            partition?.host_mount_point_data &&
+            Object.values(partition.host_mount_point_data).length > 0
+          ) {
+            continue;
+          }
           const mpds = Object.values(partition.mount_point_data || {});
           for (const mpd of mpds) {
-            if (mpd?.is_mounted && mpd.path && mpd.root) {
-              return true; // Found an available, unshared, mounted mount point
+            if (
+              mpd?.is_mounted &&
+              mpd.path &&
+              mpd.root &&
+              !sharedPaths.has(mpd.path)
+            ) {
+              return true; // Found a selectable, unshared, mounted mount point
             }
           }
         }

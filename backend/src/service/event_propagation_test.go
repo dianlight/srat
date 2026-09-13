@@ -239,9 +239,10 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	share := dto.SharedResource{
 		Name: "test-share",
 		MountPointData: &dto.MountPointData{
-			Path:     "/",
-			Type:     "ADDON",
-			DeviceId: "test_device_id",
+			Path:      "/",
+			Type:      "ADDON",
+			DeviceId:  "test_device_id",
+			IsMounted: true,
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
@@ -481,9 +482,10 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 	share := dto.SharedResource{
 		Name: "chain-test",
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/chain",
-			Type:     "ADDON",
-			DeviceId: "test_device_id",
+			Path:      "/mnt/chain",
+			Type:      "ADDON",
+			DeviceId:  "test_device_id",
+			IsMounted: true,
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
