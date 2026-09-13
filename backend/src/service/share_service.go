@@ -329,6 +329,14 @@ func validateShareData(share dto.SharedResource, requireMountData bool) errors.E
 		if share.MountPointData.Type == "" || share.MountPointData.DeviceId == "" {
 			return errors.WithStack(dto.ErrorShareValidation)
 		}
+		// Issue #1162: refuse shares pointing at volumes that are not mounted
+		// (or are marked invalid) instead of creating is_valid:false shares
+		// that spam "Share volume does not exist" warnings on every pass.
+		// Updates that keep the existing mount point carry no mount data and
+		// are unaffected; internal provisioning always passes mounted data.
+		if share.MountPointData.IsInvalid || !share.MountPointData.IsMounted {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
 	}
 	return nil
 }
