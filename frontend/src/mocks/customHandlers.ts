@@ -202,7 +202,8 @@ export const customHandlers: RequestHandler[] = [
 					number: 1,
 					title: `${String(params.repo)} announcement`,
 					html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
-					created_at: "2026-04-01T12:00:00.000Z",
+					created_at: "2026-09-01T12:00:00.000Z",
+					body: "Mock announcement abstract for dashboard news widget.",
 				},
 			]),
 			{

@@ -1,5 +1,7 @@
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import KeyboardArrowLeftIcon from "@mui/icons-material/KeyboardArrowLeft";
 import KeyboardArrowRightIcon from "@mui/icons-material/KeyboardArrowRight";
+import NewReleasesOutlinedIcon from "@mui/icons-material/NewReleasesOutlined";
 import {
   Alert,
   Box,
@@ -12,15 +14,18 @@ import {
   Link,
   List,
   ListItem,
+  ListItemIcon,
   ListItemText,
   Typography,
 } from "@mui/material";
 import { useEffect, useRef } from "react";
 import type { NewsItem } from "../../hooks/githubNewsHook";
+import { GITHUB_ANNOUNCEMENTS_URL } from "../../store/githubRestApi";
 import {
   Standard_share_names,
   useGetApiSettingsQuery,
 } from "../../store/sratApi";
+import { testIds } from "../../testIds";
 
 interface DashboardIntroProps {
   isCollapsed: boolean;
@@ -51,6 +56,18 @@ export function DashboardIntro({
     }
   }, [news, isLoading, onToggleCollapse]);
 
+  const seeAllNewsLink = (
+    <Link
+      href={GITHUB_ANNOUNCEMENTS_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+      underline="hover"
+      data-testid={testIds.dashboard.newsSeeAll}
+    >
+      See all news
+    </Link>
+  );
+
   const renderNews = () => {
     if (isLoading) {
       return (
@@ -61,13 +78,13 @@ export function DashboardIntro({
     }
     if (error) {
       return (
-        <Alert severity="warning" sx={{ mt: 2 }}>
-          Could not load project news.
-        </Alert>
+        <Box>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Could not load project news.
+          </Alert>
+          <Box sx={{ mt: 1 }}>{seeAllNewsLink}</Box>
+        </Box>
       );
-    }
-    if (news.length === 0) {
-      return null; // Don't show the news section if there are no recent news
     }
 
     return (
@@ -75,24 +92,56 @@ export function DashboardIntro({
         <Typography variant="body2" sx={{ mt: 2, mb: 1 }}>
           <strong>Latest News:</strong>
         </Typography>
-        <List dense>
-          {news.map((item) => (
-            <ListItem key={item.id} disablePadding>
-              <ListItemText
-                primary={
-                  <Link
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    underline="hover"
-                  >
-                    {item.title}
-                  </Link>
-                }
-              />
-            </ListItem>
-          ))}
-        </List>
+        {news.length > 0 ? (
+          <List dense>
+            {news.map((item) => (
+              <ListItem
+                key={item.id}
+                disablePadding
+                alignItems="flex-start"
+                sx={{ gap: 1 }}
+              >
+                <ListItemIcon sx={{ minWidth: 32, mt: 0.5 }}>
+                  {item.type === "release" ? (
+                    <NewReleasesOutlinedIcon
+                      fontSize="small"
+                      data-testid={testIds.dashboard.newsReleaseIcon}
+                    />
+                  ) : (
+                    <CampaignOutlinedIcon
+                      fontSize="small"
+                      data-testid={testIds.dashboard.newsAnnouncementIcon}
+                    />
+                  )}
+                </ListItemIcon>
+                <ListItemText
+                  primary={
+                    <Link
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      underline="hover"
+                    >
+                      {item.title}
+                    </Link>
+                  }
+                  secondary={
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      component="span"
+                      sx={{ display: "block" }}
+                      data-testid={testIds.dashboard.newsAbstract}
+                    >
+                      {item.abstract}
+                    </Typography>
+                  }
+                />
+              </ListItem>
+            ))}
+          </List>
+        ) : null}
+        <Box sx={{ mt: 1 }}>{seeAllNewsLink}</Box>
       </Box>
     );
   };
