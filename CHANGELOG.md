@@ -6,103 +6,17 @@
 
 ### ✨ Features
 
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
+- Speed up Shares tab first paint with deferred Swagger load and cached user validity
+- Dashboard news abstracts with type icons and version gate
+- Replace smart_mode enum with smart_on toggle
 
 ### 🐛 Bug Fixes
 
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
-
-### 🏗 Chore
-
-## [ 🚧 Unreleased ]
-
-### ✨ Features
-
-### 🐛 Bug Fixes
+- Simplify mount path suggestion retry logic
+- Annotate mode-hidden standard shares with is_hidden
+- Avoid logging full share struct with password flow
+- Harden zip extraction against ZipSlip escape
+- Bound-check loop minor before uint32 conversion
 
 ### 🏗 Chore
 
