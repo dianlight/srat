@@ -2,12 +2,15 @@ package converter
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/unixsamba"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 // goverter:converter
@@ -185,11 +188,36 @@ func checkUserValid(dbUser dbom.SambaUser) bool {
 	if dbUser.Username == "" || dbUser.Password == "" {
 		return false
 	}
+	if cached, ok := userValidityCache.Get(userValidityKey(dbUser.Username, dbUser.Password)); ok {
+		if valid, castOk := cached.(bool); castOk {
+			return valid
+		}
+		userValidityCache.Delete(userValidityKey(dbUser.Username, dbUser.Password))
+	}
 	err := unixsamba.CheckSambaUser(context.Background(), dbUser.Username, dbUser.Password)
 	if err != nil {
 		slog.Warn("Failed to validate user with unixsamba", "username", dbUser.Username, "error", err)
 	}
-	return err == nil
+	valid := err == nil
+	userValidityCache.SetDefault(userValidityKey(dbUser.Username, dbUser.Password), valid)
+	return valid
+}
+
+// userValidityCacheTTL bounds how long a Samba credential check result is
+// reused. ListShares converts every user of every share, so without this the
+// same account (e.g. admin on every share) pays for two pdbedit spawns per
+// share. A short TTL keeps the IsValid flag fresh while collapsing the
+// per-request N×M verification storm (and broadcaster ListShares bursts)
+// into one probe per unique credential set.
+var userValidityCacheTTL = 10 * time.Second
+
+var userValidityCache = gocache.New(userValidityCacheTTL, 30*time.Second)
+
+// userValidityKey hashes the credential pair so plaintext passwords never sit
+// in the cache as map keys.
+func userValidityKey(username, password string) string {
+	sum := sha256.Sum256([]byte(username + "\x00" + password))
+	return hex.EncodeToString(sum[:])
 }
 
 // checkUserValidStored maps the persisted IsValid flag into the DTO pointer

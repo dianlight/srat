@@ -4,18 +4,6 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { apiUrl } from "../store/emptyApi";
 
-// Import Prism and make it globally available for openapi-explorer
-if (
-  typeof window !== "undefined" &&
-  !(globalThis as unknown as { __TEST__?: boolean }).__TEST__
-) {
-  import("prismjs").then((Prism) => {
-    (window as unknown as { Prism?: unknown }).Prism = Prism.default || Prism;
-    // Load the openapi-explorer after Prism is available
-    import("openapi-explorer");
-  });
-}
-
 // Allow the custom web component <openapi-explorer> in TSX
 const OpenApiExplorer = "openapi-explorer" as unknown as React.ElementType;
 
@@ -27,30 +15,46 @@ export function Swagger() {
     if ((globalThis as unknown as { __TEST__?: boolean }).__TEST__) {
       // In tests, mark as loaded immediately to show the overview
       setLoaded(true);
-    } else if (typeof window !== "undefined" && window.customElements) {
-      // Wait for the custom element to be registered
-      window.customElements
-        .whenDefined("openapi-explorer")
-        .then(() => {
-          console.debug("openapi-explorer custom element is ready");
-          setLoaded(true);
-        })
-        .catch((err) => {
-          console.error("Error waiting for openapi-explorer:", err);
-          setLoaded(true);
-        });
-
-      // Fallback timeout in case whenDefined doesn't resolve
-      const timeout = setTimeout(() => {
-        console.debug("openapi-explorer timeout, marking as loaded anyway");
-        setLoaded(true);
-      }, 2000);
-
-      return () => clearTimeout(timeout);
-    } else {
-      setLoaded(true);
+      return;
     }
-    return () => {};
+    if (typeof window === "undefined" || !window.customElements) {
+      setLoaded(true);
+      return;
+    }
+    // Load Prism and openapi-explorer lazily on mount only. This module is
+    // statically imported by the NavBar, so importing at module top level
+    // would pull the Lit bundle (and its dev-mode console warning) into
+    // every page of the app.
+    let cancelled = false;
+    import("prismjs").then((Prism) => {
+      if (cancelled) return;
+      (window as unknown as { Prism?: unknown }).Prism = Prism.default || Prism;
+      // Load the openapi-explorer after Prism is available
+      return import("openapi-explorer");
+    });
+    window.customElements
+      .whenDefined("openapi-explorer")
+      .then(() => {
+        if (cancelled) return;
+        console.debug("openapi-explorer custom element is ready");
+        setLoaded(true);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Error waiting for openapi-explorer:", err);
+        setLoaded(true);
+      });
+
+    // Fallback timeout in case whenDefined doesn't resolve
+    const timeout = setTimeout(() => {
+      console.debug("openapi-explorer timeout, marking as loaded anyway");
+      setLoaded(true);
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
   }, []);
 
   return (

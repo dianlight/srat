@@ -72,3 +72,41 @@ func TestAnnotateStandardShareHiddenUsesSettings(t *testing.T) {
 	require.NotNil(t, share.Status)
 	assert.True(t, share.Status.IsHidden)
 }
+
+type countingSettingService struct {
+	stubSettingService
+	loads int
+}
+
+func (s *countingSettingService) Load() (*dto.Settings, errors.E) {
+	s.loads++
+	return s.stubSettingService.Load()
+}
+
+func TestCurrentStandardShareNamesModeCachesLoad(t *testing.T) {
+	svc := &ShareService{settingService: &countingSettingService{
+		stubSettingService: stubSettingService{settings: &dto.Settings{StandardShareNames: dto.StandardShareNamesModeOld}},
+	}}
+
+	assert.Equal(t, dto.StandardShareNamesModeOld, svc.currentStandardShareNamesMode())
+	assert.Equal(t, dto.StandardShareNamesModeOld, svc.currentStandardShareNamesMode())
+	assert.Equal(t, dto.StandardShareNamesModeOld, svc.currentStandardShareNamesMode())
+
+	stub := svc.settingService.(*countingSettingService)
+	assert.Equal(t, 1, stub.loads, "steady-state reads must not hit the settings table")
+}
+
+func TestSetStandardShareNamesModeRefreshesCache(t *testing.T) {
+	stub := &countingSettingService{
+		stubSettingService: stubSettingService{settings: &dto.Settings{StandardShareNames: dto.StandardShareNamesModeOld}},
+	}
+	svc := &ShareService{settingService: stub}
+
+	assert.Equal(t, dto.StandardShareNamesModeOld, svc.currentStandardShareNamesMode())
+	assert.Equal(t, 1, stub.loads)
+
+	// A SettingEvent (e.g. from UpdateSettings) refreshes the cache without a Load.
+	svc.setStandardShareNamesMode(dto.StandardShareNamesModeNew)
+	assert.Equal(t, dto.StandardShareNamesModeNew, svc.currentStandardShareNamesMode())
+	assert.Equal(t, 1, stub.loads, "event refresh must not hit the settings table")
+}

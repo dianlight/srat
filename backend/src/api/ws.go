@@ -291,6 +291,14 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 
 	conn, err := self.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		// A failed handshake means the peer is not speaking WebSocket
+		// (health probes or plain-HTTP fetches of /ws). The upgrader already
+		// answered with an HTTP error, so this is client-caused noise, not a
+		// server fault: log at debug without a stack trace.
+		if _, ok := errors.AsType[websocket.HandshakeError](err); ok {
+			tlog.DebugContext(self.ctx, "Ignoring non-WebSocket request to /ws", "remote", r.RemoteAddr, "error", err)
+			return
+		}
 		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
 		return
 	}

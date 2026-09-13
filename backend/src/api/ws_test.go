@@ -94,6 +94,23 @@ func (suite *WsHandlerSuite) TestWebSocketUpgrade() {
 	suite.NotNil(conn)
 }
 
+// A plain-HTTP fetch of /ws is not a handshake failure worth an error log:
+// the upgrader answers 400 and the handler returns without a connection.
+func (suite *WsHandlerSuite) TestWebSocketIgnoresPlainHTTPRequest() {
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
+
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	resp, err := srv.Client().Get(srv.URL + "/ws")
+	suite.Require().NoError(err)
+	defer resp.Body.Close()
+	suite.Equal(400, resp.StatusCode)
+}
+
 // Test that the WebSocket handler invokes the broadcaster's ProcessWebSocketChannel
 // and the client receives the welcome message and a subsequent event.
 func (suite *WsHandlerSuite) TestWebSocketReceivesMessagesFromBroadcaster() {

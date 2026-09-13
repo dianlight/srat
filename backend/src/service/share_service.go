@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -108,6 +109,11 @@ type ShareService struct {
 	sharesQueueMutex *sync.RWMutex
 	dbomConv         converter.DtoToDbomConverterImpl
 	settingService   SettingServiceInterface
+	// stdShareNamesMode caches the standard_share_names setting so ListShares
+	// (and every other annotating call) does not pay for a full settings-table
+	// Load on every request. It is refreshed from SettingEvents emitted by
+	// UpdateSettings; an empty cache falls back to a single Load.
+	stdShareNamesMode atomic.Value // stores dto.StandardShareNamesMode
 	//defaultConfig    *config.DefaultConfig
 }
 
@@ -138,7 +144,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		dbomConv:         converter.DtoToDbomConverterImpl{},
 		settingService:   in.SettingService,
 	}
-	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
+	unsubscribeMount := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
 		share, err := s.GetShareFromPath(event.MountPoint.Path)
 		if err != nil {
@@ -162,6 +168,15 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		return nil
 	})
 
+	// Keep the cached standard_share_names mode fresh without a DB round-trip:
+	// UpdateSettings emits the full Settings, so the mode update is free.
+	unsubscribeSetting := s.eventBus.OnSetting(func(_ context.Context, event events.SettingEvent) errors.E {
+		if event.Setting != nil {
+			s.setStandardShareNamesMode(event.Setting.StandardShareNames)
+		}
+		return nil
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if os.Getenv("SRAT_MOCK") == "true" {
@@ -175,8 +190,11 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
-			if unsubscribe != nil {
-				unsubscribe()
+			if unsubscribeMount != nil {
+				unsubscribeMount()
+			}
+			if unsubscribeSetting != nil {
+				unsubscribeSetting()
 			}
 			return nil
 		},
@@ -661,7 +679,13 @@ func standardShareDir(name string) (string, bool) {
 // currentStandardShareNamesMode loads the mode best-effort; failures and a
 // missing setting service default to both (visible) so listing never fails
 // because of annotation (issue #1142).
+// The mode is cached after the first Load and refreshed from SettingEvents,
+// so steady-state ListShares calls avoid the full settings-table Load
+// (a transaction over all properties plus conversion and defaults).
 func (s *ShareService) currentStandardShareNamesMode() dto.StandardShareNamesMode {
+	if cached, ok := s.stdShareNamesMode.Load().(dto.StandardShareNamesMode); ok {
+		return cached
+	}
 	if s.settingService == nil {
 		return dto.StandardShareNamesModeBoth
 	}
@@ -669,7 +693,14 @@ func (s *ShareService) currentStandardShareNamesMode() dto.StandardShareNamesMod
 	if err != nil || settings == nil {
 		return dto.StandardShareNamesModeBoth
 	}
+	s.stdShareNamesMode.Store(settings.StandardShareNames)
 	return settings.StandardShareNames
+}
+
+// setStandardShareNamesMode refreshes the cached standard_share_names mode,
+// e.g. from SettingEvents, so readers never pay for a settings Load.
+func (s *ShareService) setStandardShareNamesMode(mode dto.StandardShareNamesMode) {
+	s.stdShareNamesMode.Store(mode)
 }
 
 // annotateStandardShareHiddenWithMode marks mode-hidden standard shares.
