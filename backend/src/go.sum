@@ -153,8 +153,8 @@ github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
-github.com/jmattheis/goverter v1.10.0 h1:hhuAXGiz3vA+0DsChIJxzy+LFMl7BDNYQDGJVwJsuQs=
-github.com/jmattheis/goverter v1.10.0/go.mod h1:H/zHHvIaLXAy686/5ZKTTm3XGznCeUNzMlorPSdxrWs=
+github.com/jmattheis/goverter v1.11.0 h1:PsEAHpb/ptmaFfxVCJpYBShdXxpnSG15o9XFRn8ntcs=
+github.com/jmattheis/goverter v1.11.0/go.mod h1:H/zHHvIaLXAy686/5ZKTTm3XGznCeUNzMlorPSdxrWs=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7/go.mod h1:2iMrUgbbvHEiQClaW2NsSzMyGHqN+rDFqY705q49KG0=
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
