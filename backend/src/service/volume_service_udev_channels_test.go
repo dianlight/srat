@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -44,7 +43,7 @@ func TestConsumeUdevChannels_QueueClosedReturnsError(t *testing.T) {
 	select {
 	case err := <-done:
 		require.Error(t, err, "closed queue must surface an error so the caller can reconnect")
-		assert.True(t, errors.Is(err, errUdevQueueClosed), "expected errUdevQueueClosed, got %v", err)
+		assert.ErrorIs(t, err, errUdevQueueClosed, "expected errUdevQueueClosed, got %v", err)
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("consumeUdevChannels did not return after queue close; it is stuck in a busy loop")
 	}
@@ -66,7 +65,7 @@ func TestConsumeUdevChannels_ErrorChanClosedReturnsError(t *testing.T) {
 	select {
 	case err := <-done:
 		require.Error(t, err, "closed error channel must surface an error so the caller can reconnect")
-		assert.True(t, errors.Is(err, errUdevErrorChanClosed), "expected errUdevErrorChanClosed, got %v", err)
+		assert.ErrorIs(t, err, errUdevErrorChanClosed, "expected errUdevErrorChanClosed, got %v", err)
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("consumeUdevChannels did not return after error channel close")
 	}
@@ -100,7 +99,7 @@ func TestConsumeUdevChannels_ProcessesEventsUntilQueueCloses(t *testing.T) {
 	select {
 	case err := <-done:
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, errUdevQueueClosed))
+		assert.ErrorIs(t, err, errUdevQueueClosed)
 	case <-time.After(time.Second):
 		t.Fatal("consumeUdevChannels did not return after queue close")
 	}
@@ -152,7 +151,7 @@ func TestConsumeUdevChannels_NilErrorValueIgnored(t *testing.T) {
 	select {
 	case err := <-done:
 		require.Error(t, err)
-		assert.True(t, errors.Is(err, errUdevQueueClosed))
+		assert.ErrorIs(t, err, errUdevQueueClosed)
 	case <-time.After(time.Second):
 		t.Fatal("consumeUdevChannels did not return after queue close")
 	}
