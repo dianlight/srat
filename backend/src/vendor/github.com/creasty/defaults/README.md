@@ -1,7 +1,9 @@
+### [!!! Looking for a new maintainer !!!](https://github.com/creasty/defaults/issues/61)
+
 defaults
 ========
 
-[![CircleCI](https://circleci.com/gh/creasty/defaults/tree/master.svg?style=svg)](https://circleci.com/gh/creasty/defaults/tree/master)
+[![CI](https://img.shields.io/github/actions/workflow/status/creasty/defaults/ci.yml?branch=master&label=CI)](https://github.com/creasty/defaults/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/creasty/defaults/branch/master/graph/badge.svg)](https://codecov.io/gh/creasty/defaults)
 [![GitHub release](https://img.shields.io/github/release/creasty/defaults.svg)](https://github.com/creasty/defaults/releases)
 [![License](https://img.shields.io/github/license/creasty/defaults.svg)](./LICENSE)
@@ -22,8 +24,18 @@ Initialize structs with default values
   - Pointer types
     - e.g., `*SampleStruct`, `*int`
 - Recursively initializes fields in a struct
-- Dynamically sets default values by [`defaults.Setter`](./setter.go) interface
+- Dynamically sets default values by:
+  - Implementing the [`defaults.Setter`](./setter.go) interface, or
+  - Implementing [`encoding.TextUnmarshaler`](https://pkg.go.dev/encoding#TextUnmarshaler), which
+    takes precedence over `defaults.Setter` -- the tag is handed to `UnmarshalText` and
+    `SetDefaults` is not called
 - Preserves non-initial values from being reset with a default value
+  - A field is written only while it still holds its type's zero value. No scalar type can tell an
+    unspecified value from its zero value — an `int` left alone is `0`, a `string` is `""`, a `bool`
+    is `false` — so a zero the caller set on purpose is indistinguishable from one never set, and the
+    default replaces it.
+  - Use a pointer where that distinction matters. `nil` means unspecified, and a pointer to the zero
+    value is preserved: `*bool` is the way to let `false` survive a `default:"true"`.
 
 
 Usage

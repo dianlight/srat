@@ -10,7 +10,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260628105713-0c42d8cca82f
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/creasty/defaults v1.8.0
+	github.com/creasty/defaults v1.9.0
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1
