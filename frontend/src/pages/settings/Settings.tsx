@@ -109,7 +109,11 @@ export function Settings() {
       })
       .catch((err) => {
         console.error("Settings update error:", err);
-        reset();
+        // keepFieldsRef: preserve field registrations so server-absent fields
+        // (e.g. compatibility_mode) are not re-injected as undefined into
+        // _formValues, which would silently drift from _defaultValues and
+        // leave isDirty stuck true (same pattern RHF uses for values sync).
+        reset(globalConfig as ApiSettings, { keepFieldsRef: true });
       });
   }
 
@@ -404,7 +408,11 @@ export function Settings() {
                 }}
               >
                 <Button
-                  onClick={() => reset()}
+                  onClick={() =>
+                    reset(globalConfig as ApiSettings, {
+                      keepFieldsRef: true,
+                    })
+                  }
                   disabled={!formState.isDirty}
                   variant="outlined"
                   fullWidth={true}
