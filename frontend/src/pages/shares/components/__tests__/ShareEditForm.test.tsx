@@ -222,4 +222,77 @@ describe("ShareEditForm component", () => {
 
         expect(handleSubmit).not.toHaveBeenCalled();
     });
+
+    it("blocks submit when the selected volume is not mounted (issue #1162)", async () => {
+        const volumeResult = {
+            disks: [
+                {
+                    partitions: [
+                        {
+                            mount_point_data: [
+                                {
+                                    path: "/mnt/unmounted",
+                                    path_hash: "unmounted-hash",
+                                    disk_label: "UnmountedDisk",
+                                    is_mounted: false,
+                                    is_write_supported: false,
+                                    time_machine_support: "Unsupported",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            isLoading: false,
+            error: null,
+        };
+
+        const usersResult = {
+            data: [
+                { username: "admin", is_admin: true },
+            ],
+            isLoading: false,
+            error: null,
+            refetch: () => Promise.resolve(),
+        };
+
+        const overrides = {
+            useVolume: () => volumeResult,
+            useGetApiUsersQuery: () => usersResult,
+        } as const;
+
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Usage } = await import("../../../../store/sratApi");
+        // @ts-expect-error - Query param fetches isolated module instance
+        const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-unmounted-guard");
+
+        const handleSubmit = vi.fn(() => { });
+
+        render(
+            React.createElement(ShareEditForm as any, {
+                shareData: {
+                    name: "GuardShare",
+                    usage: Usage.None,
+                    mount_point_data: {
+                        path: "/mnt/unmounted",
+                        path_hash: "unmounted-hash",
+                        is_mounted: false,
+                        is_write_supported: false,
+                    },
+                },
+                shares: {},
+                onSubmit: handleSubmit,
+                testOverrides: overrides,
+            })
+        );
+
+        const submitButton = await screen.findByRole("button", { name: /create/i });
+        const user = userEvent.setup();
+        await user.click(submitButton);
+
+        await waitFor(() => expect(screen.getByText(/not mounted/i)).toBeTruthy());
+        expect(handleSubmit).not.toHaveBeenCalled();
+    }, 60000);
 });

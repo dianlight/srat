@@ -10,7 +10,7 @@ require (
 	github.com/adelolmo/hd-idle v0.0.0-20260628105713-0c42d8cca82f
 	github.com/angusgmorrison/logfusc v0.1.0
 	github.com/benmcclelland/sgio v0.0.0-20250710154739-45e823ff1f46
-	github.com/creasty/defaults v1.8.0
+	github.com/creasty/defaults v1.10.0
 	github.com/danielgtaylor/huma/v2 v2.39.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1
@@ -85,7 +85,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
-	github.com/jmattheis/goverter v1.10.0 // indirect
+	github.com/jmattheis/goverter v1.11.0 // indirect
 	github.com/k0kubun/pp/v3 v3.5.1 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/lmittmann/tint v1.1.3 // indirect

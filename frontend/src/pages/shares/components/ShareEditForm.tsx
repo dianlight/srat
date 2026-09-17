@@ -239,6 +239,19 @@ export function ShareEditForm({
                   options={availablePartitions}
                   control={control}
                   required
+                  rules={{
+                    validate: (value: MountPointData | null | undefined) => {
+                      // Required rule handles the empty case; here we only
+                      // reject volumes that can never host a working share
+                      // (issue #1162).
+                      if (!value?.path) return true;
+                      if (value.invalid)
+                        return "Selected volume is invalid and cannot be shared.";
+                      if (!value.is_mounted)
+                        return "Selected volume is not mounted. Mount it before creating a share.";
+                      return true;
+                    },
+                  }}
                   loading={vlLoading}
                   autocompleteProps={{
                     disabled: isDisabled,
