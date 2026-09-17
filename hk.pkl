@@ -90,7 +90,12 @@ local linters = new Mapping<String, Step> {
 hooks {
     ["pre-commit"] {
         fix = true
-        stash = "git"
+        // Do NOT stash unstaged changes: backend vendor patches
+        // (backend/patches/, applied via `mise run //backend:patch`) live as
+        // uncommitted working-tree modifications by design, and go-vet needs
+        // them present to compile (e.g. sgio.CheckAtaDevice). Stashing them
+        // makes every commit fail vet on files the commit does not touch.
+        stash = "none"
         steps = linters
     }
     ["fix"] {
