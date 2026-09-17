@@ -302,6 +302,18 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
+	// Hostname/workgroup are required at the API boundary (the service layer
+	// stays lenient per #1013 for internal sparse updates). This also covers
+	// autopatch-PATCH, which merges fragments into the stored settings first.
+	if config.Hostname == "" {
+		err := tozderrors.WithMessagef(dto.ErrorInvalidParameter, "hostname is required")
+		return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
+	}
+	if config.Workgroup == "" {
+		err := tozderrors.WithMessagef(dto.ErrorInvalidParameter, "workgroup is required")
+		return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
+	}
+
 	err := self.settingService.UpdateSettings(&config)
 	if err != nil {
 		if tozderrors.Is(err, dto.ErrorInvalidParameter) {
