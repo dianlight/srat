@@ -99,10 +99,15 @@ func (b *ProblemHABridge) handleProblemEvent(ctx context.Context, event events.P
 	}
 
 	// Permanently ignored alerts stay silent: clear any stale HA
-	// notification so nothing lingers, and never re-notify.
+	// notification so nothing lingers, and never re-notify. The queue is
+	// flushed first so a create queued while HA was down cannot resurrect
+	// the notification after this dismissal (same ordering as REMOVE).
 	if event.Problem.Ignored || event.Problem.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED {
 		notificationID, _, _ := toNotificationPayload(event.Problem)
 		if b.canUseHA() {
+			if err := b.flushQueue(); err != nil {
+				tlog.WarnContext(ctx, "Failed to flush queued HA problem notifications", "error", err)
+			}
 			if err := b.haService.DismissPersistentNotification(notificationID); err != nil {
 				tlog.WarnContext(ctx, "Failed to dismiss HA persistent notification for ignored problem", "problem_key", event.Problem.ProblemKey, "error", err)
 			}
@@ -116,6 +121,9 @@ func (b *ProblemHABridge) handleProblemEvent(ctx context.Context, event events.P
 	if !b.isAlertEnabled(event.Problem.ProblemKey) {
 		notificationID, _, _ := toNotificationPayload(event.Problem)
 		if b.canUseHA() {
+			if err := b.flushQueue(); err != nil {
+				tlog.WarnContext(ctx, "Failed to flush queued HA problem notifications", "error", err)
+			}
 			if err := b.haService.DismissPersistentNotification(notificationID); err != nil {
 				tlog.WarnContext(ctx, "Failed to dismiss HA persistent notification for disabled alert", "problem_key", event.Problem.ProblemKey, "error", err)
 			}
@@ -131,6 +139,9 @@ func (b *ProblemHABridge) handleProblemEvent(ctx context.Context, event events.P
 	if IsHaCustomComponentProblemKey(event.Problem.ProblemKey) && !b.isCustomComponentLabEnabled() {
 		notificationID, _, _ := toNotificationPayload(event.Problem)
 		if b.canUseHA() {
+			if err := b.flushQueue(); err != nil {
+				tlog.WarnContext(ctx, "Failed to flush queued HA problem notifications", "error", err)
+			}
 			_ = b.haService.DismissPersistentNotification(notificationID)
 		} else {
 			b.enqueue(problemNotificationAction{dismiss: true, id: notificationID})

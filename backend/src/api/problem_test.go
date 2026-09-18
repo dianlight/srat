@@ -216,6 +216,7 @@ func (suite *ProblemHandlerSuite) TestPutProblemByKeyReenable() {
 			mock.Any[*string](),
 		),
 	).ThenReturn(reenabled, nil)
+	mock.When(suite.mockProblem.Upsert(mock.Any[*dto.Problem]())).ThenReturn(reenabled, nil)
 
 	_, apiInst := humatest.New(suite.T())
 	suite.handler.RegisterProblemHandler(apiInst)
@@ -238,5 +239,7 @@ func (suite *ProblemHandlerSuite) TestPutProblemByKeyReenable() {
 		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED),
 		mock.Any[*string](),
 	)
-	_, _ = mock.Verify(suite.mockProblem, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+	// The rest of the PUT payload is persisted via Upsert after the flag
+	// is cleared, with the ignore flag forced off.
+	_, _ = mock.Verify(suite.mockProblem, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
 }

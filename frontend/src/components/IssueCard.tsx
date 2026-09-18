@@ -18,7 +18,6 @@ import {
 } from "@mui/material";
 import type { Theme } from "@mui/material/styles";
 import type React from "react";
-import { useIgnoredIssues } from "../hooks/issueHooks";
 import type { Problem } from "../store/sratApi";
 
 interface IssueCardProps {
@@ -98,11 +97,11 @@ const IssueCard: React.FC<IssueCardProps> = ({
   showIgnored,
 }) => {
   const theme = useTheme();
-  const { isIssueIgnored } = useIgnoredIssues();
   const resolveKey = issue.problem_key;
-  // Server-side ignore (issue.ignored) hides the card immediately after the
-  // backend refetch; the local list covers partitions and pre-server states.
-  const isIgnored = isIssueIgnored(resolveKey) || issue.ignored === true;
+  // The server flag is the single source of truth for Problem cards: the
+  // local list only tracks partition rows (ActionableItemsList), and mixing
+  // the two could hide a card whose alert is active again server-side.
+  const isIgnored = issue.ignored === true;
   const severityConfig = getSeverityConfig(issue.severity || "info", theme);
 
   // When showIgnored is false, show only non-ignored items

@@ -246,6 +246,63 @@ func (suite *ProblemHABridgeSuite) TestRemoveEventDismissesNotification() {
 	)
 }
 
+func (suite *ProblemHABridgeSuite) TestIgnoredProblemFlushesQueuedCreateBeforeDismiss() {
+	created := make(chan string, 2)
+	mock.When(
+		suite.haSvc.CreatePersistentNotification(
+			mock.Any[string](),
+			mock.Any[string](),
+			mock.Any[string](),
+		),
+	).ThenAnswer(func(args []any) []any {
+		id, _ := args[0].(string)
+		created <- id
+		return []any{nil}
+	})
+	dismissed := make(chan string, 2)
+	mock.When(
+		suite.haSvc.DismissPersistentNotification(mock.Any[string]()),
+	).ThenAnswer(func(args []any) []any {
+		id, _ := args[0].(string)
+		dismissed <- id
+		return []any{nil}
+	})
+
+	// Queue a create while HA is down.
+	suite.state.HACoreReady = false
+	suite.events.EmitProblem(events.ProblemEvent{
+		Type: events.EventTypes.ADD,
+		Problem: &dto.Problem{
+			ProblemKey:   "problem.stale",
+			Title:        "Stale title",
+			Description:  "Stale body",
+			Severity:     dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+			Status:       dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,
+			IsPersistent: true,
+		},
+	})
+
+	// HA back: the ignored event must flush the queued create first and
+	// then dismiss, so the notification cannot linger.
+	suite.state.HACoreReady = true
+	suite.events.EmitProblem(events.ProblemEvent{
+		Type: events.EventTypes.UPDATE,
+		Problem: &dto.Problem{
+			ProblemKey:   "problem.stale",
+			Title:        "Stale title",
+			Description:  "Stale body",
+			Severity:     dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+			Status:       dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED,
+			Ignored:      true,
+			IsPersistent: true,
+		},
+	})
+
+	suite.Eventually(func() bool {
+		return len(created) >= 1 && len(dismissed) >= 1
+	}, 2*time.Second, 20*time.Millisecond)
+}
+
 func (suite *ProblemHABridgeSuite) TestIgnoredProblemSuppressesNotification() {
 	dismissed := make(chan string, 1)
 	mock.When(

@@ -242,6 +242,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_SyncsComponentIssue
 	status := &dto.HomeAssistantCustomComponentStatus{Installed: false, Connected: false}
 	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
 	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Exact(status))).ThenReturn(nil)
+	mock.When(suite.haComponentSvc.DismissRestartRequiredRepair(mock.AnyContext())).ThenReturn(nil)
 
 	labOff := false
 	rr := api.Put("/settings", dto.Settings{
@@ -253,6 +254,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_SyncsComponentIssue
 
 	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
 	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Exact(status))
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).DismissRestartRequiredRepair(mock.AnyContext())
 }
 
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_RejectsEmptyHostnameWorkgroup() {

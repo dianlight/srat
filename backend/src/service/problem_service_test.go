@@ -88,6 +88,19 @@ func (suite *ProblemServiceSuite) TestUpsertUpdateIncrementsRepeating() {
 	suite.Equal("Updated", updated.Title)
 }
 
+func (suite *ProblemServiceSuite) TestUpsertDerivesIgnoredFromStatus() {
+	p, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignored_status_key",
+		Title:      "Ignored by status",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+		Status:     dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED,
+		Ignored:    false,
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotNil(p)
+	suite.True(p.Ignored)
+}
+
 func (suite *ProblemServiceSuite) TestUpsertRequiresProblemKeyOrTitle() {
 	_, err := suite.svc.Upsert(&dto.Problem{})
 	suite.Require().Error(err)

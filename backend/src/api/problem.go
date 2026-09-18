@@ -135,13 +135,21 @@ func (a *ProblemAPI) RegisterProblemHandler(api huma.API) {
 		// Re-enable: Upsert OR-merges the ignore flag so it can never clear
 		// a stored ignore. An explicit user PUT over an ignored row with a
 		// non-ignored lifecycle status is therefore routed through
-		// ApplyLifecycle, which clears the flag. Internal emitters never hit
-		// this branch: they guard on the stored ignore before upserting.
+		// ApplyLifecycle, which clears the flag, followed by an Upsert that
+		// persists the rest of the PUT payload (title, severity, actions,
+		// links, data) without re-setting the cleared flag. Internal
+		// emitters never hit this branch: they guard on the stored ignore
+		// before upserting.
 		if payload.Status != dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED {
 			if existing, err := a.service.Get(input.ProblemKey); err == nil && existing != nil && existing.Ignored {
-				item, err := a.service.ApplyLifecycle(input.ProblemKey, payload.Status, payload.LastError)
-				if err != nil {
+				if _, err := a.service.ApplyLifecycle(input.ProblemKey, payload.Status, payload.LastError); err != nil {
 					tlog.ErrorContext(ctx, "failed to re-enable problem", "problem_key", input.ProblemKey, "error", err)
+					return nil, huma.Error500InternalServerError("failed to re-enable problem", err)
+				}
+				payload.Ignored = false
+				item, err := a.service.Upsert(&payload)
+				if err != nil {
+					tlog.ErrorContext(ctx, "failed to persist re-enabled problem payload", "problem_key", input.ProblemKey, "error", err)
 					return nil, huma.Error500InternalServerError("failed to re-enable problem", err)
 				}
 				return &UpsertProblemOutput{Body: item}, nil

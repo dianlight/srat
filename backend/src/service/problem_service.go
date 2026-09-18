@@ -77,6 +77,13 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 
 	key := strings.TrimSpace(problem.ProblemKey)
 	title := strings.TrimSpace(problem.Title)
+
+	// Status and flag must agree: an explicit ignored lifecycle status
+	// implies the ignore flag, even when the payload leaves it false.
+	// Callers sending a non-ignored status with an ignored row are routed
+	// through ApplyLifecycle by the API layer (re-enable), never here.
+	ignored := problem.Ignored ||
+		problem.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED
 	var existing dbom.Problem
 
 	query := s.db.WithContext(s.ctx)
@@ -100,7 +107,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 		// Ignore is sticky: re-emits must never clear a stored ignore.
 		// Clearing happens only via ApplyLifecycle (explicit lifecycle event)
 		// or Dismiss (which deletes the row and re-arms the alert).
-		existing.Ignored = existing.Ignored || problem.Ignored
+		existing.Ignored = existing.Ignored || ignored
 		existing.Actions = problem.Actions
 		existing.TranslationKey = problem.TranslationKey
 		existing.TranslationPlaceholders = problem.TranslationPlaceholders
@@ -136,6 +143,7 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 	}
 
 	row := problemConv.ToDbom(problem)
+	row.Ignored = ignored
 	if row.Repeating == 0 {
 		row.Repeating = 1
 	}

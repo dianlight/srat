@@ -325,12 +325,14 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 	// Lab mode or the custom-component alert toggle may have been switched
 	// off: dismiss stale custom-component problems so toasts and HA
 	// notifications stay silent. Cleanup-only: with the alerts disabled
-	// SyncIssueStatus dismisses but never raises.
+	// SyncIssueStatus dismisses but never raises. The restart-required
+	// problem shares the same alert toggle, so it is dismissed too.
 	if self.haComponentSvc != nil &&
 		!service.AlertEnabledForKey(&config, service.AlertProblemKeyCustomComponentMissing) {
 		if status, statusErr := self.haComponentSvc.GetStatus(); statusErr == nil && status != nil {
 			_ = self.haComponentSvc.SyncIssueStatus(status)
 		}
+		_ = self.haComponentSvc.DismissRestartRequiredRepair(ctx)
 	}
 
 	return &struct{ Body dto.Settings }{Body: config}, nil
