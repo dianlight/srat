@@ -159,7 +159,7 @@ jobs:
   triage:
     name: AI triage orphans
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     needs: detect
     if: needs.detect.outputs.count != '0'
     permissions:
@@ -199,7 +199,7 @@ jobs:
         id: triage
         if: steps.resolve.outcome == 'success'
         continue-on-error: true
-        timeout-minutes: 15
+        timeout-minutes: 25
         uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
@@ -220,8 +220,11 @@ jobs:
             - Write your triage report to /tmp/orphan-triage.md and exit 0.
 
             ## Task
+            Work quickly: fetch each issue body once, scan only `docs/tasks/*.md`
+            headers + Objective paragraphs and open srat issue titles. Do NOT
+            explore backend/frontend source code — classification only.
             For each orphan:
-            1. Read the full issue body (`gh issue view <n> --repo dianlight/hassio-addons --json title,body,labels,comments`).
+            1. Read the issue body (`gh issue view <n> --repo dianlight/hassio-addons --json title,body,labels`).
             2. Classify: bug / feature / question / needs-info, and whether it is SRAT-related
                (backend, frontend, custom component) or pure-addon (Dockerfile, s6 services, docs).
             3. Find the closest existing counterpart using the `sync-tasks` heuristic: compare issue
