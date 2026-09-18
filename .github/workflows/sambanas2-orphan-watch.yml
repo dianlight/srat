@@ -196,11 +196,9 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Install read-only git shim
-        # `opencode github run` always ends its session with `git push` of a
-        # dispatch branch, which fails on the read-only token and would fail
-        # the step (git aliases cannot shadow builtins, so no alias trick).
-        # This PATH shim turns `git push` into a printed no-op while
-        # delegating every other git command to the real binary.
+        # Belt-and-braces for the agent's own shell: turns `git push` into a
+        # printed no-op while delegating every other git command to the real
+        # binary (git aliases cannot shadow builtins, so no alias trick).
         # Runner-local only; nothing leaves the workspace.
         run: |
           git config user.name "github-actions[bot]"
@@ -211,53 +209,60 @@ jobs:
           chmod +x "$RUNNER_TEMP/git-shim/git"
           echo "$RUNNER_TEMP/git-shim" >> "$GITHUB_PATH"
 
+      - name: Install opencode CLI
+        # Installed directly instead of via anomalyco/opencode/github: the
+        # `github run` wrapper always ends its session with `git push` of a
+        # dispatch branch, which fails on the read-only token and fails the
+        # step. Plain `opencode run` has no such behavior.
+        run: |
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
       - name: Run opencode triage
         id: triage
         if: steps.resolve.outcome == 'success'
         continue-on-error: true
         timeout-minutes: 25
-        uses: anomalyco/opencode/github@77fc88c8ade8e5a620ebbe1197f3a572d29ae91a # latest
         env:
           OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENCODE_DISABLE_AUTOUPDATE: "true"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIAGE_MODEL: ${{ steps.resolve.outputs.model }}
           ORPHANS_JSON: ${{ needs.detect.outputs.orphans }}
-        with:
-          model: ${{ steps.resolve.outputs.model }}
-          use_github_token: true
-          # Never upload the session transcript anywhere (public repos default to share).
-          share: false
-          prompt: |
-            You are triaging unreferenced SambaNAS2 addon issues for the SRAT project.
-            The orphan list (JSON: number, title, url, author, created_at, labels) is in $ORPHANS_JSON.
+        run: |
+          export PATH="$HOME/.opencode/bin:$PATH"
+          PROMPT="You are triaging unreferenced SambaNAS2 addon issues for the SRAT project.
+          The orphan list (JSON: number, title, url, author, created_at, labels) is: $ORPHANS_JSON.
 
-            ## Read-only constraints (strict)
-            - Do NOT comment on any issue, do NOT open issues or PRs, do NOT push, do NOT commit.
-            - Do NOT run any `git` command (add, commit, status, diff, log — none).
-              Just write the report file and exit 0; committing is a failure.
-            - You may run `gh issue view` / `gh api` reads and `grep`/`rg` reads only.
-            - Write your triage report to `orphan-triage.md` in the workspace root
-              (workspace writes are permitted; never write outside the workspace
-              — permission prompts hang the runner) and exit 0.
+          ## Read-only constraints (strict)
+          - Do NOT comment on any issue, do NOT open issues or PRs, do NOT push, do NOT commit.
+          - Do NOT run any \`git\` command (push, commit, branch, status, diff, log — none).
+            Just write the report file and exit 0.
+          - You may run \`gh issue view\` / \`gh api\` reads and \`grep\`/\`rg\` reads only.
+          - Write your triage report to \`orphan-triage.md\` in the workspace root
+            (workspace writes are permitted; never write outside the workspace
+            — permission prompts hang the runner) and exit 0.
 
-            ## Task
-            Work quickly: fetch each issue body once, scan only `docs/tasks/*.md`
-            headers + Objective paragraphs and open srat issue titles. Do NOT
-            explore backend/frontend source code — classification only.
-            For each orphan:
-            1. Read the issue body (`gh issue view <n> --repo dianlight/hassio-addons --json title,body,labels`).
-            2. Classify: bug / feature / question / needs-info, and whether it is SRAT-related
-               (backend, frontend, custom component) or pure-addon (Dockerfile, s6 services, docs).
-            3. Find the closest existing counterpart using the `sync-tasks` heuristic: compare issue
-               title words against `docs/tasks/*.md` titles + Objective paragraphs (≥ 2 significant
-               words in common) and against open srat issues (`gh search issues`).
-            4. Recommend exactly one: link the best matching `docs/tasks/NNN_*.md` or `dianlight/srat#NNN`,
-               or state "no match — candidate for a new task" with a one-line suggested task title.
+          ## Task
+          Work quickly: fetch each issue body once, scan only \`docs/tasks/*.md\`
+          headers + Objective paragraphs and open srat issue titles. Do NOT
+          explore backend/frontend source code — classification only.
+          For each orphan:
+          1. Read the issue body (\`gh issue view <n> --repo dianlight/hassio-addons --json title,body,labels\`).
+          2. Classify: bug / feature / question / needs-info, and whether it is SRAT-related
+             (backend, frontend, custom component) or pure-addon (Dockerfile, s6 services, docs).
+          3. Find the closest existing counterpart using the \`sync-tasks\` heuristic: compare issue
+             title words against \`docs/tasks/*.md\` titles + Objective paragraphs (≥ 2 significant
+             words in common) and against open srat issues (\`gh search issues\`).
+          4. Recommend exactly one: link the best matching \`docs/tasks/NNN_*.md\` or \`dianlight/srat#NNN\`,
+             or state \"no match — candidate for a new task\" with a one-line suggested task title.
 
-            ## Report format (markdown, one section per orphan)
-            ### hassio-addons#NNN — <title>
-            - **Type:** bug|feature|question|needs-info — **Area:** srat|addon
-            - **Summary:** one line
-            - **Suggested match:** <task file / srat issue / none + proposed task title>
+          ## Report format (markdown, one section per orphan)
+          ### hassio-addons#NNN — <title>
+          - **Type:** bug|feature|question|needs-info — **Area:** srat|addon
+          - **Summary:** one line
+          - **Suggested match:** <task file / srat issue / none + proposed task title>"
+          opencode run --model "$TRIAGE_MODEL" "$PROMPT"
 
       - name: Publish triage report
         if: steps.triage.outcome == 'success'
