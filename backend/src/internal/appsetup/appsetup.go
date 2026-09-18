@@ -123,10 +123,17 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewHDIdleService,
 			service.NewHaDiscoveryService,
 			service.NewSettingService,
+			service.NewBrokerClient,
 			//repository.NewPropertyRepositoryRepository,
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
 		fx.Invoke(func(service.ProblemHABridgeInterface) {}),
+		fx.Invoke(func(b service.BrokerClientInterface, ctx context.Context) {
+			// Ensure per-install Ed25519 keypair exists in DB (persistent client_id)
+			if _, err := b.GetKeyPair(ctx); err != nil {
+				slog.Error("Failed to ensure broker keypair", "error", err)
+			}
+		}),
 		fx.Invoke(func(commandRunner commandexec.Executor) {
 			servicefilesystem.SetDefaultCommandRunner(commandRunner)
 			unixsamba.SetCommandRunner(commandRunner)
