@@ -195,15 +195,21 @@ jobs:
             echo "> Check the select-model step log, then re-run."
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Configure git identity safety net
-        # The triage agent is instructed never to commit, but if it does anyway
-        # a missing identity makes `git commit` exit 128 and fail the step.
-        # A configured identity keeps the step exit code 0 so the report still
-        # publishes. Nothing is pushed: this job has no push step and the
-        # runner workspace is ephemeral.
+      - name: Install read-only git shim
+        # `opencode github run` always ends its session with `git push` of a
+        # dispatch branch, which fails on the read-only token and would fail
+        # the step (git aliases cannot shadow builtins, so no alias trick).
+        # This PATH shim turns `git push` into a printed no-op while
+        # delegating every other git command to the real binary.
+        # Runner-local only; nothing leaves the workspace.
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          REAL_GIT="$(command -v git)"
+          mkdir -p "$RUNNER_TEMP/git-shim"
+          printf '#!/bin/bash\nif [ "$1" = "push" ]; then echo "push disabled: triage job is read-only"; exit 0; fi\nexec "%s" "$@"\n' "$REAL_GIT" > "$RUNNER_TEMP/git-shim/git"
+          chmod +x "$RUNNER_TEMP/git-shim/git"
+          echo "$RUNNER_TEMP/git-shim" >> "$GITHUB_PATH"
 
       - name: Run opencode triage
         id: triage
