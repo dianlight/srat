@@ -1873,6 +1873,9 @@ export type SmbConf = {
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  alert_addon_config_changed?: boolean;
+  alert_custom_component?: boolean;
+  alert_protected_mode?: boolean;
   allow_guest?: boolean;
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;

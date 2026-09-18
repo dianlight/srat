@@ -2040,6 +2040,15 @@ components:
           format: uri
           readOnly: true
           type: string
+        alert_addon_config_changed:
+          default: true
+          type: boolean
+        alert_custom_component:
+          default: true
+          type: boolean
+        alert_protected_mode:
+          default: true
+          type: boolean
         allow_guest:
           default: false
           type: boolean
@@ -2654,8 +2663,8 @@ paths:
     get:
       operationId: get-api-appconfig
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2698,8 +2707,8 @@ paths:
     get:
       operationId: get-api-capabilities
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2792,8 +2801,8 @@ paths:
           schema:
             description: Command execution ID to inspect
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -2893,8 +2902,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -3046,8 +3055,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -3153,8 +3162,8 @@ paths:
           schema:
             description: The disk ID (not the device path)
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -3503,8 +3512,8 @@ paths:
           schema:
             description: The disk ID or device path
             type: string
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -3750,8 +3759,8 @@ paths:
     post:
       operationId: post-api-filesystem-format
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -4535,8 +4544,8 @@ paths:
     post:
       operationId: upsert-problem
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -5266,6 +5275,15 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
+                alert_addon_config_changed:
+                  default: true
+                  type: boolean
+                alert_custom_component:
+                  default: true
+                  type: boolean
+                alert_protected_mode:
+                  default: true
+                  type: boolean
                 allow_guest:
                   default: false
                   type: boolean
@@ -5348,6 +5366,15 @@ paths:
                   format: uri
                   readOnly: true
                   type: string
+                alert_addon_config_changed:
+                  default: true
+                  type: boolean
+                alert_custom_component:
+                  default: true
+                  type: boolean
+                alert_protected_mode:
+                  default: true
+                  type: boolean
                 allow_guest:
                   default: false
                   type: boolean
@@ -5812,8 +5839,8 @@ paths:
     get:
       operationId: get-api-settings-homeassistant-custom-component-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6101,8 +6128,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json-patch+json:
@@ -6251,8 +6278,8 @@ paths:
               - world
             maxLength: 128
             type: string
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       requestBody:
         content:
           application/json:
@@ -6449,8 +6476,8 @@ paths:
     get:
       operationId: get-api-status
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6492,8 +6519,8 @@ paths:
     get:
       operationId: get-api-telemetry-internet-connection
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:
@@ -6624,8 +6651,8 @@ paths:
     put:
       operationId: put-api-update
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       responses:
         "200":
           content:
@@ -7021,8 +7048,8 @@ paths:
     post:
       operationId: post-api-volume-mount
       parameters:
-        - $ref: "#/components/parameters/X-Trace-Id"
         - $ref: "#/components/parameters/X-Span-Id"
+        - $ref: "#/components/parameters/X-Trace-Id"
       requestBody:
         content:
           application/json:
@@ -7119,8 +7146,8 @@ paths:
     get:
       operationId: list-api-volumes
       parameters:
-        - $ref: "#/components/parameters/X-Span-Id"
         - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
       responses:
         "200":
           content:

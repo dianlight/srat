@@ -92,7 +92,15 @@ func (s *ProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
 		existing.Description = problem.Description
 		existing.Severity = problem.Severity
 		existing.Status = dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSUPDATED
-		existing.Ignored = problem.Ignored
+		// An explicit ignored status in the payload (dashboard Ignore action)
+		// is honored as-is instead of being normalized to updated.
+		if problem.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED {
+			existing.Status = dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED
+		}
+		// Ignore is sticky: re-emits must never clear a stored ignore.
+		// Clearing happens only via ApplyLifecycle (explicit lifecycle event)
+		// or Dismiss (which deletes the row and re-arms the alert).
+		existing.Ignored = existing.Ignored || problem.Ignored
 		existing.Actions = problem.Actions
 		existing.TranslationKey = problem.TranslationKey
 		existing.TranslationPlaceholders = problem.TranslationPlaceholders
@@ -230,6 +238,15 @@ func (s *ProblemService) ApplyLifecycle(problemKey string, status dto.ProblemLif
 	}
 
 	row.Status = status
+	// An explicit ignored lifecycle event permanently suppresses the alert
+	// until it is dismissed (row deleted, alert re-armed) or re-enabled via
+	// a created/updated lifecycle event. Other statuses leave the flag alone.
+	if status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED {
+		row.Ignored = true
+	} else if status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED ||
+		status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSUPDATED {
+		row.Ignored = false
+	}
 	if lastError != nil {
 		row.LastError = *lastError
 	} else {

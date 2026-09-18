@@ -6,6 +6,15 @@
 
 ### ✨ Features
 
+- Alerts settings category with per-alert toggles and permanent ignore
+- Protected mode now raises an ignorable HA repair issue
+
+### 🐛 Bug Fixes
+
+- Re-enable ignored alerts via `PUT /api/problems/{key}` (was a no-op)
+- Dismiss stale custom-component problem when alerts are disabled in settings
+- Hide server-ignored issues on the dashboard without a local seed
+
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore

@@ -236,6 +236,52 @@ This document provides detailed information about all SRAT settings available in
   - Configuration file changes trigger a `app_config_changed` WebSocket event sent to connected clients
   - Detection is event-driven and low-overhead, using efficient file watching and content hashing
 
+## Alerts Settings
+
+- **UI Location**: Settings → Alerts
+- **Purpose**: Master switches for every alert SRAT raises in the dashboard
+  and in Home Assistant. Turning an alert off dismisses any existing problem
+  and suppresses future ones until re-enabled.
+
+### Protected Mode Alert
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Warns while the add-on runs in protected mode, when no
+  disks can be mounted. Raised as problem `protected_mode` with error
+  severity, so it surfaces as an ignorable Home Assistant repair issue when
+  the custom component is connected, or as a persistent notification
+  otherwise.
+- **API Field**: `alert_protected_mode` (boolean)
+
+### Add-on Configuration Changed Alert
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Enables the `addon_config_changed` problem raised by
+  [Configuration Change Detection](#configuration-change-detection).
+- **API Field**: `alert_addon_config_changed` (boolean)
+
+### Custom Component Alerts (Lab)
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Enables the `custom_component_restart_required` and
+  `custom_component_missing` problems.
+- **Availability**: Only shown when lab mode is enabled (and hidden in
+  production builds, like all `ha_custom_component` alpha surfaces).
+- **API Field**: `alert_custom_component` (boolean)
+
+### Ignoring Alerts
+
+- Ignoring an alert (dashboard Ignore button, or ignoring the Home Assistant
+  repair issue) suppresses it permanently: the backend stores the ignore and
+  never re-raises the alert, nor notifies Home Assistant about it again.
+- Dismissing/resolving an alert only hides it once; it is raised again on the
+  next reconcile while its condition still holds.
+- Re-enable an ignored alert from Settings → Alerts, or re-arm it from the
+  dashboard (Re-enable button on ignored issues).
+
 ## Implementation Details
 
 ### Template Generation

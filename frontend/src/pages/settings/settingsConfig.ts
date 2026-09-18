@@ -79,6 +79,11 @@ export const categories: {
   //'Update': ['update_channel'],
   Telemetry: ["telemetry_mode"],
   HomeAssistant: ["export_stats_to_ha", "ha_use_nfs"],
+  Alerts: [
+    "alert_protected_mode",
+    "alert_addon_config_changed",
+    "alert_custom_component",
+  ],
 };
 
 export const beta_categories: {

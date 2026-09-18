@@ -322,6 +322,17 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 		return nil, huma.Error500InternalServerError("Failed to update settings: %v", err)
 	}
 
+	// Lab mode or the custom-component alert toggle may have been switched
+	// off: dismiss stale custom-component problems so toasts and HA
+	// notifications stay silent. Cleanup-only: with the alerts disabled
+	// SyncIssueStatus dismisses but never raises.
+	if self.haComponentSvc != nil &&
+		!service.AlertEnabledForKey(&config, service.AlertProblemKeyCustomComponentMissing) {
+		if status, statusErr := self.haComponentSvc.GetStatus(); statusErr == nil && status != nil {
+			_ = self.haComponentSvc.SyncIssueStatus(status)
+		}
+	}
+
 	return &struct{ Body dto.Settings }{Body: config}, nil
 }
 

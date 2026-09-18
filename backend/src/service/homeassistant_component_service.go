@@ -167,6 +167,15 @@ func (s *HomeAssistantComponentService) UpsertRestartRequiredRepair(ctx context.
 		}
 		return nil
 	}
+	if s.problemService != nil && !s.alertEnabled(customComponentRestartRepairID) {
+		// Alert disabled in the Alerts settings category: dismiss and stay silent.
+		_ = s.dismissRepairIssue(ctx, customComponentRestartRepairID)
+		return nil
+	}
+	if existing, err := s.problemService.Get(customComponentRestartRepairID); err == nil && existing != nil && existing.Ignored {
+		// Permanent ignore: never raise again until dismissed/re-enabled.
+		return nil
+	}
 	_, err := s.problemService.Upsert(&dto.Problem{
 		ProblemKey:     customComponentRestartRepairID,
 		Title:          "Home Assistant restart required",
@@ -191,6 +200,20 @@ func (s *HomeAssistantComponentService) DismissRestartRequiredRepair(ctx context
 
 func (s *HomeAssistantComponentService) DismissAddonConfigIssue(ctx context.Context) error {
 	return s.dismissRepairIssue(ctx, "addon_config_changed")
+}
+
+// alertEnabled reports whether the alert for problemKey may be raised given
+// the current settings. Fail-open on missing service or load errors so alert
+// behavior degrades to the historical default (enabled).
+func (s *HomeAssistantComponentService) alertEnabled(problemKey string) bool {
+	if s.settingService == nil {
+		return true
+	}
+	settings, err := s.settingService.Load()
+	if err != nil || settings == nil {
+		return true
+	}
+	return AlertEnabledForKey(settings, problemKey)
 }
 
 func (s *HomeAssistantComponentService) dismissRepairIssue(ctx context.Context, repairID string) error {
@@ -220,6 +243,15 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 	}
 
 	if !status.Installed && !status.Connected {
+		if s.problemService != nil && !s.alertEnabled("custom_component_missing") {
+			// Alert disabled in the Alerts settings category: dismiss and stay silent.
+			_ = s.dismissRepairIssue(s.ctx, "custom_component_missing")
+			return nil
+		}
+		if existing, err := s.problemService.Get("custom_component_missing"); err == nil && existing != nil && existing.Ignored {
+			// Permanent ignore: never raise again until dismissed/re-enabled.
+			return nil
+		}
 		_, err := s.problemService.Upsert(&dto.Problem{
 			ProblemKey:     "custom_component_missing",
 			Title:          dto.HomeAssistantComponentMissingIssueTitle,

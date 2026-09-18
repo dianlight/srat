@@ -4,6 +4,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import InsightsIcon from "@mui/icons-material/Insights";
 import LanIcon from "@mui/icons-material/Lan";
 import MenuIcon from "@mui/icons-material/Menu";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import SearchIcon from "@mui/icons-material/Search";
 import SecurityIcon from "@mui/icons-material/Security";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -34,6 +35,7 @@ import {
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { AppConfigurationPanel } from "./AppConfigurationPanel";
+import { AlertsPanel } from "./panels/AlertsPanel";
 import { GeneralPanel } from "./panels/GeneralPanel";
 import { HomeAssistantPanel } from "./panels/HomeAssistantPanel";
 import { NetworkAccessControlPanel } from "./panels/NetworkAccessControlPanel";
@@ -146,6 +148,9 @@ export function Settings() {
       case "telemetry":
         icon = <InsightsIcon {...iconProps} />;
         break;
+      case "alerts":
+        icon = <NotificationsIcon {...iconProps} />;
+        break;
       case "homeassistant":
         icon = <HomeIcon {...iconProps} />;
         break;
@@ -186,6 +191,8 @@ export function Settings() {
         return <NetworkAccessControlPanel readOnly={readOnly} />;
       case "telemetry":
         return <TelemetryPanel readOnly={readOnly} />;
+      case "alerts":
+        return <AlertsPanel readOnly={readOnly} />;
       case "homeassistant":
         return <HomeAssistantPanel readOnly={readOnly} />;
       default:

@@ -128,6 +128,18 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 			setting.SmartOn = new(true)
 		}
 
+		if _, ok := props["AlertProtectedMode"]; !ok {
+			setting.AlertProtectedMode = new(true)
+		}
+
+		if _, ok := props["AlertAddonConfigChanged"]; !ok {
+			setting.AlertAddonConfigChanged = new(true)
+		}
+
+		if _, ok := props["AlertCustomComponent"]; !ok {
+			setting.AlertCustomComponent = new(true)
+		}
+
 		return nil
 	})
 	return setting, errors.WithStack(errS)

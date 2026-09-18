@@ -49,6 +49,10 @@
     "addon_config_changed": {
       "title": "SRAT add-on configuration changed externally",
       "description": "The add-on options file was modified outside of SRAT. Reload the SRAT add-on configuration to apply the new settings."
+    },
+    "protected_mode": {
+      "title": "SRAT add-on in protected mode",
+      "description": "The add-on is running in protected mode. In this mode, no disks can be mounted to prevent unauthorized access. To disable protected mode, open the add-on page in Home Assistant, turn off protected mode and restart the add-on. You can permanently ignore this alert from the SRAT dashboard or the Alerts settings category."
     }
   }
 }
