@@ -259,6 +259,12 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 
 	currentPassword := dbUser.Password // Store current password for potential use in rename or password change
 
+	// A nil share list means "leave associations untouched"; a non-nil list
+	// (even empty) means "replace associations". The converter only fills
+	// dbUser shares when the DTO list is non-nil, so capture intent here.
+	rwSharesUpdate := userDto.RwShares != nil
+	roSharesUpdate := userDto.RoShares != nil
+
 	var conv converter.DtoToDbomConverterImpl
 
 	// Apply other DTO changes to dbUser without affecting the username (which is already handled)
@@ -266,7 +272,7 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM for update")
 	}
 
-	dbUser, err = s.updateUser(currentUsername, currentPassword, dbUser) // Update the user and handle renaming if needed
+	dbUser, err = s.updateUser(currentUsername, currentPassword, dbUser, rwSharesUpdate, roSharesUpdate) // Update the user and handle renaming if needed
 	if err != nil {
 		return nil, err
 	}
@@ -284,7 +290,7 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	return &updatedUserDto, nil
 }
 
-func (s *UserService) updateUser(currentUsername string, currentPassword string, dbUser dbom.SambaUser) (dbom.SambaUser, error) {
+func (s *UserService) updateUser(currentUsername string, currentPassword string, dbUser dbom.SambaUser, rwSharesUpdate bool, roSharesUpdate bool) (dbom.SambaUser, error) {
 
 	errF := s.db.Transaction(func(tx *gorm.DB) error {
 
@@ -314,15 +320,80 @@ func (s *UserService) updateUser(currentUsername string, currentPassword string,
 			}
 		}
 
+		// Resolve requested shares BEFORE the scalar update: GORM Updates
+		// auto-saves associations and would materialize stub ExportedShare
+		// rows for unknown names, defeating validation below.
+		var resolvedRw, resolvedRo []dbom.ExportedShare
+		if rwSharesUpdate {
+			var err error
+			resolvedRw, err = resolveShares(tx.Statement.Context, tx, dbUser.RwShares)
+			if err != nil {
+				return err
+			}
+		}
+		if roSharesUpdate {
+			var err error
+			resolvedRo, err = resolveShares(tx.Statement.Context, tx, dbUser.RoShares)
+			if err != nil {
+				return err
+			}
+		}
+
 		if _, err := gorm.G[dbom.SambaUser](tx).
 			Where(g.SambaUser.Username.Eq(currentUsername)).
+			Omit("RwShares", "RoShares").
 			Updates(tx.Statement.Context, dbUser); err != nil {
 			return errors.Wrapf(err, "failed to save updated user %s to repository", dbUser.Username)
+		}
+		// The scalar update omits associations (see Omit above): GORM
+		// Updates auto-saves associations append-only, so removals would
+		// silently not persist (hassio-addons#759). Replace is the sole
+		// association writer when the caller supplied a share list.
+		if rwSharesUpdate {
+			if err := tx.Model(&dbom.SambaUser{Username: currentUsername}).Association("RwShares").Replace(resolvedRw); err != nil {
+				return errors.Wrapf(err, "failed to replace rw shares for user %s", currentUsername)
+			}
+			dbUser.RwShares = resolvedRw
+		}
+		if roSharesUpdate {
+			if err := tx.Model(&dbom.SambaUser{Username: currentUsername}).Association("RoShares").Replace(resolvedRo); err != nil {
+				return errors.Wrapf(err, "failed to replace ro shares for user %s", currentUsername)
+			}
+			dbUser.RoShares = resolvedRo
 		}
 		return nil
 	})
 
 	return dbUser, errF
+}
+
+// resolveShares maps requested share stubs to existing ExportedShare rows so
+// Association Replace links rows instead of inserting stub share records.
+// An empty (non-nil) request resolves to an empty slice, which clears the join table.
+func resolveShares(ctx context.Context, tx *gorm.DB, requested []dbom.ExportedShare) ([]dbom.ExportedShare, error) {
+	if len(requested) == 0 {
+		return []dbom.ExportedShare{}, nil
+	}
+	names := make([]string, 0, len(requested))
+	for _, share := range requested {
+		names = append(names, share.Name)
+	}
+	var existing []dbom.ExportedShare
+	if err := tx.WithContext(ctx).Where("name IN ?", names).Find(&existing).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to resolve shares for user update")
+	}
+	if len(existing) != len(names) {
+		found := make(map[string]struct{}, len(existing))
+		for _, share := range existing {
+			found[share.Name] = struct{}{}
+		}
+		for _, name := range names {
+			if _, ok := found[name]; !ok {
+				return nil, errors.WithMessagef(dto.ErrorShareNotFound, "share %s not found", name)
+			}
+		}
+	}
+	return existing, nil
 }
 
 func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
@@ -338,13 +409,17 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	originalAdminUsername := dbUser.Username
 	originalAdminPassword := dbUser.Password
 
+	// See UpdateUser: nil means untouched, non-nil (even empty) replaces.
+	rwSharesUpdate := userDto.RwShares != nil
+	roSharesUpdate := userDto.RoShares != nil
+
 	var conv converter.DtoToDbomConverterImpl
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
 		return nil, errors.Wrap(err, "failed to convert admin DTO to DBOM")
 	}
 	dbUser.IsAdmin = true // Ensure admin status
 
-	dbUser, err = s.updateUser(originalAdminUsername, originalAdminPassword, dbUser) // Update the user and handle renaming if needed
+	dbUser, err = s.updateUser(originalAdminUsername, originalAdminPassword, dbUser, rwSharesUpdate, roSharesUpdate) // Update the user and handle renaming if needed
 	if err != nil {
 		return nil, err
 	}
