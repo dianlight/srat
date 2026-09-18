@@ -40,17 +40,20 @@ jobs:
           set -euo pipefail
 
           # Open hassio-addons issues (the issues API also returns PRs — dropped below).
+          # NOTE: --paginate emits one JSON array per page, so merge with jq -s 'add'.
           gh api --paginate "/repos/dianlight/hassio-addons/issues?state=open&per_page=100" \
             --jq '[.[] | {number, title, body: (.body // ""), user: .user.login,
                            labels: [.labels[].name], created_at, html_url,
                            is_pr: (has("pull_request"))}]' \
-            > /tmp/addons_issues.json
+            > /tmp/addons_pages.json
+          jq -s 'add' /tmp/addons_pages.json > /tmp/addons_issues.json
 
           # Open + closed srat issues (title + body only — enough for reference matching).
           gh api --paginate "/repos/dianlight/srat/issues?state=all&per_page=100" \
             --jq '[.[] | select(has("pull_request") | not)
                            | {number, text: ((.title // "") + "\n" + (.body // ""))}]' \
-            > /tmp/srat_issues.json
+            > /tmp/srat_pages.json
+          jq -s 'add' /tmp/srat_pages.json > /tmp/srat_issues.json
 
           ORPHANS_JSON="$(python3 - <<'PYEOF'
           import json
