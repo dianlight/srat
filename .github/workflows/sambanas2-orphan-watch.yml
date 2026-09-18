@@ -216,6 +216,8 @@ jobs:
 
             ## Read-only constraints (strict)
             - Do NOT comment on any issue, do NOT open issues or PRs, do NOT push, do NOT commit.
+            - Do NOT run any `git` command (add, commit, status, diff, log — none).
+              Just write the report file and exit 0; committing is a failure.
             - You may run `gh issue view` / `gh api` reads and `grep`/`rg` reads only.
             - Write your triage report to `orphan-triage.md` in the workspace root
               (workspace writes are permitted; never write outside the workspace
