@@ -21,6 +21,7 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
+    - [Advertise to Home Assistant](#advertise-to-home-assistant)
     - [Use Home Assistant mDNS Proxy](#use-home-assistant-mdns-proxy)
     - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
     - [Configuration Change Detection](#configuration-change-detection)
@@ -173,6 +174,15 @@ This document provides detailed information about all SRAT settings available in
 - **Type**: Boolean
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
+
+### Advertise to Home Assistant
+
+- **Type**: Boolean
+- **Default**: `false`
+- **Description**: When enabled, the add-on advertises itself via Supervisor discovery so the SRAT custom component can discover it automatically. Only enable this after installing the custom component. When disabled (default), no discovery message is sent, so Home Assistant never attempts a `srat` config flow and never logs "Cannot find integration srat" on restart.
+- **Requirements**: The SRAT custom component must be installed for discovery to succeed
+- **UI Location**: Settings → HomeAssistant → Advertise to Home Assistant
+- **API Field**: `enable_ha_discovery` (boolean)
 
 ### Use Home Assistant mDNS Proxy
 
