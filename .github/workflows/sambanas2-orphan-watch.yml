@@ -195,6 +195,16 @@ jobs:
             echo "> Check the select-model step log, then re-run."
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Configure git identity safety net
+        # The triage agent is instructed never to commit, but if it does anyway
+        # a missing identity makes `git commit` exit 128 and fail the step.
+        # A configured identity keeps the step exit code 0 so the report still
+        # publishes. Nothing is pushed: this job has no push step and the
+        # runner workspace is ephemeral.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run opencode triage
         id: triage
         if: steps.resolve.outcome == 'success'
