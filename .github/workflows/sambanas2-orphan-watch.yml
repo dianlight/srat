@@ -138,13 +138,13 @@ jobs:
             else
               echo "| Issue | Author | Created | Labels |"
               echo "| --- | --- | --- | --- |"
-              echo "$ORPHANS_JSON" | python3 -c '
+              python3 - "$ORPHANS_JSON" <<'PYEOF'
           import json, sys
-          for o in json.load(sys.stdin):
+          for o in json.loads(sys.argv[1]):
               labels = ", ".join(o["labels"]) or "—"
-              print(f"| [#{o[\"number\"]}]({o[\"url\"]}) {o[\"title\"]} "
-                    f"| {o[\"author\"]} | {o[\"created_at\"][:10]} | {labels} |")
-          '
+              print(f"| [#{o['number']}]({o['url']}) {o['title']} "
+                    f"| {o['author']} | {o['created_at'][:10]} | {labels} |")
+          PYEOF
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
