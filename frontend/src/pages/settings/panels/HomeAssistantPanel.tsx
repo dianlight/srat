@@ -68,6 +68,31 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
         />
       </Tooltip>
 
+      {/* Advertise to Home Assistant via Supervisor discovery */}
+      <Tooltip
+        title={
+          <>
+            <Typography variant="h6" component="div">
+              Advertise to Home Assistant
+            </Typography>
+            <Typography variant="body2">
+              If enabled, the add-on advertises itself via Supervisor discovery
+              so the SRAT custom component can auto-discover it. Only enable
+              this after installing the custom component, otherwise Home
+              Assistant logs &quot;Cannot find integration srat&quot; on every
+              restart.
+            </Typography>
+          </>
+        }
+      >
+        <SettingSwitchRow
+          ariaLabel="Advertise to Home Assistant"
+          label="Advertise to Home Assistant"
+          name="enable_ha_discovery"
+          {...commonProps}
+        />
+      </Tooltip>
+
       {/* Use NFS (remote env only) — beta lab feature, reactive to the
           in-form Lab Mode switch (matches backend: beta available ⟺
           experimental_lab_mode). */}
