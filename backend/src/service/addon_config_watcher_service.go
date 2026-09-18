@@ -44,6 +44,7 @@ type AddonConfigWatcherService struct {
 	wsClient        websocket.ClientInterface
 	eventBus        events.EventBusInterface
 	problemService  ProblemServiceInterface
+	settingService  SettingServiceInterface
 	haService       HomeAssistantServiceInterface
 	watchCtx        context.Context
 	watchCancel     context.CancelFunc
@@ -85,6 +86,7 @@ type AddonConfigWatcherServiceParams struct {
 	AddonsClient   apps.ClientWithResponsesInterface `optional:"true"`
 	EventBus       events.EventBusInterface
 	ProblemService ProblemServiceInterface       `optional:"true"`
+	SettingService SettingServiceInterface       `optional:"true"`
 	HAService      HomeAssistantServiceInterface `optional:"true"`
 	WsClient       websocket.ClientInterface     `optional:"true"`
 }
@@ -103,6 +105,7 @@ func NewAddonConfigWatcherService(lc fx.Lifecycle, params AddonConfigWatcherServ
 		wsClient:        params.WsClient,
 		eventBus:        params.EventBus,
 		problemService:  params.ProblemService,
+		settingService:  params.SettingService,
 		haService:       params.HAService,
 		pollInterval:    60 * time.Second,
 		optionsFilePath: config.AddonOptionsFilePath,
@@ -439,6 +442,17 @@ func (s *AddonConfigWatcherService) emitChanged(path, hash string) {
 	const repairID = "addon_config_changed"
 
 	if s.problemService != nil {
+		// Permanent ignore: never raise again until dismissed/re-enabled.
+		if existing, err := s.problemService.Get(repairID); err == nil && existing != nil && existing.Ignored {
+			return
+		}
+		// Alert disabled in the Alerts settings category: dismiss and stay silent.
+		if s.settingService != nil {
+			if settings, err := s.settingService.Load(); err == nil && !AlertEnabledForKey(settings, repairID) {
+				_ = s.problemService.Dismiss(repairID)
+				return
+			}
+		}
 		_, err := s.problemService.Upsert(&dto.Problem{
 			ProblemKey:     repairID,
 			Title:          "Addon configuration changed externally",

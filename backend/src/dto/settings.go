@@ -40,6 +40,18 @@ type Settings struct {
 	// "old" (addons, addon_configs), "new" (local_apps, app_configs), or
 	// "both". Defaults to both for backward compatibility.
 	StandardShareNames StandardShareNamesMode `json:"standard_share_names" enum:"old,new,both" default:"both"`
+	// AlertProtectedMode enables the protected_mode problem/HA repair alert.
+	// Nil means "missing" and defaults to true. Setting it to false
+	// permanently suppresses the alert until re-enabled.
+	AlertProtectedMode *bool `json:"alert_protected_mode,omitempty" default:"true"`
+	// AlertAddonConfigChanged enables the addon_config_changed problem/HA alert.
+	// Nil means "missing" and defaults to true.
+	AlertAddonConfigChanged *bool `json:"alert_addon_config_changed,omitempty" default:"true"`
+	// AlertCustomComponent enables custom-component problems
+	// (custom_component_restart_required, custom_component_missing).
+	// Nil means "missing" and defaults to true. The alerts are additionally
+	// gated by experimental lab mode (see IsHaCustomComponentLabEnabled).
+	AlertCustomComponent *bool `json:"alert_custom_component,omitempty" default:"true"`
 }
 
 // SmartEnabled reports whether SMART integration is enabled.
@@ -50,4 +62,32 @@ func (s *Settings) SmartEnabled() bool {
 		return true
 	}
 	return *s.SmartOn
+}
+
+// ProtectedModeAlertEnabled reports whether the protected_mode alert may be
+// raised. A nil setting means "missing" and defaults to true.
+func (s *Settings) ProtectedModeAlertEnabled() bool {
+	if s == nil || s.AlertProtectedMode == nil {
+		return true
+	}
+	return *s.AlertProtectedMode
+}
+
+// AddonConfigChangedAlertEnabled reports whether the addon_config_changed
+// alert may be raised. A nil setting means "missing" and defaults to true.
+func (s *Settings) AddonConfigChangedAlertEnabled() bool {
+	if s == nil || s.AlertAddonConfigChanged == nil {
+		return true
+	}
+	return *s.AlertAddonConfigChanged
+}
+
+// CustomComponentAlertEnabled reports whether custom-component alerts
+// (custom_component_restart_required, custom_component_missing) may be
+// raised. A nil setting means "missing" and defaults to true.
+func (s *Settings) CustomComponentAlertEnabled() bool {
+	if s == nil || s.AlertCustomComponent == nil {
+		return true
+	}
+	return *s.AlertCustomComponent
 }

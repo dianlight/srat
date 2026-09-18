@@ -108,6 +108,7 @@ _REQUIRED_ISSUE_KEYS = frozenset(
         "custom_component_restart_required",
         "custom_component_missing",
         "addon_config_changed",
+        "protected_mode",
     }
 )
 

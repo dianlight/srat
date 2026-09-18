@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -23,13 +24,17 @@ import (
 )
 
 type stubLabSettingService struct {
-	labMode bool
-	loadErr tozderrors.E
+	labMode  bool
+	loadErr  tozderrors.E
+	settings *dto.Settings
 }
 
 func (s *stubLabSettingService) Load() (*dto.Settings, tozderrors.E) {
 	if s.loadErr != nil {
 		return nil, s.loadErr
+	}
+	if s.settings != nil {
+		return s.settings, nil
 	}
 	return &dto.Settings{ExperimentalLabMode: s.labMode}, nil
 }
@@ -244,6 +249,43 @@ func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair
 	_, _ = mock.Verify(suite.problemSvc, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
 }
 
+func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_SkipsWhenAlertDisabled() {
+	suite.settingStub.settings = &dto.Settings{ExperimentalLabMode: true, AlertCustomComponent: new(false)}
+	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_restart_required"))).ThenReturn(nil)
+
+	err := suite.service.UpsertRestartRequiredRepair(context.Background())
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+	_ = mock.Verify(suite.problemSvc, matchers.Times(1)).Dismiss(mock.Exact("custom_component_restart_required"))
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair_SkipsIgnoredProblem() {
+	mock.When(suite.problemSvc.Get(mock.Exact("custom_component_restart_required"))).ThenReturn(
+		&dto.Problem{ProblemKey: "custom_component_restart_required", Ignored: true}, nil,
+	)
+
+	err := suite.service.UpsertRestartRequiredRepair(context.Background())
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_SkipsIgnoredMissingIssue() {
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed: false,
+		Connected: false,
+	}
+	mock.When(suite.problemSvc.Get(mock.Exact("custom_component_missing"))).ThenReturn(
+		&dto.Problem{ProblemKey: "custom_component_missing", Ignored: true}, nil,
+	)
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}
+
 func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_UsesProblemService() {
 	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_restart_required"))).ThenReturn(nil)
 
@@ -251,6 +293,13 @@ func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepai
 	suite.Require().NoError(err)
 
 	_ = mock.Verify(suite.problemSvc, matchers.Times(1)).Dismiss(mock.Exact("custom_component_restart_required"))
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestDismissRestartRequiredRepair_PropagatesError() {
+	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_restart_required"))).ThenReturn(errors.New("db down"))
+
+	err := suite.service.DismissRestartRequiredRepair(context.Background())
+	suite.Require().Error(err)
 }
 
 // TestGetStatus_CanUpgrade_NotInstalledIsFalse verifies CanUpgrade is false when not installed.

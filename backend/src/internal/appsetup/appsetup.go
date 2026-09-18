@@ -112,6 +112,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewSmartService,
 			service.NewProblemService,
 			service.NewProblemHABridge,
+			service.NewProtectedModeAlertService,
 			service.NewRepairService,
 			service.NewMDNSService,
 			service.NewAddonConfigWatcherService,
@@ -127,6 +128,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
 		fx.Invoke(func(service.ProblemHABridgeInterface) {}),
+		fx.Invoke(func(service.ProtectedModeAlertServiceInterface) {}),
 		fx.Invoke(func(commandRunner commandexec.Executor) {
 			servicefilesystem.SetDefaultCommandRunner(commandRunner)
 			unixsamba.SetCommandRunner(commandRunner)

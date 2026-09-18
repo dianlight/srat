@@ -87,6 +87,22 @@ describe("IssueCard Component", () => {
         expect(screen.getByText("Ignored")).toBeTruthy();
     });
 
+    it("hides server-ignored issues when showIgnored is false without local seed", async () => {
+        await renderIssueCard(
+            {
+                id: 10,
+                problem_key: "protected_mode",
+                title: "Server Ignored Issue",
+                description: "This issue is ignored server-side",
+                severity: "error",
+                ignored: true,
+            },
+            { showIgnored: false }
+        );
+
+        expect(screen.queryByText("Server Ignored Issue")).toBeNull();
+    });
+
     it("hides ignored issues when showIgnored is false", async () => {
         localStorage.setItem("srat_ignored_issues", JSON.stringify(["test_ignored_issue_9"]));
 
@@ -122,5 +138,76 @@ describe("IssueCard Component", () => {
 
         await user.click(screen.getByRole("button", { name: /resolve/i }));
         expect(resolved).toBe(true);
+    });
+
+    it("shows ignore button when handler is provided", async () => {
+        await renderIssueCard(
+            {
+                id: 10,
+                problem_key: "protected_mode",
+                title: "Addon in Protected Mode",
+                description: "Protected mode is on",
+                severity: "error",
+                ignored: false,
+            },
+            { onResolve: () => {}, onIgnore: () => {} }
+        );
+
+        expect(screen.getByRole("button", { name: /^ignore$/i })).toBeTruthy();
+    });
+
+    it("invokes ignore action with the issue when clicked", async () => {
+        const user = userEvent.setup();
+        let ignoredIssue: unknown = null;
+        const issue = {
+            id: 11,
+            problem_key: "protected_mode",
+            title: "Addon in Protected Mode",
+            description: "Protected mode is on",
+            severity: "error",
+            ignored: false,
+        };
+
+        await renderIssueCard(issue, { onIgnore: (value: unknown) => { ignoredIssue = value; } });
+
+        await user.click(screen.getByRole("button", { name: /^ignore$/i }));
+        expect(ignoredIssue).toMatchObject({ problem_key: "protected_mode" });
+    });
+
+    it("shows re-enable button for ignored issues when handler is provided", async () => {
+        const user = userEvent.setup();
+        let reenabled = "";
+        localStorage.setItem("srat_ignored_issues", JSON.stringify([]));
+
+        await renderIssueCard(
+            {
+                id: 12,
+                problem_key: "protected_mode",
+                title: "Addon in Protected Mode",
+                description: "Protected mode is on",
+                severity: "error",
+                ignored: true,
+            },
+            { showIgnored: true, onReenable: (id: unknown) => { reenabled = String(id); } }
+        );
+
+        await user.click(screen.getByRole("button", { name: /re-enable/i }));
+        expect(reenabled).toBe("protected_mode");
+    });
+
+    it("hides ignore button for ignored issues", async () => {
+        await renderIssueCard(
+            {
+                id: 13,
+                problem_key: "protected_mode",
+                title: "Addon in Protected Mode",
+                description: "Protected mode is on",
+                severity: "error",
+                ignored: true,
+            },
+            { showIgnored: true, onIgnore: () => {} }
+        );
+
+        expect(screen.queryByRole("button", { name: /^ignore$/i })).toBeNull();
     });
 });

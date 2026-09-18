@@ -702,6 +702,66 @@ func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DuplicateProblemUpsert_
 	s.Require().Len(problemSvc.upserts, 2)
 }
 
+// TestEmitChanged_SkipsIgnoredProblem verifies a permanently ignored
+// addon_config_changed problem is never re-raised.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_SkipsIgnoredProblem() {
+	ctx := context.Background()
+	problemSvc := &stubProblemService{
+		existing: &dto.Problem{ProblemKey: "addon_config_changed", Ignored: true},
+	}
+	svc := &AddonConfigWatcherService{
+		ctx:            ctx,
+		problemService: problemSvc,
+	}
+	svc.emitChanged("/data/options.json", "abc123")
+
+	s.Empty(problemSvc.upserts)
+}
+
+// TestEmitChanged_DismissesWhenAlertDisabled verifies no problem is raised
+// when the alert is disabled in the Alerts settings category.
+func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_DismissesWhenAlertDisabled() {
+	ctx := context.Background()
+	problemSvc := &stubProblemService{}
+	dismissed := []string{}
+	dismissingSvc := &dismissTrackingProblemService{stubProblemService: problemSvc, dismissed: &dismissed}
+	svc := &AddonConfigWatcherService{
+		ctx:            ctx,
+		problemService: dismissingSvc,
+		settingService: &stubWatcherSettings{settings: &dto.Settings{AlertAddonConfigChanged: new(false)}},
+	}
+	svc.emitChanged("/data/options.json", "abc123")
+
+	s.Empty(problemSvc.upserts)
+	s.Equal([]string{"addon_config_changed"}, dismissed)
+}
+
+// dismissTrackingProblemService wraps stubProblemService to record dismissals.
+type dismissTrackingProblemService struct {
+	*stubProblemService
+	dismissed *[]string
+}
+
+func (s *dismissTrackingProblemService) Dismiss(problemKey string) error {
+	*s.dismissed = append(*s.dismissed, problemKey)
+	return nil
+}
+
+// stubWatcherSettings implements SettingServiceInterface with fixed settings.
+type stubWatcherSettings struct {
+	settings *dto.Settings
+}
+
+func (s *stubWatcherSettings) Load() (*dto.Settings, errors.E) {
+	return s.settings, nil
+}
+
+func (s *stubWatcherSettings) UpdateSettings(*dto.Settings) errors.E { return nil }
+
+func (s *stubWatcherSettings) SetCommandExists(func(cmd []string) bool) {}
+
+func (s *stubWatcherSettings) DumpTable() (string, errors.E) { return "", nil }
+
 // TestEmitChanged_FallsBackToNotification verifies that CreatePersistentNotification
 // is called with the correct arguments when problemService is nil.
 func (s *AddonConfigWatcherServiceSuite) TestEmitChanged_FallsBackToNotification() {
@@ -724,7 +784,8 @@ type stubHAService struct {
 }
 
 type stubProblemService struct {
-	upserts []*dto.Problem
+	upserts  []*dto.Problem
+	existing *dto.Problem
 }
 
 func (s *stubProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) {
@@ -738,6 +799,10 @@ func (s *stubProblemService) Upsert(problem *dto.Problem) (*dto.Problem, error) 
 func (s *stubProblemService) Dismiss(problemKey string) error { return nil }
 
 func (s *stubProblemService) Get(problemKey string) (*dto.Problem, error) {
+	if s.existing != nil && s.existing.ProblemKey == problemKey {
+		clone := *s.existing
+		return &clone, nil
+	}
 	return nil, dto.ErrorNotFound
 }
 

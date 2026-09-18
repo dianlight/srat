@@ -197,3 +197,46 @@ func (suite *ProblemHandlerSuite) TestExecuteProblemActionSuccess() {
 		mock.Any[*string](),
 	)
 }
+
+func (suite *ProblemHandlerSuite) TestPutProblemByKeyReenable() {
+	ignored := sampleProblem()
+	ignored.ProblemKey = "protected_mode"
+	ignored.Ignored = true
+	ignored.Status = dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED
+	reenabled := sampleProblem()
+	reenabled.ProblemKey = "protected_mode"
+	reenabled.Ignored = false
+	reenabled.Status = dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED
+
+	mock.When(suite.mockProblem.Get(mock.Exact("protected_mode"))).ThenReturn(ignored, nil)
+	mock.When(
+		suite.mockProblem.ApplyLifecycle(
+			mock.Exact("protected_mode"),
+			mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED),
+			mock.Any[*string](),
+		),
+	).ThenReturn(reenabled, nil)
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterProblemHandler(apiInst)
+
+	resp := apiInst.Put("/problems/protected_mode", map[string]any{
+		"id":          0,
+		"problem_key": "protected_mode",
+		"title":       "Addon in Protected Mode",
+		"description": "desc",
+		"severity":    "error",
+		"status":      "created",
+		"repeating":   0,
+		"ignored":     false,
+		"created_at":  time.Now().Format(time.RFC3339),
+		"updated_at":  time.Now().Format(time.RFC3339),
+	})
+	suite.Require().Equal(http.StatusOK, resp.Code)
+	_, _ = mock.Verify(suite.mockProblem, matchers.Times(1)).ApplyLifecycle(
+		mock.Exact("protected_mode"),
+		mock.Exact(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED),
+		mock.Any[*string](),
+	)
+	_, _ = mock.Verify(suite.mockProblem, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}

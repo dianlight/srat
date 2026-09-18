@@ -234,6 +234,27 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	*/
 }
 
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_SyncsComponentIssueWhenLabOff() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{Installed: false, Connected: false}
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Exact(status))).ThenReturn(nil)
+
+	labOff := false
+	rr := api.Put("/settings", dto.Settings{
+		Hostname:            "test-host",
+		Workgroup:           "WORKGROUP",
+		ExperimentalLabMode: labOff,
+	})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Exact(status))
+}
+
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_RejectsEmptyHostnameWorkgroup() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)

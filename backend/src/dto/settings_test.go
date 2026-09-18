@@ -188,3 +188,51 @@ func TestSettings_ExperimentalLabMode_TrueIsSerializedToJSON(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"experimental_lab_mode":true`)
 }
+
+func TestSettings_AlertHelpersDefaultEnabled(t *testing.T) {
+	var nilSettings *dto.Settings
+	assert.True(t, nilSettings.ProtectedModeAlertEnabled())
+	assert.True(t, nilSettings.AddonConfigChangedAlertEnabled())
+	assert.True(t, nilSettings.CustomComponentAlertEnabled())
+
+	empty := &dto.Settings{}
+	assert.True(t, empty.ProtectedModeAlertEnabled())
+	assert.True(t, empty.AddonConfigChangedAlertEnabled())
+	assert.True(t, empty.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertHelpersRespectToggles(t *testing.T) {
+	settings := &dto.Settings{
+		AlertProtectedMode:      new(false),
+		AlertAddonConfigChanged: new(true),
+		AlertCustomComponent:    new(false),
+	}
+	assert.False(t, settings.ProtectedModeAlertEnabled())
+	assert.True(t, settings.AddonConfigChangedAlertEnabled())
+	assert.False(t, settings.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertDefaults(t *testing.T) {
+	settings := dto.Settings{}
+
+	err := defaults.Set(&settings)
+	require.NoError(t, err)
+
+	require.NotNil(t, settings.AlertProtectedMode)
+	assert.True(t, *settings.AlertProtectedMode)
+	require.NotNil(t, settings.AlertAddonConfigChanged)
+	assert.True(t, *settings.AlertAddonConfigChanged)
+	require.NotNil(t, settings.AlertCustomComponent)
+	assert.True(t, *settings.AlertCustomComponent)
+	assert.True(t, settings.ProtectedModeAlertEnabled())
+	assert.True(t, settings.AddonConfigChangedAlertEnabled())
+	assert.True(t, settings.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertProtectedMode_FalseIsSerializedToJSON(t *testing.T) {
+	settings := dto.Settings{AlertProtectedMode: new(false)}
+	data, err := json.Marshal(settings)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"alert_protected_mode":false`,
+		"alert_protected_mode:false must be present in JSON (pointer omitempty keeps explicit false)")
+}

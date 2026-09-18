@@ -160,3 +160,70 @@ func (suite *ProblemServiceSuite) TestApplyLifecycleMissing() {
 	_, err := suite.svc.ApplyLifecycle("missing_key", dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSERROR, nil)
 	suite.Require().Error(err)
 }
+
+func (suite *ProblemServiceSuite) TestUpsertPreservesStoredIgnore() {
+	_, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignore_sticky_key",
+		Title:      "Sticky",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+		Ignored:    true,
+	})
+	suite.Require().NoError(err)
+
+	// A re-emit without the ignore flag must not clear the stored ignore.
+	updated, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignore_sticky_key",
+		Title:      "Sticky",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYWARNING,
+	})
+	suite.Require().NoError(err)
+	suite.True(updated.Ignored)
+}
+
+func (suite *ProblemServiceSuite) TestUpsertHonorsExplicitIgnoredStatus() {
+	_, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignore_explicit_key",
+		Title:      "Explicit",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+	})
+	suite.Require().NoError(err)
+
+	updated, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignore_explicit_key",
+		Title:      "Explicit",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+		Status:     dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED,
+		Ignored:    true,
+	})
+	suite.Require().NoError(err)
+	suite.True(updated.Ignored)
+	suite.Equal(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED, updated.Status)
+}
+
+func (suite *ProblemServiceSuite) TestApplyLifecycleIgnoredSetsFlag() {
+	_, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "ignore_lifecycle_key",
+		Title:      "Lifecycle ignore",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+	})
+	suite.Require().NoError(err)
+
+	p, err := suite.svc.ApplyLifecycle("ignore_lifecycle_key", dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED, nil)
+	suite.Require().NoError(err)
+	suite.True(p.Ignored)
+	suite.Equal(dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED, p.Status)
+}
+
+func (suite *ProblemServiceSuite) TestApplyLifecycleCreatedClearsFlag() {
+	_, err := suite.svc.Upsert(&dto.Problem{
+		ProblemKey: "unignore_lifecycle_key",
+		Title:      "Lifecycle unignore",
+		Severity:   dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+		Ignored:    true,
+	})
+	suite.Require().NoError(err)
+
+	p, err := suite.svc.ApplyLifecycle("unignore_lifecycle_key", dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED, nil)
+	suite.Require().NoError(err)
+	suite.False(p.Ignored)
+}
