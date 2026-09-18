@@ -30,6 +30,12 @@ type Settings struct {
 	// Assistant custom component proxy, false uses SRAT's direct zeroconf
 	// registration. Defaults to true (component) for backward compatibility.
 	UseComponentMDNSProxy *bool `json:"use_component_mdns_proxy,omitempty" default:"true"`
+	// EnableHaDiscovery gates Supervisor discovery advertisement for the SRAT
+	// custom component. When false (default), no discovery message is sent so
+	// Home Assistant never attempts a `srat` config flow — avoiding
+	// "Cannot find integration srat" (dianlight/hassio-addons#758) for
+	// addon-only users. Enable only after installing the custom component.
+	EnableHaDiscovery *bool `json:"enable_ha_discovery,omitempty" default:"false"`
 	// StandardShareNames controls which standard share names Samba exposes:
 	// "old" (addons, addon_configs), "new" (local_apps, app_configs), or
 	// "both". Defaults to both for backward compatibility.
