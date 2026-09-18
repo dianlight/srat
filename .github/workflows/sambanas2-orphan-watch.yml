@@ -217,7 +217,9 @@ jobs:
             ## Read-only constraints (strict)
             - Do NOT comment on any issue, do NOT open issues or PRs, do NOT push, do NOT commit.
             - You may run `gh issue view` / `gh api` reads and `grep`/`rg` reads only.
-            - Write your triage report to /tmp/orphan-triage.md and exit 0.
+            - Write your triage report to `orphan-triage.md` in the workspace root
+              (workspace writes are permitted; never write outside the workspace
+              — permission prompts hang the runner) and exit 0.
 
             ## Task
             Work quickly: fetch each issue body once, scan only `docs/tasks/*.md`
@@ -242,12 +244,12 @@ jobs:
       - name: Publish triage report
         if: steps.triage.outcome == 'success'
         run: |
-          if [[ -f /tmp/orphan-triage.md ]]; then
+          if [[ -f orphan-triage.md ]]; then
             {
               echo ""
               echo "## AI triage"
               echo ""
-              cat /tmp/orphan-triage.md
+              cat orphan-triage.md
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Triage ran but produced no report file." >> "$GITHUB_STEP_SUMMARY"
