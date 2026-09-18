@@ -69,7 +69,7 @@ type ConfigToDtoConverter interface {
 	// goverter:update:ignoreZeroValueField no
 	// goverter:map TelemetryMode TelemetryMode | github.com/dianlight/srat/dto:ParseTelemetryMode
 	// goverter:map . SmartOn | configSmartOnFromConfig
-	// goverter:ignore HASmbPassword ExperimentalLabMode StandardShareNames AlertProtectedMode AlertAddonConfigChanged AlertCustomComponent
+	// goverter:ignore HASmbPassword ExperimentalLabMode StandardShareNames EnableHaDiscovery AlertProtectedMode AlertAddonConfigChanged AlertCustomComponent
 	ConfigToSettings(source config.Config, target *dto.Settings) error
 
 	// g.overter:update target

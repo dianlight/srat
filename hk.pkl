@@ -1,5 +1,5 @@
-amends "package://github.com/jdx/hk/releases/download/v1.43.0/hk@1.43.0#/Config.pkl"
-import "package://github.com/jdx/hk/releases/download/v1.43.0/hk@1.43.0#/Builtins.pkl"
+amends "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.0.1/hk@2.0.1#/Builtins.pkl"
 
 local linters = new Mapping<String, Step> {
 
@@ -70,12 +70,8 @@ local linters = new Mapping<String, Step> {
         //glob = "**/*.ts"
     }
 
-    ["shellcheck"] = (Builtins.shellcheck) {
-        glob = "**/*.sh"
-    }
-    ["shfmt"] = (Builtins.shfmt) {
-        glob = "**/*.sh"
-    }   
+    ["shellcheck"] = Builtins.shellcheck
+    ["shfmt"] = Builtins.shfmt
 
     ["taplo"] = Builtins.taplo
     ["taplo-format"] = Builtins.taplo_format
