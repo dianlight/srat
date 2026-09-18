@@ -47,3 +47,7 @@ __screenshots__/
 frontend_test_output.txt
 .playwright-mcp/
 .cursor/
+
+# Local agent/tool artifacts
+.playwright-cli/
+.openchamber/
