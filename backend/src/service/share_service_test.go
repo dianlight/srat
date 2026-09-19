@@ -1742,6 +1742,72 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 	suite.Equal(secondShareName, secondShare.Name)
 }
 
+// TestUpdateShareDisablesBooleanFlags asserts that boolean share flags can be
+// turned back OFF via UpdateShare (issue #1191). GORM Updates with a struct
+// value skips zero-values, silently dropping false booleans.
+func (suite *ShareServiceSuite) TestUpdateShareDisablesBooleanFlags() {
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	initialShare := dto.SharedResource{
+		Name:        "bool-toggle-share-1191",
+		Disabled:    new(false),
+		GuestOk:     new(true),
+		TimeMachine: new(true),
+		RecycleBin:  new(true),
+		Usage:       "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/bool-toggle-1191",
+			DeviceId:  "booltoggle1191dev",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(initialShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+	suite.Require().True(*created.GuestOk)
+	suite.Require().True(*created.TimeMachine)
+	suite.Require().True(*created.RecycleBin)
+
+	updatedShare := dto.SharedResource{
+		Name:        "bool-toggle-share-1191",
+		Disabled:    new(false),
+		GuestOk:     new(false),
+		TimeMachine: new(false),
+		RecycleBin:  new(false),
+		Usage:       "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/bool-toggle-1191",
+			DeviceId:  "booltoggle1191dev",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	result, err := suite.shareService.UpdateShare("bool-toggle-share-1191", updatedShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+	suite.False(*result.GuestOk, "GuestOk should be updated to false")
+	suite.False(*result.TimeMachine, "TimeMachine should be updated to false")
+	suite.False(*result.RecycleBin, "RecycleBin should be updated to false")
+
+	reloaded, err := suite.shareService.GetShare("bool-toggle-share-1191")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(reloaded)
+	suite.False(*reloaded.GuestOk, "GuestOk should persist false on reload")
+	suite.False(*reloaded.TimeMachine, "TimeMachine should persist false on reload")
+	suite.False(*reloaded.RecycleBin, "RecycleBin should persist false on reload")
+}
+
 // Helper functions
 //
 //go:fix inline

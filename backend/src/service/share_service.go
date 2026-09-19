@@ -464,8 +464,13 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 			return errors.Wrap(err, "failed to clear RoUsers associations during update")
 		}
 
+		// Select the scalar columns explicitly so zero-values (e.g. false
+		// booleans, empty strings) are persisted. GORM Updates with a struct
+		// value skips zero-value fields, which made boolean share flags
+		// (GuestOk, TimeMachine, RecycleBin) enable-only (issue #1191).
 		if err := tx.Model(&currentShare).
 			Omit("Users", "RoUsers").
+			Select("Name", "Disabled", "VetoFiles", "TimeMachine", "RecycleBin", "GuestOk", "TimeMachineMaxSize", "Usage", "MountPointDataPath", "MountPointDataRoot").
 			Updates(&dbShare).Error; err != nil {
 			return err
 		}
