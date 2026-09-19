@@ -914,6 +914,35 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_RenameSuccess() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
+func (suite *UserServiceSuite) TestUpdateAdminUser_RenameWithoutPassword_KeepsExisting() {
+	// Arrange: rename the admin without supplying a password (issue #1198).
+	oldAdminName := fmt.Sprintf("oldadminnopwd%d", time.Now().UnixNano())
+	newAdminName := fmt.Sprintf("newadminnopwd%d", time.Now().UnixNano())
+	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "is_admin = ?", true).Error)
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: oldAdminName,
+		Password: new(dto.NewSecret("oldpassword")),
+		IsAdmin:  true,
+	})
+	suite.Require().NoError(err)
+
+	// Act: minimal rename payload with no password.
+	updatedAdmin, err := suite.userService.UpdateAdminUser(dto.User{
+		Username: newAdminName,
+		IsAdmin:  true,
+	})
+
+	// Assert: rename succeeds and the stored password is preserved.
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedAdmin)
+	suite.Equal(newAdminName, updatedAdmin.Username)
+	suite.True(updatedAdmin.IsAdmin)
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", newAdminName).First(&persistedUser).Error)
+	suite.Equal("oldpassword", persistedUser.Password)
+}
+
 func (suite *UserServiceSuite) TestUpdateAdminUser_RenameToExistingUser() {
 	// Arrange
 	newAdminName := "existinguser"
