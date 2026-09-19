@@ -7,6 +7,8 @@ export function UserEditDialog(props: {
   onClose: (data?: UsersProps) => void;
   objectToEdit?: UsersProps;
   availableShares?: string[];
+  disabledShares?: string[];
+  hiddenShares?: string[];
 }) {
   function handleCloseSubmit(data: UsersProps) {
     props.onClose(data);
@@ -26,6 +28,8 @@ export function UserEditDialog(props: {
       <UserEditForm
         userData={props.objectToEdit}
         availableShares={props.availableShares}
+        disabledShares={props.disabledShares}
+        hiddenShares={props.hiddenShares}
         onSubmit={handleCloseSubmit}
         onCancel={handleCancel}
       />

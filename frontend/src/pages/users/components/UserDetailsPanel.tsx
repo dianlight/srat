@@ -34,6 +34,10 @@ interface UserDetailsPanelProps {
   isEditing?: boolean;
   readOnly?: boolean;
   children?: React.ReactNode;
+  /** Names of disabled shares: rendered muted to separate them from enabled ones. */
+  disabledShares?: string[];
+  /** Names of shares hidden by the standard_share_names preference: not displayed. */
+  hiddenShares?: string[];
 }
 
 export function UserDetailsPanel({
@@ -45,6 +49,8 @@ export function UserDetailsPanel({
   isEditing = false,
   readOnly = false,
   children,
+  disabledShares = [],
+  hiddenShares = [],
 }: UserDetailsPanelProps) {
   const [showUserPreview, setShowUserPreview] = useState(false);
   if (!user || !userKey) {
@@ -63,8 +69,15 @@ export function UserDetailsPanel({
     );
   }
 
-  const userRwShares = user.rw_shares || [];
-  const userRoShares = user.ro_shares || [];
+  const hiddenShareNames = new Set(hiddenShares);
+  const disabledShareNames = new Set(disabledShares);
+  const isShareDisabled = (share: string) => disabledShareNames.has(share);
+  const userRwShares = (user.rw_shares || []).filter(
+    (share) => !hiddenShareNames.has(share),
+  );
+  const userRoShares = (user.ro_shares || []).filter(
+    (share) => !hiddenShareNames.has(share),
+  );
 
   return (
     <Box
@@ -181,9 +194,19 @@ export function UserDetailsPanel({
                         <Chip
                           key={share}
                           icon={<FolderSharedIcon />}
-                          label={share}
+                          label={
+                            isShareDisabled(share)
+                              ? `${share} (disabled)`
+                              : share
+                          }
                           variant="outlined"
+                          color={isShareDisabled(share) ? "default" : "success"}
                           size="small"
+                          sx={
+                            isShareDisabled(share)
+                              ? { opacity: 0.6 }
+                              : undefined
+                          }
                         />
                       ))}
                     </Stack>
@@ -228,10 +251,21 @@ export function UserDetailsPanel({
                         <Chip
                           key={share}
                           icon={<FolderSharedIcon />}
-                          label={share}
+                          label={
+                            isShareDisabled(share)
+                              ? `${share} (disabled)`
+                              : share
+                          }
                           variant="outlined"
-                          color="secondary"
+                          color={
+                            isShareDisabled(share) ? "default" : "secondary"
+                          }
                           size="small"
+                          sx={
+                            isShareDisabled(share)
+                              ? { opacity: 0.6 }
+                              : undefined
+                          }
                         />
                       ))}
                     </Stack>

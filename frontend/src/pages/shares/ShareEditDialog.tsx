@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@mui/material";
 import type { SharedResource } from "../../store/sratApi";
+import { Usage } from "../../store/sratApi";
 import { ShareEditForm } from "./components/ShareEditForm";
 import type { ShareEditProps } from "./types";
 
@@ -67,24 +68,26 @@ export function ShareEditDialog(props: ShareEditDialogProps) {
         />
       </DialogContent>
       <DialogActions>
-        {props.objectToEdit?.org_name && props.onDeleteSubmit && (
-          <Button
-            onClick={() => {
-              // Ensure objectToEdit and org_name are valid before calling onDeleteSubmit
-              if (props.objectToEdit?.org_name && props.onDeleteSubmit) {
-                props.onDeleteSubmit(
-                  props.objectToEdit.org_name,
-                  props.objectToEdit,
-                );
-              }
-              handleCloseSubmit(); // Close the dialog
-            }}
-            color="error"
-            variant="outlined"
-          >
-            Delete
-          </Button>
-        )}
+        {props.objectToEdit?.org_name &&
+          props.objectToEdit?.usage !== Usage.Internal &&
+          props.onDeleteSubmit && (
+            <Button
+              onClick={() => {
+                // Ensure objectToEdit and org_name are valid before calling onDeleteSubmit
+                if (props.objectToEdit?.org_name && props.onDeleteSubmit) {
+                  props.onDeleteSubmit(
+                    props.objectToEdit.org_name,
+                    props.objectToEdit,
+                  );
+                }
+                handleCloseSubmit(); // Close the dialog
+              }}
+              color="error"
+              variant="outlined"
+            >
+              Delete
+            </Button>
+          )}
         <Button
           onClick={() => handleCloseSubmit()}
           variant="outlined"

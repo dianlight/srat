@@ -673,20 +673,22 @@ export function ShareEditForm({
           <Box
             sx={{ mt: 3, display: "flex", gap: 1, justifyContent: "flex-end" }}
           >
-            {shareData?.org_name && onDelete && (
-              <Button
-                onClick={() => {
-                  if (shareData?.org_name && onDelete) {
-                    onDelete(shareData.org_name, shareData);
-                  }
-                }}
-                color="error"
-                variant="outlined"
-                size="small"
-              >
-                Delete
-              </Button>
-            )}
+            {shareData?.org_name &&
+              shareData?.usage !== Usage.Internal &&
+              onDelete && (
+                <Button
+                  onClick={() => {
+                    if (shareData?.org_name && onDelete) {
+                      onDelete(shareData.org_name, shareData);
+                    }
+                  }}
+                  color="error"
+                  variant="outlined"
+                  size="small"
+                >
+                  Delete
+                </Button>
+              )}
             <Button
               type="submit"
               variant="contained"

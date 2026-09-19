@@ -264,8 +264,22 @@ export function Users() {
   }, [users.data, handleUserSelect]);
 
   const isReadOnly = evdata?.hello?.read_only || false;
-  const availableShares = ((shares.data as SharedResource[]) || [])
-    .filter((share) => Boolean(share?.name) && !share?.disabled)
+  const sharesList = ((shares.data as SharedResource[]) || []).filter((share) =>
+    Boolean(share?.name),
+  );
+  // Shares hidden by the standard_share_names preference (status.is_hidden)
+  // must not be offered or displayed (mirrors SharesTreeView). This hides the
+  // old/new internal name variants that are not exposed in smb.conf.
+  const hiddenShareNames = sharesList
+    .filter((share) => share?.status?.is_hidden === true)
+    .map((share) => share.name as string);
+  const availableShares = sharesList
+    .filter((share) => share?.status?.is_hidden !== true)
+    .map((share) => share.name as string);
+  // Disabled shares stay selectable but render in a muted color so enabled
+  // vs disabled access is visually separated in both view and edit modes.
+  const disabledShareNames = sharesList
+    .filter((share) => share?.disabled === true)
     .map((share) => share.name as string);
 
   return (
@@ -274,6 +288,8 @@ export function Users() {
       <UserEditDialog
         objectToEdit={createUserData}
         availableShares={availableShares}
+        disabledShares={disabledShareNames}
+        hiddenShares={hiddenShareNames}
         open={showCreateDialog}
         onClose={(data) => {
           if (data) {
@@ -351,6 +367,8 @@ export function Users() {
                 onCancelEdit={() => setShowEdit(false)}
                 isEditing={showEdit}
                 readOnly={isReadOnly}
+                disabledShares={disabledShareNames}
+                hiddenShares={hiddenShareNames}
               >
                 {/* Embedded Edit Form */}
                 <UserEditForm
@@ -360,6 +378,8 @@ export function Users() {
                     doCreate: false,
                   }}
                   availableShares={availableShares}
+                  disabledShares={disabledShareNames}
+                  hiddenShares={hiddenShareNames}
                   onSubmit={(data) => {
                     onSubmitEditUser(data);
                   }}
