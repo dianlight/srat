@@ -271,6 +271,13 @@ func (s *UserService) UpdateUser(currentUsername string, userDto dto.User) (*dto
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
 		return nil, errors.Wrap(err, "failed to convert user DTO to DBOM for update")
 	}
+	// The generated converter unconditionally overwrites Password (nil secret maps
+	// to an empty string), which would discard the stored password and break
+	// renames that reuse it for the Samba re-add. Restore it when the caller
+	// did not supply a new password (issue #1198).
+	if userDto.Password == nil {
+		dbUser.Password = currentPassword
+	}
 
 	dbUser, err = s.updateUser(currentUsername, currentPassword, dbUser, rwSharesUpdate, roSharesUpdate) // Update the user and handle renaming if needed
 	if err != nil {
@@ -416,6 +423,11 @@ func (s *UserService) UpdateAdminUser(userDto dto.User) (*dto.User, error) {
 	var conv converter.DtoToDbomConverterImpl
 	if err := conv.UserToSambaUser(userDto, &dbUser); err != nil {
 		return nil, errors.Wrap(err, "failed to convert admin DTO to DBOM")
+	}
+	// See UpdateUser: the generated converter blanks Password on a nil secret,
+	// so restore the stored password to keep renames working (issue #1198).
+	if userDto.Password == nil {
+		dbUser.Password = originalAdminPassword
 	}
 	dbUser.IsAdmin = true // Ensure admin status
 
