@@ -635,6 +635,89 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 	suite.NoError(err)
 }
 
+func (suite *SmartServiceSuite) TestDisableSMARTSuccessWhenInfoReadFailsAfterDisable() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.DisableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil, fmt.Errorf("SMART is disabled"))
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	var captured events.SmartEvent
+	var emitted bool
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		captured = se
+		emitted = true
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.DisableSMART(suite.T().Context(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.True(emitted, "expected a minimal disabled-state SmartEvent")
+	suite.Equal(tempFile.Name(), captured.SmartInfo.DiskId)
+	suite.False(captured.SmartInfo.Enabled)
+	suite.True(captured.SmartInfo.Supported)
+}
+
+func (suite *SmartServiceSuite) TestDisableSMARTPreservesModelDetailsWhenInfoReadFailsAfterDisable() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	fullInfo := &smartmontools.SMARTInfo{
+		ModelFamily:  "TestFamily",
+		ModelName:    "TestModel",
+		SerialNumber: "SN123",
+		Firmware:     "FW1",
+		SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: true},
+	}
+	calls := 0
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenAnswer(func(args []any) []any {
+			calls++
+			if calls == 1 {
+				return []any{fullInfo, nil}
+			}
+			return []any{nil, fmt.Errorf("SMART is disabled")}
+		})
+
+	_, err := suite.service.GetSmartInfo(suite.T().Context(), tempFile.Name())
+	suite.Require().NoError(err)
+
+	mock.When(suite.smartClient.DisableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
+
+	var captured events.SmartEvent
+	var emitted bool
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		captured = se
+		emitted = true
+		return nil
+	})
+	defer unsubscribe()
+
+	err = suite.service.DisableSMART(suite.T().Context(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.True(emitted, "expected a disabled-state SmartEvent")
+	suite.Equal(tempFile.Name(), captured.SmartInfo.DiskId)
+	suite.False(captured.SmartInfo.Enabled)
+	suite.True(captured.SmartInfo.Supported)
+	suite.Equal("TestFamily", captured.SmartInfo.ModelFamily)
+	suite.Equal("TestModel", captured.SmartInfo.ModelName)
+	suite.Equal("SN123", captured.SmartInfo.SerialNumber)
+	suite.Equal("FW1", captured.SmartInfo.Firmware)
+}
+
 // TestEnableSMART_EventDiskIdMatchesDeviceId verifies that the SmartEvent emitted by
 // EnableSMART carries the canonical deviceId (as passed to the function), not the raw
 // device path returned by the device-to-device mapper.
