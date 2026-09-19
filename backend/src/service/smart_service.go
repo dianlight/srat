@@ -655,6 +655,17 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 	if err := s.client.DisableSMART(ctx, devicePath); err != nil {
 		return errors.Wrapf(err, "failed to disable SMART")
 	}
+	// Capture the last known full info before invalidation so a post-disable
+	// read failure can still emit a disabled event with model details intact.
+	var prevInfo *dto.SmartInfo
+	if s.infoCache != nil {
+		if cached, ok := s.infoCache.Get(deviceId); ok {
+			if entry, castOk := cached.(smartInfoCacheEntry); castOk && entry.info != nil && entry.err == nil {
+				cp := *entry.info
+				prevInfo = &cp
+			}
+		}
+	}
 	s.invalidateSmartInfoCache(deviceId)
 
 	// Verify SMART is now disabled (optional, for informational purposes)
@@ -667,9 +678,35 @@ func (s *smartService) DisableSMART(ctx context.Context, deviceId string) errors
 
 	slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
 
+	// Best-effort refresh: a disabled device is expected to fail GetSMARTInfo,
+	// and that must not turn a successful disable into an error. Emit a
+	// disabled-state event preserving the last known model details so disk
+	// caches observe the new state without a probe and without losing info.
 	smartInfo, err := s.client.GetSMARTInfo(ctx, devicePath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get SMART info after disabling SMART")
+		tlog.WarnContext(ctx, "SMART disabled but post-disable info read failed (expected when disabled)", "device", devicePath, "error", err)
+		if prevInfo != nil {
+			prevInfo.DiskId = deviceId
+			prevInfo.Enabled = false
+			if supportInfo != nil {
+				prevInfo.Supported = supportInfo.Available
+			}
+			s.eventBus.EmitSmart(events.SmartEvent{
+				Type:      events.EventTypes.UPDATE,
+				SmartInfo: *prevInfo,
+			})
+		} else if supportInfo != nil {
+			s.eventBus.EmitSmart(events.SmartEvent{
+				Type: events.EventTypes.UPDATE,
+				SmartInfo: dto.SmartInfo{
+					DiskId:    deviceId,
+					Supported: supportInfo.Available,
+					Enabled:   false,
+				},
+			})
+		}
+		slog.DebugContext(ctx, "SMART disabled", "device", devicePath)
+		return nil
 	}
 
 	smartInfoDto, errE := s.smartInfoFromSMARTInfo(devicePath, smartInfo)
