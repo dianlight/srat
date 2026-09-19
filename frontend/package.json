@@ -19,7 +19,7 @@
     "@babel/eslint-parser": "8.0.5",
     "@babel/preset-react": "8.0.1",
     "@babel/preset-typescript": "8.0.1",
-    "@biomejs/biome": "2.5.13",
+    "@biomejs/biome": "2.5.14",
     "@code-inspector/core": "2.0.9",
     "@happy-dom/global-registrator": "20.14.5",
     "@hookform/devtools": "4.4.0",
