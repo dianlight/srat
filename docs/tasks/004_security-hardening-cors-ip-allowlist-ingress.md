@@ -1,6 +1,6 @@
 # [FIX]: Security Hardening — CORS, IP Allowlist, Ingress Session Validation, WS Origin, pprof Isolation
 
-**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
+**Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** [dianlight/srat#1213](https://github.com/dianlight/srat/issues/1213)
 
 ## 🎯 Objective
 
