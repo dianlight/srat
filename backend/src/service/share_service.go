@@ -528,10 +528,6 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
-	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Type:  events.EventTypes.REMOVE,
-		Share: ashare,
-	})
 
 	// Retrieve the share with associations to clear them before soft delete
 	var dbShare dbom.ExportedShare
@@ -556,6 +552,14 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if errS != nil {
 		return errors.Wrap(errS, "failed to delete share")
 	}
+
+	// Emit after the mutation so subscribers observing the event (e.g.
+	// BroadcasterService re-listing shares) see the post-delete state
+	// (issue #1197, same staleness class as #971).
+	_ = s.eventBus.EmitShare(events.ShareEvent{
+		Type:  events.EventTypes.REMOVE,
+		Share: ashare,
+	})
 	return nil
 }
 

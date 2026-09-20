@@ -6,6 +6,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -145,6 +146,7 @@ func (handler *UserHandler) UpdateAdminUser(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorPasswordRequired) {
 			return nil, huma.Error422UnprocessableEntity(err.Error())
 		}
+		tlog.ErrorContext(ctx, "failed to update admin user", "username", input.Body.Username, "error", err)
 		return nil, errors.Wrap(err, "failed to update admin user")
 	}
 	return &struct{ Body dto.User }{Body: *updatedAdmin}, nil
