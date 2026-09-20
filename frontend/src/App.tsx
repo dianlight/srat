@@ -421,7 +421,9 @@ export function App() {
     const isDismissed =
       problem.status === Status.Dismissed ||
       problem.status === Status.Deleted ||
-      problem.status === Status.Fixed;
+      problem.status === Status.Fixed ||
+      problem.status === Status.Ignored ||
+      problem.ignored === true;
     if (isDismissed) {
       toast.dismiss(toastId);
       problemToastSeenRef.current.delete(problem.problem_key);
