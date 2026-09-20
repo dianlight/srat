@@ -3,7 +3,7 @@
 # [REFACTOR]: Migrate SMART backend to smartmontools-sdk bindings/go/v8
 
 **Target Repo:** `srat`
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Issue Link:** [dianlight/smartmontools-sdk#13](https://github.com/dianlight/smartmontools-sdk/issues/13) · [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
 
 ## 🎯 Objective
@@ -27,9 +27,13 @@ Replace the retired `github.com/dianlight/smartmontools-go` v0.4.1 wrapper with 
 - [x] Task 7: Validate — targeted gotest (converter + service, `embedallowed_no smartlib` tags) and full `mise run //backend:test` suite (all green, 66s)
 - [x] Task 8: Update documentation (SMART_SERVICE.md, go.instructions.md Service Ownership Rules, task 046 notes)
 - [x] Task 9: Coverage gate check for touched functions — change is import/comment-only (no new logic); `initSmartClient` 60% is a pre-existing exempt thin lib adapter, untouched
-- [ ] Task 10: Capture lessons learned and ask to create a PR
+- [x] Task 10: Capture lessons learned and ask to create a PR — done: migration already on main via `5b227d2d` + bump to v8.0.1 in `#945`, no separate PR needed
 
 ## 🧠 Implementation Notes (Copilot Context)
+
+### Completion summary
+
+Completed on main via `5b227d2d` (migration) + `3e49a03a` (bump to v8.0.1, #945): all imports point at `smartmontools-sdk/bindings/go/v8`, old wrapper fully removed, CI ABI job rewritten, backend tests green. go.mod is at v8.0.1 (newer than the v8.0.0 originally targeted).
 
 - **Module layout**: new module is `github.com/dianlight/smartmontools-sdk/bindings/go/v8` with subpackages `backends/compare|exec|lib|types` — import path shape matches the old `smartmontools-go` so the swap is mechanical (old `types` package → `.../bindings/go/v8/types`).
 - **Vendor + patch ordering**: `mise run //backend:patch` is cache-keyed on `src/vendor/**/*.pdone` outputs; after `go mod vendor` rewrites the tree the markers vanish, so the patch task re-runs and regenerates the Darwin stubs (`mount_darwin.go`) and applies `hd-idle-check-power-mode.patch` + `gorm-generics.patch`.
@@ -47,4 +51,4 @@ Replace the retired `github.com/dianlight/smartmontools-go` v0.4.1 wrapper with 
 - [x] `.github/workflows/build.yaml` — `verify-smartlib-wrapper-abi` job
 - [x] `.opencode/instructions/go.instructions.md` — "SmartService is the sole smartmontools bindings contact point"
 - [x] `docs/SMART_SERVICE.md` — runtime requirement + CI contract sections
-- [ ] `dto_to_dbom.go:136` `SambaUserToUser` `HasDefaultPassword` goverter gap (pre-existing, separate task)
+- Note: `dto_to_dbom.go:136` `SambaUserToUser` `HasDefaultPassword` goverter gap is pre-existing and tracked as a separate task, out of scope here
