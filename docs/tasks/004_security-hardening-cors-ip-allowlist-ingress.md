@@ -1,10 +1,10 @@
-# [FIX]: Security Hardening — CORS, IP Allowlist, Ingress Session Validation
+# [FIX]: Security Hardening — CORS, IP Allowlist, Ingress Session Validation, WS Origin, pprof Isolation
 
 **Target Repo:** `srat`  **Status:** 📅 Planned  **Issue Link:** _TBD_
 
 ## 🎯 Objective
 
-Address three related security findings identified in `docs/FUTURE_IMPROVEMENTS.md`: (1) CORS wildcard combined with `AllowCredentials: true` violates the CORS spec and may be exploitable; (2) the HA middleware IP allowlist is hardcoded to Supervisor defaults and breaks on non-standard Docker networks; (3) the ingress session validation against the Supervisor API is entirely commented out, leaving the service trusting any request from the allowed IP range.
+Address five related security findings identified in `docs/FUTURE_IMPROVEMENTS.md` and the 2026-04-28 security review: (1) CORS wildcard combined with `AllowCredentials: true` violates the CORS spec and may be exploitable; (2) the HA middleware IP allowlist is hardcoded to Supervisor defaults and breaks on non-standard Docker networks; (3) the ingress session validation against the Supervisor API is entirely commented out, leaving the service trusting any request from the allowed IP range; (4) the Gorilla WebSocket upgrader accepts connections from **any origin**, allowing cross-site WebSocket hijacking (merged from 029); (5) the `/debug/pprof/` route prefix is registered unconditionally in the production router (merged from 029).
 
 > _Context for Copilot: All three findings are in `backend/src/server/`. The CORS issue is in `http_server.go:45-52`. The IP allowlist and ingress session stubs are in `ha_middleware.go`. The Supervisor token and network details are available via `ContextState` which is already injected into the server._
 
@@ -36,6 +36,12 @@ Address three related security findings identified in `docs/FUTURE_IMPROVEMENTS.
 - [ ] Task 6: Add unit tests for the ingress session validation (valid session, expired session, Supervisor unreachable fallback)
 - [ ] Task 7: Manual/integration smoke test — confirm the web UI still loads via HA ingress after changes
 - [ ] Task 8: Documentation — add a note to `docs/HOME_ASSISTANT_INTEGRATION.md` about the ingress security model
+- [ ] Task 9 (merged from 029): Add `allowedOrigins []string` helper to `server/` package that reads from `ContextState` (same source as CORS fix above)
+- [ ] Task 10 (merged from 029): Replace `CheckOrigin: func(*http.Request) bool { return true }` in `NewWebSocketBroker` with a call to the helper; in non-`SecureMode` keep permissive
+- [ ] Task 11 (merged from 029): Add unit test: WebSocket upgrade must return 403 when `SecureMode=true` and `Origin` does not match the allowed list
+- [ ] Task 12 (merged from 029): Move `router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)` from `http_server.go:97` into `server/pprof.go` (behind `//go:build pprof`) so the route only exists in pprof builds
+- [ ] Task 13 (merged from 029): Add a build-tag-gated integration test confirming the pprof route returns 404 in production builds and 200 in pprof builds
+- [ ] Task 14 (merged from 029): Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-02 and B-SEC-05 resolved
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -80,3 +86,5 @@ The existing commented-out block in `ha_middleware.go:28-66` uses `ingressClient
 - [ ] `backend/src/server/ha_middleware.go:73` — hardcoded `172.30.32.2`, `127.0.0.1`
 - [ ] `backend/src/server/ha_middleware.go:28-66` — commented-out ingress session validation
 - [ ] `docs/FUTURE_IMPROVEMENTS.md` — "Security and Stability Findings" section (remove once fixed)
+- [ ] `backend/src/api/ws.go:52-57` — replace permissive CheckOrigin (merged from 029)
+- [ ] `backend/src/server/http_server.go:97` — move pprof route behind build tag (merged from 029)

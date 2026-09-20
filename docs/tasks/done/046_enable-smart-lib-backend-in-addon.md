@@ -9,7 +9,7 @@
 > Historical notes below document the original `smartmontools-go` design.
 
 **Target Repo:** `srat` + `hassio-addons` (+ `smartmontools-sdk`, `smartmontools-go`)
-**Status:** 🔄 In Progress
+**Status:** ❌ Deprecated (superseded by 047, closed)
 **Issue Link:** [dianlight/hassio-addons#726](https://github.com/dianlight/hassio-addons/issues/726) · [dianlight/smartmontools-sdk#14](https://github.com/dianlight/smartmontools-sdk/issues/14) · [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
 
 ## 🎯 Objective

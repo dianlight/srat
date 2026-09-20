@@ -1,56 +1,23 @@
 # 📊 SRAT Task Status Report
-_Generated: 2026-08-18_
+_Generated: 2026-09-20_
 
 ## Summary
-| Status | Count | Progress |
-|--------|-------|----------|
-| ✅ Complete | 3 | 3/22 tasks |
-| 🔄 In Progress | 3 | 3/22 tasks |
-| 📅 Planned | 16 | 16/22 tasks |
-| **Total** | **22** | **27%** |
+| Status | Count |
+|--------|-------|
+| ✅ Complete / Archived (`done/`) | 34 files |
+| 🔄 In Progress | 0 |
+| 📅 Planned | 18 |
+| **Total pending** | **18** |
 
----
-
-## ✅ - Done
-
-### [043] Zeroconf mDNS Registration from Addon (Lab)
-- **Type:** FEATURE | **Issues:** None
-- **Progress:** 15 / 15 tasks ✓
-
-### [045] Full Mobile Support
-- **Type:** FEATURE | **Issues:** [srat#922](https://github.com/dianlight/srat/pull/922)
-- **Progress:** 12 / 12 tasks ✓
-
-### [048] Volume Stack Hardening — Code Review Findings
-- **Type:** REFACTOR | **Issues:** None
-- **Progress:** 25 / 25 tasks ✓
-
----
-
-## 🔄 - In Progress
-
-### [044] Support Disks Without Partitions
-- **Type:** FIX | **Issues:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716), [PR #867](https://github.com/dianlight/srat/pull/867)
-- **Progress:** 16 / 17 tasks (94%)
-- **Next:** Task 16: Manual validation on HAOS with a physical USB prepared per `docs/replicate-partitionless-disk-macos.md` (Scenario A superfloppy; Scenario B #716 replica) — deferred, see [PR #867](https://github.com/dianlight/srat/pull/867)
-
-### [046] Enable SMART Lib Backend in Addon
-- **Type:** FIX | **Issues:** [dianlight/hassio-addons#726](https://github.com/dianlight/hassio-addons/issues/726), [dianlight/smartmontools-sdk#14](https://github.com/dianlight/smartmontools-sdk/issues/14), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
-- **Progress:** 3 / 10 tasks (30%)
-- **Next:** Task 1: SDK (smartmontools-sdk#14) — add `libsmartmon_go.{so,dylib}` build step to `.github/workflows/build.yml` per matrix target (using existing `cxx`, compile `smartmon_c_api.cpp` from pinned smartmontools-go ref, skip windows)
-
-### [047] Migrate SMART backend to smartmontools-sdk bindings/go/v8
-- **Type:** REFACTOR | **Issues:** [dianlight/smartmontools-sdk#13](https://github.com/dianlight/smartmontools-sdk/issues/13), [dianlight/smartmontools-go#38](https://github.com/dianlight/smartmontools-go/issues/38)
-- **Progress:** 15 / 17 tasks (88%)
-- **Next:** Task 10: Capture lessons learned and ask to create a PR
+_Recent closures: 044 (partitionless disks), 047 (SDK bindings migration). Archived as complete: 043, 045, 048. Archived as deprecated: 046 (superseded by 047). Merged 029 into 004. Renamed pending 051 → 052 (ID collision with done/051)._
 
 ---
 
 ## 📅 - Planned
 
-### [004] Security Hardening — CORS, IP Allowlist, Ingress Session Validation
+### [004] Security Hardening — CORS, IP Allowlist, Ingress, WS Origin, pprof Isolation
 - **Type:** FIX | **Issues:** None
-- **Progress:** 0 / 12 tasks
+- **Progress:** 0 / 20 tasks (includes 6 items merged from 029)
 
 ### [006] Database and ORM Stubs Completion
 - **Type:** REFACTOR | **Issues:** [hassio-addons#573](https://github.com/dianlight/hassio-addons/issues/573)
@@ -58,7 +25,7 @@ _Generated: 2026-08-18_
 
 ### [007] Backend Code Quality — errors.AsType Migration and Service Splits
 - **Type:** REFACTOR | **Issues:** None
-- **Progress:** 2 / 13 tasks
+- **Progress:** 2 / 13 tasks (Task 1 done)
 
 ### [008] Allow Share Subfolders
 - **Type:** FEATURE | **Issues:** [srat#184](https://github.com/dianlight/srat/issues/184)
@@ -79,10 +46,6 @@ _Generated: 2026-08-18_
 ### [023] HA SRAT Connectivity Loss Detection
 - **Type:** FEATURE | **Issues:** None
 - **Progress:** 0 / 15 tasks
-
-### [029] WebSocket Origin Validation and pprof Route Isolation
-- **Type:** FIX | **Issues:** None
-- **Progress:** 0 / 9 tasks
 
 ### [030] commandexec Snapshot Memory Leak and Busy-Wait Elimination
 - **Type:** FIX | **Issues:** None
@@ -110,4 +73,16 @@ _Generated: 2026-08-18_
 
 ### [037] Frontend Data Correctness — isLoading Bug, Hook Rules, Password Exposure
 - **Type:** FIX | **Issues:** None
-- **Progress:** 1 / 17 tasks
+- **Progress:** 1 / 17 tasks (Task 3 resolved via 040)
+
+### [049] Upgrade Symlink Stale Static Fallback
+- **Type:** FIX | **Issues:** _to be created_
+- **Progress:** 0 / 4 tasks
+
+### [050] Upstream libsmartmon JSON Schema Gaps
+- **Type:** FIX | **Issues:** [srat#1196](https://github.com/dianlight/srat/issues/1196)
+- **Progress:** 0 / 12 tasks
+
+### [052] Dedup SMART Health Disagreement Log
+- **Type:** REFACTOR | **Issues:** [srat#1196](https://github.com/dianlight/srat/issues/1196)
+- **Progress:** 0 / 9 tasks (renamed from 051)
