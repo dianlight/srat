@@ -84,7 +84,7 @@ SRAT uses a secure autoupdate mechanism based on `minio/selfupdate` with cryptog
 - **Signed**: `srat-cli`, `srat-server-static`, `srat-server-musl`, `srat-server-glib`
 - **Not signed**: `srat-server` (it is a symlink pointing to one of the above variants)
 - The public key is embedded in the SRAT binary at build time
-- Signature files (`.minisig`) are created during the build, but are **not** included in the release archives. Instead, each signed binary's minisig content is embedded as the ZIP entry comment using `zipnote`. The released ZIPs contain only the binaries and the `srat-server` symlink; signatures travel inside each entry's comment field.
+- Signature files (`.minisig`) are created during the build, but are **not** included in the release archives. Instead, each signed binary's minisig content is embedded as the ZIP entry comment using `zipnote`. The released ZIP archives contain only the binaries and the `srat-server` symlink; signatures travel inside each entry's comment field.
 - If signature verification fails, the update is rejected and rolled back
 - Development builds without signatures will proceed without verification (with a warning)
 
