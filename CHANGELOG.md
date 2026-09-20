@@ -8,14 +8,19 @@
 
 - Alerts settings category with per-alert toggles and permanent ignore
 - Protected mode now raises an ignorable HA repair issue
+- Hide delete on internal shares, color-code user shares
 
 ### 🐛 Bug Fixes
 
 - Re-enable ignored alerts via `PUT /api/problems/{key}` (was a no-op)
 - Dismiss stale custom-component problem when alerts are disabled in settings
 - Hide server-ignored issues on the dashboard without a local seed
-
-### 🐛 Bug Fixes
+- Report SMART self-test progress and reconcile health check
+- Emit share REMOVE event after DB delete
+- Dismiss problem toast and badge on ignore
+- Preserve stored password on password-less rename
+- Return 200 on SMART disable success
+- Persist falsy booleans on share update
 
 ### 🏗 Chore
 
