@@ -44,6 +44,9 @@ var upgradeDataDir *string
 var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
+var ingressOrigin *string
+var allowedOrigins *string
+var supervisorAllowedIPs *string
 var addonIpAddress *string
 var logLevelString *string
 var protectedMode *bool
@@ -76,6 +79,9 @@ func main() {
 	}
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
+	ingressOrigin = flag.String("ingress-origin", os.Getenv("SRAT_INGRESS_ORIGIN"), "Home Assistant frontend origin trusted for CORS/WebSocket in addon mode")
+	allowedOrigins = flag.String("allowed-origins", os.Getenv("SRAT_ALLOWED_ORIGINS"), "Comma-separated extra trusted origins for CORS/WebSocket")
+	supervisorAllowedIPs = flag.String("supervisor-allowed-ips", os.Getenv("SUPERVISOR_NETWORK"), "Comma-separated extra IPs/CIDRs trusted by HA middleware")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	upgradeChannel := flag.String("update-channel", "release", "Upgrade channel (release, prerelease, develop)")
 	upgradeDataDir = flag.String("upgrade-data-dir", "/data/upgrade", "Persistent upgrades data directory")
@@ -148,19 +154,22 @@ func prog(listener net.Listener, serverPort int) {
 		ProtectedMode:        *protectedMode,
 		SecureMode:           *secureMode,
 		//UpdateFilePath:  *updateFilePath,
-		UpdateChannel:   upgrade_channel,
-		UpdateDataDir:   *upgradeDataDir,
-		AutoUpdate:      *autoUpdate,
-		DisableIPv6:     *noIPv6,
-		SambaConfigFile: *smbConfigFile,
-		Template:        internal.GetTemplateData(),
-		DockerInterface: *dockerInterface,
-		DockerNet:       *dockerNetwork,
-		DatabasePath:    *dbfile,
-		SupervisorToken: *supervisorToken,
-		SupervisorURL:   *supervisorURL,
-		Heartbeat:       5,
-		StartTime:       time.Now(),
+		UpdateChannel:        upgrade_channel,
+		UpdateDataDir:        *upgradeDataDir,
+		AutoUpdate:           *autoUpdate,
+		DisableIPv6:          *noIPv6,
+		SambaConfigFile:      *smbConfigFile,
+		Template:             internal.GetTemplateData(),
+		DockerInterface:      *dockerInterface,
+		DockerNet:            *dockerNetwork,
+		DatabasePath:         *dbfile,
+		SupervisorToken:      *supervisorToken,
+		SupervisorURL:        *supervisorURL,
+		IngressOrigin:        *ingressOrigin,
+		AllowedOrigins:       dto.ParseCommaList(*allowedOrigins),
+		SupervisorAllowedIPs: dto.ParseCommaList(*supervisorAllowedIPs),
+		Heartbeat:            5,
+		StartTime:            time.Now(),
 	}
 
 	appParams := appsetup.BaseAppParams{

@@ -155,7 +155,7 @@ func TestExtractFile_SymlinkHappyPath(t *testing.T) {
 	assert.Equal(t, filepath.Join(dest, "my-link"), got.Path)
 	info, lstatErr := os.Lstat(filepath.Join(dest, "my-link"))
 	require.NoError(t, lstatErr)
-	require.NotEqual(t, info.Mode()&os.ModeSymlink, 0)
+	require.NotEqual(t, 0, info.Mode()&os.ModeSymlink)
 	target, readlinkErr := os.Readlink(filepath.Join(dest, "my-link"))
 	require.NoError(t, readlinkErr)
 	assert.Equal(t, "my-target", target)

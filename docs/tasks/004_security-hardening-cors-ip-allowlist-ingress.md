@@ -28,6 +28,7 @@ Address five related security findings identified in `docs/FUTURE_IMPROVEMENTS.m
 
 ## 📝 Task List
 
+- [x] Task 0 (prerequisite): Extend `dto.ContextState` with `IngressOrigin string`, `AllowedOrigins []string`, `SupervisorAllowedIPs []string` (`dto.ParseCommaList` helper, 100% covered); flags `--ingress-origin/--allowed-origins/--supervisor-allowed-ips` with `SRAT_INGRESS_ORIGIN`/`SRAT_ALLOWED_ORIGINS`/`SUPERVISOR_NETWORK` env defaults in both `srat-server` and `srat-cli`. Note: no separate `AddonMode` field — existing `SecureMode` (`-addon` flag) already is the addon-mode signal.
 - [ ] Task 1: Fix CORS — when `AddonMode=true`, set `AllowedOrigins` to the HA ingress origin; keep wildcard only in dev mode
 - [ ] Task 2: Fix IP allowlist — read the allowed Supervisor network CIDR/IPs from `ContextState` or `SUPERVISOR_NETWORK` env var; fall back to `172.30.32.2`, `127.0.0.1`
 - [ ] Task 3: Re-enable ingress session validation — uncomment and validate the `gocache`-backed Supervisor API call; ensure it does not block health-check or non-ingress endpoints
@@ -44,6 +45,14 @@ Address five related security findings identified in `docs/FUTURE_IMPROVEMENTS.m
 - [ ] Task 14 (merged from 029): Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-02 and B-SEC-05 resolved
 
 ## 🧠 Implementation Notes (Copilot Context)
+
+### Official Supervisor behavior (verified 2026-09-20 against home-assistant/supervisor `api/ingress.py`)
+
+- `POST /ingress/validate_session` exists and takes `{session}`, BUT it is decorated with `@require_home_assistant` — the caller must present Home Assistant auth, not an addon `SUPERVISOR_TOKEN`. Our own `ingress_ci_test.go:92` already skips with "Addons don't have the right permissions". So Task 3 (addon-side re-validation) may 401 on HAOS: spike-test it first on a live Supervisor before building on it. Fallback if blocked: rely on the Supervisor proxy (it 401s invalid `ingress_session` cookies itself in `handler` before forwarding) plus the `X-Remote-User-Id` header it sets.
+- `_init_header` STRIPS client-supplied `X-Remote-User-Id`/`-Name` and re-sets them from session data — but only when the session carries user data. Header spoofing via ingress is impossible; direct-to-port calls can still spoof, hence IP allowlist + SecureMode remain necessary. The `homeassistant` fallback in the middleware covers headerless internal traffic.
+- `validate_session` EXTENDS session validity on every call — the 30s cache in Task 3 is required, not optional, or every request keeps sessions alive forever.
+- CORS/WS origin: no Supervisor endpoint returns the HA frontend origin directly; Tasks 1/9 need an explicit origin-discovery decision (addon config, `SUPERVISOR_*` env, or HA Core API) — do not hardcode.
+- Supervisor proxies WebSockets too (`_handle_websocket`, session validated first), so the WS 403 check in Task 11 only fires for direct (non-ingress) connections — that is exactly the case it must catch.
 
 ### CORS fix
 

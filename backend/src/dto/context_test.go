@@ -45,6 +45,26 @@ func TestContextState(t *testing.T) {
 	assert.Equal(t, now, state.StartTime)
 }
 
+func TestParseCommaList(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected []string
+	}{
+		{"empty", "", nil},
+		{"blank", "   ", nil},
+		{"single", "https://homeassistant.local:8123", []string{"https://homeassistant.local:8123"}},
+		{"multiple", "https://a.local,https://b.local", []string{"https://a.local", "https://b.local"}},
+		{"spaces and empties", " 10.0.0.1 , , 172.30.32.0/23 ", []string{"10.0.0.1", "172.30.32.0/23"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, dto.ParseCommaList(tt.input))
+		})
+	}
+}
+
 func TestDataDirtyTracker(t *testing.T) {
 	tracker := dto.DataDirtyTracker{
 		Shares:    true,
