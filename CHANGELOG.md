@@ -2,7 +2,7 @@
 
 # Changelog
 
-## [ 🚧 Unreleased ]
+## 2026.9.2-rc16
 
 ### ✨ Features
 
@@ -474,4 +474,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-09-13T10:59:23Z -->
+<!-- release-timestamp: 2026-09-20T13:05:05Z -->
