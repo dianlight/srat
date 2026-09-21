@@ -47,8 +47,8 @@ func TestDefaultTrustedPrefixes_CustomNetwork(t *testing.T) {
 	prefixes := defaultTrustedPrefixes(&dto.ContextState{
 		SupervisorAllowedIPs: []string{"192.168.1.0/24", "10.0.0.5", "  ", "not-an-ip"},
 	})
-	// 2 defaults + CIDR + single IP; invalid entries ignored.
-	assert.Len(t, prefixes, 4)
+	// 3 defaults + CIDR + single IP; invalid entries ignored.
+	assert.Len(t, prefixes, 5)
 }
 
 func TestClientIP(t *testing.T) {

@@ -29,8 +29,8 @@ Address five related security findings identified in `docs/FUTURE_IMPROVEMENTS.m
 ## 📝 Task List
 
 - [x] Task 0 (prerequisite): Extend `dto.ContextState` with `IngressOrigin string`, `AllowedOrigins []string`, `SupervisorAllowedIPs []string` (`dto.ParseCommaList` helper, 100% covered); flags `--ingress-origin/--allowed-origins/--supervisor-allowed-ips` with `SRAT_INGRESS_ORIGIN`/`SRAT_ALLOWED_ORIGINS`/`SUPERVISOR_NETWORK` env defaults in both `srat-server` and `srat-cli`. Note: no separate `AddonMode` field — existing `SecureMode` (`-addon` flag) already is the addon-mode signal.
-- [x] Task 1: Fix CORS — when `AddonMode=true`, set `AllowedOrigins` to the HA ingress origin; keep wildcard only in dev mode
-- [x] Task 2: Fix IP allowlist — read the allowed Supervisor network CIDR/IPs from `ContextState` or `SUPERVISOR_NETWORK` env var; fall back to `172.30.32.2`, `127.0.0.1`
+- [x] Task 1: Fix CORS — when `SecureMode=true` (`-addon`), enforce exact-match `IngressOrigin` + `AllowedOrigins` via `dto.IsOriginAllowed` (fail-closed when unconfigured); keep permissive only in dev mode
+- [x] Task 2: Fix IP allowlist — merge defaults (`127.0.0.0/8`, `::1/128`, `172.30.32.0/23`) with `ContextState.SupervisorAllowedIPs` (IP/CIDR entries from `--supervisor-allowed-ips` / `SUPERVISOR_NETWORK`)
 - [x] Task 3 (documented wont-do): ~~Re-enable ingress session validation~~ — live HAOS spike 2026-09-21 proved `POST /ingress/validate_session` 401s with a valid addon token (`@require_home_assistant`); Supervisor proxy already 401s invalid cookies, so addon-side re-validation is not viable unless Supervisor grants the capability.
 - [x] Task 4: Add unit tests for the updated CORS middleware (addon mode vs dev mode)
 - [x] Task 5: Add unit tests for the HA middleware IP allowlist (standard network, custom network, localhost)
@@ -42,7 +42,7 @@ Address five related security findings identified in `docs/FUTURE_IMPROVEMENTS.m
 - [x] Task 11 (merged from 029): Add unit test: WebSocket upgrade must return 403 when `SecureMode=true` and `Origin` does not match the allowed list
 - [x] Task 12 (merged from 029): Move `router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)` from `http_server.go:97` into `server/pprof.go` (behind `//go:build pprof`) so the route only exists in pprof builds
 - [x] Task 13 (merged from 029): Add a build-tag-gated integration test confirming the pprof route returns 404 in production builds and 200 in pprof builds
-- [x] Task 14 (merged from 029): Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-02 and B-SEC-05 resolved
+- [x] Task 14 (merged from 029): Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-01, B-SEC-02 and B-SEC-05 resolved
 
 ## 🧠 Implementation Notes (Copilot Context)
 
@@ -86,18 +86,15 @@ if state.AddonMode {
 // Never combine wildcard with AllowCredentials: true
 ```
 
-### IP allowlist fix
+### IP allowlist fix (implemented; sketch kept for reference)
 
 ```go
-// ha_middleware.go
-allowedIPs := state.SupervisorAllowedIPs
-if len(allowedIPs) == 0 {
-    allowedIPs = []string{"172.30.32.2", "127.0.0.1"}
-}
-// Also read from env: SRAT_ALLOWED_IPS (comma-separated) for non-addon deployments
+// ha_middleware.go — implemented as defaultTrustedPrefixes(state):
+// defaults 127.0.0.0/8, ::1/128, 172.30.32.0/23 merged with
+// state.SupervisorAllowedIPs (from --supervisor-allowed-ips / SUPERVISOR_NETWORK)
 ```
 
-### Ingress session validation
+### Ingress session validation (historical — wont-do per spike result above)
 
 The existing commented-out block in `ha_middleware.go:28-66` uses `ingressClient` and `gocache`.
 - Re-enable it, ensuring the cache TTL is short enough (e.g., 30 s) to detect session expiry but long enough to avoid per-request overhead.

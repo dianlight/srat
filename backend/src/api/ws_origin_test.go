@@ -67,3 +67,18 @@ func TestWebSocketOriginDevModePermissive(t *testing.T) {
 	broker := newWSBrokerForOriginTest(t, &dto.ContextState{SecureMode: false})
 	require.NotEqual(t, http.StatusForbidden, wsUpgradeCode(t, broker, "https://evil.example"))
 }
+
+func TestWebSocketOriginNormalization(t *testing.T) {
+	// Whitespace-padded configured origins must match clean request origins,
+	// converging with the CORS normalization in dto.TrustedOrigins.
+	padded := &dto.ContextState{
+		SecureMode:     true,
+		IngressOrigin:  "  http://homeassistant.local:8123  ",
+		AllowedOrigins: []string{"  https://example.com  "},
+	}
+	broker := newWSBrokerForOriginTest(t, padded)
+
+	require.NotEqual(t, http.StatusForbidden, wsUpgradeCode(t, broker, "http://homeassistant.local:8123"))
+	require.NotEqual(t, http.StatusForbidden, wsUpgradeCode(t, broker, "https://example.com"))
+	require.Equal(t, http.StatusForbidden, wsUpgradeCode(t, broker, "https://evil.example"))
+}

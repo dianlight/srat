@@ -99,9 +99,9 @@ For details on data not yet exposed as entities, see [MISSING_HA_INTEGRATION_DAT
 
 In add-on mode (`SecureMode`, `-addon` flag) SRAT trusts only the Supervisor path:
 
-- **Origin allowlist**: CORS and `/ws` accept only exact matches from `--ingress-origin` (`SRAT_INGRESS_ORIGIN`) plus `--allowed-origins` (`SRAT_ALLOWED_ORIGINS`). Dev mode stays permissive. Configure the HA frontend origin explicitly; SecureMode with no origins fails closed for browser requests.
-- **IP allowlist**: HA middleware trusts `127.0.0.0/8` and `172.30.32.0/23` plus `--supervisor-allowed-ips` (`SUPERVISOR_NETWORK`, IP or CIDR entries) for non-standard Docker networks.
-- **Ingress sessions**: invalid `ingress_session` cookies are rejected by the Supervisor proxy itself before forwarding; addon-side re-validation is spike-pending because `POST /ingress/validate_session` needs HA user auth the addon token lacks.
+- **Origin allowlist**: in SecureMode, CORS and `/ws` accept only exact matches from `--ingress-origin` (`SRAT_INGRESS_ORIGIN`) plus `--allowed-origins` (`SRAT_ALLOWED_ORIGINS`); missing or empty `Origin` headers remain allowed for the non-browser Home Assistant component. Dev mode stays permissive. Configure the HA frontend origin explicitly; SecureMode with no origins fails closed for browser requests.
+- **IP allowlist**: HA middleware trusts `127.0.0.0/8`, `::1/128` and `172.30.32.0/23` plus `--supervisor-allowed-ips` (`SUPERVISOR_NETWORK`, IP or CIDR entries) for non-standard Docker networks.
+- **Ingress sessions**: invalid `ingress_session` cookies are rejected by the Supervisor proxy itself before forwarding; addon-side re-validation is not viable (live spike: `POST /ingress/validate_session` returns 401 with a valid addon token, which lacks HA user auth).
 - **Debug routes**: `/debug/pprof/` exists only in `//go:build pprof` builds and returns 404 in production.
 
 ### Configuration Changes

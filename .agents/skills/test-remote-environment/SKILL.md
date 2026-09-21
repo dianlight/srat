@@ -178,7 +178,7 @@ ssh root@$HOMEASSISTANT_IP 'ha addons logs local_sambanas2' | grep -a 'telemetry
 
 If the process predates the transfer, the endpoint still 404s, or the version line is stale: deploy the missing variant too (musl via `build --zig`, which the launcher prefers) and/or rebuild with a version that compares newer than the running one (core bump, e.g. `2026.8.1-dev.1` over `2026.8.0-rc13`; `-dev` alone still classifies `development` via `EnvironmentFromVersion`). Only proceed to Step 2 when all three checks agree.
 
-Triggering the watcher on an already-staged file: the develop fsnotify watcher seeds mtimes at startup and only reacts to Write/Create events, so `touch` (ATTRIB-only) never fires it. Force a content rewrite instead, e.g. copy the staged file to /tmp and back (`cp staged /tmp/f && cp /tmp/f staged`), then watch for `Detected updated files in develop channel`.
+Triggering the watcher on an already-staged file: the develop fsnotify watcher seeds mtimes at startup and only reacts to Write/Create events, so `touch` (ATTRIB-only) never fires it. Force a content rewrite using a temp file in the SAME directory (never host `/tmp` — large binaries can fill the temp filesystem — and never rewrite in place without a backup): `cp staged /addon_configs/local_sambanas2/upgrade/staged.tmp && cat staged.tmp > staged && rm staged.tmp`, then watch for `Detected updated files in develop channel`. Same-dir temp names are ignored by the watcher allowlist; the `cat >` rewrite emits the Write events that retrigger installation, and the temp copy survives for retry if interrupted.
 
 ### Step 2 — Restart the addon to pick up the new binary
 

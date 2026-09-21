@@ -144,6 +144,28 @@ func TestHAMiddlewareSuite(t *testing.T) {
 	suite.Run(t, new(HAMiddlewareSuite))
 }
 
+func (suite *HAMiddlewareSuite) TestIPv6LoopbackAuthorized() {
+	handlerCalled := false
+	var receivedUserID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		if v, ok := r.Context().Value(ctxkeys.UserID).(string); ok {
+			receivedUserID = v
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Remote-User-Id", "user-ipv6")
+	req.RemoteAddr = "[::1]:12345"
+	rr := httptest.NewRecorder()
+
+	suite.middleware(handler).ServeHTTP(rr, req)
+	suite.Equal(http.StatusOK, rr.Code)
+	suite.True(handlerCalled)
+	suite.Equal("user-ipv6", receivedUserID)
+}
+
 func (suite *HAMiddlewareSuite) TestCustomSupervisorNetwork() {
 	middleware := NewHAMiddleware(&dto.ContextState{
 		SupervisorAllowedIPs: []string{"192.168.1.0/24", "10.0.0.5"},

@@ -79,6 +79,7 @@ func NewHAMiddleware(state *dto.ContextState) func(http.Handler) http.Handler {
 func defaultTrustedPrefixes(state *dto.ContextState) []netip.Prefix {
 	prefixes := []netip.Prefix{
 		netip.MustParsePrefix("127.0.0.0/8"),
+		netip.MustParsePrefix("::1/128"),
 		netip.MustParsePrefix("172.30.32.0/23"),
 	}
 	if state == nil {

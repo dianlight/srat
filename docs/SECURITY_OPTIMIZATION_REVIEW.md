@@ -29,7 +29,11 @@ SRAT is a well-structured monorepo with solid architectural choices (Huma v2, FX
 
 ---
 
-#### [B-SEC-01] CORS wildcard origin with `AllowCredentials: true`
+#### [B-SEC-01] ~~CORS wildcard origin with `AllowCredentials: true`~~ ✅ RESOLVED
+
+**Severity:** High  
+**File:** `backend/src/server/http_server.go:44-54`
+**Status:** Resolved by task 004 (SecureMode uses exact configured-origin matching via `dto.TrustedOrigins`/`dto.IsOriginAllowed`, never wildcard + credentials; dev stays permissive; tests in `server/cors_test.go` and `server/http_server_test.go`).
 
 **Severity:** High  
 **File:** `backend/src/server/http_server.go:44-54`

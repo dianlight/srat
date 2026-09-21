@@ -1,3 +1,5 @@
+//go:build !pprof
+
 package server
 
 import (

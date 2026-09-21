@@ -75,30 +75,16 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 	}
 }
 
-// checkWebSocketOrigin mirrors server.IsOriginAllowed without importing the
-// server package (server already imports api). Dev mode stays permissive;
-// SecureMode allows empty Origin (non-browser HA component) and exact matches
-// against IngressOrigin plus AllowedOrigins.
+// checkWebSocketOrigin enforces the shared dto.IsOriginAllowed policy (same
+// normalization as CORS). Dev mode stays permissive; SecureMode allows empty
+// Origin (non-browser HA component) and exact matches against IngressOrigin
+// plus AllowedOrigins.
 func checkWebSocketOrigin(state *dto.ContextState, r *http.Request) bool {
-	if state == nil || !state.SecureMode {
-		return true
-	}
 	origin := ""
 	if r != nil {
 		origin = r.Header.Get("Origin")
 	}
-	if origin == "" {
-		return true
-	}
-	if state.IngressOrigin != "" && origin == state.IngressOrigin {
-		return true
-	}
-	for _, allowed := range state.AllowedOrigins {
-		if origin == allowed {
-			return true
-		}
-	}
-	return false
+	return dto.IsOriginAllowed(state, origin)
 }
 
 func reverseMap(m map[string]any) map[string]string {
