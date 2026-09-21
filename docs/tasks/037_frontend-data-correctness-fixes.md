@@ -3,7 +3,7 @@
 # [FIX]: Frontend Data Correctness — isLoading Bug, Hook Rules, Password Exposure
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
+**Status:** 🔄 In Progress
 **Issue Link:** _None — discovered in reliability/security review 2026-04-28_
 
 ## 🎯 Objective
@@ -23,13 +23,19 @@ Fix three data-correctness and security defects in the frontend that cause silen
 ## 📝 Task List
 
 - [ ] Task 1: Change `isLoading: isLoading && evloading` to `isLoading: isLoading || evloading` in `healthHook.ts:48`, `volumeHook.ts:29`, and `shareHook.ts:30`
+  > ⚠️ **Still open** — `&&` still in `healthHook.ts:48`, `smartTestStatusHook.ts:68`, `updateHook.ts:75` (same anti-pattern, not in original scope). `volumeHook.ts` was refactored to `isLoading && !evdata?.volumes` with error surfacing (`error ?? everror`) instead.
 - [ ] Task 2: Add tests for each hook: verify that a REST 500 error results in `isLoading: false` AND `error: defined` AND `data: undefined/empty` (not silently empty data with no error surfaced)
 - [x] Task 3: ~~Move `useRollbar()` and `useRollbarConfiguration()` in `useRollbarTelemetry.ts` to unconditional top-level calls~~ (Resolved by Sentry migration, task 040; `useSentryTelemetry.ts` has no hook-ordering issues)
-- [ ] Task 4: Add a `has_default_password bool` field to the backend `dto.User` struct, set to `true` when the stored password matches the default bootstrap hash
-- [ ] Task 5: In `UserService.GetAdmin()` and `UserService.ListUsers()`, populate `has_default_password` by comparing the stored NT hash to the known default
-- [ ] Task 6: Remove the `password` field from the `GET /users` and `GET /useradmin` response DTO (set `json:"-"` on the response path, or use a separate `UserResponse` DTO that omits the field)
-- [ ] Task 7: Update `useBaseConfigModal.ts` to use `adminUser.has_default_password === true` instead of comparing the password string
-- [ ] Task 8: Regenerate `sratApi.ts` (`mise run //frontend:gen`) after the backend DTO change
+- [x] Task 4: Add a `has_default_password bool` field to the backend `dto.User` struct, set to `true` when the stored password matches the default bootstrap hash
+  > ✅ **Done** — `dto/user.go` has `HasDefaultPassword bool` (`readOnly:"true"`).
+- [x] Task 5: In `UserService.GetAdmin()` and `UserService.ListUsers()`, populate `has_default_password` by comparing the stored NT hash to the known default
+  > ✅ **Done** — `user_service.go:153,176` populates `HasDefaultPassword` (covered by `TestGetAdmin_HasDefaultPassword`).
+- [x] Task 6: Remove the `password` field from the `GET /users` and `GET /useradmin` response DTO (set `json:"-"` on the response path, or use a separate `UserResponse` DTO that omits the field)
+  > ✅ **Done** — `Password *Secret[string]` is `writeOnly:"true"`, and client-supplied `has_default_password` is ignored (covered by test).
+- [x] Task 7: Update `useBaseConfigModal.ts` to use `adminUser.has_default_password === true` instead of comparing the password string
+  > ✅ **Done** — `useBaseConfigModal.ts:56-60` and `useSetupWizard.ts:44` use `has_default_password`.
+- [x] Task 8: Regenerate `sratApi.ts` (`mise run //frontend:gen`) after the backend DTO change
+  > ✅ **Done** — `has_default_password` is present in generated frontend types (used by `useBaseConfigModal.test.ts`).
 - [ ] Task 9: Update all existing tests that rely on `user.password` being present in GET responses
 - [ ] Task 10: Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark F-REL-01, F-SEC-01, F-SEC-02 resolved
 
@@ -64,7 +70,7 @@ The `write-only:"true"` tag on `Password` should prevent it from appearing in GE
 - [ ] `TODO: frontend/src/hooks/healthHook.ts:48` — change && to ||
 - [ ] `TODO: frontend/src/hooks/volumeHook.ts:29` — change && to ||
 - [ ] `TODO: frontend/src/hooks/shareHook.ts:30` — change && to ||
-- [ ] `TODO: frontend/src/hooks/useBaseConfigModal.ts:50-52` — use has_default_password
-- [ ] `TODO: backend/src/dto/user.go` — add has_default_password field
-- [ ] `TODO: backend/src/service/user_service.go` — populate has_default_password in GetAdmin/ListUsers
+- [x] `TODO: frontend/src/hooks/useBaseConfigModal.ts:50-52` — use has_default_password (done)
+- [x] `TODO: backend/src/dto/user.go` — add has_default_password field (done)
+- [x] `TODO: backend/src/service/user_service.go` — populate has_default_password in GetAdmin/ListUsers (done)
 - [ ] Related: F-REL-01, F-SEC-01, F-SEC-02 in `docs/SECURITY_OPTIMIZATION_REVIEW.md`

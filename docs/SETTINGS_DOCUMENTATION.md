@@ -360,6 +360,29 @@ builds, so no frontend environment logic is required for correctness. The
 frontend consumes the registry through the `useLabFeatures()` hook
 (`isAvailable(key)`) to show or hide lab-gated UI.
 
+### Environment Variables
+
+These variables tune back-end behavior outside the settings UI. They are read
+once at startup.
+
+- `SRAT_LOG_BODIES` — re-enables HTTP request/response body logging for
+  debugging (`true` to enable, anything else disables). Bodies are **not**
+  logged by default because they may contain credentials (Samba user
+  passwords, HA mount password) that bypass the `Secret` masking applied at
+  the struct level. Only enable temporarily while troubleshooting, and never
+  in production with real credentials.
+
+  ```bash
+  SRAT_LOG_BODIES=true ./srat-server
+  ```
+
+- `SRAT_MOCK` — enables mock mode for tests (`true`).
+- `SRAT_INGRESS_ORIGIN` — Home Assistant frontend origin trusted for
+  CORS/WebSocket in add-on mode.
+- `SRAT_ALLOWED_ORIGINS` — comma-separated extra trusted origins.
+- `SUPERVISOR_NETWORK` — allowed Supervisor network CIDR/IPs for the Home
+  Assistant IP allowlist.
+
 ## Related Documentation
 
 - [SMB over QUIC Implementation](SMB_OVER_QUIC_IMPLEMENTATION.md)

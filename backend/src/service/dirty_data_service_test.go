@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"log/slog"
 	"sync"
 	"testing"
 
@@ -10,6 +12,7 @@ import (
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -27,6 +30,24 @@ type DirtyDataServiceTestSuite struct {
 
 func TestDirtyDataServiceTestSuite(t *testing.T) {
 	suite.Run(t, new(DirtyDataServiceTestSuite))
+}
+
+func TestAppConfigOptionKeys(t *testing.T) {
+	tests := []struct {
+		name     string
+		config   *dto.AppConfigUpdateRequest
+		expected []string
+	}{
+		{"nil config", nil, nil},
+		{"nil options", &dto.AppConfigUpdateRequest{}, nil},
+		{"sorted keys", &dto.AppConfigUpdateRequest{Options: map[string]any{"workgroup": "w", "password": "p", "log_level": "d"}}, []string{"log_level", "password", "workgroup"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, appConfigOptionKeys(tt.config))
+		})
+	}
 }
 
 func (suite *DirtyDataServiceTestSuite) TestIsCleanInitialState() {
@@ -146,6 +167,27 @@ func (suite *DirtyDataServiceTestSuite) TestSetDirtyAppConfig() {
 	suite.True(tracker.AppConfig)
 	suite.False(suite.dirtyDataService.IsTimerRunning())
 	suite.False(suite.dirtyDataService.IsClean())
+}
+
+// TestSetDirtyAppConfigDoesNotLogOptionValues verifies the task 031 audit
+// fix: AppConfig options arrive as an arbitrary user-controlled map that may
+// contain credentials (e.g. the addon password), so only the changed option
+// names may reach the logs — never the values. The bus dispatches
+// synchronously, so no polling is needed after EmitAppConfig.
+func (suite *DirtyDataServiceTestSuite) TestSetDirtyAppConfigDoesNotLogOptionValues() {
+	var buf bytes.Buffer
+	oldDefault := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	suite.T().Cleanup(func() { slog.SetDefault(oldDefault) })
+
+	const secretValue = "s3cr3t-appconfig-031"
+	suite.eventBus.EmitAppConfig(events.AppConfigEvent{Config: &dto.AppConfigUpdateRequest{
+		Options: map[string]any{"password": secretValue, "log_level": "debug"},
+	}})
+
+	logs := buf.String()
+	suite.NotContains(logs, secretValue, "addon option values must not reach logs")
+	suite.Contains(logs, "password", "changed option names should still be logged for debuggability")
 }
 
 func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus_EmitsCleanTracker() {

@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1817,12 +1818,32 @@ func (suite *VolumeServiceTestSuite) TestBootWarmupWarmsCacheAndWarmRequestSkips
 }
 
 // TestBootWarmupFailureDoesNotFailAppStart verifies the H10 fix: a hardware
+// syncLogBuffer is a goroutine-safe bytes.Buffer for capturing slog output:
+// background service goroutines (e.g. the udev event handler) keep logging
+// while the test goroutine asserts on the captured content.
+type syncLogBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *syncLogBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *syncLogBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
+
 // discovery failure during the boot warmup is logged as a warning and must
 // not fail the app start (previously OnStart returned the error, aborting
 // the whole fx startup).
 func (suite *VolumeServiceTestSuite) TestBootWarmupFailureDoesNotFailAppStart() {
 	// Capture slog output while the boot warmup logs its warning.
-	var buf bytes.Buffer
+	var buf syncLogBuffer
 	oldDefault := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
 	defer slog.SetDefault(oldDefault)
@@ -1857,6 +1878,11 @@ func (suite *VolumeServiceTestSuite) TestBootWarmupFailureDoesNotFailAppStart() 
 	defer app.RequireStop()
 
 	// The warning was logged and the app started despite the failure.
-	suite.Contains(buf.String(), "Failed to warm volume cache at startup")
-	suite.Contains(buf.String(), "discovery boom")
+	// Background goroutines may still be flushing logs: poll instead of
+	// asserting on a potentially half-written buffer.
+	suite.Eventually(func() bool {
+		logs := buf.String()
+		return strings.Contains(logs, "Failed to warm volume cache at startup") &&
+			strings.Contains(logs, "discovery boom")
+	}, 5*time.Second, 10*time.Millisecond, "expected the boot warmup warning in logs")
 }
