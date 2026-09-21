@@ -156,6 +156,10 @@ mise //backend:build:remote
 - This cross-compiles for `amd64`, then `rsync`s the binaries into `/addon_configs/local_sambanas2/upgrade/` on the HA host.
 - Wait for the message `Remote build and deployment completed.` before proceeding.
 - If `HOMEASSISTANT_IP` is not set, ask the user or check `.env`/shell profile.
+- Pre-deploy checks (fail fast before building):
+  - Running binary version (ground truth is the `telemetry configured ... version=` boot line, NOT `ha apps info` which shows the addon package version). The develop updater refuses builds that semver-compare older — rebuild with a newer `-dev` version when needed.
+  - `leave_front_door_open` addon option: when `true` the `-addon` flag is omitted so SecureMode is off (CORS/WS stay permissive, HA middleware skipped) — know which mode you are smoke-testing.
+  - Preferred variant: the s6 launcher runs musl when present, so `static`-only deploys never execute; use `--variant musl` (or also deploy musl) on this host.
 
 ### Step 1a — Confirm the new binary actually executes (MANDATORY)
 
@@ -173,6 +177,8 @@ ssh root@$HOMEASSISTANT_IP 'ha addons logs local_sambanas2' | grep -a 'telemetry
 ```
 
 If the process predates the transfer, the endpoint still 404s, or the version line is stale: deploy the missing variant too (musl via `build --zig`, which the launcher prefers) and/or rebuild with a version that compares newer than the running one (core bump, e.g. `2026.8.1-dev.1` over `2026.8.0-rc13`; `-dev` alone still classifies `development` via `EnvironmentFromVersion`). Only proceed to Step 2 when all three checks agree.
+
+Triggering the watcher on an already-staged file: the develop fsnotify watcher seeds mtimes at startup and only reacts to Write/Create events, so `touch` (ATTRIB-only) never fires it. Force a content rewrite using a temp file in the SAME directory (never host `/tmp` — large binaries can fill the temp filesystem — and never rewrite in place without a backup): `cp staged /addon_configs/local_sambanas2/upgrade/staged.tmp && cat staged.tmp > staged && rm staged.tmp`, then watch for `Detected updated files in develop channel`. Same-dir temp names are ignored by the watcher allowlist; the `cat >` rewrite emits the Write events that retrigger installation, and the temp copy survives for retry if interrupted.
 
 ### Step 2 — Restart the addon to pick up the new binary
 
@@ -510,6 +516,12 @@ All cases done → Step 9 Summary
 | User wants more coverage | Func-id gaps detected | Delegate to `test-plan`, then re-run remote test with new manifest |
 | Deploy transferred but old code still runs; `lab_features` still 404s or version line stale | s6 `srat/run` prefers `srat-server-musl`; static-only deploy never executes | Deploy the musl variant too (`build --zig`); verify with Step 1a (`ps` + endpoint flip + version line) |
 | `same version or older as current, skipping installation` in addon logs, no restart | Updater refuses semver-older binaries (`2026.8.0-dev.99` < `2026.8.0-rc13`); `-dev` alone does not imply newer | Rebuild with a version comparing newer than running (core bump, e.g. `2026.8.1-dev.1` still classifies `development`); same-version reinstalls are allowed on the develop channel |
+| Watcher installs only `srat-cli`, server binaries never applied (`Detected updated files ... [srat-cli]` only) | One rsync burst transfers cli+server; 500 ms debounce fires on cli while the server file still transfers, then the install restarts the service and later file events are lost (seenModTimes reseeded at startup) | Deploy variants one at a time with a pause, or retrigger per file: `cat <file> > <file>.tmp && cat <file>.tmp > <file> && rm <file>.tmp` in the upgrade dir (plain `touch` emits only ATTRIB, which the watcher ignores — needs Write/Create); wait ~50 s per file for install+restart |
+| Deployed-build pre-check: which binary actually runs? | Stale image binary or wrong variant can silently serve old code | Triple-check: `md5sum` installed vs upgrade-dir file, fresh `telemetry configured ... version=<expected>` line, and middleware/log caller line numbers matching source (e.g. `ha_middleware.go:66`; a different line like `:99` means stale code) |
+| Full addon restart loses `/usr/local/bin` changes | Restart recreates the container from the image; only the host upgrade dir (`/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/`) persists | After any full restart, re-verify md5/version and retrigger the watcher install if needed; in-container (watcher-triggered) restarts preserve binaries |
+| `set_addon_options` resets unrelated options (channel none, loglevel warning) | The options call REPLACES the whole options object | Always send the complete options payload (`srat_update_channel`, `auto_update`, `log_level`, `leave_front_door_open`, `disable_ipv6`, `clean_upgrade_dir`, `factory_reset`, `use_external_kernel_modules`); verify with `get_addon_options` after |
+| Direct-LAN 401s never observable via `:3000` | Host socat `:3000 → 127.0.0.1:64289` makes every external request arrive as loopback `127.0.0.1` (trusted) | Do not assert 401 from LAN through `:3000`; IP-rejection is covered by `ha_middleware_test.go` unit tests; live-verify the allow path (200 + `homeassistant` fallback warn) and caller line instead |
+| HA UI `:8123` unreachable; ingress session APIs 401/404 with addon token | Lab HA serves HTTPS on 443 (self-signed); Supervisor restricts ingress session minting/`validate_session` to HA user auth (`@require_home_assistant`) | Use `curl -sk https://<ip>/...` for HA/ingress; expect bogus-session → 401 from the proxy; valid-session passthrough needs HA user creds (record as untested-live, not failed) |
 | Host `/dev/root` 100% full (`df -h /`); `docker exec` or writes fail | 253 MB rootfs fills easily; zram `/tmp` is only 15 MB | Never write to `/` or `/tmp` on the host and never use `docker cp` for large files; transfer straight into `/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/` (bind-mount, plenty of space) via tmp-file + `chmod 0755` + atomic `mv` |
 
 ## Increase Custom Component Verbosity

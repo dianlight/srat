@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/stretchr/testify/suite"
 )
@@ -15,7 +16,7 @@ type HAMiddlewareSuite struct {
 }
 
 func (suite *HAMiddlewareSuite) SetupTest() {
-	suite.middleware = NewHAMiddleware()
+	suite.middleware = NewHAMiddleware(nil)
 }
 
 func (suite *HAMiddlewareSuite) TestMissingUserIdHeader() {
@@ -141,4 +142,53 @@ func (suite *HAMiddlewareSuite) TestMissingUserIdHeader_TrustedSupervisorSubnet(
 
 func TestHAMiddlewareSuite(t *testing.T) {
 	suite.Run(t, new(HAMiddlewareSuite))
+}
+
+func (suite *HAMiddlewareSuite) TestIPv6LoopbackAuthorized() {
+	handlerCalled := false
+	var receivedUserID string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerCalled = true
+		if v, ok := r.Context().Value(ctxkeys.UserID).(string); ok {
+			receivedUserID = v
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("X-Remote-User-Id", "user-ipv6")
+	req.RemoteAddr = "[::1]:12345"
+	rr := httptest.NewRecorder()
+
+	suite.middleware(handler).ServeHTTP(rr, req)
+	suite.Equal(http.StatusOK, rr.Code)
+	suite.True(handlerCalled)
+	suite.Equal("user-ipv6", receivedUserID)
+}
+
+func (suite *HAMiddlewareSuite) TestCustomSupervisorNetwork() {
+	middleware := NewHAMiddleware(&dto.ContextState{
+		SupervisorAllowedIPs: []string{"192.168.1.0/24", "10.0.0.5"},
+	})
+	handlerCalled := false
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		handlerCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	for _, remote := range []string{"192.168.1.50:1234", "10.0.0.5:1234"} {
+		handlerCalled = false
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.RemoteAddr = remote
+		rr := httptest.NewRecorder()
+		middleware(handler).ServeHTTP(rr, req)
+		suite.Equal(http.StatusOK, rr.Code, "remote %s", remote)
+		suite.True(handlerCalled)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.RemoteAddr = "192.168.2.50:1234"
+	rr := httptest.NewRecorder()
+	middleware(handler).ServeHTTP(rr, req)
+	suite.Equal(http.StatusUnauthorized, rr.Code)
 }
