@@ -30,11 +30,16 @@ func NewHTTPServer(
 	sloghttp.RequestIDKey = "X-Request-Id"
 	sloghttp.SpanIDKey = "X-Span-Id"
 	sloghttp.TraceIDKey = "X-Trace-Id"
+	// Request/response bodies are not logged by default: they may contain
+	// credentials (Samba user passwords, HA mount password) that bypass the
+	// logfusc.Secret protection applied at the struct level. Set
+	// SRAT_LOG_BODIES=true to re-enable body logging for debugging.
+	logBodies := os.Getenv("SRAT_LOG_BODIES") == "true"
 	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
 		DefaultLevel:       tlog.LevelTrace,
-		WithRequestBody:    true,
+		WithRequestBody:    logBodies,
 		WithRequestHeader:  true,
-		WithResponseBody:   true,
+		WithResponseBody:   logBodies,
 		WithResponseHeader: true,
 		WithUserAgent:      true,
 		WithRequestID:      true,

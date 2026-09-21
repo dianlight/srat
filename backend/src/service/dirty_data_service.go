@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -57,7 +59,7 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			return nil
 		})
 		unsubscribe[3] = eventBus.OnAppConfig(func(ctx context.Context, event events.AppConfigEvent) errors.E {
-			slog.DebugContext(ctx, "DirtyDataService received AppConfig event", "config", event.Config)
+			slog.DebugContext(ctx, "DirtyDataService received AppConfig event", "options", appConfigOptionKeys(event.Config))
 			p.setDirtyAppConfig()
 			return nil
 		})
@@ -86,6 +88,16 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 	})
 
 	return p
+}
+
+// appConfigOptionKeys returns the sorted names of changed addon options for
+// logging. Values are never logged: the options map is user-controlled and
+// may contain credentials such as the addon password (task 031).
+func appConfigOptionKeys(config *dto.AppConfigUpdateRequest) []string {
+	if config == nil {
+		return nil
+	}
+	return slices.Sorted(maps.Keys(config.Options))
 }
 
 // start or reset timer for 15 seconds
