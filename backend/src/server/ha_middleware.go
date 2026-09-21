@@ -3,10 +3,12 @@ package server
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/netip"
 	"strings"
 
+	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
 )
 
@@ -27,54 +29,19 @@ import (
 //
 // If all checks pass, the middleware adds the "user_id" from the header to
 // the request context and forwards the request to the next handler in the chain.
-func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) func(http.Handler) http.Handler {
-	trustedPrefixes := []netip.Prefix{
-		netip.MustParsePrefix("127.0.0.0/8"),
-		netip.MustParsePrefix("172.30.32.0/23"),
-	}
-
-	// Create a cache with a 30-second expiration and cleanup every minute.
-	//sessionCache := gocache.New(30*time.Second, 1*time.Minute)
+//
+// Note: ingress session re-validation against POST /ingress/validate_session
+// is intentionally not performed here. That endpoint requires Home Assistant
+// user auth and the addon SUPERVISOR_TOKEN lacks permission (verified live on
+// HAOS 2026-09-21: 401 with a valid token that returns 200 on
+// /supervisor/info); the Supervisor proxy already 401s invalid
+// ingress_session cookies itself.
+func NewHAMiddleware(state *dto.ContextState) func(http.Handler) http.Handler {
+	trustedPrefixes := defaultTrustedPrefixes(state)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Check for ingress session cookie and validate it
-			/*
-				if ingressClient != nil {
-					if ingressCookie, err := r.Cookie("ingress_session"); err == nil && ingressCookie.Value != "" {
-						sessionID := ingressCookie.Value
-
-						// Check if the session is already cached and valid
-						if _, found := sessionCache.Get(sessionID); found {
-							slog.Debug("Ingress session is valid (from cache)")
-						} else {
-							slog.Debug("Found ingress_session cookie, validating session.")
-							resp, err := ingressClient.ValidateIngressSessionWithResponse(r.Context(), ingress.ValidateIngressSessionJSONRequestBody{
-								Session: &sessionID,
-							})
-
-							if err != nil {
-								slog.Error("Error validating ingress session", "error", err)
-								http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-								return
-							}
-
-							if resp.StatusCode() != http.StatusOK {
-								slog.Warn("Invalid ingress session", "status", resp.Status(), "body", string(resp.Body), "session", sessionID)
-								http.Error(w, "Unauthorized: Invalid ingress session", http.StatusUnauthorized)
-								return
-							}
-							// Cache the valid session
-							sessionCache.Set(sessionID, true, gocache.DefaultExpiration)
-							slog.Debug("Ingress session is valid (validated and cached)")
-						}
-					}
-				}
-			*/
-
-			remoteIP := r.RemoteAddr
-			// Remove port if present
-			ip, _, _ := strings.Cut(remoteIP, ":")
+			ip := clientIP(r.RemoteAddr)
 
 			allowed := false
 			if addr, err := netip.ParseAddr(ip); err == nil {
@@ -104,4 +71,49 @@ func NewHAMiddleware( /*ingressClient ingress.ClientWithResponsesInterface*/ ) f
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
+}
+
+// defaultTrustedPrefixes returns loopback plus Supervisor defaults merged with
+// extra IPs/CIDRs from ContextState.SupervisorAllowedIPs (already populated
+// from --supervisor-allowed-ips / SUPERVISOR_NETWORK).
+func defaultTrustedPrefixes(state *dto.ContextState) []netip.Prefix {
+	prefixes := []netip.Prefix{
+		netip.MustParsePrefix("127.0.0.0/8"),
+		netip.MustParsePrefix("172.30.32.0/23"),
+	}
+	if state == nil {
+		return prefixes
+	}
+	for _, entry := range state.SupervisorAllowedIPs {
+		trimmed := strings.TrimSpace(entry)
+		if trimmed == "" {
+			continue
+		}
+		if strings.Contains(trimmed, "/") {
+			if prefix, err := netip.ParsePrefix(trimmed); err == nil {
+				prefixes = append(prefixes, prefix.Masked())
+			} else {
+				slog.Warn("Ignoring invalid SupervisorAllowedIPs CIDR", "value", trimmed, "error", err)
+			}
+			continue
+		}
+		if addr, err := netip.ParseAddr(trimmed); err == nil {
+			prefixes = append(prefixes, netip.PrefixFrom(addr, addr.BitLen()))
+		} else {
+			slog.Warn("Ignoring invalid SupervisorAllowedIPs IP", "value", trimmed, "error", err)
+		}
+	}
+	return prefixes
+}
+
+// clientIP extracts the host part of a RemoteAddr, handling host:port,
+// IPv6, and bare IPs.
+func clientIP(remoteAddr string) string {
+	if host, _, err := net.SplitHostPort(remoteAddr); err == nil {
+		return host
+	}
+	if ip, _, _ := strings.Cut(remoteAddr, ":"); ip != "" && strings.Count(remoteAddr, ":") == 1 {
+		return ip
+	}
+	return remoteAddr
 }

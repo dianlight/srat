@@ -49,13 +49,12 @@ type WebSocketHandlerParams struct {
 
 func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 	// Instantiate a WebSocket broker
+	state := p.State
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
-			// Allow connections from any origin in development
-			// In production, you should check the origin
-			return true
+			return checkWebSocketOrigin(state, r)
 		},
 	}
 
@@ -74,6 +73,32 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 		eventMap:       dto.WebEventMap,
 		ObjectMap:      reverseMap,
 	}
+}
+
+// checkWebSocketOrigin mirrors server.IsOriginAllowed without importing the
+// server package (server already imports api). Dev mode stays permissive;
+// SecureMode allows empty Origin (non-browser HA component) and exact matches
+// against IngressOrigin plus AllowedOrigins.
+func checkWebSocketOrigin(state *dto.ContextState, r *http.Request) bool {
+	if state == nil || !state.SecureMode {
+		return true
+	}
+	origin := ""
+	if r != nil {
+		origin = r.Header.Get("Origin")
+	}
+	if origin == "" {
+		return true
+	}
+	if state.IngressOrigin != "" && origin == state.IngressOrigin {
+		return true
+	}
+	for _, allowed := range state.AllowedOrigins {
+		if origin == allowed {
+			return true
+		}
+	}
+	return false
 }
 
 func reverseMap(m map[string]any) map[string]string {

@@ -156,6 +156,10 @@ mise //backend:build:remote
 - This cross-compiles for `amd64`, then `rsync`s the binaries into `/addon_configs/local_sambanas2/upgrade/` on the HA host.
 - Wait for the message `Remote build and deployment completed.` before proceeding.
 - If `HOMEASSISTANT_IP` is not set, ask the user or check `.env`/shell profile.
+- Pre-deploy checks (fail fast before building):
+  - Running binary version (ground truth is the `telemetry configured ... version=` boot line, NOT `ha apps info` which shows the addon package version). The develop updater refuses builds that semver-compare older — rebuild with a newer `-dev` version when needed.
+  - `leave_front_door_open` addon option: when `true` the `-addon` flag is omitted so SecureMode is off (CORS/WS stay permissive, HA middleware skipped) — know which mode you are smoke-testing.
+  - Preferred variant: the s6 launcher runs musl when present, so `static`-only deploys never execute; use `--variant musl` (or also deploy musl) on this host.
 
 ### Step 1a — Confirm the new binary actually executes (MANDATORY)
 
@@ -173,6 +177,8 @@ ssh root@$HOMEASSISTANT_IP 'ha addons logs local_sambanas2' | grep -a 'telemetry
 ```
 
 If the process predates the transfer, the endpoint still 404s, or the version line is stale: deploy the missing variant too (musl via `build --zig`, which the launcher prefers) and/or rebuild with a version that compares newer than the running one (core bump, e.g. `2026.8.1-dev.1` over `2026.8.0-rc13`; `-dev` alone still classifies `development` via `EnvironmentFromVersion`). Only proceed to Step 2 when all three checks agree.
+
+Triggering the watcher on an already-staged file: the develop fsnotify watcher seeds mtimes at startup and only reacts to Write/Create events, so `touch` (ATTRIB-only) never fires it. Force a content rewrite instead, e.g. copy the staged file to /tmp and back (`cp staged /tmp/f && cp /tmp/f staged`), then watch for `Detected updated files in develop channel`.
 
 ### Step 2 — Restart the addon to pick up the new binary
 

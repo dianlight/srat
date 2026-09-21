@@ -47,7 +47,11 @@ The CORS spec prohibits wildcard origins when `Access-Control-Allow-Credentials:
 
 ---
 
-#### [B-SEC-02] WebSocket upgrader accepts any origin
+#### [B-SEC-02] ~~WebSocket upgrader accepts any origin~~ ✅ RESOLVED
+
+**Severity:** High  
+**File:** `backend/src/api/ws.go:52-57`
+**Status:** Resolved by task 004 (SecureMode exact-match `Origin` check via `IngressOrigin` + `AllowedOrigins`; dev stays permissive; 403 test in `api/ws_origin_test.go`).
 
 **Severity:** High  
 **File:** `backend/src/api/ws.go:52-57`
@@ -90,7 +94,11 @@ IP prefixes are hardcoded to a single Docker network. Additionally, `strings.Spl
 
 ---
 
-#### [B-SEC-05] pprof route registered unconditionally in production router
+#### [B-SEC-05] ~~pprof route registered unconditionally in production router~~ ✅ RESOLVED
+
+**Severity:** Medium  
+**File:** `backend/src/server/http_server.go:97`
+**Status:** Resolved by task 004 (`RegisterPprof` no-op in prod, route only behind `//go:build pprof`; 404/present tests).
 
 **Severity:** Medium  
 **File:** `backend/src/server/http_server.go:97`
