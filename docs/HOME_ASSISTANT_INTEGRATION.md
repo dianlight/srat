@@ -11,6 +11,7 @@
     - [Supervisor Autodiscovery](#supervisor-autodiscovery)
     - [Manual Configuration](#manual-configuration)
   - [Communication](#communication)
+  - [Ingress Security Model](#ingress-security-model)
   - [Configuration Changes](#configuration-changes)
   - [Entities](#entities)
 - [Built-in Entity Push (Add-on Mode)](#built-in-entity-push-add-on-mode)
