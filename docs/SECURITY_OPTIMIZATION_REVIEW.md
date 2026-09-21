@@ -76,6 +76,8 @@ The entire `ingress_session` cookie validation block is disabled. The middleware
 **Fix:** Re-enable the commented-out validation using `ingressClient` with the 30-second `gocache` TTL that is already coded.  
 **Task:** [004] Security Hardening (planned).
 
+**Partial mitigation (Task [031]):** disabling request/response body logging by default closes the credential-harvesting side channel (spoofed requests can no longer land passwords in log sinks). The spoofing vector itself remains open until session validation is re-enabled.
+
 ---
 
 #### [B-SEC-04] Hardcoded trusted IP prefixes, naive IPv6 splitting
@@ -106,9 +108,9 @@ The route exists regardless of the `pprof` build tag. Any accidental import of `
 
 ---
 
-#### [B-SEC-06] Request and response body logging in all modes - password leakage
+#### [B-SEC-06] ~~Request and response body logging in all modes - password leakage~~ ✅ RESOLVED
 
-**Severity:** High  
+**Severity:** ~~High~~ Resolved — fixed in Task [031]  
 **File:** `backend/src/server/http_server.go:35-40`
 
 ```go
@@ -119,7 +121,9 @@ WithResponseBody: true,
 Raw JSON request bodies are logged before Huma deserializes them. `dto.User.Password` (Samba passwords) and `dto.Settings.HASmbPassword` appear in plaintext in every log sink because the `logfusc.Secret` wrapper only masks Go struct printing, not raw JSON.
 
 **Fix:** Disable body logging by default; enable only under `SRAT_LOG_BODIES=true`.  
-**Task:** [031] Production Logging Safety (new).
+**Task:** [031] Production Logging Safety — **complete**.
+
+**Resolution:** `NewHTTPServer` now gates both flags on `logBodies := os.Getenv("SRAT_LOG_BODIES") == "true"`. The AppConfig event log in `DirtyDataService` was also narrowed to option names only (values may carry the addon password). Guard tests: `TestNewHTTPServerRequestBodyLogging` (secret absent by default, present under opt-in) and `TestSetDirtyAppConfigDoesNotLogOptionValues`. Flag documented in `docs/SETTINGS_DOCUMENTATION.md`.
 
 ---
 

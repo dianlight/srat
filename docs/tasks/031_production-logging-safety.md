@@ -3,7 +3,7 @@
 # [FIX]: Production Logging Safety — Body Logging and Secret Sanitization
 
 **Target Repo:** `srat`
-**Status:** 🔄 In Progress
+**Status:** ✅ Complete
 **Issue Link:** _None — discovered in security review 2026-04-28_
 
 ## 🎯 Objective
@@ -28,8 +28,10 @@ Prevent Samba user passwords and the HA mount password from being written to str
   > ✅ **Done 2026-09-21** — audit result: `api/` logs only scalar identifiers (usernames, share/disk/partition/problem keys); `service/` logs only `user.Username`. `dto.Secret`/`logfusc.Secret` mask under `%v`/`%+v`/`%#v`/slog-Any via `String`/`GoString` (+ null JSON), and the broadcaster relays only path/hash for AppConfig. One genuine leak found and fixed: `DirtyDataService` logged the whole `AppConfigUpdateRequest` (arbitrary user-controlled options map, may contain the addon password) at Debug — now logs sorted option names only via `appConfigOptionKeys` (`dirty_data_service.go`). Covered by `TestSetDirtyAppConfigDoesNotLogOptionValues` + `TestAppConfigOptionKeys` (helper 100%).
 - [x] Task 4: Add a test that POST /user with a password body does **not** produce a log entry containing the password string (use a `slog.Handler` interceptor in the test)
   > ✅ **Done** — `TestNewHTTPServerRequestBodyLogging` (`server/http_server_test.go`): boots the real `NewHTTPServer` + sloghttp chain with an echo stub on POST /user, captures `slog.Default` at TRACE into a mutex-guarded buffer, asserts the secret is absent by default and present with `SRAT_LOG_BODIES=true`. Failing-proof: with body flags hardcoded to `true` the default subtest fails. `NewHTTPServer` coverage 78.1% (≥70% gate).
-- [ ] Task 5: Document the `SRAT_LOG_BODIES` flag in `docs/SETTINGS_DOCUMENTATION.md`
-- [ ] Task 6: Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-06 and B-SEC-03 (partial) resolved
+- [x] Task 5: Document the `SRAT_LOG_BODIES` flag in `docs/SETTINGS_DOCUMENTATION.md`
+  > ✅ **Done** — new `### Environment Variables` subsection under Implementation Details (`SRAT_LOG_BODIES` + related `SRAT_*` vars).
+- [x] Task 6: Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-06 and B-SEC-03 (partial) resolved
+  > ✅ **Done** — B-SEC-06 marked ✅ RESOLVED with guard-test references; B-SEC-03 annotated as partially mitigated (log side channel closed, spoofing vector still owned by Task 004).
 
 ## 🧠 Implementation Notes
 
