@@ -36,6 +36,7 @@
     - [API Endpoint](#api-endpoint)
     - [Frontend Integration](#frontend-integration)
     - [Lab Feature Tiers (Alpha/Beta)](#lab-feature-tiers-alphabeta)
+    - [Environment Variables](#environment-variables)
   - [Related Documentation](#related-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
