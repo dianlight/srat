@@ -2,6 +2,8 @@ package converter
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"log/slog"
@@ -188,18 +190,19 @@ func checkUserValid(dbUser dbom.SambaUser) bool {
 	if dbUser.Username == "" || dbUser.Password == "" {
 		return false
 	}
-	if cached, ok := userValidityCache.Get(userValidityKey(dbUser.Username, dbUser.Password)); ok {
+	key := userValidityKey(dbUser.Username, dbUser.Password)
+	if cached, ok := userValidityCache.Get(key); ok {
 		if valid, castOk := cached.(bool); castOk {
 			return valid
 		}
-		userValidityCache.Delete(userValidityKey(dbUser.Username, dbUser.Password))
+		userValidityCache.Delete(key)
 	}
 	err := unixsamba.CheckSambaUser(context.Background(), dbUser.Username, dbUser.Password)
 	if err != nil {
 		slog.Warn("Failed to validate user with unixsamba", "username", dbUser.Username, "error", err)
 	}
 	valid := err == nil
-	userValidityCache.SetDefault(userValidityKey(dbUser.Username, dbUser.Password), valid)
+	userValidityCache.SetDefault(key, valid)
 	return valid
 }
 
@@ -213,11 +216,32 @@ var userValidityCacheTTL = 10 * time.Second
 
 var userValidityCache = gocache.New(userValidityCacheTTL, 30*time.Second)
 
-// userValidityKey hashes the credential pair so plaintext passwords never sit
-// in the cache as map keys.
+// userValidityHMACKey is a per-process random key for the credential-check
+// cache index. A fresh key per restart keeps cache entries unusable across
+// restarts and after heap dumps, without persisting any secret.
+var userValidityHMACKey = newUserValidityHMACKey()
+
+func newUserValidityHMACKey() []byte {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		slog.Error("Failed to generate credential cache HMAC key", "error", err)
+		panic("credential cache HMAC key generation failed")
+	}
+	return key
+}
+
+// userValidityKey authenticates the credential pair so plaintext passwords
+// never sit in the cache as map keys. This is a short-lived (10s) cache
+// index, not credential storage or verification, so a password-KDF
+// (bcrypt/Argon2/PBKDF2) is intentionally not used: HMAC-SHA256 with a
+// per-process random key is fast enough for the ListShares N×M probe storm
+// while remaining unforgeable without the in-memory key.
 func userValidityKey(username, password string) string {
-	sum := sha256.Sum256([]byte(username + "\x00" + password))
-	return hex.EncodeToString(sum[:])
+	mac := hmac.New(sha256.New, userValidityHMACKey)
+	_, _ = mac.Write([]byte(username))
+	_, _ = mac.Write([]byte{0})
+	_, _ = mac.Write([]byte(password))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // checkUserValidStored maps the persisted IsValid flag into the DTO pointer
