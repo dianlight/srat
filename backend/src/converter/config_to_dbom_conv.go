@@ -102,8 +102,6 @@ func (c *ConfigToDbomConverterImpl) PropertiesToConfig(source dbom.Properties, t
 					return errors.Errorf("P->C Type mismatch for field: %s %T->%T", prop.Key, prop.Value, newvalue.Interface())
 				}
 			}
-			//} else {
-			//	return errors.Errorf("P->C Invalid field: %s", prop.Key)
 		}
 	}
 	return nil

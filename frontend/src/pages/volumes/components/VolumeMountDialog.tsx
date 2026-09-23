@@ -212,7 +212,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
       }
       return flag; // Return the flag as is if no custom values are provided
     });
-    //console.debug("Form Data:", formData,custom_flags);
 
     const existingMountData = Object.values(
       props.objectToEdit.mount_point_data || {},
@@ -228,7 +227,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
       is_to_mount_at_startup: formData.is_to_mount_at_startup, // Include the switch value in submitted data
       type: Type.Addon,
     };
-    //console.debug("Submitting Mount Data:", submitData);
     // Keep the submit button disabled (formState.isSubmitting) until the
     // parent has finished handling the submission.
     await props.onClose(submitData);
@@ -244,8 +242,6 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
       "Unnamed Partition",
   );
   const partitionId = props.objectToEdit?.id || "N/A";
-
-  //console.log(mountFlagsOptions, customMountFlagsOptions);
 
   const getMountFlagLabel = (option: MountFlag) =>
     option ? option.name : "Unnamed Option";
@@ -338,7 +334,8 @@ export function VolumeMountDialog(props: VolumeMountDialogProps) {
                     size: "small",
                     onChange: (_event, value) => {
                       if (props.readOnlyView) return;
-                      console.debug("FS Type changed:", value);
+                      if (process.env.NODE_ENV !== "production")
+                        console.debug("FS Type changed:", value);
                       setValue("custom_flags", []); // Clear custom flags when FS type changes
                       setValue("custom_flags_values", []); // Clear custom flags values when FS type changes
                       replace([]); // Clear field array for custom flag values

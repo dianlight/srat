@@ -41,8 +41,8 @@ GetEffectiveConfig() HDIdleEffectiveConfig
 
 **Location:** `backend/src/dbom/query/mount_point_path_query.go`
 
-**Status:** The `MountPointPathQuery` interface declares `FindByPath` and `FindByDevice` as
-commented-out stubs.
+**Status:** Deferred post-1.0. The `MountPointPathQuery` interface currently
+exposes `All()` only; path/device lookups are performed in service code.
 
 **Required interface changes:**
 

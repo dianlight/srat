@@ -256,7 +256,8 @@ export function Shares() {
   };
 
   function onSubmitDeleteShare(shareName: string, shareData: SharedResource) {
-    console.debug("Delete", shareName, shareData);
+    if (process.env.NODE_ENV !== "production")
+      console.debug("Delete", shareName, shareData);
     if (!shareName || !shareData) return;
     confirm({
       title: `Delete ${shareData?.name}?`,
@@ -280,13 +281,14 @@ export function Shares() {
             dispatch(addMessage(JSON.stringify(err)));
           });
       } else if (reason === "cancel") {
-        console.debug("cancel");
+        if (process.env.NODE_ENV !== "production") console.debug("cancel");
       }
     });
   }
 
   function onSubmitEditShare(data: ShareEditProps) {
-    console.debug("Edit Share", data, selectedShare);
+    if (process.env.NODE_ENV !== "production")
+      console.debug("Edit Share", data, selectedShare);
     if (!data) return;
     if (data.disabled) {
       disableShare({
@@ -314,7 +316,6 @@ export function Shares() {
     }
 
     // Save Data
-    //console.log(data);
     if (data.org_name !== "" && data.org_name !== undefined) {
       // Existing share being updated
       updateShare({
