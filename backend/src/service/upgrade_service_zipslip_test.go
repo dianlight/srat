@@ -66,6 +66,11 @@ func TestExtractFile_RejectsDotDotAndAbsoluteNames(t *testing.T) {
 		{name: "absolute symlink name", entryName: "/abs/path", isSymlink: true, body: "target"},
 		{name: "dotdot regular name", entryName: "../evil", isSymlink: false, body: "data"},
 		{name: "absolute regular name", entryName: "/abs/path", isSymlink: false, body: "data"},
+		{name: "empty symlink name", entryName: "", isSymlink: true, body: "target"},
+		{name: "empty regular name", entryName: "", isSymlink: false, body: "data"},
+		{name: "drive-letter symlink name", entryName: "C:/evil", isSymlink: true, body: "target"},
+		{name: "drive-letter regular name", entryName: "C:/evil", isSymlink: false, body: "data"},
+		{name: "backslash drive-letter symlink name", entryName: `C:\evil`, isSymlink: true, body: "target"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -79,7 +84,11 @@ func TestExtractFile_RejectsDotDotAndAbsoluteNames(t *testing.T) {
 			require.True(t, ok, "zip entry missing")
 			_, err := svc.extractFile(zf, dest)
 			require.Error(t, err)
-			assert.Contains(t, err.Error(), "illegal file path")
+			if tc.entryName == "" {
+				assert.Contains(t, err.Error(), "empty file name")
+			} else {
+				assert.Contains(t, err.Error(), "illegal file path")
+			}
 		})
 	}
 }
