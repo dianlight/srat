@@ -174,6 +174,16 @@ func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.He
 		ConnectedAt: time.Now(),
 	}
 
+	if message.Component == dto.HomeAssistantComponentSRAT && self.haComponentSvc != nil {
+		// Fresh helo from the SRAT component: when the connected version
+		// matches the installed files, Home Assistant restarted after the
+		// install/upgrade and the restart reminder is stale. Best-effort
+		// only; reconciliation must never fail the handshake.
+		if err := self.haComponentSvc.NotifyComponentConnected(self.ctx); err != nil {
+			slog.WarnContext(self.ctx, "Failed to reconcile restart-required problem after helo", "error", err)
+		}
+	}
+
 	if self.repairService != nil {
 		for _, queued := range self.repairService.FlushQueuedCommands() {
 			self.broadcaster.BroadcastMessage(queued)
