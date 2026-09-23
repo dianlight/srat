@@ -29,6 +29,7 @@ const customComponentRestartRepairID = "custom_component_restart_required"
 type HomeAssistantComponentServiceInterface interface {
 	GetStatus() (*dto.HomeAssistantCustomComponentStatus, error)
 	SyncIssueStatus(status *dto.HomeAssistantCustomComponentStatus) error
+	NotifyComponentConnected(ctx context.Context) error
 	InstallOrUpgrade(ctx context.Context) error
 	InstallOrUpgradeFromZip(ctx context.Context, zipArchive []byte) error
 	Uninstall(ctx context.Context) error
@@ -242,6 +243,15 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 		return nil
 	}
 
+	if restartSatisfiedByConnection(status) {
+		// The connected component runs the installed version, proving Home
+		// Assistant restarted after the install/upgrade. Clear the reminder
+		// best-effort so a stale warning does not linger indefinitely.
+		if s.problemService != nil {
+			_ = s.dismissRepairIssue(s.ctx, customComponentRestartRepairID)
+		}
+	}
+
 	if !status.Installed && !status.Connected {
 		if s.problemService != nil && !s.alertEnabled("custom_component_missing") {
 			// Alert disabled in the Alerts settings category: dismiss and stay silent.
@@ -251,6 +261,12 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 		if existing, err := s.problemService.Get("custom_component_missing"); err == nil && existing != nil && existing.Ignored {
 			// Permanent ignore: never raise again until dismissed/re-enabled.
 			return nil
+		}
+		// The component is gone and disconnected (e.g. restarted after an
+		// uninstall): the restart reminder is moot, the missing problem is
+		// the accurate state.
+		if s.problemService != nil {
+			_ = s.dismissRepairIssue(s.ctx, customComponentRestartRepairID)
 		}
 		_, err := s.problemService.Upsert(&dto.Problem{
 			ProblemKey:     "custom_component_missing",
@@ -272,6 +288,40 @@ func (s *HomeAssistantComponentService) SyncIssueStatus(status *dto.HomeAssistan
 	}
 
 	return nil
+}
+
+// restartSatisfiedByConnection reports whether a live component connection
+// proves the pending restart was applied: installed files exist and the
+// connected component runs the installed version. Version equality matters
+// because an SRAT addon restart alone also triggers a fresh helo without
+// Home Assistant reloading the new files.
+func restartSatisfiedByConnection(status *dto.HomeAssistantCustomComponentStatus) bool {
+	if status == nil || !status.Installed || !status.Connected {
+		return false
+	}
+	if status.InstalledVersion == nil || status.ConnectedVersion == nil {
+		return false
+	}
+	return *status.InstalledVersion == *status.ConnectedVersion
+}
+
+// NotifyComponentConnected reconciles the restart-required problem after a
+// fresh helo handshake from the SRAT custom component. Dismissal only happens
+// when the connected component runs the installed version; otherwise the
+// reminder is kept. Errors are returned so callers can log them, but the
+// WebSocket handshake must never fail because of reconciliation.
+func (s *HomeAssistantComponentService) NotifyComponentConnected(ctx context.Context) error {
+	if !s.isCustomComponentLabEnabled() {
+		return nil
+	}
+	status, err := s.GetStatus()
+	if err != nil {
+		return err
+	}
+	if !restartSatisfiedByConnection(status) {
+		return nil
+	}
+	return s.dismissRepairIssue(ctx, customComponentRestartRepairID)
 }
 
 func (s *HomeAssistantComponentService) InstallOrUpgrade(ctx context.Context) error {

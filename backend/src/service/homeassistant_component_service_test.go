@@ -393,6 +393,148 @@ func (suite *HomeAssistantComponentServiceSuite) TestUpsertRestartRequiredRepair
 	_, _ = mock.Verify(suite.problemSvc, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
 }
 
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_ConnectedDismissesRestartRequired() {
+	installedVersion := "2026.08.1"
+	connectedVersion := "2026.08.1"
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed:        true,
+		InstalledVersion: &installedVersion,
+		Connected:        true,
+		ConnectedVersion: &connectedVersion,
+	}
+
+	dismissed := make(chan string, 2)
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).
+		ThenAnswer(func(args []any) []any {
+			dismissed <- args[0].(string)
+			return []any{nil}
+		})
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	close(dismissed)
+	var keys []string
+	for key := range dismissed {
+		keys = append(keys, key)
+	}
+	suite.Contains(keys, "custom_component_restart_required")
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_ConnectedVersionMismatchKeepsRestartRequired() {
+	installedVersion := "2026.08.2"
+	connectedVersion := "2026.08.1"
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed:        true,
+		InstalledVersion: &installedVersion,
+		Connected:        true,
+		ConnectedVersion: &connectedVersion,
+	}
+
+	var dismissed []string
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).
+		ThenAnswer(func(args []any) []any {
+			dismissed = append(dismissed, args[0].(string))
+			return []any{nil}
+		})
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	suite.NotContains(dismissed, "custom_component_restart_required")
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestSyncIssueStatus_MissingDisconnectedDismissesRestartRequired() {
+	status := &dto.HomeAssistantCustomComponentStatus{
+		Installed: false,
+		Connected: false,
+	}
+
+	var dismissed []string
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).
+		ThenAnswer(func(args []any) []any {
+			dismissed = append(dismissed, args[0].(string))
+			return []any{nil}
+		})
+	mock.When(suite.problemSvc.Get(mock.Exact("custom_component_missing"))).ThenReturn(nil, nil)
+	mock.When(suite.problemSvc.Upsert(mock.Any[*dto.Problem]())).ThenReturn(new(dto.Problem), nil)
+
+	err := suite.service.SyncIssueStatus(status)
+	suite.Require().NoError(err)
+
+	suite.Contains(dismissed, "custom_component_restart_required")
+	_, _ = mock.Verify(suite.problemSvc, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestNotifyComponentConnected_DismissesWhenVersionsMatch() {
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
+	suite.Require().NoError(os.WriteFile(
+		filepath.Join(componentDir, "manifest.json"),
+		[]byte(`{"version":"2026.08.1"}`), 0o644,
+	))
+	haVersion := "2026.8.0"
+	entryID := "entry-123"
+	suite.state.HAWsComponent = &dto.HomeAssistantComponentConnection{
+		Component:   dto.HomeAssistantComponentSRAT,
+		Version:     "2026.08.1",
+		HAVersion:   &haVersion,
+		EntryID:     &entryID,
+		ConnectedAt: time.Now(),
+	}
+
+	dismissCalled := make(chan struct{}, 1)
+	mock.When(suite.problemSvc.Dismiss(mock.Exact("custom_component_restart_required"))).
+		ThenAnswer(func(_ []any) []any {
+			dismissCalled <- struct{}{}
+			return []any{nil}
+		})
+
+	err := suite.service.NotifyComponentConnected(context.Background())
+	suite.Require().NoError(err)
+
+	select {
+	case <-dismissCalled:
+	case <-time.After(time.Second):
+		suite.Fail("expected Dismiss of custom_component_restart_required when versions match")
+	}
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestNotifyComponentConnected_KeepsWhenVersionsDiffer() {
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
+	suite.Require().NoError(os.WriteFile(
+		filepath.Join(componentDir, "manifest.json"),
+		[]byte(`{"version":"2026.08.2"}`), 0o644,
+	))
+	suite.state.HAWsComponent = &dto.HomeAssistantComponentConnection{
+		Component:   dto.HomeAssistantComponentSRAT,
+		Version:     "2026.08.1",
+		ConnectedAt: time.Now(),
+	}
+
+	var dismissed []string
+	mock.When(suite.problemSvc.Dismiss(mock.Any[string]())).
+		ThenAnswer(func(args []any) []any {
+			dismissed = append(dismissed, args[0].(string))
+			return []any{nil}
+		})
+
+	err := suite.service.NotifyComponentConnected(context.Background())
+	suite.Require().NoError(err)
+
+	suite.NotContains(dismissed, "custom_component_restart_required")
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestNotifyComponentConnected_SuppressedWhenLabModeOff() {
+	suite.settingStub.labMode = false
+
+	err := suite.service.NotifyComponentConnected(context.Background())
+	suite.Require().NoError(err)
+
+	_ = mock.Verify(suite.problemSvc, matchers.Times(0)).Dismiss(mock.Any[string]())
+}
+
 func createCustomComponentArchive(t *testing.T, files map[string]string) []byte {
 	t.Helper()
 

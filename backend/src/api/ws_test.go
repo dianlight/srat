@@ -201,6 +201,57 @@ func (suite *WsHandlerSuite) TestWebSocketAcceptsValidatedInboundHelo() {
 	}, time.Second, 10*time.Millisecond)
 }
 
+func (suite *WsHandlerSuite) TestWebSocketHeloDismissesRestartRequiredRepair() {
+	ctrl := mock.NewMockController(suite.T())
+
+	dismissCalled := make(chan struct{}, 1)
+	mockHAComponentSvc := mock.Mock[service.HomeAssistantComponentServiceInterface](ctrl)
+	mock.When(mockHAComponentSvc.NotifyComponentConnected(mock.AnyContext())).
+		ThenAnswer(func(_ []any) []any {
+			dismissCalled <- struct{}{}
+			return []any{nil}
+		})
+
+	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{
+		Ctx:            suite.ctx,
+		Broadcaster:    suite.mockBroadcaster,
+		RepairService:  suite.repairService,
+		HAComponentSvc: mockHAComponentSvc,
+		State:          suite.state,
+	})
+	r := mux.NewRouter()
+	h.RegisterWs(r)
+
+	srv := httptest.NewServer(r)
+	defer srv.Close()
+
+	url := "ws" + srv.URL[len("http"):] + "/ws"
+	conn, resp, err := websocket.DefaultDialer.Dial(url, nil)
+	if err != nil {
+		suite.Failf("Dial failed", "err=%v resp=%v", err, resp)
+		return
+	}
+	defer conn.Close()
+
+	suite.Require().NoError(conn.SetReadDeadline(time.Now().Add(1 * time.Second)))
+	_, msg1, err := conn.ReadMessage()
+	suite.Require().NoError(err)
+	suite.Contains(string(msg1), "event: hello")
+
+	err = conn.WriteJSON(dto.HeloMessage{
+		Type:      dto.ClientEventTypes.CLIENTEVENTTYPEHELO.String(),
+		Component: dto.HomeAssistantComponentSRAT,
+		Version:   "2026.08.1",
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case <-dismissCalled:
+	case <-time.After(time.Second):
+		suite.Fail("timed out waiting for NotifyComponentConnected to be called on helo")
+	}
+}
+
 func (suite *WsHandlerSuite) TestWebSocketIgnoresMalformedInboundPayload() {
 	h := api.NewWebSocketBroker(api.WebSocketHandlerParams{Ctx: suite.ctx, Broadcaster: suite.mockBroadcaster, RepairService: suite.repairService, State: suite.state})
 	r := mux.NewRouter()
