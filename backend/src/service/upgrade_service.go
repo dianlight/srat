@@ -872,6 +872,20 @@ func (self *UpgradeService) DownloadAndExtractBinaryAsset(asset dto.BinaryAsset)
 	extractPercentage := 0.0
 
 	for _, f := range zipReader.File {
+		// Inline ZipSlip guard visible to CodeQL go/zipslip: reject absolute
+		// paths and dot-dot entries before extractFile. extractFile re-validates
+		// via validateZipEntryName, checkZipPath and checkResolvedDir.
+		slashEntryName := filepath.ToSlash(f.Name)
+		if f.Name == "" || strings.Contains(slashEntryName, "..") || filepath.IsAbs(f.Name) || strings.HasPrefix(slashEntryName, "/") || (len(slashEntryName) >= 2 && slashEntryName[1] == ':') {
+			errUnsafe := errors.Errorf("illegal file path in update package: %s", f.Name)
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errUnsafe.Error()})
+			return nil, errUnsafe
+		}
+		if err := validateZipEntryName(f.Name); err != nil {
+			errWrapped := errors.Wrapf(err, "failed to extract file %s from zip:%s", f.Name, err.Error())
+			self.notifyClient(dto.UpdateProgress{ProgressStatus: dto.UpdateProcessStates.UPDATESTATUSERROR, ErrorMessage: errWrapped.Error()})
+			return nil, errWrapped
+		}
 		path, err := self.extractFile(f, self.state.UpdateDataDir)
 		if err != nil {
 			errWrapped := errors.Wrapf(err, "failed to extract file %s from zip:%s", f.Name, err.Error())
