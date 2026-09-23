@@ -179,6 +179,8 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			// Test-only bypass: SRAT_MOCK=true skips host-touching seed in unit tests.
+			// Defaults to off in production; never set in release environment.
 			if os.Getenv("SRAT_MOCK") == "true" {
 				return nil
 			}

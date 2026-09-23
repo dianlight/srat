@@ -184,7 +184,6 @@ func (a *ApfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyst
 		HasErrors:        false, // Assume no errors since we can't check
 		StateDescription: "Read-only (no Linux tools)",
 
-		//TODO: we could try to parse apfsutil output for more detailed state info, but it may be unreliable without proper fsck support and is currently not implemented
 		// Check if filesystem is mounted
 		IsMounted: a.isDeviceMounted(device)}
 

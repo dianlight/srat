@@ -318,12 +318,14 @@ export function SetupWizard({
 
     if (!isWaitingForClean) {
       if (!dirtyTrackingClean) {
-        console.debug("Settings are being applied, waiting for clean state");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("Settings are being applied, waiting for clean state");
         setIsWaitingForClean(true);
         return;
       }
     } else if (dirtyTrackingClean) {
-      console.debug("All dirty tracking flags are clean, closing wizard");
+      if (process.env.NODE_ENV !== "production")
+        console.debug("All dirty tracking flags are clean, closing wizard");
       setIsWaitingForClean(false);
       setIsFinishing(false);
       requestClose();
@@ -433,9 +435,10 @@ export function SetupWizard({
 
       await Promise.all(allCommitted)
         .then(() => {
-          console.debug(
-            "All settings applied successfully, waiting for clean state",
-          );
+          if (process.env.NODE_ENV !== "production")
+            console.debug(
+              "All settings applied successfully, waiting for clean state",
+            );
         })
         .catch((error) => {
           console.error("Error applying settings in wizard:", error);

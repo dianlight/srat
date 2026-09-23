@@ -110,11 +110,12 @@ export function ReportIssueDialog({ open, onClose }: ReportIssueDialogProps) {
           const data = res as IssueReportResponse;
           try {
             const url = new URL(data.github_url);
-            console.debug(
-              "GitHub URL for issue creation:",
-              url,
-              data.github_url.length,
-            );
+            if (process.env.NODE_ENV !== "production")
+              console.debug(
+                "GitHub URL for issue creation:",
+                url,
+                data.github_url.length,
+              );
             const result = window.open(url.toString(), "_blank");
             if (result === null) {
               setPopupBlockedUrl(url.toString());

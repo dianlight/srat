@@ -427,7 +427,6 @@ func (s *VolumeService) getVolumesData() errors.E {
 	})
 
 	if err != nil {
-		//slog.Error("Singleflight execution of GetVolumesData failed", "err", err, "shared", shared)
 		return errors.WithStack(err)
 	}
 

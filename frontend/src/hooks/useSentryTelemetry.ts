@@ -91,7 +91,8 @@ export const useSentryTelemetry = () => {
           event: eventData,
         },
       });
-      console.debug("Event reported to Sentry:", event, eventData);
+      if (process.env.NODE_ENV !== "production")
+        console.debug("Event reported to Sentry:", event, eventData);
     }
   };
 

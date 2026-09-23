@@ -45,7 +45,6 @@ func Up00009(ctx context.Context, db *sql.DB) error {
 				if affected > 0 {
 					slog.InfoContext(ctx, "Writing default property", "key", key, "value", string(sqlvalue))
 				}
-				//log.Printf("Inserted rows: %d", affected)
 			}
 		}
 	*/

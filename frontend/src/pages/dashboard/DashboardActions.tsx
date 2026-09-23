@@ -128,7 +128,6 @@ export function DashboardActions() {
             if (hasDisabledShare) {
               partitions.push({ partition, action: "enable-share" });
             } else {
-              //console.log("Adding share action for partition", partition.id, partition);
               partitions.push({ partition, action: "share" });
             }
           }

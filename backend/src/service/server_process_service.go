@@ -58,8 +58,6 @@ func ResolveInterfaceIPv4s(names []string) []string {
 	seen := make(map[string]any)
 
 	// Always include loopback
-	//	ips = append(ips, "127.0.0.1")
-	//	seen["127.0.0.1"] = struct{}{}
 
 	for _, name := range names {
 		iface, err := NetInterfaceByName(name)

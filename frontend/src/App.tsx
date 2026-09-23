@@ -122,7 +122,8 @@ export function App() {
     if (herror) {
       timer = setTimeout(() => {
         // With the new error boundary, we don't need to manually reset errors
-        console.debug("Error auto-reset timer triggered");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("Error auto-reset timer triggered");
       }, 5000);
     }
     return () => {
