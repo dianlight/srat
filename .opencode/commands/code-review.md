@@ -1,7 +1,7 @@
 ---
-agent: 'agent'
+agent: general
 description: 'Perform a prioritized code review focused on the most important issues'
-model: Auto (copilot)
+model: opencode/glm-5-free
 ---
 
 ## Role

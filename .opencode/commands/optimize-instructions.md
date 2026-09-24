@@ -1,7 +1,7 @@
 ---
-agent: 'agent'
+agent: general
 description: 'Systematically optimize SRAT instructions and skills: integrate memory facts, retire patterns, add languages, expand quick-reference, conduct audits'
-model: Auto (copilot)
+model: opencode/glm-5-free
 ---
 
 ## Role
