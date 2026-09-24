@@ -3,18 +3,14 @@ package service
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"testing"
 
-	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/tozd/go/errors"
-	"go.uber.org/fx"
-	"go.uber.org/fx/fxtest"
 )
 
 // fakeH2HardwareClient is a minimal HardwareServiceInterface that returns a
@@ -64,6 +60,7 @@ func newH2VolumeService(t testing.TB, disks *dto.DiskMap, hw map[string]dto.Disk
 
 	svc := newTestVolumeService(t, disks, &fakeVolumeMounter{})
 	svc.hardwareClient = &fakeH2HardwareClient{disks: hw}
+	svc.udevHandler.SetHardware(svc.hardwareClient)
 
 	parseCount := 0
 	svc.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
@@ -77,22 +74,8 @@ func newH2VolumeService(t testing.TB, disks *dto.DiskMap, hw map[string]dto.Disk
 		}, nil
 	})
 
-	// Real DB so loadMountPointFromDB inside syncPartitionMountData works.
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-	app := fxtest.New(t,
-		fx.Provide(
-			func() *dto.ContextState {
-				return &dto.ContextState{DatabasePath: dbPath}
-			},
-			dbom.NewDB,
-		),
-		fx.Populate(&svc.db),
-	)
-	app.RequireStart()
-	t.Cleanup(func() { app.RequireStop() })
-
 	// Wire the same subscription production uses (NewVolumeService).
-	unsub := svc.eventBus.OnPartition(svc.handlePartitionEvent)
+	unsub := svc.eventBus.OnPartition(svc.udevHandler.HandlePartitionEvent)
 	t.Cleanup(unsub)
 
 	// Count emitted partition events on the bus.
@@ -169,7 +152,7 @@ func TestHandlePartitionEvent_BatchModeWithoutSnapshot(t *testing.T) {
 		parts = append(parts, &p)
 	}
 
-	err := svc.handlePartitionEvent(context.Background(), events.PartitionEvent{
+	err := svc.udevHandler.HandlePartitionEvent(context.Background(), events.PartitionEvent{
 		Event:      events.Event{Type: events.EventTypes.ADD},
 		Disk:       &disk,
 		Partitions: parts,
@@ -191,7 +174,7 @@ func TestHandlePartitionEvent_BatchModeProcfsError(t *testing.T) {
 	})
 
 	part := (*disk.Partitions)["part-00-00"]
-	err := svc.handlePartitionEvent(context.Background(), events.PartitionEvent{
+	err := svc.udevHandler.HandlePartitionEvent(context.Background(), events.PartitionEvent{
 		Event:      events.Event{Type: events.EventTypes.ADD},
 		Disk:       &disk,
 		Partitions: []*dto.Partition{&part},
@@ -211,7 +194,7 @@ func TestHandlePartitionEvent_SinglePartitionMode(t *testing.T) {
 	svc, parseCount, _ := newH2VolumeService(t, disks, hw)
 
 	part := (*disk.Partitions)["part-00-00"]
-	err := svc.handlePartitionEvent(context.Background(), events.PartitionEvent{
+	err := svc.udevHandler.HandlePartitionEvent(context.Background(), events.PartitionEvent{
 		Event:     events.Event{Type: events.EventTypes.ADD},
 		Disk:      &disk,
 		Partition: &part,
@@ -297,7 +280,7 @@ func TestSyncPartitionMountData_LoadsDBRows(t *testing.T) {
 		Flags:       &dto.MountFlags{},
 		CustomFlags: &dto.MountFlags{},
 	}
-	require.NoError(t, svc.persistMountPoint(&mp))
+	require.NoError(t, svc.repo.Persist(&mp))
 
 	err := svc.getVolumesData()
 	require.NoError(t, err)
@@ -331,7 +314,7 @@ func TestSyncPartitionMountData_PruneStaleInvalidOrphans(t *testing.T) {
 			Flags:       &dto.MountFlags{},
 			CustomFlags: &dto.MountFlags{},
 		}
-		require.NoError(t, svc.persistMountPoint(&stale))
+		require.NoError(t, svc.repo.Persist(&stale))
 	}
 
 	err := svc.getVolumesData()
@@ -341,9 +324,9 @@ func TestSyncPartitionMountData_PruneStaleInvalidOrphans(t *testing.T) {
 		_, ok := disks.GetMountPoint("disk-00", "part-00-00", stalePath)
 		assert.False(t, ok, "stale invalid orphan must not be re-added to the cache")
 
-		var count int64
-		require.NoError(t, svc.db.Model(&dbom.MountPointPath{}).Where("path = ?", stalePath).Count(&count).Error)
-		assert.Zero(t, count, "stale invalid orphan must be deleted from the DB")
+		_, found, err := svc.repo.LoadByPath(stalePath, "/")
+		require.NoError(t, err)
+		assert.False(t, found, "stale invalid orphan must be deleted from the DB")
 	}
 }
 
@@ -367,7 +350,7 @@ func TestSyncPartitionMountData_KeepsSingletonPendingConfig(t *testing.T) {
 		Flags:       &dto.MountFlags{},
 		CustomFlags: &dto.MountFlags{},
 	}
-	require.NoError(t, svc.persistMountPoint(&pending))
+	require.NoError(t, svc.repo.Persist(&pending))
 
 	err := svc.getVolumesData()
 	require.NoError(t, err)
@@ -375,9 +358,9 @@ func TestSyncPartitionMountData_KeepsSingletonPendingConfig(t *testing.T) {
 	_, ok := disks.GetMountPoint("disk-00", "part-00-00", "/mnt/pending-single-1073")
 	assert.True(t, ok, "singleton pending config must be re-added to the cache")
 
-	var count int64
-	require.NoError(t, svc.db.Model(&dbom.MountPointPath{}).Where("path = ?", "/mnt/pending-single-1073").Count(&count).Error)
-	assert.Equal(t, int64(1), count, "singleton pending config must survive in the DB")
+	_, found, err := svc.repo.LoadByPath("/mnt/pending-single-1073", "/")
+	require.NoError(t, err)
+	assert.True(t, found, "singleton pending config must survive in the DB")
 }
 
 // TestSyncPartitionMountData_MergesDashDuplicateToUnderscore is the #1073
@@ -398,7 +381,7 @@ func TestSyncPartitionMountData_MergesDashDuplicateToUnderscore(t *testing.T) {
 		DeviceId: *part.Id,
 		Type:     "ADDON",
 	}
-	require.NoError(t, svc.persistMountPoint(&live))
+	require.NoError(t, svc.repo.Persist(&live))
 	startup := true
 	stale := dto.MountPointData{
 		Path:               "/mnt/ata-WD-part2",
@@ -410,7 +393,7 @@ func TestSyncPartitionMountData_MergesDashDuplicateToUnderscore(t *testing.T) {
 		Flags:              &dto.MountFlags{},
 		CustomFlags:        &dto.MountFlags{},
 	}
-	require.NoError(t, svc.persistMountPoint(&stale))
+	require.NoError(t, svc.repo.Persist(&stale))
 
 	err := svc.getVolumesData()
 	require.NoError(t, err)
@@ -422,12 +405,13 @@ func TestSyncPartitionMountData_MergesDashDuplicateToUnderscore(t *testing.T) {
 	require.NotNil(t, got.IsToMountAtStartup, "automount intent must merge onto the survivor")
 	assert.True(t, *got.IsToMountAtStartup)
 
-	var count int64
-	require.NoError(t, svc.db.Model(&dbom.MountPointPath{}).Where("path = ?", "/mnt/ata-WD-part2").Count(&count).Error)
-	assert.Zero(t, count, "legacy dashes row must be deleted from the DB")
+	_, found, err := svc.repo.LoadByPath("/mnt/ata-WD-part2", "/")
+	require.NoError(t, err)
+	assert.False(t, found, "legacy dashes row must be deleted from the DB")
 
-	var survivor dbom.MountPointPath
-	require.NoError(t, svc.db.Where("path = ?", "/mnt/ata_WD_part2").First(&survivor).Error)
+	survivor, found, err := svc.repo.LoadByPath("/mnt/ata_WD_part2", "/")
+	require.NoError(t, err)
+	require.True(t, found)
 	require.NotNil(t, survivor.IsToMountAtStartup, "merged automount intent must persist")
 	assert.True(t, *survivor.IsToMountAtStartup)
 }
@@ -442,7 +426,7 @@ func TestSyncPartitionMountData_SkipsNilDevicePath(t *testing.T) {
 
 	part := (*disk.Partitions)["part-00-00"]
 	part.DevicePath = nil
-	require.NoError(t, svc.syncPartitionMountData(context.Background(), &disk, &part, nil))
+	require.NoError(t, svc.udevHandler.SyncPartitionMountData(context.Background(), &disk, &part, nil))
 }
 
 // TestSyncPartitionMountData_FixesNilDiskId covers the DiskId fixup of
@@ -456,6 +440,6 @@ func TestSyncPartitionMountData_FixesNilDiskId(t *testing.T) {
 
 	part := (*disk.Partitions)["part-00-00"]
 	part.DiskId = nil
-	require.NoError(t, svc.syncPartitionMountData(context.Background(), &disk, &part, nil))
+	require.NoError(t, svc.udevHandler.SyncPartitionMountData(context.Background(), &disk, &part, nil))
 	assert.Equal(t, "disk-00", *part.DiskId)
 }

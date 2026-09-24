@@ -2,11 +2,11 @@ package service
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
+	"github.com/dianlight/srat/service/volume"
 )
 
 func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap) {
@@ -90,41 +90,5 @@ func resolveActualMountPointPath(share dto.SharedResource) string {
 }
 
 func matchPartitionWithDevName(partition *dto.Partition, devName string) bool {
-	if partition == nil || devName == "" {
-		return false
-	}
-
-	fullDevName := devName
-	if !strings.HasPrefix(devName, "/dev/") {
-		fullDevName = filepath.Join("/dev", devName)
-	}
-
-	candidates := []string{}
-	if partition.DevicePath != nil {
-		candidates = append(candidates, *partition.DevicePath)
-	}
-	if partition.LegacyDevicePath != nil {
-		candidates = append(candidates, *partition.LegacyDevicePath)
-	}
-	if partition.LegacyDeviceName != nil {
-		candidates = append(candidates, *partition.LegacyDeviceName)
-	}
-	if partition.Id != nil {
-		candidates = append(candidates, *partition.Id)
-	}
-
-	for _, candidate := range candidates {
-		trimmed := strings.TrimSpace(candidate)
-		if trimmed == "" {
-			continue
-		}
-		if trimmed == devName || trimmed == fullDevName {
-			return true
-		}
-		if filepath.Base(trimmed) == devName {
-			return true
-		}
-	}
-
-	return false
+	return volume.MatchPartitionWithDevName(partition, devName)
 }

@@ -70,7 +70,7 @@ func (self *VolumeService) runUdevMonitorOnce() error {
 	// Consume events. Returns nil on ctx cancellation (clean shutdown) or a
 	// sentinel error when the monitor goroutine closes the channels (e.g.
 	// ENOBUFS from a flapping USB device).
-	err := self.consumeUdevChannels(queue, errorChan)
+	err := self.udevHandler.ConsumeUdevChannels(queue, errorChan)
 
 	// Signal the monitor goroutine to stop and drain any in-flight sends so
 	// it does not leak.
