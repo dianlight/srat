@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service/volume"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,7 @@ func newUdevChannelTestService(t *testing.T) (*VolumeService, context.CancelFunc
 	t.Cleanup(cancel)
 	svc := newTestVolumeService(t, dto.NewDiskMap(), &fakeVolumeMounter{})
 	svc.ctx = ctx
+	svc.udevHandler.SetContext(ctx)
 	return svc, cancel
 }
 
@@ -38,12 +40,12 @@ func TestConsumeUdevChannels_QueueClosedReturnsError(t *testing.T) {
 	close(queue) // simulate the go-udev monitor exiting
 
 	done := make(chan error, 1)
-	go func() { done <- svc.consumeUdevChannels(queue, errCh) }()
+	go func() { done <- svc.udevHandler.ConsumeUdevChannels(queue, errCh) }()
 
 	select {
 	case err := <-done:
 		require.Error(t, err, "closed queue must surface an error so the caller can reconnect")
-		assert.ErrorIs(t, err, errUdevQueueClosed, "expected errUdevQueueClosed, got %v", err)
+		assert.ErrorIs(t, err, volume.ErrUdevQueueClosed, "expected ErrUdevQueueClosed, got %v", err)
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("consumeUdevChannels did not return after queue close; it is stuck in a busy loop")
 	}
@@ -60,12 +62,12 @@ func TestConsumeUdevChannels_ErrorChanClosedReturnsError(t *testing.T) {
 	close(errCh)
 
 	done := make(chan error, 1)
-	go func() { done <- svc.consumeUdevChannels(queue, errCh) }()
+	go func() { done <- svc.udevHandler.ConsumeUdevChannels(queue, errCh) }()
 
 	select {
 	case err := <-done:
 		require.Error(t, err, "closed error channel must surface an error so the caller can reconnect")
-		assert.ErrorIs(t, err, errUdevErrorChanClosed, "expected errUdevErrorChanClosed, got %v", err)
+		assert.ErrorIs(t, err, volume.ErrUdevErrorChanClosed, "expected ErrUdevErrorChanClosed, got %v", err)
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("consumeUdevChannels did not return after error channel close")
 	}
@@ -81,9 +83,9 @@ func TestConsumeUdevChannels_ProcessesEventsUntilQueueCloses(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	processed := make(chan string, 4)
-	svc.udevEventProbe = func(ue netlink.UEvent) {
+	svc.udevHandler.SetProbe(func(ue netlink.UEvent) {
 		processed <- ue.Env["DEVNAME"]
-	}
+	})
 
 	queue <- netlink.UEvent{Action: netlink.ADD, Env: map[string]string{
 		"SUBSYSTEM": "block", "DEVTYPE": "disk", "DEVNAME": "/dev/sdb",
@@ -94,12 +96,12 @@ func TestConsumeUdevChannels_ProcessesEventsUntilQueueCloses(t *testing.T) {
 	close(queue)
 
 	done := make(chan error, 1)
-	go func() { done <- svc.consumeUdevChannels(queue, errCh) }()
+	go func() { done <- svc.udevHandler.ConsumeUdevChannels(queue, errCh) }()
 
 	select {
 	case err := <-done:
 		require.Error(t, err)
-		assert.ErrorIs(t, err, errUdevQueueClosed)
+		assert.ErrorIs(t, err, volume.ErrUdevQueueClosed)
 	case <-time.After(time.Second):
 		t.Fatal("consumeUdevChannels did not return after queue close")
 	}
@@ -121,7 +123,7 @@ func TestConsumeUdevChannels_ContextCancelledReturnsNil(t *testing.T) {
 	errCh := make(chan error)
 
 	done := make(chan error, 1)
-	go func() { done <- svc.consumeUdevChannels(queue, errCh) }()
+	go func() { done <- svc.udevHandler.ConsumeUdevChannels(queue, errCh) }()
 
 	cancel()
 
@@ -146,12 +148,12 @@ func TestConsumeUdevChannels_NilErrorValueIgnored(t *testing.T) {
 	close(queue)
 
 	done := make(chan error, 1)
-	go func() { done <- svc.consumeUdevChannels(queue, errCh) }()
+	go func() { done <- svc.udevHandler.ConsumeUdevChannels(queue, errCh) }()
 
 	select {
 	case err := <-done:
 		require.Error(t, err)
-		assert.ErrorIs(t, err, errUdevQueueClosed)
+		assert.ErrorIs(t, err, volume.ErrUdevQueueClosed)
 	case <-time.After(time.Second):
 		t.Fatal("consumeUdevChannels did not return after queue close")
 	}
@@ -226,7 +228,7 @@ func TestProcessUdevEvent_PartitionAdd_SchedulesRetry(t *testing.T) {
 	// handlePartitionUdevAddEvent returns false (unknown partition),
 	// so processUdevEvent invalidates + refreshes AND schedules the
 	// delayed retry.
-	svc.processUdevEvent(netlink.UEvent{
+	svc.udevHandler.ProcessUdevEvent(netlink.UEvent{
 		Action: netlink.ADD,
 		Env: map[string]string{
 			"SUBSYSTEM": "block",
@@ -282,7 +284,7 @@ func TestProcessUdevEvent_PartitionAdd_UnknownPartition_SettlesLayout(t *testing
 	require.True(t, ok, "synthesized whole-disk partition should be present initially")
 
 	// Send partition ADD for /dev/sdb1 — not in the DiskMap.
-	svc.processUdevEvent(netlink.UEvent{
+	svc.udevHandler.ProcessUdevEvent(netlink.UEvent{
 		Action: netlink.ADD,
 		Env: map[string]string{
 			"SUBSYSTEM": "block",
@@ -327,7 +329,7 @@ func TestProcessUdevEvent_PartitionRemove_Untracked_NoInvalidation(t *testing.T)
 	// in the DiskMap (sdb1, sdb2 have names different from the synthesized
 	// whole-disk entry "sdb").
 	for _, dev := range []string{"/dev/sdb1", "/dev/sdb2", "/dev/sdb1"} {
-		svc.processUdevEvent(netlink.UEvent{
+		svc.udevHandler.ProcessUdevEvent(netlink.UEvent{
 			Action: netlink.REMOVE,
 			Env: map[string]string{
 				"SUBSYSTEM": "block",

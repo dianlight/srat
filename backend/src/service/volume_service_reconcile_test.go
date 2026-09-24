@@ -100,6 +100,7 @@ func newReconcileVolumeService(t *testing.T, hw HardwareServiceInterface, rechec
 	t.Helper()
 	svc := newTestVolumeService(t, dto.NewDiskMap(), &fakeVolumeMounter{})
 	svc.hardwareClient = hw
+	svc.udevHandler.SetHardware(hw)
 	svc.recheckInterval = recheckInterval
 	svc.maxProvisionalRechecks = maxRechecks
 	return svc
@@ -155,7 +156,7 @@ func TestHandleDiskUdevRemoveEvent_PrunesRemovedDisk(t *testing.T) {
 	_, ok := svc.disks.Get("by-id-ata-disk-a")
 	require.True(t, ok, "disk should be present before the removal event")
 
-	svc.handleDiskUdevRemoveEvent("sda")
+	svc.udevHandler.HandleDiskUdevRemoveEvent("sda")
 
 	assert.Equal(t, 1, hw.phaseValue(), "disk removal must invalidate the hardware cache")
 	_, ok = svc.disks.Get("by-id-ata-disk-a")
@@ -220,11 +221,11 @@ func TestFindDiskForDevicePath_ReturnsNilWhenNoPartitionMatches(t *testing.T) {
 	})
 	svc := newTestVolumeService(t, dto.NewDiskMapFrom(&disk), &fakeVolumeMounter{})
 
-	got := svc.findDiskForDevicePath("/dev/sda1")
+	got := svc.udevHandler.FindDiskForDevicePath("/dev/sda1")
 	require.NotNil(t, got)
 	assert.Equal(t, diskID, *got.Id)
 
-	assert.Nil(t, svc.findDiskForDevicePath("/dev/sdb9"),
+	assert.Nil(t, svc.udevHandler.FindDiskForDevicePath("/dev/sdb9"),
 		"no match must return nil, not an arbitrary disk")
 }
 
