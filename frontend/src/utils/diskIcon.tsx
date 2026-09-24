@@ -15,16 +15,15 @@ interface DiskIconProps {
  * VolumeDetailsPanel. Keeps the USB/SD/removable/default mapping in one place.
  */
 export function DiskIcon({ disk, color }: DiskIconProps) {
-  const iconProps = color ? { color } : {};
   switch (disk.connection_bus?.toLowerCase()) {
     case "usb":
-      return <UsbIcon {...iconProps} />;
+      return <UsbIcon color={color} />;
     case "sdio":
     case "mmc":
-      return <SdStorageIcon {...iconProps} />;
+      return <SdStorageIcon color={color} />;
   }
   if (disk.removable) {
-    return <EjectIcon {...iconProps} />;
+    return <EjectIcon color={color} />;
   }
-  return <ComputerIcon {...iconProps} />;
+  return <ComputerIcon color={color} />;
 }

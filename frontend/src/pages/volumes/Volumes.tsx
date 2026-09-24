@@ -17,7 +17,6 @@ import {
   type Disk,
   type FilesystemState,
   type Partition,
-  type PerPartitionInfo,
   sratApi,
   useDeleteApiVolumeMutation,
   usePatchApiVolumeSettingsMutation,
@@ -71,11 +70,7 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     Record<string, FilesystemState>
   >(() => {
     const result: Record<string, FilesystemState> = {};
-    const infos = Object.values(perPartitionInfo ?? {}) as (
-      | PerPartitionInfo[]
-      | null
-    )[];
-    for (const partitionInfos of infos) {
+    for (const partitionInfos of Object.values(perPartitionInfo ?? {})) {
       for (const info of partitionInfos ?? []) {
         if (info.device && info.filesystem_state) {
           result[info.device] = info.filesystem_state;
