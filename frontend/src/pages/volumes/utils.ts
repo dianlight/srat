@@ -1,12 +1,53 @@
-import type { Disk, Partition } from "../../store/sratApi";
+import type { useConfirm } from "material-ui-confirm";
+import type { NavigateFunction } from "react-router";
+import { toast } from "react-toastify";
+import { type LocationState, TabIDs } from "../../store/locationState";
+import type {
+  Disk,
+  Partition,
+  PatchApiVolumeSettingsApiArg,
+} from "../../store/sratApi";
+import { decodeEscapeSequence } from "../../utils/decodeEscapeSequence";
 
-export function decodeEscapeSequence(source: unknown): string {
-  // Basic check to avoid errors if source is not a string
-  if (typeof source !== "string") return "";
-  return source.replace(/\\x([0-9A-Fa-f]{2})/g, (_match, group1) => {
-    // Ensure group1 is treated as a string before parseInt
-    return String.fromCharCode(parseInt(String(group1), 16));
+export { decodeEscapeSequence } from "../../utils/decodeEscapeSequence";
+
+export function updatePartitionLabelInDisks(
+  disks: Disk[] | undefined,
+  partitionId: string,
+  label: string,
+): Disk[] {
+  if (!Array.isArray(disks) || disks.length === 0) {
+    return [];
+  }
+
+  let hasChanges = false;
+  const nextDisks = disks.map((disk) => {
+    const partitionEntries = Object.entries(disk.partitions || {});
+    if (partitionEntries.length === 0) {
+      return disk;
+    }
+
+    let diskChanged = false;
+    const nextPartitions = Object.fromEntries(
+      partitionEntries.map(([key, partition]) => {
+        if (
+          !partition ||
+          partition.id !== partitionId ||
+          partition.name === label
+        ) {
+          return [key, partition];
+        }
+
+        diskChanged = true;
+        hasChanges = true;
+        return [key, { ...partition, name: label }];
+      }),
+    );
+
+    return diskChanged ? { ...disk, partitions: nextPartitions } : disk;
   });
+
+  return hasChanges ? nextDisks : disks;
 }
 
 export function getFilesystemLabelValidation(
@@ -141,4 +182,168 @@ export function extractSuggestedMountPath(
     if (match?.[1]) return match[1];
   }
   return undefined;
+}
+
+export function findPartitionByMountPath(
+  sourceDisks: Disk[] | undefined,
+  mountPath: string,
+): { disk: Disk; partition: Partition } | undefined {
+  return (sourceDisks ?? [])
+    .flatMap((disk) =>
+      Object.values(disk.partitions || {}).map((partition) => ({
+        disk,
+        partition,
+      })),
+    )
+    .find(({ partition }) =>
+      Object.values(partition.mount_point_data || {}).some(
+        (mpd) => mpd.path === mountPath,
+      ),
+    );
+}
+
+export function navigateToCreateShare(
+  navigate: NavigateFunction,
+  partition: Partition,
+): void {
+  const firstMountPointData = Object.values(
+    partition.mount_point_data || {},
+  )[0];
+  if (firstMountPointData?.path) {
+    navigate("/", {
+      state: {
+        tabId: TabIDs.SHARES,
+        newShareData: firstMountPointData,
+      } as LocationState,
+    });
+  } else {
+    toast.warn(
+      "Cannot create share: Partition is not mounted or has no mount path.",
+    );
+  }
+}
+
+export function navigateToShare(
+  navigate: NavigateFunction,
+  partition: Partition,
+): void {
+  const share = Object.values(partition.mount_point_data || {})[0]?.share;
+  if (share?.name) {
+    navigate("/", {
+      state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
+    });
+  }
+}
+
+export type ConfirmDialog = ReturnType<typeof useConfirm>;
+
+export type UnmountTrigger = (args: { mountPath: string; force: boolean }) => {
+  unwrap(): Promise<unknown>;
+};
+
+export function requestUnmountVolume(args: {
+  confirm: ConfirmDialog;
+  unmount: UnmountTrigger;
+  partition: Partition;
+  force?: boolean;
+  isSelected: boolean;
+  onCleared: () => void;
+}): void {
+  const { confirm, unmount, partition, isSelected, onCleared } = args;
+  const force = args.force ?? false;
+  console.debug("Umount Request", partition, "Force:", force);
+  const mountData = Object.values(partition.mount_point_data || {})[0];
+  if (!mountData?.path) {
+    toast.error("Cannot unmount: Missing mount point path.");
+    console.error("Missing mount path for partition:", partition);
+    return;
+  }
+  const displayName = decodeEscapeSequence(partition.name || "this volume");
+  const mountPath = mountData.path;
+  confirm({
+    title: `Unmount ${displayName}?`,
+    description: `Do you really want to ${force ? "forcefully " : ""}unmount the Volume ${displayName} (${partition.legacy_device_name}) mounted at ${mountPath}?`,
+    confirmationText: force ? "Force Unmount" : "Unmount",
+    cancellationText: "Cancel",
+    confirmationButtonProps: { color: force ? "error" : "primary" },
+    acknowledgement: `Please confirm this action carefully. Unmounting may lead to data loss or corruption if the volume is in use. ${force ? "NOTE:Configured shares will be disabled!" : ""}`,
+  }).then(({ reason }) => {
+    if (reason !== "confirm") return;
+    unmount({ mountPath, force })
+      .unwrap()
+      .then(() => {
+        toast.info(`Volume ${displayName} unmounted successfully.`);
+        if (isSelected) onCleared();
+      })
+      .catch((err) => {
+        console.error("Unmount Error:", err);
+        const errorData = err?.data || {};
+        toast.error(
+          `Error unmounting ${displayName}: ${errorData?.message || err?.status || "Unknown error"}`,
+          { data: { error: err } },
+        );
+      });
+  });
+}
+
+export type PatchSettingsTrigger = (args: PatchApiVolumeSettingsApiArg) => {
+  unwrap(): Promise<unknown>;
+};
+
+export function requestAutomountToggle(args: {
+  patchSettings: PatchSettingsTrigger;
+  readOnly: boolean;
+  partition: Partition;
+}): void {
+  const { patchSettings, readOnly, partition } = args;
+  if (readOnly) return;
+  console.debug("Toggling automount for partition:", partition);
+  const partitionName = decodeEscapeSequence(partition.name || "this volume");
+  const mountEntries = Object.entries(partition.mount_point_data || {});
+  if (mountEntries.length === 0) return;
+  // Fire one PATCH per mount point and aggregate the results so a
+  // multi-mount partition produces a single summary toast instead of
+  // N interleaved toasts and uncoordinated failure handling.
+  const patchPromises = mountEntries.map(async ([path, mountData]) => {
+    if (!mountData.path) {
+      throw new Error(`Cannot toggle automount: ${path} Missing point data.`);
+    }
+    const newAutomountState = !mountData.is_to_mount_at_startup;
+    console.debug(
+      partition,
+      mountData,
+      "Toggling automount to",
+      newAutomountState,
+    );
+    await patchSettings({
+      patchMountPointData: {
+        ...mountData,
+        is_to_mount_at_startup: newAutomountState,
+        share: undefined,
+      },
+    }).unwrap();
+  });
+  void Promise.allSettled(patchPromises).then((settled) => {
+    const ok = settled.filter((r) => r.status === "fulfilled").length;
+    const failed = settled.length - ok;
+    settled.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error(
+          `Error toggling automount for ${partitionName} (${mountEntries[index][0]}):`,
+          result.reason,
+        );
+      }
+    });
+    if (failed === 0) {
+      toast.info(`Automount updated for ${partitionName}.`);
+    } else if (ok === 0) {
+      toast.error(
+        `Failed to update automount for ${partitionName} (${failed} mount point${failed === 1 ? "" : "s"}).`,
+      );
+    } else {
+      toast.warn(
+        `Automount partially updated for ${partitionName}: ${ok} ok, ${failed} failed.`,
+      );
+    }
+  });
 }
