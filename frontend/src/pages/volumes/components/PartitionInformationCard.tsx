@@ -24,8 +24,8 @@ import {
   Time_machine_support,
   useGetApiFilesystemStateQuery,
 } from "../../../store/sratApi";
+import { decodeEscapeSequence } from "../../../utils/decodeEscapeSequence";
 import { usePartitionActions } from "../hooks/usePartitionActions";
-import { decodeEscapeSequence } from "../utils";
 
 interface PartitionInformationCardProps {
   partition: Partition;

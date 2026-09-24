@@ -1,13 +1,9 @@
 /* eslint-disable */
-import ComputerIcon from "@mui/icons-material/Computer";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
-import EjectIcon from "@mui/icons-material/Eject";
 import ErrorOutlinedIcon from "@mui/icons-material/ErrorOutlined";
 import HelpOutlinedIcon from "@mui/icons-material/HelpOutlined";
-import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsSuggestIcon from "@mui/icons-material/SettingsSuggest";
 import StorageIcon from "@mui/icons-material/Storage";
-import UsbIcon from "@mui/icons-material/Usb";
 import { Box, Chip, Tooltip, Typography, useTheme } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
@@ -19,8 +15,9 @@ import type {
   MountPointData,
   Partition,
 } from "../../../store/sratApi";
+import { decodeEscapeSequence } from "../../../utils/decodeEscapeSequence";
+import { DiskIcon } from "../../../utils/diskIcon";
 import {
-  decodeEscapeSequence,
   getDiskIdentifier,
   getMountpointIdentifier,
   getPartitionIdentifier,
@@ -28,19 +25,16 @@ import {
 } from "../utils";
 import { PartitionActions } from "./PartitionActions";
 
-interface VolumesTreeViewProps {
-  disks?: Disk[];
-  // Selected item id can be either a disk id or a partition id
-  selectedItemId?: string;
-  // Backward-compat for older callers/tests
-  selectedPartitionId?: string;
-  hideSystemPartitions?: boolean;
-  // Controlled expanded items and change callback (required)
-  expandedItems: string[];
-  onExpandedItemsChange: (items: string[]) => void;
-  // Selection handlers
+export interface TreeSelection {
+  selectedId?: string;
+  expanded: string[];
+  onExpandedChange: (items: string[]) => void;
   onDiskSelect?: (disk: Disk) => void;
   onPartitionSelect: (disk: Disk, partition: Partition) => void;
+  hideSystemPartitions?: boolean;
+}
+
+export interface TreeActions {
   onToggleAutomount: (partition: Partition) => void;
   onMount: (partition: Partition) => void;
   onUnmount: (partition: Partition, force: boolean) => void;
@@ -49,33 +43,101 @@ interface VolumesTreeViewProps {
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;
+}
+
+export interface TreeStatus {
   protectedMode?: boolean;
   readOnly?: boolean;
   filesystemStateByPartitionId?: Record<string, FilesystemState>;
 }
 
-export function VolumesTreeView({
-  disks,
-  selectedItemId,
-  selectedPartitionId,
-  hideSystemPartitions = true,
-  expandedItems,
-  onExpandedItemsChange,
-  onDiskSelect,
-  onPartitionSelect,
-  onToggleAutomount,
-  onMount,
-  onUnmount,
-  onCreateShare,
-  onGoToShare,
-  onCheckFilesystem,
-  onSetFilesystemLabel,
-  onFormatPartition,
-  protectedMode = false,
-  readOnly = false,
-  filesystemStateByPartitionId,
-}: VolumesTreeViewProps) {
+interface VolumesTreeViewProps {
+  disks?: Disk[];
+  selection?: TreeSelection;
+  actions?: TreeActions;
+  status?: TreeStatus;
+  // Legacy flat props (deprecated): kept so existing tests and older callers
+  // keep working. New code must use disks/selection/actions/status.
+  selectedItemId?: string;
+  // Backward-compat for older callers/tests
+  selectedPartitionId?: string;
+  hideSystemPartitions?: boolean;
+  // Controlled expanded items and change callback (required)
+  expandedItems?: string[];
+  onExpandedItemsChange?: (items: string[]) => void;
+  // Selection handlers
+  onDiskSelect?: (disk: Disk) => void;
+  onPartitionSelect?: (disk: Disk, partition: Partition) => void;
+  onToggleAutomount?: (partition: Partition) => void;
+  onMount?: (partition: Partition) => void;
+  onUnmount?: (partition: Partition, force: boolean) => void;
+  onCreateShare?: (partition: Partition) => void;
+  onGoToShare?: (partition: Partition) => void;
+  onCheckFilesystem?: (partition: Partition) => void;
+  onSetFilesystemLabel?: (partition: Partition) => void;
+  onFormatPartition?: (partition: Partition) => void;
+  protectedMode?: boolean;
+  readOnly?: boolean;
+  filesystemStateByPartitionId?: Record<string, FilesystemState>;
+}
+
+export function VolumesTreeView(props: VolumesTreeViewProps) {
+  const {
+    disks,
+    selection,
+    actions,
+    status,
+    selectedItemId: legacySelectedItemId,
+    selectedPartitionId: legacySelectedPartitionId,
+    hideSystemPartitions: legacyHideSystem,
+    expandedItems: legacyExpanded,
+    onExpandedItemsChange: legacyOnExpandedChange,
+    onDiskSelect: legacyOnDiskSelect,
+    onPartitionSelect: legacyOnPartitionSelect,
+    onToggleAutomount: legacyOnToggleAutomount,
+    onMount: legacyOnMount,
+    onUnmount: legacyOnUnmount,
+    onCreateShare: legacyOnCreateShare,
+    onGoToShare: legacyOnGoToShare,
+    onCheckFilesystem: legacyOnCheckFilesystem,
+    onSetFilesystemLabel: legacyOnSetFilesystemLabel,
+    onFormatPartition: legacyOnFormatPartition,
+    protectedMode: legacyProtectedMode,
+    readOnly: legacyReadOnly,
+    filesystemStateByPartitionId: legacyFilesystemStates,
+  } = props;
   const theme = useTheme();
+  // Grouped props win; fall back to legacy flat props for older callers/tests.
+  const selectedItemId = selection?.selectedId ?? legacySelectedItemId;
+  const selectedPartitionId = legacySelectedPartitionId;
+  const hideSystemPartitions =
+    selection?.hideSystemPartitions ?? legacyHideSystem ?? true;
+  const expandedItems = selection?.expanded ?? legacyExpanded ?? [];
+  const onExpandedItemsChange =
+    selection?.onExpandedChange ?? legacyOnExpandedChange ?? (() => undefined);
+  const onDiskSelect = selection?.onDiskSelect ?? legacyOnDiskSelect;
+  const onPartitionSelect =
+    selection?.onPartitionSelect ??
+    legacyOnPartitionSelect ??
+    (() => undefined);
+  const onToggleAutomount =
+    actions?.onToggleAutomount ?? legacyOnToggleAutomount ?? (() => undefined);
+  const onMount = actions?.onMount ?? legacyOnMount ?? (() => undefined);
+  const onUnmount = actions?.onUnmount ?? legacyOnUnmount ?? (() => undefined);
+  const onCreateShare =
+    actions?.onCreateShare ?? legacyOnCreateShare ?? (() => undefined);
+  const onGoToShare =
+    actions?.onGoToShare ?? legacyOnGoToShare ?? (() => undefined);
+  const onCheckFilesystem =
+    actions?.onCheckFilesystem ?? legacyOnCheckFilesystem;
+  const onSetFilesystemLabel =
+    actions?.onSetFilesystemLabel ?? legacyOnSetFilesystemLabel;
+  const onFormatPartition =
+    actions?.onFormatPartition ?? legacyOnFormatPartition;
+  const protectedMode = status?.protectedMode ?? legacyProtectedMode ?? false;
+  const readOnly = status?.readOnly ?? legacyReadOnly ?? false;
+  const filesystemStateByPartitionId =
+    status?.filesystemStateByPartitionId ?? legacyFilesystemStates;
   // Normalize selected id to support both the new and legacy prop name
   const normalizedSelectedId = selectedItemId ?? selectedPartitionId;
 
@@ -101,21 +163,6 @@ export function VolumesTreeView({
       return visiblePartitions.length > 0;
     });
   }, [disks, hideSystemPartitions]);
-
-  // Helper function to render disk icon
-  const renderDiskIcon = (disk: Disk) => {
-    switch (disk.connection_bus?.toLowerCase()) {
-      case "usb":
-        return <UsbIcon />;
-      case "sdio":
-      case "mmc":
-        return <SdStorageIcon />;
-    }
-    if (disk.removable) {
-      return <EjectIcon />;
-    }
-    return <ComputerIcon />;
-  };
 
   // Helper function to render partition icon
   const renderPartitionIcon = (partition: Partition) => {
@@ -568,7 +615,7 @@ export function VolumesTreeView({
               onDiskSelect?.(disk);
             }}
           >
-            {renderDiskIcon(disk)}
+            <DiskIcon disk={disk} />
 
             <Box sx={{ flexGrow: 1, ml: 1 }}>
               <Typography

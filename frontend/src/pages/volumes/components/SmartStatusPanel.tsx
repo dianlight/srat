@@ -29,24 +29,12 @@ import { PreviewDialog } from "../../../components/PreviewDialog";
 import { useSmartTestStatus } from "../../../hooks/smartTestStatusHook";
 import { useSmartOperations } from "../../../hooks/useSmartOperations";
 import {
+  type SmartHealthStatus,
   type SmartInfo,
   type SmartStatus,
+  type SmartTestStatus,
   useGetApiDiskByDiskIdSmartStatusQuery,
 } from "../../../store/sratApi";
-
-// Local type definitions for SMART data that isn't in the OpenAPI spec yet
-interface SmartHealthStatus {
-  passed: boolean;
-  failing_attributes?: string[];
-  overall_status: "healthy" | "warning" | "failing";
-}
-
-interface SmartTestStatus {
-  status: "idle" | "running" | "completed" | "failed";
-  test_type?: string;
-  percent_complete?: number;
-  lba_of_first_error?: string;
-}
 
 export type SmartTestType = "short" | "long" | "conveyance";
 
@@ -112,6 +100,10 @@ function SmartStatusPanelInner({
   const { smartTestStatus, isLoading: smartTestStatusLoading } =
     useSmartTestStatus(diskId || "");
   const isSmartControlSupported = smartInfo?.disk_type !== "NVMe";
+  // The SMART status query returns SmartStatus | ErrorModel; narrow to the
+  // success branch once so the render path needs no casts.
+  const smart: SmartStatus | undefined =
+    smartStatus && "is_test_passed" in smartStatus ? smartStatus : undefined;
 
   const handleStartTest = () => {
     startSelfTest(selectedTestType);
@@ -119,26 +111,18 @@ function SmartStatusPanelInner({
   };
 
   const getHealthIcon = () => {
-    if (smartStatusIsLoading || !smartStatus) return null;
-    if ((smartStatus as SmartStatus)?.is_in_danger) {
+    if (smartStatusIsLoading || !smart) return null;
+    if (smart.is_in_danger) {
       return <ErrorIcon sx={{ color: "error.main" }} />;
     }
-    if ((smartStatus as SmartStatus)?.is_in_warning) {
+    if (smart.is_in_warning) {
       return <ThermostatIcon sx={{ color: "warning.main" }} />;
     }
-    if ((smartStatus as SmartStatus)?.is_test_passed) {
+    if (smart.is_test_passed) {
       return <HealthAndSafetyIcon sx={{ color: "success.main" }} />;
     }
     return <ErrorIcon sx={{ color: "error.main" }} />;
   };
-  /*
-        const getHealthColor = () => {
-            if (smartStatusIsLoading || !smartStatus) return "default";
-            if ((smartStatus as SmartStatus)?.is_test_passed) return "success";
-            if (!(smartStatus as SmartStatus)?.is_test_passed || (smartStatus as SmartStatus)?.is_in_warning) return "warning";
-            return "error";
-        };
-        */
 
   useEffect(() => {
     if (smartOperationSuccess && !smartOperationLoading) {
@@ -148,17 +132,9 @@ function SmartStatusPanelInner({
 
   const getTestStatusColor = () => {
     if (smartTestStatusLoading || !smartTestStatus) return "default";
-    if (
-      (smartStatus as SmartStatus)?.is_test_passed &&
-      !smartTestStatus.running
-    )
-      return "success";
+    if (smart?.is_test_passed && !smartTestStatus.running) return "success";
     if (smartTestStatus.running) return "info";
-    if (
-      !(smartStatus as SmartStatus)?.is_test_passed &&
-      !smartTestStatus.running
-    )
-      return "error";
+    if (!smart?.is_test_passed && !smartTestStatus.running) return "error";
     return "default";
   };
 
@@ -271,115 +247,104 @@ function SmartStatusPanelInner({
             </Box>
 
             {/* Temperature Section */}
-            {!smartStatusIsLoading &&
-              smartStatus &&
-              (smartStatus as SmartStatus)?.temperature && (
-                <Box>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      alignItems: "center",
-                      mb: 1,
-                    }}
-                  >
-                    <ThermostatIcon fontSize="small" color="primary" />
-                    <Typography
-                      variant="subtitle2"
-                      sx={{
-                        color: "text.secondary",
-                      }}
-                    >
-                      Temperature
-                    </Typography>
-                  </Stack>
-                  <Stack
-                    direction="row"
-                    spacing={2}
-                    sx={{
-                      alignItems: "center",
-                    }}
-                  >
-                    <Typography variant="h6">
-                      {(smartStatus as SmartStatus).temperature.value}°C
-                    </Typography>
-                    {(smartStatus as SmartStatus).temperature.min ||
-                    (smartStatus as SmartStatus).temperature.max ? (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        {(smartStatus as SmartStatus).temperature.min &&
-                          `Min: ${(smartStatus as SmartStatus).temperature.min}°C`}
-                        {(smartStatus as SmartStatus).temperature.min &&
-                          (smartStatus as SmartStatus).temperature.max &&
-                          " / "}
-                        {(smartStatus as SmartStatus).temperature.max &&
-                          `Max: ${(smartStatus as SmartStatus).temperature.max}°C`}
-                      </Typography>
-                    ) : null}
-                  </Stack>
-                </Box>
-              )}
-
-            {/* Power Stats Section */}
-            {!smartStatusIsLoading &&
-              smartStatus &&
-              (smartStatus as SmartStatus)?.power_on_hours && (
-                <Stack spacing={1}>
+            {!smartStatusIsLoading && smart?.temperature && (
+              <Box>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                    mb: 1,
+                  }}
+                >
+                  <ThermostatIcon fontSize="small" color="primary" />
                   <Typography
                     variant="subtitle2"
                     sx={{
                       color: "text.secondary",
                     }}
                   >
-                    Power Statistics
+                    Temperature
                   </Typography>
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                    {(smartStatus as SmartStatus).power_on_hours && (
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                          }}
-                        >
-                          Power-On Hours
-                        </Typography>
-                        <Typography variant="body2">
-                          {(
-                            smartStatus as SmartStatus
-                          ).power_on_hours.value.toLocaleString()}{" "}
-                          hours
-                        </Typography>
-                      </Box>
-                    )}
-                    {(smartStatus as SmartStatus).power_cycle_count && (
-                      <Box sx={{ flex: 1 }}>
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: "text.secondary",
-                          }}
-                        >
-                          Power Cycles
-                        </Typography>
-                        <Typography variant="body2">
-                          {(
-                            smartStatus as SmartStatus
-                          ).power_cycle_count.value.toLocaleString()}{" "}
-                          cycles
-                        </Typography>
-                      </Box>
-                    )}
-                  </Stack>
                 </Stack>
-              )}
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  sx={{
+                    alignItems: "center",
+                  }}
+                >
+                  <Typography variant="h6">
+                    {smart?.temperature.value}°C
+                  </Typography>
+                  {smart?.temperature.min || smart?.temperature.max ? (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
+                      {smart?.temperature.min &&
+                        `Min: ${smart.temperature.min}°C`}
+                      {smart?.temperature.min &&
+                        smart?.temperature.max &&
+                        " / "}
+                      {smart?.temperature.max &&
+                        `Max: ${smart.temperature.max}°C`}
+                    </Typography>
+                  ) : null}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Power Stats Section */}
+            {!smartStatusIsLoading && smart?.power_on_hours && (
+              <Stack spacing={1}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
+                  Power Statistics
+                </Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                  {smart?.power_on_hours && (
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
+                        Power-On Hours
+                      </Typography>
+                      <Typography variant="body2">
+                        {smart.power_on_hours.value.toLocaleString()} hours
+                      </Typography>
+                    </Box>
+                  )}
+                  {smart?.power_cycle_count && (
+                    <Box sx={{ flex: 1 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
+                        Power Cycles
+                      </Typography>
+                      <Typography variant="body2">
+                        {smart.power_cycle_count.value.toLocaleString()} cycles
+                      </Typography>
+                    </Box>
+                  )}
+                </Stack>
+              </Stack>
+            )}
 
             {/* Health Status Section */}
-            {(smartStatus as SmartStatus) && (
+            {smart && (
               <Box>
                 <Typography
                   variant="subtitle2"
@@ -393,21 +358,16 @@ function SmartStatusPanelInner({
                 <Stack spacing={1}>
                   <Chip
                     label={
-                      (smartStatus as SmartStatus).is_test_passed
+                      smart.is_test_passed
                         ? "All attributes healthy"
                         : "Issues detected"
                     }
-                    color={
-                      (smartStatus as SmartStatus).is_test_passed
-                        ? "success"
-                        : "error"
-                    }
+                    color={smart.is_test_passed ? "success" : "error"}
                     size="small"
                   />
-                  {!(smartStatus as SmartStatus).is_test_passed &&
-                    (smartStatus as SmartStatus).others &&
-                    Object.keys((smartStatus as SmartStatus).others || {})
-                      .length > 0 && (
+                  {!smart.is_test_passed &&
+                    smart.others &&
+                    Object.keys(smart.others || {}).length > 0 && (
                       <Box>
                         <Typography
                           variant="caption"
@@ -427,10 +387,8 @@ function SmartStatusPanelInner({
                             gap: 0.5,
                           }}
                         >
-                          {(smartStatus as SmartStatus).others &&
-                            Object.entries(
-                              (smartStatus as SmartStatus).others || {},
-                            ).map((attr) => (
+                          {smart.others &&
+                            Object.entries(smart.others || {}).map((attr) => (
                               <Chip
                                 key={attr[0]}
                                 label={JSON.stringify(attr)}
@@ -595,14 +553,14 @@ function SmartStatusPanelInner({
                   disabled={
                     smartOperationLoading ||
                     smartStatusIsLoading ||
-                    ((smartStatus as SmartStatus)?.enabled ?? false) ||
+                    (smart?.enabled ?? false) ||
                     isReadOnlyMode ||
                     !isSmartControlSupported
                   }
                   title={
                     !isSmartControlSupported
                       ? "SMART control not supported for NVMe devices"
-                      : ((smartStatus as SmartStatus)?.enabled ?? false)
+                      : (smart?.enabled ?? false)
                         ? "SMART already enabled"
                         : "Enable SMART monitoring"
                   }
@@ -617,14 +575,14 @@ function SmartStatusPanelInner({
                   disabled={
                     smartOperationLoading ||
                     smartStatusIsLoading ||
-                    !((smartStatus as SmartStatus)?.enabled ?? false) ||
+                    !(smart?.enabled ?? false) ||
                     isReadOnlyMode ||
                     !isSmartControlSupported
                   }
                   title={
                     !isSmartControlSupported
                       ? "SMART control not supported for NVMe devices"
-                      : !((smartStatus as SmartStatus)?.enabled ?? false)
+                      : !(smart?.enabled ?? false)
                         ? "SMART already disabled"
                         : "Disable SMART monitoring"
                   }
