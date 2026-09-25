@@ -30,7 +30,7 @@ import {
   Type,
   useGetApiFilesystemsQuery,
 } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../utils";
+import { decodeEscapeSequence } from "../../../utils/decodeEscapeSequence";
 
 interface xMountPointData extends MountPointData {
   custom_flags_values: MountFlag[]; // Array of custom flags (enum) for the TextField

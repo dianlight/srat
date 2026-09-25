@@ -185,7 +185,7 @@ describe("Volumes component", () => {
     });
 
     it("updates the nested partition label in the volumes tree data", async () => {
-        const { updatePartitionLabelInDisks } = await import("../Volumes");
+        const { updatePartitionLabelInDisks } = await import("../utils");
 
         const initialDisks = [
             {
@@ -623,6 +623,133 @@ describe("Volumes component", () => {
                 expect(body.path).toBe("/mnt/data");
             },
         );
+    });
+
+    it("renders VolumesTreeView through grouped selection/actions/status props", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { VolumesTreeView } = await import("../components/VolumesTreeView");
+        const { getDiskIdentifier } = await import("../utils");
+
+        const disks = [
+            {
+                id: "disk-grouped",
+                model: "Grouped Disk",
+                partitions: {
+                    p1: {
+                        id: "part-grouped",
+                        name: "Grouped Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {},
+                    },
+                },
+            },
+        ];
+        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+        let selectedId: string | null = null;
+        const user = userEvent.setup();
+        await renderWithTestStore(
+            React.createElement(VolumesTreeView as any, {
+                disks,
+                selection: {
+                    selectedId: undefined,
+                    expanded: [diskIdentifier],
+                    onExpandedChange: () => {},
+                    onDiskSelect: () => {},
+                    onPartitionSelect: (_disk: any, partition: any) => {
+                        selectedId = partition?.id ?? null;
+                    },
+                    hideSystemPartitions: false,
+                },
+                actions: {
+                    onToggleAutomount: () => {},
+                    onMount: () => {},
+                    onUnmount: () => {},
+                    onCreateShare: () => {},
+                    onGoToShare: () => {},
+                },
+                status: {},
+            }),
+        );
+
+        expect(await screen.findByText("Grouped Partition")).toBeTruthy();
+        await user.click(await screen.findByText("Grouped Partition"));
+        expect(selectedId).toBe("part-grouped");
+    });
+
+    it("renders VolumeDetailsPanel through grouped disk/partition/actions props", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const { VolumeDetailsPanel } = await import("../components/VolumeDetailsPanel");
+
+        const partition = {
+            id: "part-details-grouped",
+            name: "Grouped Details Partition",
+            fs_type: "ext4",
+            mount_point_data: {},
+        };
+
+        await renderWithTestStore(
+            React.createElement(VolumeDetailsPanel as any, {
+                disk: { id: "disk-details-grouped", model: "Details Disk", partitions: {} },
+                partition,
+                actions: {},
+            }),
+        );
+
+        expect(await screen.findByText("Grouped Details Partition")).toBeTruthy();
+        expect(await screen.findByText("Disk Information")).toBeTruthy();
+    });
+
+    it("opens the mount dialog through the hooked tree mount action", async () => {
+        const React = await import("react");
+        const { screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { MemoryRouter } = await import("react-router");
+        const { Volumes } = await import("../Volumes");
+
+        const disks = [
+            {
+                id: "disk-mount-wiring",
+                model: "Mount Wiring Disk",
+                partitions: {
+                    p1: {
+                        id: "part-mount-wiring",
+                        name: "Mount Wiring Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {},
+                    },
+                },
+            },
+        ];
+
+        localStorage.setItem(
+            "volumes.expandedDisks",
+            JSON.stringify(["disk-mount-wiring"]),
+        );
+
+        await renderWithTestStore(
+            React.createElement(
+                MemoryRouter,
+                null,
+                React.createElement(Volumes as any, { initialDisks: disks }),
+            ),
+        );
+
+        expect(await screen.findByText("Mount Wiring Partition")).toBeTruthy();
+        const user = userEvent.setup();
+        const moreActionsButtons = await screen.findAllByRole("button", {
+            name: "more actions",
+        });
+        await user.click(moreActionsButtons[0] as any);
+        const mountItem = await screen.findByRole("menuitem", {
+            name: /mount partition/i,
+        });
+        await user.click(mountItem);
+
+        expect(await screen.findByText(/mount volume/i)).toBeTruthy();
     });
 
     it("shows a single error toast when the automount PATCH fails", async () => {
