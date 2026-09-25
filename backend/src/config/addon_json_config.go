@@ -21,6 +21,7 @@ type Share struct {
 	GuestOk            *bool    `json:"guest_ok,omitempty"`
 	TimeMachineMaxSize *string  `json:"timemachine_max_size,omitempty"`
 	Usage              string   `json:"usage,omitempty"`
+	Subfolder          string   `json:"subfolder,omitempty"`
 	VetoFiles          []string `json:"veto_files,omitempty"`
 }
 
