@@ -1,10 +1,6 @@
 /* eslint-disable */
-import ComputerIcon from "@mui/icons-material/Computer";
-import EjectIcon from "@mui/icons-material/Eject";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import SdStorageIcon from "@mui/icons-material/SdStorage";
 import SettingsIcon from "@mui/icons-material/Settings";
-import UsbIcon from "@mui/icons-material/Usb";
 import {
   Box,
   Card,
@@ -26,7 +22,8 @@ import {
   type Settings,
   useGetApiSettingsQuery,
 } from "../../../store/sratApi";
-import { getRealPartitions } from "../utils";
+import { DiskIcon } from "../../../utils/diskIcon";
+import { getRealPartitions, isSynthesizedWholeDiskPartition } from "../utils";
 import { FilesystemCheckDialog } from "./FilesystemCheckDialog";
 import { FilesystemFormatDialog } from "./FilesystemFormatDialog";
 import { FilesystemLabelDialog } from "./FilesystemLabelDialog";
@@ -34,9 +31,23 @@ import { HDIdleDiskSettings } from "./HDIdleDiskSettings";
 import { PartitionInformationCard } from "./PartitionInformationCard";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
+export interface DetailsActions {
+  onToggleAutomount?: (partition: Partition) => void;
+  onMount?: (partition: Partition) => void;
+  onUnmount?: (partition: Partition, force: boolean) => void;
+  onCreateShare?: (partition: Partition) => void;
+  onGoToShare?: (partition: Partition) => void;
+  onLabelUpdated?: (partitionId: string, label: string) => void;
+  protectedMode?: boolean;
+  readOnly?: boolean;
+}
+
 interface VolumeDetailsPanelProps {
   disk?: Disk;
   partition?: Partition;
+  actions?: DetailsActions;
+  // Legacy flat props (deprecated): kept so existing tests and older callers
+  // keep working. New code must use disk/partition/actions.
   protectedMode?: boolean;
   readOnly?: boolean;
   onToggleAutomount?: (partition: Partition) => void;
@@ -48,18 +59,29 @@ interface VolumeDetailsPanelProps {
   // share?: SharedResource;
 }
 
-export function VolumeDetailsPanel({
-  disk,
-  partition,
-  protectedMode = false,
-  readOnly = false,
-  onToggleAutomount,
-  onMount,
-  onUnmount,
-  onCreateShare,
-  onGoToShare,
-  onLabelUpdated,
-}: VolumeDetailsPanelProps) {
+export function VolumeDetailsPanel(props: VolumeDetailsPanelProps) {
+  const {
+    disk,
+    partition,
+    actions,
+    protectedMode: legacyProtectedMode,
+    readOnly: legacyReadOnly,
+    onToggleAutomount: legacyOnToggleAutomount,
+    onMount: legacyOnMount,
+    onUnmount: legacyOnUnmount,
+    onCreateShare: legacyOnCreateShare,
+    onGoToShare: legacyOnGoToShare,
+    onLabelUpdated: legacyOnLabelUpdated,
+  } = props;
+  const protectedMode = actions?.protectedMode ?? legacyProtectedMode ?? false;
+  const readOnly = actions?.readOnly ?? legacyReadOnly ?? false;
+  const onToggleAutomount =
+    actions?.onToggleAutomount ?? legacyOnToggleAutomount;
+  const onMount = actions?.onMount ?? legacyOnMount;
+  const onUnmount = actions?.onUnmount ?? legacyOnUnmount;
+  const onCreateShare = actions?.onCreateShare ?? legacyOnCreateShare;
+  const onGoToShare = actions?.onGoToShare ?? legacyOnGoToShare;
+  const onLabelUpdated = actions?.onLabelUpdated ?? legacyOnLabelUpdated;
   const [diskInfoExpanded, setDiskInfoExpanded] = useState(!partition);
   const [smartExpanded, setSmartExpanded] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -91,21 +113,6 @@ export function VolumeDetailsPanel({
     setPreviewObject(null);
   };
 
-  // Helper function to render disk icon
-  const renderDiskIcon = (disk: Disk) => {
-    switch (disk.connection_bus?.toLowerCase()) {
-      case "usb":
-        return <UsbIcon color="primary" />;
-      case "sdio":
-      case "mmc":
-        return <SdStorageIcon color="primary" />;
-    }
-    if (disk.removable) {
-      return <EjectIcon color="primary" />;
-    }
-    return <ComputerIcon color="primary" />;
-  };
-
   const mpds = Object.values(partition?.mount_point_data || {});
   const mountData = mpds[0];
   const isMounted = mpds.some((mpd) => mpd.is_mounted);
@@ -122,10 +129,7 @@ export function VolumeDetailsPanel({
       return undefined;
     }
     const candidate = parts[0];
-    if (
-      !candidate?.legacy_device_name ||
-      candidate.legacy_device_name !== disk.legacy_device_name
-    ) {
+    if (!candidate || !isSynthesizedWholeDiskPartition(disk, candidate)) {
       return undefined;
     }
     return candidate;
@@ -169,7 +173,7 @@ export function VolumeDetailsPanel({
                   aria-label="disk preview"
                   size="small"
                 >
-                  {renderDiskIcon(disk)}
+                  <DiskIcon disk={disk} color="primary" />
                 </IconButton>
               }
               action={

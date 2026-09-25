@@ -28,6 +28,7 @@ export const testIds = {
     partitionActionIcon: "partition-action-icon",
     actionsGrid: "partition-actions-grid",
     partitionActionsRoot: "partition-actions-root",
+    mountHookHarness: "volumes-mount-hook-harness",
   },
   shares: {
     legacyBadge: "shares-legacy-badge",

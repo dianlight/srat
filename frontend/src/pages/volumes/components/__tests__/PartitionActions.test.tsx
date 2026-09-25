@@ -1069,6 +1069,78 @@ describe("PartitionActions component", () => {
         expect(unmountButtons.length).toBeGreaterThanOrEqual(1);
     });
 
+    it("routes mount through grouped tree actions (volumes integration)", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumesTreeView } = await import("../VolumesTreeView");
+        const { getDiskIdentifier } = await import("../../utils");
+        const { createTestStore } = await import("/test/testing");
+
+        const user = userEvent.setup();
+        const store = await createTestStore();
+        const onMount = (..._args: unknown[]) => {
+            (onMount as unknown as { calls: unknown[] }).calls.push(_args);
+        };
+        (onMount as unknown as { calls: unknown[] }).calls = [];
+        const disks = [
+            {
+                id: "disk-grouped-actions",
+                model: "Grouped Actions Disk",
+                partitions: {
+                    "part-grouped-actions": {
+                        id: "part-grouped-actions",
+                        name: "Grouped Actions Partition",
+                        fs_type: "ext4",
+                        mount_point_data: {},
+                    },
+                },
+            },
+        ];
+
+        render(
+            React.createElement(
+                Provider,
+                {
+                    store,
+                    children: React.createElement(
+                        VolumesTreeView as any,
+                        {
+                            disks,
+                            expandedItems: [
+                                getDiskIdentifier(disks[0] as any, 0),
+                            ],
+                            selection: {
+                                expanded: [
+                                    getDiskIdentifier(disks[0] as any, 0),
+                                ],
+                                onExpandedChange: () => {},
+                                onPartitionSelect: () => {},
+                            },
+                            actions: {
+                                onToggleAutomount: () => {},
+                                onMount,
+                                onUnmount: () => {},
+                                onCreateShare: () => {},
+                                onGoToShare: () => {},
+                            },
+                        },
+                    ),
+                },
+            ),
+        );
+
+        await screen.findByText("Grouped Actions Partition");
+        const mountButton = await screen.findByRole("button", {
+            name: /mount partition/i,
+        });
+        await user.click(mountButton);
+        expect(
+            (onMount as unknown as { calls: unknown[] }).calls.length,
+        ).toBe(1);
+    });
+
     it("renders all action icons with consistent size classes (coherence)", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
