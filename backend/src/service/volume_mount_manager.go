@@ -27,7 +27,7 @@ type VolumeMountManagerInterface interface {
 // Validation and cache lookups are performed by the caller (VolumeService).
 type volumeMountManager struct {
 	ctx       context.Context
-	fsService FilesystemServiceInterface
+	fsService FilesystemMounter
 	disks     *dto.DiskMap
 	convMDto  converter.MountToDtoImpl
 	eventBus  events.EventBusInterface
