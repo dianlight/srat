@@ -106,6 +106,8 @@ func (e *selfTestTrackerEntry) reportable(now time.Time) bool {
 	return now.Sub(e.updatedAt) <= 10*time.Minute
 }
 
+type SmartClient = smartmontools.SmartClient
+
 type SmartServiceInterface interface {
 	GetSmartInfo(ctx context.Context, deviceId string) (*dto.SmartInfo, errors.E)
 	GetSmartStatus(ctx context.Context, deviceId string) (*dto.SmartStatus, errors.E)
@@ -116,7 +118,7 @@ type SmartServiceInterface interface {
 	EnableSMART(ctx context.Context, deviceId string) errors.E
 	DisableSMART(ctx context.Context, deviceId string) errors.E
 	MockDeviceToDevice(func(string) (string, error))
-	MockVerifyClient(smartmontools.SmartClient)
+	MockVerifyClient(SmartClient)
 }
 
 type smartService struct {
@@ -146,8 +148,9 @@ type SmartServiceParams struct {
 	// Client is optional: when provided (e.g. in tests via mock injection) it is
 	// used as-is. When nil (production), NewSmartService initialises the client
 	// internally by probing the lib backend first, then falling back to exec.
-	Client   smartmontools.SmartClient `optional:"true"`
-	ApiCtx   *dto.ContextState         `optional:"true"`
+	// Typed as SmartClient (any) so callers never import smartmontools-sdk.
+	Client   SmartClient       `optional:"true"`
+	ApiCtx   *dto.ContextState `optional:"true"`
 	EventBus events.EventBusInterface
 }
 
@@ -217,7 +220,7 @@ func (s *smartService) MockDeviceToDevice(mock func(string) (string, error)) {
 
 // MockVerifyClient installs an exec-backend equivalent used to double-check
 // suspicious lib-backend results. Test seam mirroring MockDeviceToDevice.
-func (s *smartService) MockVerifyClient(client smartmontools.SmartClient) {
+func (s *smartService) MockVerifyClient(client SmartClient) {
 	s.verifyClient = client
 }
 

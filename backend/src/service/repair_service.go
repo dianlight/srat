@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/service/problem"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -84,7 +85,7 @@ func (s *RepairService) Create(command dto.RepairCommandMessage) (*dto.ManagedRe
 	}
 
 	s.state[command.RepairID] = record
-	s.syncProblemFromCommand(command, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED)
+	problem.SyncProblemFromCommand(s.ctx, s.problemSvc, command, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED)
 	if s.broadcaster != nil {
 		s.broadcaster.BroadcastMessage(command)
 	} else {
@@ -118,7 +119,7 @@ func (s *RepairService) Update(command dto.RepairCommandMessage) (*dto.ManagedRe
 	record.LastError = nil
 	record.UpdatedAt = time.Now()
 	s.state[command.RepairID] = record
-	s.syncProblemFromCommand(command, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSUPDATED)
+	problem.SyncProblemFromCommand(s.ctx, s.problemSvc, command, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSUPDATED)
 	if s.broadcaster != nil {
 		s.broadcaster.BroadcastMessage(command)
 	}
@@ -143,7 +144,7 @@ func (s *RepairService) Delete(repairID string) error {
 	}
 
 	delete(s.state, repairID)
-	s.dismissProblem(repairID)
+	problem.DismissProblem(s.ctx, s.problemSvc, repairID)
 	if s.broadcaster != nil {
 		s.broadcaster.BroadcastMessage(dto.RepairCommandMessage{
 			CommandID: uuid.New().String(),
@@ -199,89 +200,10 @@ func (s *RepairService) ApplyLifecycle(event dto.RepairLifecycleMessage) (*dto.M
 	copyEvent := event
 	record.Lifecycle = &copyEvent
 	s.state[event.RepairID] = record
-	s.applyProblemLifecycle(event)
+	problem.ApplyProblemLifecycle(s.ctx, s.problemSvc, event)
 
 	copyRecord := record
 	return &copyRecord, nil
-}
-
-func (s *RepairService) syncProblemFromCommand(command dto.RepairCommandMessage, status dto.ProblemLifecycleStatus) {
-	if s.problemSvc == nil {
-		return
-	}
-
-	title := command.TranslationKey
-	if title == "" {
-		title = command.RepairID
-	}
-
-	_, err := s.problemSvc.Upsert(&dto.Problem{
-		ProblemKey:              command.RepairID,
-		Title:                   title,
-		Description:             title,
-		Severity:                mapRepairSeverity(command.Severity),
-		Status:                  status,
-		TranslationKey:          command.TranslationKey,
-		TranslationPlaceholders: command.TranslationPlaceholders,
-		Data:                    command.Data,
-		LearnMoreURL:            command.LearnMoreURL,
-		IsFixable:               command.IsFixable,
-		IsPersistent:            command.IsPersistent,
-	})
-	if err != nil {
-		tlog.WarnContext(s.ctx, "Failed to sync repair command to problem", "repair_id", command.RepairID, "error", err)
-	}
-}
-
-func (s *RepairService) dismissProblem(repairID string) {
-	if s.problemSvc == nil {
-		return
-	}
-
-	if err := s.problemSvc.Dismiss(repairID); err != nil {
-		tlog.WarnContext(s.ctx, "Failed to dismiss mirrored problem", "problem_key", repairID, "error", err)
-	}
-}
-
-func (s *RepairService) applyProblemLifecycle(event dto.RepairLifecycleMessage) {
-	if s.problemSvc == nil {
-		return
-	}
-
-	_, err := s.problemSvc.ApplyLifecycle(event.RepairID, mapRepairLifecycleStatus(event.Status), event.Error)
-	if err != nil {
-		tlog.WarnContext(s.ctx, "Failed to sync repair lifecycle to problem", "repair_id", event.RepairID, "status", event.Status, "error", err)
-	}
-}
-
-func mapRepairSeverity(severity dto.RepairIssueSeverity) dto.ProblemSeverity {
-	switch severity {
-	case dto.RepairIssueSeverities.REPAIRISSUESEVERITYCRITICAL:
-		return dto.ProblemSeverities.PROBLEMSEVERITYCRITICAL
-	case dto.RepairIssueSeverities.REPAIRISSUESEVERITYERROR:
-		return dto.ProblemSeverities.PROBLEMSEVERITYERROR
-	default:
-		return dto.ProblemSeverities.PROBLEMSEVERITYWARNING
-	}
-}
-
-func mapRepairLifecycleStatus(status dto.RepairLifecycleStatus) dto.ProblemLifecycleStatus {
-	switch status {
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSCREATED:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSIGNORED:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSFIXED:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSFIXED
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSDISMISSED:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSDISMISSED
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSDELETED:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSDELETED
-	case dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSERROR:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSERROR
-	default:
-		return dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSUPDATED
-	}
 }
 
 func (s *RepairService) EnqueueCommand(command dto.RepairCommandMessage) error {
