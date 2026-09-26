@@ -94,8 +94,6 @@ export function App() {
     setWizardOpen(false);
     dismissWizard();
   }, [dismissWizard]);
-  const [backdropOpen, setBackdropOpen] = useState(true);
-  const backdropPrevOpen = useRef(undefined as boolean | undefined);
   const [awaitingUpdateReconnect, setAwaitingUpdateReconnect] = useState(false);
   const [sawUpdateDisconnect, setSawUpdateDisconnect] = useState(false);
   const [commandSessions, setCommandSessions] = useState<
@@ -110,24 +108,11 @@ export function App() {
   const commandEventDedupRef = useRef<string>("");
   const commandToastDedupRef = useRef<Set<string>>(new Set());
   const problemToastSeenRef = useRef<Map<string, string>>(new Map());
-  // Compute Backdrop open state
-  useEffect(() => {
-    const newBackdropOpen =
-      evdata?.heartbeat?.alive === false || isLoading || herror !== undefined;
-    //console.log("Computing backdrop open state:", { alive: evdata?.heartbeat?.alive, isLoading, herror, newBackdropOpen });
-    setBackdropOpen(newBackdropOpen);
-    return () => {
-      if (backdropPrevOpen.current === true && newBackdropOpen === false) {
-        //console.log("Backdrop is closing, reloading page to recover from error or server unavailability");
-        setShowAddonConfigChangedBanner(false);
-        window.location.reload();
-      }
-      if (backdropPrevOpen.current !== undefined || backdropOpen === false) {
-        //console.log("Cleaning up backdrop open state effect", { alive: evdata?.heartbeat?.alive, isLoading, herror, backdropPrevOpen: backdropPrevOpen.current, backdropOpen });
-        backdropPrevOpen.current = backdropOpen;
-      }
-    };
-  }, [evdata, isLoading, herror, backdropOpen]);
+  // Backdrop is purely derived from server reachability. Soft reconnect only:
+  // wsApi auto-reconnects and RTK Query refetches, so recovering from a
+  // transient outage must never trigger window.location.reload().
+  const backdropOpen =
+    evdata?.heartbeat?.alive === false || isLoading || herror !== undefined;
 
   // This useEffect handles the automatic reset of errors after a delay.
   // It ensures that a timer is set only when an error occurs, and cleared if the error resolves
@@ -516,14 +501,7 @@ export function App() {
       />
       <Snackbar
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
-        open={
-          showAddonConfigChangedBanner &&
-          !(
-            evdata?.heartbeat?.alive === false ||
-            isLoading ||
-            herror !== undefined
-          )
-        }
+        open={showAddonConfigChangedBanner && !backdropOpen}
       >
         <Alert
           severity="warning"
