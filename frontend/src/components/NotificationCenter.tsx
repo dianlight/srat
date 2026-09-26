@@ -20,15 +20,48 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import Card from "@mui/material/Card";
-import { isValidElement, type ReactNode, useState } from "react";
+import { isValidElement, type ReactNode, useMemo, useState } from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { useNotificationCenter } from "react-toastify/addons/use-notification-center";
-import type { ErrorModel } from "../store/sratApi";
+import type { ErrorModel, Problem } from "../store/sratApi";
+import { Status, useGetApiProblemsQuery } from "../store/sratApi";
+import { useGetServerEventsQuery } from "../store/wsApi";
 import { FontAwesomeSvgIcon } from "./FontAwesomeSvgIcon";
 
 interface Data {
   exclude: boolean;
   error?: unknown;
+}
+
+const INACTIVE_PROBLEM_STATUSES: ReadonlySet<string> = new Set([
+  Status.Ignored,
+  Status.Dismissed,
+  Status.Fixed,
+  Status.Deleted,
+]);
+
+export function isIgnoredProblemError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  const candidate = error as { ignored?: unknown; status?: unknown };
+  return candidate.ignored === true || candidate.status === Status.Ignored;
+}
+
+export function getProblemKey(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null) {
+    return undefined;
+  }
+  const key = (error as { problem_key?: unknown }).problem_key;
+  return typeof key === "string" && key.length > 0 ? key : undefined;
+}
+
+function isInactiveProblemState(
+  problem: Pick<Problem, "ignored" | "status">,
+): boolean {
+  return (
+    problem.ignored === true || INACTIVE_PROBLEM_STATUSES.has(problem.status)
+  );
 }
 
 export function NotificationCenter() {
@@ -37,27 +70,59 @@ export function NotificationCenter() {
   const prefersDarkMode = useMediaQuery("(prefers-color-scheme: dark)");
   const { mode } = useColorScheme();
 
-  const {
-    notifications,
-    unreadCount,
-    clear,
-    markAllAsRead,
-    remove,
-    markAsRead,
-  } = useNotificationCenter<Data>({
-    //        data: [
-    //            {
-    //                id: "anId", createdAt: Date.now(), data: { exclude: false },
-    //                read: false
-    //            },
-    //            {
-    //                id: "anotherId", createdAt: Date.now(), data: { exclude: true },
-    //                read: false
-    //            }
-    //        ],
-    sort: (l, r) => l.createdAt - r.createdAt,
-    //  filter: (item) => item.read || showUnRead
+  const { notifications, clear, markAllAsRead, remove, markAsRead } =
+    useNotificationCenter<Data>({
+      //        data: [
+      //            {
+      //                id: "anId", createdAt: Date.now(), data: { exclude: false },
+      //                read: false
+      //            },
+      //            {
+      //                id: "anotherId", createdAt: Date.now(), data: { exclude: true },
+      //                read: false
+      //            }
+      //        ],
+      sort: (l, r) => l.createdAt - r.createdAt,
+      //  filter: (item) => item.read || showUnRead
+    });
+
+  // Derive the badge from visible notifications instead of the hook's
+  // unreadCount: toast.dismiss() can leave a stale unread entry behind after
+  // a problem is ignored, so ignored problems must never count. The stored
+  // toast payload is a stale snapshot (it keeps ignored:false), so liveness
+  // comes from the server problems list overlaid with the latest WS problem
+  // event — the same merge DashboardActions uses for cards.
+  const { data: problems } = useGetApiProblemsQuery();
+  const { data: evdata } = useGetServerEventsQuery();
+  const inactiveProblemKeys = useMemo(() => {
+    const states = new Map<string, boolean>();
+    const baseProblems = Array.isArray(problems) ? problems : [];
+    for (const problem of baseProblems) {
+      if (problem?.problem_key) {
+        states.set(problem.problem_key, isInactiveProblemState(problem));
+      }
+    }
+    // The live WS event overlays the cached REST list (same merge rule as
+    // DashboardActions cards): a fresh active event clears a stale ignored
+    // snapshot, and vice versa.
+    const liveProblem = evdata?.problem;
+    if (liveProblem?.problem_key) {
+      states.set(liveProblem.problem_key, isInactiveProblemState(liveProblem));
+    }
+    return new Set(
+      [...states.entries()]
+        .filter(([, inactive]) => inactive)
+        .map(([key]) => key),
+    );
+  }, [problems, evdata?.problem]);
+  const visibleNotifications = notifications.filter((n) => {
+    if (isIgnoredProblemError(n.data?.error)) {
+      return false;
+    }
+    const key = getProblemKey(n.data?.error);
+    return !(key !== undefined && inactiveProblemKeys.has(key));
   });
+  const derivedUnreadCount = visibleNotifications.filter((n) => !n.read).length;
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
     setAnchorEl(event.currentTarget);
@@ -146,7 +211,7 @@ export function NotificationCenter() {
     <>
       <IconButton aria-describedby={id} onClick={handleClick}>
         <Tooltip title="Notifications" arrow>
-          <Badge color="secondary" badgeContent={unreadCount} max={999}>
+          <Badge color="secondary" badgeContent={derivedUnreadCount} max={999}>
             <NotificationsIcon sx={{ color: "white" }} />
           </Badge>
         </Tooltip>
@@ -200,7 +265,7 @@ export function NotificationCenter() {
             </Toolbar>
             <Divider />
             <Stack sx={{ width: "100%", minHeight: "10em" }} spacing={0}>
-              {notifications
+              {visibleNotifications
                 .filter((n) => !n.read || showRead)
                 .map((notification) => {
                   const renderedContent = renderNotificationContent(
@@ -324,7 +389,7 @@ export function NotificationCenter() {
                       color="inherit"
                       onClick={clear}
                       disabled={
-                        notifications.filter((n) => !n.read || showRead)
+                        visibleNotifications.filter((n) => !n.read || showRead)
                           .length === 0
                       }
                     >
@@ -339,9 +404,7 @@ export function NotificationCenter() {
                     <IconButton
                       color="inherit"
                       onClick={markAllAsRead}
-                      disabled={
-                        notifications.filter((n) => !n.read).length === 0
-                      }
+                      disabled={derivedUnreadCount === 0}
                     >
                       <FontAwesomeSvgIcon icon={faCheckDouble} />
                     </IconButton>

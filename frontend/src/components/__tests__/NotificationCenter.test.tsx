@@ -18,9 +18,31 @@ const { mockNotificationCenterState } = vi.hoisted(() => {
     return { mockNotificationCenterState };
 });
 
+const { mockProblemsRef, mockServerEventRef } = vi.hoisted(() => {
+    const mockProblemsRef = { current: undefined as Array<any> | undefined };
+    const mockServerEventRef = { current: undefined as Record<string, unknown> | undefined };
+    return { mockProblemsRef, mockServerEventRef };
+});
+
 vi.mock("react-toastify/addons/use-notification-center", () => ({
     useNotificationCenter: () => mockNotificationCenterState,
 }));
+
+vi.mock("../../store/sratApi", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../../store/sratApi")>();
+    return {
+        ...actual,
+        useGetApiProblemsQuery: () => ({ data: mockProblemsRef.current }),
+    };
+});
+
+vi.mock("../../store/wsApi", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../../store/wsApi")>();
+    return {
+        ...actual,
+        useGetServerEventsQuery: () => ({ data: mockServerEventRef.current }),
+    };
+});
 
 describe("NotificationCenter Component", () => {
     beforeEach(() => {
@@ -29,6 +51,8 @@ describe("NotificationCenter Component", () => {
         }
         mockNotificationCenterState.notifications = [];
         mockNotificationCenterState.unreadCount = 0;
+        mockProblemsRef.current = undefined;
+        mockServerEventRef.current = undefined;
         // Clear DOM before each test
         document.body.innerHTML = '';
     });
@@ -272,5 +296,159 @@ describe("NotificationCenter Component", () => {
 
         await user.click(actionButtons[1]);
         expect(mockNotificationCenterState.markAsRead).toHaveBeenCalledWith("toast-1");
+    });
+
+    it("excludes ignored problems from badge count even with stale unreadCount", async () => {
+        mockNotificationCenterState.notifications = [
+            {
+                id: "problem-protected_mode",
+                createdAt: Date.now(),
+                read: false,
+                type: "warning",
+                content: "Addon in Protected Mode",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "protected_mode", ignored: true, status: "ignored" },
+                },
+            },
+        ];
+        // Simulate stale hook state: badge must derive from notifications, not this value
+        mockNotificationCenterState.unreadCount = 1;
+
+        await renderNotificationCenter();
+
+        expect(screen.queryByText("1")).toBeNull();
+    });
+
+    it("counts active problems and hides ignored entries in the list", async () => {
+        mockNotificationCenterState.notifications = [
+            {
+                id: "problem-protected_mode",
+                createdAt: Date.now(),
+                read: false,
+                type: "warning",
+                content: "Addon in Protected Mode",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "protected_mode", ignored: true, status: "ignored" },
+                },
+            },
+            {
+                id: "problem-active",
+                createdAt: Date.now(),
+                read: false,
+                type: "error",
+                content: "Active problem",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "other", ignored: false, status: "created" },
+                },
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 2;
+
+        const user = userEvent.setup();
+        await renderNotificationCenter();
+
+        expect(screen.queryByText("1")).not.toBeNull();
+
+        const notificationButton = screen.getAllByRole("button")[0];
+        await user.click(notificationButton!);
+
+        expect(screen.getByText("Active problem")).toBeTruthy();
+        expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+    });
+
+    it("classifies ignored problem payloads", async () => {
+        const { isIgnoredProblemError } = await import("../NotificationCenter");
+
+        expect(isIgnoredProblemError({ ignored: true, status: "created" })).toBe(true);
+        expect(isIgnoredProblemError({ ignored: false, status: "ignored" })).toBe(true);
+        expect(isIgnoredProblemError({ ignored: false, status: "created" })).toBe(false);
+        expect(isIgnoredProblemError(undefined)).toBe(false);
+        expect(isIgnoredProblemError(null)).toBe(false);
+    });
+
+    it("excludes stale active payloads once the server marks the key ignored", async () => {
+        // Regression for issue 1239: toast.dismiss() leaves the notification
+        // entry with its original active snapshot (ignored:false). The badge
+        // must follow live server state, not the stale payload.
+        mockNotificationCenterState.notifications = [
+            {
+                id: "problem-protected_mode",
+                createdAt: Date.now(),
+                read: false,
+                type: "warning",
+                content: "Addon in Protected Mode",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
+                },
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 1;
+        mockProblemsRef.current = [
+            { problem_key: "protected_mode", ignored: true, status: "ignored" },
+        ];
+
+        await renderNotificationCenter();
+
+        expect(screen.queryByText("1")).toBeNull();
+    });
+
+    it("excludes fixed problems from badge and list via live server state", async () => {        mockNotificationCenterState.notifications = [
+            {
+                id: "problem-protected_mode",
+                createdAt: Date.now(),
+                read: false,
+                type: "error",
+                content: "Addon in Protected Mode",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
+                },
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 1;
+        mockServerEventRef.current = {
+            problem: { problem_key: "protected_mode", ignored: false, status: "fixed" },
+        };
+
+        const user = userEvent.setup();
+        await renderNotificationCenter();
+
+        expect(screen.queryByText("1")).toBeNull();
+
+        const notificationButton = screen.getAllByRole("button")[0];
+        await user.click(notificationButton!);
+
+        expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+    });
+
+    it("lets a fresh active WS event override a stale ignored REST snapshot", async () => {
+        mockNotificationCenterState.notifications = [
+            {
+                id: "problem-protected_mode",
+                createdAt: Date.now(),
+                read: false,
+                type: "warning",
+                content: "Addon in Protected Mode",
+                data: {
+                    exclude: false,
+                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
+                },
+            },
+        ];
+        mockNotificationCenterState.unreadCount = 1;
+        mockProblemsRef.current = [
+            { problem_key: "protected_mode", ignored: true, status: "ignored" },
+        ];
+        mockServerEventRef.current = {
+            problem: { problem_key: "protected_mode", ignored: false, status: "created" },
+        };
+
+        await renderNotificationCenter();
+
+        expect(screen.queryByText("1")).not.toBeNull();
     });
 });
