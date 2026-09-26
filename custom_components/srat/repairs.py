@@ -41,6 +41,7 @@ class SRATRepairProxy:
         self._hass = hass
         self._ws_client = ws_client
         self._remove_listener: Callable[[], None] | None = None
+        self._pending_tasks: set[Any] = set()
 
     def register(self) -> None:
         """Register websocket listener for repair commands."""
@@ -54,13 +55,18 @@ class SRATRepairProxy:
         if self._remove_listener is not None:
             self._remove_listener()
             self._remove_listener = None
+        for task in list(self._pending_tasks):
+            task.cancel()
+        self._pending_tasks.clear()
 
     def _on_repair_command(self, payload: Any) -> None:
         """Handle repair command payloads from websocket events."""
-        self._hass.async_create_task(
+        task = self._hass.async_create_task(
             self.async_handle_repair_command(payload),
             "srat_repair_command",
         )
+        self._pending_tasks.add(task)
+        task.add_done_callback(self._pending_tasks.discard)
 
     async def async_handle_repair_command(self, payload: Any) -> None:
         """Translate backend repair commands to HA issue operations."""

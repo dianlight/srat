@@ -66,7 +66,7 @@ async def test_mdns_registers_on_enabled_event(
         ),
         patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
         patch(
-            "custom_components.srat.async_get_async_instance",
+            "custom_components.srat.mdns_service.async_get_async_instance",
             return_value=mock_zeroconf,
         ),
     ):
@@ -114,7 +114,7 @@ async def test_mdns_skips_registration_when_disabled(
         ),
         patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
         patch(
-            "custom_components.srat.async_get_async_instance",
+            "custom_components.srat.mdns_service.async_get_async_instance",
             return_value=mock_zeroconf,
         ),
     ):
@@ -159,7 +159,7 @@ async def test_mdns_unregisters_previous_on_new_event(
         ),
         patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
         patch(
-            "custom_components.srat.async_get_async_instance",
+            "custom_components.srat.mdns_service.async_get_async_instance",
             return_value=mock_zeroconf,
         ),
     ):
@@ -209,7 +209,7 @@ async def test_mdns_registers_legacy_event_name_for_backward_compatibility(
         ),
         patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
         patch(
-            "custom_components.srat.async_get_async_instance",
+            "custom_components.srat.mdns_service.async_get_async_instance",
             return_value=mock_zeroconf,
         ),
     ):
