@@ -27,6 +27,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .connection import homeassistant_auth_headers, iter_connection_hosts
+from .sse_parser import parse_sse_frame
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -113,7 +114,7 @@ class SRATWebSocketClient:
         self._task = task
 
     def _on_listener_task_done(self, task: asyncio.Task) -> None:
-        """Restart listener task after unexpected completion."""
+        """Log listener task completion; watchdog owns restart (single watchdog)."""
         if not self._should_reconnect:
             return
 
@@ -123,15 +124,13 @@ class SRATWebSocketClient:
         exc = task.exception()
         if exc is not None:
             _LOGGER.warning(
-                "SRAT WebSocket listener task crashed (%s); restarting",
+                "SRAT WebSocket listener task crashed (%s); watchdog will restart",
                 exc,
             )
         else:
             _LOGGER.warning(
-                "SRAT WebSocket listener task stopped unexpectedly; restarting"
+                "SRAT WebSocket listener task stopped unexpectedly; watchdog will restart"
             )
-
-        self._start_listener_task()
 
     @property
     def connected(self) -> bool:
@@ -149,7 +148,10 @@ class SRATWebSocketClient:
         self._listeners.setdefault(event_type, []).append(listener)
 
         def _remove_listener() -> None:
-            self._listeners[event_type].remove(listener)
+            try:
+                self._listeners[event_type].remove(listener)
+            except (ValueError, KeyError):
+                return
             if not self._listeners[event_type]:
                 del self._listeners[event_type]
 
@@ -271,7 +273,11 @@ class SRATWebSocketClient:
                             connection_duration,
                             self._reconnect_interval,
                         )
-                        await asyncio.sleep(self._reconnect_interval)
+                        try:
+                            await asyncio.sleep(self._reconnect_interval)
+                        except asyncio.CancelledError:
+                            self._should_reconnect = False
+                            break
                     else:
                         _LOGGER.warning(
                             "SRAT WebSocket connection lost (%s) after %.1fs, reconnecting immediately",
@@ -290,7 +296,11 @@ class SRATWebSocketClient:
                     reconnect_reason,
                     self._reconnect_interval,
                 )
-                await asyncio.sleep(self._reconnect_interval)
+                try:
+                    await asyncio.sleep(self._reconnect_interval)
+                except asyncio.CancelledError:
+                    self._should_reconnect = False
+                    break
 
     async def _send_helo(self, ws: aiohttp.ClientWebSocketResponse) -> None:
         """Send HELO message to the SRAT backend."""
@@ -314,36 +324,23 @@ class SRATWebSocketClient:
             await ws.send_json(message)
 
     def _parse_ws_message(self, data: str) -> None:
-        """Parse a WebSocket message."""
+        """Parse a WebSocket message via the shared SSE parser with safe fan-out."""
+        frame = parse_sse_frame(data)
+        if frame is None:
+            return
+        event = frame["event"]
+        data_str = frame["data"]
         try:
-            # Parse SSE-like format: id: <seq>\nevent: <type>\ndata: <json>\n\n
-            lines = data.strip().split("\n")
-            if (
-                len(lines) < 3
-                or not lines[0].startswith("id:")
-                or not lines[1].startswith("event:")
-            ):
-                _LOGGER.debug("Malformed WS message: %s", data[:100])
-                return
-
-            event_line = lines[1]
-            data_line = lines[2] if len(lines) > 2 else ""
-            if not event_line.startswith("event:") or not data_line.startswith("data:"):
-                _LOGGER.debug("Malformed WS message: %s", data[:100])
-                return
-
-            event = event_line[6:].strip()
-            data_str = data_line[5:].strip()
-
-            # Parse JSON data
             payload = json.loads(data_str) if data_str else {}
-
-            # Call listeners
-            listeners = self._listeners.get(event, [])
-            for listener in listeners:
-                listener(payload)
-        except (json.JSONDecodeError, IndexError) as err:
+        except json.JSONDecodeError as err:
             _LOGGER.debug("Failed to parse WS message: %s", err)
+            return
+
+        for listener in list(self._listeners.get(event, [])):
+            try:
+                listener(payload)
+            except Exception:
+                _LOGGER.exception("SRAT WS listener failed for event %s", event)
 
     async def async_send_repair_lifecycle_event(
         self,

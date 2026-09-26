@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any
+from typing import Any, TypedDict
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -24,6 +24,75 @@ from .coordinator import SRATDataCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 _NON_ALNUM = re.compile(r"[^a-zA-Z0-9]+")
+
+
+class PartitionData(TypedDict, total=False):
+    """Typed view of a partition dict from coordinator data."""
+
+    id: str
+    device: str
+    name: str
+    size: int
+    system: str
+    shares: list[Any]
+    mounts: list[Any]
+
+
+class DiskData(TypedDict, total=False):
+    """Typed view of a disk dict from coordinator data."""
+
+    id: str
+    device: str
+    model: str
+    vendor: str
+    serial: str
+    size: int
+    connectionBus: str
+    removable: bool
+    partitions: list[PartitionData]
+
+
+class VolumeRepository:
+    """Single selector for disk/partition/health lookups."""
+
+    @staticmethod
+    def find_disk(disks: Any, disk_id: str) -> DiskData | None:
+        """Find a disk by id in a disks list."""
+        if not isinstance(disks, list):
+            return None
+        for disk in disks:
+            if isinstance(disk, dict) and disk.get("id") == disk_id:
+                return disk  # type: ignore[return-value]
+        return None
+
+    @staticmethod
+    def find_partition(disks: Any, partition_id: str) -> PartitionData | None:
+        """Find a partition by id across all disks."""
+        if not isinstance(disks, list):
+            return None
+        for disk in disks:
+            if not isinstance(disk, dict):
+                continue
+            for part in disk.get("partitions", []):
+                if isinstance(part, dict) and part.get("id") == partition_id:
+                    return part  # type: ignore[return-value]
+        return None
+
+    @staticmethod
+    def find_disk_io(health: Any, device_name: str) -> dict[str, Any] | None:
+        """Find per-disk IO stats in health data."""
+        if not isinstance(health, dict):
+            return None
+        result = health.get("disk_io", {}).get(device_name)
+        return result if isinstance(result, dict) else None
+
+    @staticmethod
+    def find_partition_health(health: Any, device: str) -> dict[str, Any] | None:
+        """Find per-partition health info in health data."""
+        if not isinstance(health, dict):
+            return None
+        result = health.get("partition_health", {}).get(device)
+        return result if isinstance(result, dict) else None
 
 
 def _sanitize_id(value: str) -> str:
@@ -279,12 +348,8 @@ class SRATDiskSensor(SRATSensorBase):
     def _find_disk(self) -> dict[str, Any] | None:
         """Find the disk in current coordinator data."""
         disks = self.coordinator.data.get("disks") if self.coordinator.data else None
-        if not isinstance(disks, list):
-            return None
-        for disk in disks:
-            if isinstance(disk, dict) and disk.get("id") == self._disk_id:
-                return disk
-        return None
+        found = VolumeRepository.find_disk(disks, self._disk_id)
+        return dict(found) if found is not None else None
 
 
 class SRATPartitionSensor(SRATSensorBase):
@@ -342,15 +407,8 @@ class SRATPartitionSensor(SRATSensorBase):
     def _find_partition(self) -> dict[str, Any] | None:
         """Find the partition in current coordinator data."""
         disks = self.coordinator.data.get("disks") if self.coordinator.data else None
-        if not isinstance(disks, list):
-            return None
-        for disk in disks:
-            if not isinstance(disk, dict):
-                continue
-            for part in disk.get("partitions", []):
-                if isinstance(part, dict) and part.get("id") == self._partition_id:
-                    return part
-        return None
+        found = VolumeRepository.find_partition(disks, self._partition_id)
+        return dict(found) if found is not None else None
 
 
 class SRATGlobalDiskHealthSensor(SRATSensorBase):
@@ -453,9 +511,7 @@ class SRATDiskIOSensor(SRATSensorBase):
         health = (
             self.coordinator.data.get("disk_health") if self.coordinator.data else None
         )
-        if not isinstance(health, dict):
-            return None
-        return health.get("disk_io", {}).get(self._device_name)
+        return VolumeRepository.find_disk_io(health, self._device_name)
 
 
 class SRATPartitionHealthSensor(SRATSensorBase):
@@ -511,6 +567,4 @@ class SRATPartitionHealthSensor(SRATSensorBase):
         health = (
             self.coordinator.data.get("disk_health") if self.coordinator.data else None
         )
-        if not isinstance(health, dict):
-            return None
-        return health.get("partition_health", {}).get(self._device)
+        return VolumeRepository.find_partition_health(health, self._device)
