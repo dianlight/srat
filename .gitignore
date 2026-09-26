@@ -51,3 +51,4 @@ frontend_test_output.txt
 # Local agent/tool artifacts
 .playwright-cli/
 .openchamber/
+.opencode/.modelselect-cache/
