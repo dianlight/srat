@@ -214,7 +214,6 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
 				return nil, dto.ErrorUserAlreadyExists
 			}
-			//tlog.Error("Error creating user in repository", "err", err)
 			return nil, errors.Wrap(err, "failed to create user in repository")
 		}
 	}
@@ -226,8 +225,6 @@ func (s *UserService) CreateUser(userDto dto.User) (*dto.User, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to restore samba user %s for soft-deleted user", dbUser.Username)
 	}
-
-	//slog.Debug("Attempting to create user in DB", "dbUser", dbUser)
 
 	createdUserDto, err := conv.SambaUserToUser(dbUser)
 	if err != nil {

@@ -24,7 +24,6 @@ export function useSmartTestStatus(diskId: string) {
 
   useEffect(() => {
     if (!isLoading && isSuccess && data) {
-      //console.log("Update data:", data);
       setSmartTestStatus(data as SmartTestStatus);
     }
   }, [data, isLoading, isSuccess]);
@@ -56,10 +55,11 @@ export function useSmartTestStatus(diskId: string) {
     } else if (!evloading && everror) {
       console.error("Error receiving smart test status via SSE:", everror);
     } else if (!evloading && evdata?.smart_test_status) {
-      console.debug(
-        "Received smart test status for different disk:",
-        evdata.smart_test_status,
-      );
+      if (process.env.NODE_ENV !== "production")
+        console.debug(
+          "Received smart test status for different disk:",
+          evdata.smart_test_status,
+        );
     }
   }, [evdata, evloading, diskId, everror, refetch]);
 

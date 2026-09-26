@@ -136,12 +136,8 @@ func prog(listener net.Listener, serverPort int) {
 	}
 
 	if *roMode {
-		log.Println("Read only mode")
+		slog.Info("Read only mode")
 	}
-
-	//if !strings.Contains(*dbfile, "?") {
-	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 	// apiCancel is called at the end of Run() by FX lifecycle or explicitly if Run errors

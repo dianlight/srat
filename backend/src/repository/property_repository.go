@@ -63,7 +63,6 @@ func (self *PropertyRepository) Value(key string) (any, errors.E) {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, errors.WithStack(dto.ErrorNotFound)
 		}
-		//slog.Error("Error retrieving property", "key", key, "include_internal", include_internal, "res", res)
 		return nil, errors.WithStack(res.Error)
 	}
 	return prop.Value, nil

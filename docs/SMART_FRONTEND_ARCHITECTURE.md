@@ -6,8 +6,7 @@
   - [Data Flow](#data-flow)
   - [State Management Flow](#state-management-flow)
   - [API Integration Points](#api-integration-points)
-    - [Current State (Placeholder)](#current-state-placeholder)
-    - [Future State (After back-end Implementation)](#future-state-after-back-end-implementation)
+    - [Current State](#current-state)
   - [Type Definitions](#type-definitions)
     - [SmartInfo (from back-end)](#smartinfo-from-back-end)
     - [SmartHealthStatus (Local)](#smarthealthstatus-local)
@@ -124,8 +123,7 @@ Component Handler Calls Hook Callback
 useSmartOperations Hook
 ├─ Set isLoading = true
 ├─ Show Toast: "Starting test..."
-├─ Simulate/Call API
-│  └─ TODO: Replace with RTK Query when backend ready
+├─ Call API via RTK Query
 ├─ Set isLoading = false
 └─ Show Result Toast (success/error)
         │
@@ -137,21 +135,7 @@ Component Re-renders with:
 
 ## API Integration Points
 
-### Current State (Placeholder)
-
-```txt
-useSmartOperations Hook
-├─ startSelfTest()
-│  └─ console.log + toast (simulated)
-├─ abortSelfTest()
-│  └─ console.log + toast (simulated)
-├─ enableSmart()
-│  └─ console.log + toast (simulated)
-└─ disableSmart()
-   └─ console.log + toast (simulated)
-```
-
-### Future State (After back-end Implementation)
+### Current State
 
 ```txt
 useSmartOperations Hook

@@ -112,11 +112,6 @@ func (self *SystemHanler) HandleCommandOutput(ctx context.Context, input *struct
 //   - An error if there is any issue retrieving or converting the network information.
 func (handler *SystemHanler) GetNICsHandler(ctx context.Context, input *struct{}) (*struct{ Body net.InterfaceStatList }, error) {
 
-	//	net, err := ghw.Network()
-	//	if err != nil {
-	//		return nil, err
-	//	}
-
 	nics, err := net.InterfacesWithContext(ctx)
 	if err != nil {
 		return nil, err

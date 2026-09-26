@@ -80,11 +80,6 @@ func (h *SmartHandler) GetSmartInfo(ctx context.Context, input *struct {
 		return nil, err
 	}
 
-	//devicePath, errE := h.volumeService.GetDevicePathByDeviceID(input.DiskID)
-	//if errE != nil {
-	//	return nil, huma.Error404NotFound("Disk not found", errors.New("disk not found"))
-	//}
-
 	smartInfo, errE := h.smartService.GetSmartInfo(ctx, input.DiskID)
 	if errE != nil {
 		if errors.Is(errE, dto.ErrorSMARTNotSupported) {

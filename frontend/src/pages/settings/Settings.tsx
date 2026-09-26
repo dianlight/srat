@@ -103,7 +103,8 @@ export function Settings() {
   const [update, _updateResponse] = usePutApiSettingsMutation();
 
   function handleCommit(data: ApiSettings) {
-    console.debug("Settings commit:", data);
+    if (process.env.NODE_ENV !== "production")
+      console.debug("Settings commit:", data);
     update({ settings: data })
       .unwrap()
       .then((res) => {

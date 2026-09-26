@@ -708,7 +708,6 @@ func (s *HDIdleService) convertConfig() (*internalConfig, errors.E) {
 
 	devices, errS := query.HDIdleDeviceQuery[dbom.HDIdleDevice](s.db).All(s.ctx)
 	if errS != nil {
-		//tlog.Error("Failed to load HDIdle devices from repository", "error", err)
 		return nil, errors.Wrap(errS, "failed to load HDIdle devices")
 	}
 
