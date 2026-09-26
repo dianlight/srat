@@ -73,7 +73,7 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _on_volumes(self, data: Any) -> None:
         """Handle ``volumes`` event (list of disks)."""
         self.data["disks"] = data if isinstance(data, list) else None
-        self.async_set_updated_data(self.data)
+        self.async_set_updated_data(dict(self.data))
 
     @callback
     def _on_heartbeat(self, data: Any) -> None:
@@ -84,10 +84,16 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             samba_status         → SambaStatus
             samba_process_status → ServerProcessStatus
             disk_health          → DiskHealth
+
+        Merge (not overwrite): only present keys update state so a partial
+        heartbeat never clears unrelated keys with ``None``.
         """
         if not isinstance(data, dict):
             return
-        self.data["samba_status"] = data.get("samba_status")
-        self.data["process_status"] = data.get("samba_process_status")
-        self.data["disk_health"] = data.get("disk_health")
-        self.async_set_updated_data(self.data)
+        if "samba_status" in data:
+            self.data["samba_status"] = data.get("samba_status")
+        if "samba_process_status" in data:
+            self.data["process_status"] = data.get("samba_process_status")
+        if "disk_health" in data:
+            self.data["disk_health"] = data.get("disk_health")
+        self.async_set_updated_data(dict(self.data))

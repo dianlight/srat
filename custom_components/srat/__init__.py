@@ -5,17 +5,14 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import socket
-from typing import Any, cast
+from typing import cast
 
 import aiohttp
-from homeassistant.components.zeroconf import async_get_async_instance
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from zeroconf import ServiceInfo
 
 from .connection import (
     homeassistant_auth_headers,
@@ -33,6 +30,7 @@ from .const import (
     WS_RECONNECT_INTERVAL,
 )
 from .coordinator import SRATDataCoordinator
+from .mdns_service import SRATMdnsService
 from .repairs import SRATRepairProxy
 from .websocket_client import SRATWebSocketClient
 
@@ -196,82 +194,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
         "app_config_changed", _on_app_config_changed
     )
 
-    # mDNS / Zeroconf registration state — tracks the currently registered ServiceInfo
-    _mdns_registered_info: ServiceInfo | None = None
-    _mdns_lock = asyncio.Lock()
-
-    async def _register_mdns(info: ServiceInfo) -> None:
-        """Register a Zeroconf ServiceInfo with Home Assistant's shared zeroconf."""
-        zc = cast(Any, await async_get_async_instance(hass))
-        await zc.async_register_service(info, allow_name_change=True)
-        _LOGGER.debug("mDNS: registered %s on port %d", info.name, info.port)
-
-    async def _unregister_mdns(info: ServiceInfo) -> None:
-        """Unregister a previously registered Zeroconf ServiceInfo."""
-        zc = cast(Any, await async_get_async_instance(hass))
-        await zc.async_unregister_service(info)
-        _LOGGER.debug("mDNS: unregistered %s", info.name)
-
-    def _on_mdns_register(event_data: dict) -> None:
-        """Handle m_dns_register WebSocket events from the backend.
-
-        The backend sends this event on every new component connection so the
-        custom component can register or unregister the Samba server via mDNS.
-        """
-        nonlocal _mdns_registered_info
-
-        enabled: bool = bool(event_data.get("enabled", False))
-        hostname: str = str(event_data.get("hostname", ""))
-        port: int = int(event_data.get("port", 445))
-
-        service_type = "_smb._tcp.local."
-        service_name = f"{hostname}.{service_type}"
-
-        async def _apply() -> None:
-            nonlocal _mdns_registered_info
-
-            async with _mdns_lock:
-                # Unregister any previously registered service
-                if _mdns_registered_info is not None:
-                    try:
-                        await _unregister_mdns(_mdns_registered_info)
-                    except Exception:
-                        _LOGGER.debug("mDNS: unregister failed (may already be gone)")
-                    _mdns_registered_info = None
-
-                if not enabled or not hostname:
-                    return
-
-                # Resolve an IPv4 address for the service advertisement.
-                # Prefer the HA API local IP; fall back to the resolved SRAT host.
-                raw_ip = getattr(hass.config.api, "local_ip", None) or resolved_host
-                try:
-                    packed_ip = socket.inet_aton(str(raw_ip))
-                except OSError:
-                    _LOGGER.warning("mDNS: cannot convert IP %r to packed form", raw_ip)
-                    return
-
-                info = ServiceInfo(
-                    type_=service_type,
-                    name=service_name,
-                    addresses=[packed_ip],
-                    port=port,
-                    properties={"path": "/"},
-                )
-                try:
-                    await _register_mdns(info)
-                    _mdns_registered_info = info
-                except Exception:
-                    _LOGGER.exception("mDNS: failed to register %s", service_name)
-
-        hass.async_create_task(_apply())
-
-    unregister_mdns_listener_legacy = ws_client.register_listener(
-        "m_dns_register", _on_mdns_register
-    )
-    unregister_mdns_listener = ws_client.register_listener(
-        "mdns_register", _on_mdns_register
-    )
+    mdns_service = SRATMdnsService(hass=hass, resolved_host=resolved_host)
+    mdns_service.register(ws_client)
 
     entry.runtime_data = SRATData(
         coordinator=coordinator,
@@ -282,17 +206,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: SRATConfigEntry) -> bool
     # Store unregister functions for cleanup on unload
     async def _on_unload() -> None:
         unregister_app_config_listener()
-        unregister_mdns_listener_legacy()
-        unregister_mdns_listener()
+        mdns_service.unregister()
         ws_watchdog_task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await ws_watchdog_task
-        # Deregister mDNS if it was registered
-        if _mdns_registered_info is not None:
-            try:
-                await _unregister_mdns(_mdns_registered_info)
-            except Exception:
-                _LOGGER.debug("mDNS: unregister on unload failed")
+        await mdns_service.async_cleanup()
 
     entry.async_on_unload(_on_unload)
 
