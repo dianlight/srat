@@ -1259,6 +1259,8 @@ export type SystemCapabilities = {
   samba_version: string;
   /** Whether Samba version >= 4.23.0 */
   samba_version_sufficient: boolean;
+  /** Active SMART backend: direct (lib) or legacy (smartctl exec) */
+  smart_backend: string;
   /** Whether NFS is supported */
   support_nfs: boolean;
   /** Whether SMB over QUIC is supported */
@@ -1356,7 +1358,7 @@ export type CommandExecutionSnapshot = {
 export type HdIdleDevice = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  command_type: Command_type;
+  command_type?: Command_type;
   device_path?: string;
   disk_id?: string;
   enabled: Enabled;
@@ -1383,10 +1385,10 @@ export type JsonPatchOp = {
 export type HdIdleDeviceStatus = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
-  last_io_at: string;
+  last_io_at?: string;
   name?: string;
-  spin_down_at: string;
-  spin_up_at: string;
+  spin_down_at?: string;
+  spin_up_at?: string;
   spun_down: boolean;
 };
 export type HdIdleDeviceSupport = {
@@ -1564,6 +1566,7 @@ export type FilesystemTask = {
   device: string;
   error?: string;
   filesystemType?: string;
+  label?: string;
   message?: string;
   notes?: string[] | null;
   operation: string;
@@ -1870,10 +1873,14 @@ export type SmbConf = {
 export type Settings = {
   /** A URL to the JSON Schema for this object. */
   $schema?: string;
+  alert_addon_config_changed?: boolean;
+  alert_custom_component?: boolean;
+  alert_protected_mode?: boolean;
   allow_guest?: boolean;
   allow_hosts?: string[];
   bind_all_interfaces?: boolean;
   compatibility_mode?: boolean;
+  enable_ha_discovery?: boolean;
   experimental_lab_mode: boolean;
   export_stats_to_ha?: boolean;
   ha_use_nfs?: boolean;
@@ -1882,7 +1889,7 @@ export type Settings = {
   local_master?: boolean;
   mdns_registration?: boolean;
   multi_channel?: boolean;
-  smart_mode: Smart_mode;
+  smart_on?: boolean;
   smb_over_quic?: boolean;
   standard_share_names: Standard_share_names;
   telemetry_mode: Telemetry_mode;
@@ -1977,6 +1984,7 @@ export type User = {
 };
 export type SharedResourceStatus = {
   is_ha_mounted?: boolean;
+  is_hidden: boolean;
   is_valid: boolean;
 };
 export type SharedResource = {
@@ -2152,11 +2160,6 @@ export enum Disk_type {
 export enum Status2 {
   Alpha = "alpha",
   Beta = "beta",
-}
-export enum Smart_mode {
-  None = "none",
-  Legacy = "legacy",
-  Direct = "direct",
 }
 export enum Standard_share_names {
   Old = "old",

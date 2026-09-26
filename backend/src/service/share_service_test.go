@@ -463,9 +463,10 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 		RecycleBin:  new(true),
 		Usage:       "media",
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/new",
-			DeviceId: "newdev123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/new",
+			DeviceId:  "newdev123",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{
@@ -494,8 +495,9 @@ func (suite *ShareServiceSuite) TestCreateShareMissingMountPointType() {
 		Name:     "missing-type-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/x",
-			DeviceId: "some-device",
+			IsMounted: true,
+			Path:      "/mnt/x",
+			DeviceId:  "some-device",
 		},
 	}
 
@@ -513,8 +515,9 @@ func (suite *ShareServiceSuite) TestCreateShareMissingDeviceId() {
 		Name:     "missing-device-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path: "/mnt/x",
-			Type: "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/x",
+			Type:      "ADDON",
 		},
 	}
 
@@ -540,6 +543,58 @@ func (suite *ShareServiceSuite) TestCreateShareWithoutMountPoint() {
 	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
 }
 
+// TestCreateShareUnmountedVolumeRejected asserts that a share pointing at a
+// volume that is not mounted is rejected with a validation error instead of
+// being silently created as an unusable share (issue #1162).
+func (suite *ShareServiceSuite) TestCreateShareUnmountedVolumeRejected() {
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	newShare := dto.SharedResource{
+		Name:     "unmounted-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:      "/mnt/unmounted",
+			Type:      "ADDON",
+			DeviceId:  "unmounted123",
+			IsMounted: false,
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
+// TestCreateShareInvalidVolumeRejected asserts that a share pointing at a
+// volume marked invalid is rejected with a validation error (issue #1162).
+func (suite *ShareServiceSuite) TestCreateShareInvalidVolumeRejected() {
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	newShare := dto.SharedResource{
+		Name:     "invalid-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:      "/mnt/invalid",
+			Type:      "ADDON",
+			DeviceId:  "invalid123",
+			IsMounted: true,
+			IsInvalid: true,
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(newShare)
+
+	suite.Nil(created)
+	suite.Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
+}
+
 // TestCreateShareEmptyName asserts that an empty share name is rejected
 // (issue #903).
 func (suite *ShareServiceSuite) TestCreateShareEmptyName() {
@@ -547,9 +602,10 @@ func (suite *ShareServiceSuite) TestCreateShareEmptyName() {
 		Name:     "",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/x",
-			Type:     "ADDON",
-			DeviceId: "device",
+			IsMounted: true,
+			Path:      "/mnt/x",
+			Type:      "ADDON",
+			DeviceId:  "device",
 		},
 	}
 
@@ -568,9 +624,10 @@ func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
 		Name:     string(make([]byte, 129)),
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/x",
-			Type:     "ADDON",
-			DeviceId: "device",
+			IsMounted: true,
+			Path:      "/mnt/x",
+			Type:      "ADDON",
+			DeviceId:  "device",
 		},
 	}
 
@@ -584,7 +641,13 @@ func (suite *ShareServiceSuite) TestCreateShareNameTooLong() {
 // TestCreateShareNamePatternEdgeCases covers shareNamePattern validation
 // (issue #E01): empty, Unicode, uppercase, max-length, and slash/space/special chars.
 func (suite *ShareServiceSuite) TestCreateShareNamePatternEdgeCases() {
-	maxValid128 := func() string { b := make([]byte, 128); for i := range b { b[i] = 'A' }; return string(b) }()
+	maxValid128 := func() string {
+		b := make([]byte, 128)
+		for i := range b {
+			b[i] = 'A'
+		}
+		return string(b)
+	}()
 	tooLong129 := maxValid128 + "A"
 	tests := []struct {
 		name       string
@@ -613,9 +676,10 @@ func (suite *ShareServiceSuite) TestCreateShareNamePatternEdgeCases() {
 			Name:     tc.shareName,
 			Disabled: new(false),
 			MountPointData: &dto.MountPointData{
-				Path:     "/mnt/x",
-				Type:     "ADDON",
-				DeviceId: "device",
+				IsMounted: true,
+				Path:      "/mnt/x",
+				Type:      "ADDON",
+				DeviceId:  "device",
 			},
 		}
 		created, err := suite.shareService.CreateShare(share)
@@ -643,9 +707,10 @@ func (suite *ShareServiceSuite) TestCreateShareWithoutExplicitUsers() {
 		Name:     "admin-auto-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/auto",
-			DeviceId: "auto123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/auto",
+			DeviceId:  "auto123",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{}, // Empty users list
 	}
@@ -677,9 +742,10 @@ func (suite *ShareServiceSuite) TestCreateShareWithMultipleProperties() {
 		Usage:              "backup",
 		VetoFiles:          []string{"*.exe", "*.dll"},
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/backup",
-			DeviceId: "backup123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/backup",
+			DeviceId:  "backup123",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{
@@ -725,9 +791,10 @@ func (suite *ShareServiceSuite) TestUpdateShareNotFound() {
 		Name:     "nonexistent-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/missing",
-			DeviceId: "missing123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/missing",
+			DeviceId:  "missing123",
+			Type:      "ADDON",
 		},
 	}
 
@@ -737,6 +804,56 @@ func (suite *ShareServiceSuite) TestUpdateShareNotFound() {
 	suite.Error(err)
 	suite.Nil(result)
 	suite.True(errors.Is(err, dto.ErrorShareNotFound))
+}
+
+// TestUpdateShareUnmountedVolumeRejected asserts that moving a share onto a
+// volume that is not mounted is rejected with a validation error instead of
+// silently producing an unusable share (issue #1162).
+func (suite *ShareServiceSuite) TestUpdateShareUnmountedVolumeRejected() {
+	// Setup: Create a share first
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	initialShare := dto.SharedResource{
+		Name:     "unmounted-update-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:      "/mnt/unmounted-update",
+			DeviceId:  "unmountedupdate123",
+			Type:      "ADDON",
+			IsMounted: true,
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(initialShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+
+	// Execute: point the share at an unmounted volume
+	updatedShare := dto.SharedResource{
+		Name:     "unmounted-update-share",
+		Disabled: new(false),
+		MountPointData: &dto.MountPointData{
+			Path:      "/mnt/unmounted-update",
+			DeviceId:  "unmountedupdate123",
+			Type:      "ADDON",
+			IsMounted: false,
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	result, err := suite.shareService.UpdateShare("unmounted-update-share", updatedShare)
+
+	// Assert
+	suite.Error(err)
+	suite.Nil(result)
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "expected ErrorShareValidation, got %v", err)
 }
 
 func (suite *ShareServiceSuite) TestUpdateShareSuccess() {
@@ -753,9 +870,10 @@ func (suite *ShareServiceSuite) TestUpdateShareSuccess() {
 		RecycleBin:  new(false),
 		Usage:       "media",
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/update-test",
-			DeviceId: "updatedev123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/update-test",
+			DeviceId:  "updatedev123",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -775,9 +893,10 @@ func (suite *ShareServiceSuite) TestUpdateShareSuccess() {
 		RecycleBin:  new(true), // Changed
 		Usage:       "backup",  // Changed
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/update-test",
-			DeviceId: "updatedev123",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/update-test",
+			DeviceId:  "updatedev123",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -806,9 +925,10 @@ func (suite *ShareServiceSuite) TestUpdateShareChangeUsers() {
 		Name:     "user-update-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/user-update",
-			DeviceId: "userupdatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/user-update",
+			DeviceId:  "userupdatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -824,9 +944,10 @@ func (suite *ShareServiceSuite) TestUpdateShareChangeUsers() {
 		Name:     "user-update-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/user-update",
-			DeviceId: "userupdatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/user-update",
+			DeviceId:  "userupdatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -856,9 +977,10 @@ func (suite *ShareServiceSuite) TestUpdateShareWithEmptyUsersAddsAdmin() {
 		Name:     "empty-users-update-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/empty-users-update",
-			DeviceId: "emptyusersdev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/empty-users-update",
+			DeviceId:  "emptyusersdev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -874,9 +996,10 @@ func (suite *ShareServiceSuite) TestUpdateShareWithEmptyUsersAddsAdmin() {
 		Name:     "empty-users-update-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/empty-users-update",
-			DeviceId: "emptyusersdev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/empty-users-update",
+			DeviceId:  "emptyusersdev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{}, // Empty users
 	}
@@ -901,9 +1024,10 @@ func (suite *ShareServiceSuite) TestUpdateShareVetoFiles() {
 		Disabled:  new(false),
 		VetoFiles: []string{"*.tmp"},
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/veto-update",
-			DeviceId: "vetoupdatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/veto-update",
+			DeviceId:  "vetoupdatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -921,9 +1045,10 @@ func (suite *ShareServiceSuite) TestUpdateShareVetoFiles() {
 		Disabled:  new(false),
 		VetoFiles: []string{"*.exe", "*.dll", "*.bat"},
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/veto-update",
-			DeviceId: "vetoupdatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/veto-update",
+			DeviceId:  "vetoupdatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -955,9 +1080,10 @@ func (suite *ShareServiceSuite) TestEnableShareSuccess() {
 		Name:     "enable-test-share",
 		Disabled: new(true), // Start disabled
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/enable-test",
-			DeviceId: "enabletestdev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/enable-test",
+			DeviceId:  "enabletestdev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -999,9 +1125,10 @@ func (suite *ShareServiceSuite) TestEnableAlreadyEnabledShare() {
 		Name:     "already-enabled-share",
 		Disabled: new(false), // Already enabled
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/already-enabled",
-			DeviceId: "alreadyenableddev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/already-enabled",
+			DeviceId:  "alreadyenableddev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -1036,9 +1163,10 @@ func (suite *ShareServiceSuite) TestDisableShareSuccess() {
 		Name:     "disable-test-share",
 		Disabled: new(false), // Start enabled
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/disable-test",
-			DeviceId: "disabletestdev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/disable-test",
+			DeviceId:  "disabletestdev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -1080,9 +1208,10 @@ func (suite *ShareServiceSuite) TestDisableAlreadyDisabledShare() {
 		Name:     "already-disabled-share",
 		Disabled: new(true), // Already disabled
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/already-disabled",
-			DeviceId: "alreadydisableddev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/already-disabled",
+			DeviceId:  "alreadydisableddev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -1113,9 +1242,10 @@ func (suite *ShareServiceSuite) TestEnableDisableToggle() {
 		Name:     "toggle-share",
 		Disabled: new(false), // Start enabled
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/toggle",
-			DeviceId: "toggledev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/toggle",
+			DeviceId:  "toggledev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -1158,9 +1288,10 @@ func (suite *ShareServiceSuite) TestDeleteShareSuccess() {
 		Name:     "delete-test-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/delete-test",
-			DeviceId: "deletetestdev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/delete-test",
+			DeviceId:  "deletetestdev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: "homeassistant"},
@@ -1214,9 +1345,10 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 		Name:     "recreate-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/recreate",
-			DeviceId: "recreatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/recreate",
+			DeviceId:  "recreatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: adminUserName},
@@ -1257,9 +1389,10 @@ func (suite *ShareServiceSuite) TestCreateDeleteAndRecreateShare() {
 		Name:     "recreate-share",
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/recreate",
-			DeviceId: "recreatedev",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/recreate",
+			DeviceId:  "recreatedev",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: adminUserName},
@@ -1459,9 +1592,10 @@ func (suite *ShareServiceSuite) TestUpdateShareRenamePreservesRwAndRoAssociation
 		Name:     oldName,
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/rename-share",
-			DeviceId: "rename-device",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/rename-share",
+			DeviceId:  "rename-device",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: adminUserName},
@@ -1478,9 +1612,10 @@ func (suite *ShareServiceSuite) TestUpdateShareRenamePreservesRwAndRoAssociation
 		Name:     newName,
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/rename-share",
-			DeviceId: "rename-device",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/rename-share",
+			DeviceId:  "rename-device",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{
 			{Username: adminUserName},
@@ -1557,9 +1692,10 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 		Name:     firstShareName,
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/rename-conflict-first",
-			DeviceId: "rename-conflict-first-device",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/rename-conflict-first",
+			DeviceId:  "rename-conflict-first-device",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{{Username: adminUserName}},
 	})
@@ -1570,9 +1706,10 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 		Name:     secondShareName,
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/rename-conflict-second",
-			DeviceId: "rename-conflict-second-device",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/rename-conflict-second",
+			DeviceId:  "rename-conflict-second-device",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{{Username: adminUserName}},
 	})
@@ -1583,9 +1720,10 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 		Name:     secondShareName,
 		Disabled: new(false),
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/rename-conflict-first",
-			DeviceId: "rename-conflict-first-device",
-			Type:     "ADDON",
+			IsMounted: true,
+			Path:      "/mnt/rename-conflict-first",
+			DeviceId:  "rename-conflict-first-device",
+			Type:      "ADDON",
 		},
 		Users: []dto.User{{Username: adminUserName}},
 	})
@@ -1602,6 +1740,72 @@ func (suite *ShareServiceSuite) TestUpdateShareRenameToExistingNameReturnsConfli
 	suite.Require().NoError(secondGetErr)
 	suite.Require().NotNil(secondShare)
 	suite.Equal(secondShareName, secondShare.Name)
+}
+
+// TestUpdateShareDisablesBooleanFlags asserts that boolean share flags can be
+// turned back OFF via UpdateShare (issue #1191). GORM Updates with a struct
+// value skips zero-values, silently dropping false booleans.
+func (suite *ShareServiceSuite) TestUpdateShareDisablesBooleanFlags() {
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	initialShare := dto.SharedResource{
+		Name:        "bool-toggle-share-1191",
+		Disabled:    new(false),
+		GuestOk:     new(true),
+		TimeMachine: new(true),
+		RecycleBin:  new(true),
+		Usage:       "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/bool-toggle-1191",
+			DeviceId:  "booltoggle1191dev",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(initialShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+	suite.Require().True(*created.GuestOk)
+	suite.Require().True(*created.TimeMachine)
+	suite.Require().True(*created.RecycleBin)
+
+	updatedShare := dto.SharedResource{
+		Name:        "bool-toggle-share-1191",
+		Disabled:    new(false),
+		GuestOk:     new(false),
+		TimeMachine: new(false),
+		RecycleBin:  new(false),
+		Usage:       "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/bool-toggle-1191",
+			DeviceId:  "booltoggle1191dev",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	result, err := suite.shareService.UpdateShare("bool-toggle-share-1191", updatedShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(result)
+	suite.False(*result.GuestOk, "GuestOk should be updated to false")
+	suite.False(*result.TimeMachine, "TimeMachine should be updated to false")
+	suite.False(*result.RecycleBin, "RecycleBin should be updated to false")
+
+	reloaded, err := suite.shareService.GetShare("bool-toggle-share-1191")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(reloaded)
+	suite.False(*reloaded.GuestOk, "GuestOk should persist false on reload")
+	suite.False(*reloaded.TimeMachine, "TimeMachine should persist false on reload")
+	suite.False(*reloaded.RecycleBin, "RecycleBin should persist false on reload")
 }
 
 // Helper functions

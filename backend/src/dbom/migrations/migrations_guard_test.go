@@ -31,6 +31,7 @@ var allGoMigrations = []goMigrationEntry{
 	{15, Up00015, Down00015},
 	{16, Up00016, Down00016},
 	{18, Up00018, Down00018},
+	{19, Up00019, Down00019},
 }
 
 // funcName returns the short function name for any function value via reflection.
@@ -307,5 +308,81 @@ func TestDown00018ReturnsErrorWhenExecFails(t *testing.T) {
 
 	err = Down00018(context.Background(), db)
 	require.Error(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00019MigratesNoneToFalse verifies SmartMode="none" becomes SmartOn=false
+// and the stale SmartMode row is deleted.
+func TestUp00019MigratesNoneToFalse(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow(`"none"`)
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'SmartMode'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('SmartOn', \?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WithArgs("false").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'SmartMode'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Up00019(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00019MigratesLegacyToTrue verifies any non-"none" SmartMode becomes SmartOn=true.
+func TestUp00019MigratesLegacyToTrue(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow(`"legacy"`)
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'SmartMode'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('SmartOn', \?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WithArgs("true").
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'SmartMode'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Up00019(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestUp00019IsIdempotentWhenNoSmartMode verifies a missing SmartMode row is a no-op
+// (fresh installs default SmartOn=true via dto defaults).
+func TestUp00019IsIdempotentWhenNoSmartMode(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'SmartMode'`).
+		WillReturnError(sql.ErrNoRows)
+
+	err = Up00019(context.Background(), db)
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestDown00019RestoresNone verifies SmartOn=false maps back to SmartMode="none".
+func TestDown00019RestoresNone(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"value"}).AddRow("false")
+	mock.ExpectQuery(`SELECT value FROM properties WHERE key = 'SmartOn'`).
+		WillReturnRows(rows)
+	mock.ExpectExec(`INSERT OR REPLACE INTO properties \(key, value, created_at, updated_at\) VALUES \('SmartMode', \?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)`).
+		WithArgs(`"none"`).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+	mock.ExpectExec(`DELETE FROM properties WHERE key = 'SmartOn'`).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err = Down00019(context.Background(), db)
+	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }

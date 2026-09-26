@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"regexp"
 	"strconv"
@@ -77,10 +78,14 @@ func extractMajorMinor(device string) (int, int, error) {
 		return 0, 0, fmt.Errorf("invalid device format: %s", device)
 	}
 
-	minor, err := strconv.Atoi(matches[1])
+	minor64, err := strconv.ParseUint(matches[1], 10, 32)
 	if err != nil {
 		return 0, 0, fmt.Errorf("failed to convert minor number: %w", err)
 	}
+	if minor64 > uint64(math.MaxInt) {
+		return 0, 0, fmt.Errorf("minor number %d overflows int", minor64)
+	}
+	minor := int(minor64)
 
 	// The major number for loop devices is 7
 	major := 7

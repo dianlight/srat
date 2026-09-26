@@ -259,6 +259,42 @@ func TestMountVolume_MounterError(t *testing.T) {
 	require.ErrorIs(t, errE, dto.ErrorMountFail)
 }
 
+// TestMountVolume_InvalidPathCharacters covers the upfront charset guard for
+// mount paths (#1091). A colon derived from a by-id name must be rejected
+// before any OS work with a sanitized suggestion, instead of mounting at the
+// OS level and failing later during DB persistence.
+func TestMountVolume_InvalidPathCharacters(t *testing.T) {
+	devicePath := filepath.Join(t.TempDir(), "dev")
+	require.NoError(t, os.WriteFile(devicePath, []byte("x"), 0o600))
+	disks := dto.NewDiskMapFrom(
+		&dto.Disk{
+			Id: new("SD"),
+			Partitions: &map[string]dto.Partition{
+				"pippo": {Id: new("pippo"), DevicePath: new(devicePath)},
+			},
+		},
+	)
+	restore := osutil.MockMountInfo("")
+	t.Cleanup(restore)
+
+	mounter := &fakeVolumeMounter{}
+	svc := newTestVolumeService(t, disks, mounter)
+
+	md := dto.MountPointData{
+		Path:     "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1",
+		Root:     "/",
+		DeviceId: "pippo",
+	}
+	errE := svc.MountVolume(&md)
+
+	require.Error(t, errE)
+	require.ErrorIs(t, errE, dto.ErrorInvalidParameter)
+	require.Equal(t, 0, mounter.mountCalls, "mounter.Mount must not be called for an invalid path")
+	suggested, ok := errE.Details()["SuggestedPath"]
+	require.True(t, ok, "invalid path error should include a SuggestedPath hint")
+	require.Equal(t, "/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1", suggested)
+}
+
 // TestMountVolume_ProtectedMode covers the ProtectedMode guard at the top of
 // MountVolume.
 func TestMountVolume_ProtectedMode(t *testing.T) {

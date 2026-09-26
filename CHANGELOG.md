@@ -6,6 +6,54 @@
 
 ### ✨ Features
 
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## 2026.9.2-rc16
+
+### ✨ Features
+
+- Alerts settings category with per-alert toggles and permanent ignore
+- Protected mode now raises an ignorable HA repair issue
+- Hide delete on internal shares, color-code user shares
+
+### 🐛 Bug Fixes
+
+- Re-enable ignored alerts via `PUT /api/problems/{key}` (was a no-op)
+- Dismiss stale custom-component problem when alerts are disabled in settings
+- Hide server-ignored issues on the dashboard without a local seed
+- Report SMART self-test progress and reconcile health check
+- Emit share REMOVE event after DB delete
+- Dismiss problem toast and badge on ignore
+- Preserve stored password on password-less rename
+- Return 200 on SMART disable success
+- Persist falsy booleans on share update
+
+### 🏗 Chore
+
+## 2026.9.1-rc15
+
+### ✨ Features
+
+- Speed up Shares tab first paint with deferred Swagger load and cached user validity
+- Dashboard news abstracts with type icons and version gate
+- Replace smart_mode enum with smart_on toggle
+
+### 🐛 Bug Fixes
+
+- Simplify mount path suggestion retry logic
+- Annotate mode-hidden standard shares with is_hidden
+- Avoid logging full share struct with password flow
+- Harden zip extraction against ZipSlip escape
+- Bound-check loop minor before uint32 conversion
+
+### 🏗 Chore
+
+## 2026.9.0-rc14
+
+### ✨ Features
+
 - **Lab feature registry with maturity tiers**: lab-gated features now flow
   through a central registry (`GET /api/lab_features`) that assigns each feature
   an alpha or beta tier and computes availability server-side. Beta features are
@@ -20,6 +68,13 @@
   HDIdle's `useLabMode()` is now a thin wrapper over it.
 
 ### 🐛 Bug Fixes
+
+- **Colon mount paths rejected with a suggested retry**: mount point paths
+  containing `:` are now rejected up front by a shared `ValidateMountPointPath`
+  check (used by both the DB layer and the volume service) instead of failing
+  later with an obscure error. The 406 response carries a `SuggestedPath` hint
+  with the colon stripped, and the UI confirm dialog offers a one-click retry
+  with the suggested path.
 
 ### 🏗 Chore
 
@@ -427,4 +482,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-08-24T10:44:46Z -->
+<!-- release-timestamp: 2026-09-20T13:05:05Z -->

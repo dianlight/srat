@@ -914,6 +914,35 @@ func (suite *UserServiceSuite) TestUpdateAdminUser_RenameSuccess() {
 	suite.True(suite.dirtyService.GetDirtyDataTracker().Users)
 }
 
+func (suite *UserServiceSuite) TestUpdateAdminUser_RenameWithoutPassword_KeepsExisting() {
+	// Arrange: rename the admin without supplying a password (issue #1198).
+	oldAdminName := fmt.Sprintf("oldadminnopwd%d", time.Now().UnixNano())
+	newAdminName := fmt.Sprintf("newadminnopwd%d", time.Now().UnixNano())
+	suite.Require().NoError(suite.db.Delete(&dbom.SambaUser{}, "is_admin = ?", true).Error)
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: oldAdminName,
+		Password: new(dto.NewSecret("oldpassword")),
+		IsAdmin:  true,
+	})
+	suite.Require().NoError(err)
+
+	// Act: minimal rename payload with no password.
+	updatedAdmin, err := suite.userService.UpdateAdminUser(dto.User{
+		Username: newAdminName,
+		IsAdmin:  true,
+	})
+
+	// Assert: rename succeeds and the stored password is preserved.
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedAdmin)
+	suite.Equal(newAdminName, updatedAdmin.Username)
+	suite.True(updatedAdmin.IsAdmin)
+
+	var persistedUser dbom.SambaUser
+	suite.Require().NoError(suite.db.Where("username = ?", newAdminName).First(&persistedUser).Error)
+	suite.Equal("oldpassword", persistedUser.Password)
+}
+
 func (suite *UserServiceSuite) TestUpdateAdminUser_RenameToExistingUser() {
 	// Arrange
 	newAdminName := "existinguser"
@@ -1050,6 +1079,139 @@ func (suite *UserServiceSuite) TestDeleteUser_UserNotFound() {
 	suite.Error(err)
 	suite.True(errors.Is(err, dto.ErrorUserNotFound), "expected ErrorUserNotFound but got %v", err)
 	//mock.Verify(suite.userRepoMock, matchers.Times(1)).Delete(username)
+}
+
+func (suite *UserServiceSuite) TestUpdateUser_RemoveShares_Persisted() {
+	// Arrange: user with two RW shares and one RO share (hassio-addons#759).
+	username := fmt.Sprintf("rmshares_%d", time.Now().UnixNano())
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("password")),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	rwA := dbom.ExportedShare{Name: fmt.Sprintf("rmrw_a_%d", time.Now().UnixNano())}
+	rwB := dbom.ExportedShare{Name: fmt.Sprintf("rmrw_b_%d", time.Now().UnixNano())}
+	roA := dbom.ExportedShare{Name: fmt.Sprintf("rmro_a_%d", time.Now().UnixNano())}
+	suite.Require().NoError(suite.db.Create(&rwA).Error)
+	suite.Require().NoError(suite.db.Create(&rwB).Error)
+	suite.Require().NoError(suite.db.Create(&roA).Error)
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RwShares").Append(&rwA, &rwB))
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RoShares").Append(&roA))
+
+	// Act: remove one RW share and clear all RO shares.
+	updatedUser, err := suite.userService.UpdateUser(username, dto.User{
+		Username: username,
+		RwShares: []string{rwB.Name},
+		RoShares: []string{},
+	})
+
+	// Assert: response and reloaded state must both reflect the removal.
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedUser)
+	suite.Equal([]string{rwB.Name}, updatedUser.RwShares)
+	suite.Empty(updatedUser.RoShares)
+
+	var persisted dbom.SambaUser
+	suite.Require().NoError(
+		suite.db.Preload("RwShares").Preload("RoShares").
+			Where("username = ?", username).
+			First(&persisted).Error,
+	)
+	suite.Require().Len(persisted.RwShares, 1)
+	suite.Equal(rwB.Name, persisted.RwShares[0].Name)
+	suite.Empty(persisted.RoShares)
+
+	// Act: clear all shares.
+	updatedUser, err = suite.userService.UpdateUser(username, dto.User{
+		Username: username,
+		RwShares: []string{},
+		RoShares: []string{},
+	})
+
+	// Assert: empty assignments must persist (not silently keep old rows).
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedUser)
+	suite.Empty(updatedUser.RwShares)
+	suite.Empty(updatedUser.RoShares)
+
+	suite.Require().NoError(
+		suite.db.Preload("RwShares").Preload("RoShares").
+			Where("username = ?", username).
+			First(&persisted).Error,
+	)
+	suite.Empty(persisted.RwShares)
+	suite.Empty(persisted.RoShares)
+}
+
+func (suite *UserServiceSuite) TestUpdateUser_LeaveSharesUntouchedWhenNil() {
+	// Arrange: user with one RW share; nil share lists must not clear it.
+	username := fmt.Sprintf("keepshares_%d", time.Now().UnixNano())
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("password")),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	rwA := dbom.ExportedShare{Name: fmt.Sprintf("keeprw_%d", time.Now().UnixNano())}
+	suite.Require().NoError(suite.db.Create(&rwA).Error)
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RwShares").Append(&rwA))
+
+	// Act: update without share fields (e.g. password-only change).
+	updatedUser, err := suite.userService.UpdateUser(username, dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("newpassword")),
+	})
+
+	// Assert: persisted shares untouched (response omits unrequested associations).
+	suite.Require().NoError(err)
+	suite.Require().NotNil(updatedUser)
+
+	var persisted dbom.SambaUser
+	suite.Require().NoError(
+		suite.db.Preload("RwShares").Preload("RoShares").
+			Where("username = ?", username).
+			First(&persisted).Error,
+	)
+	suite.Require().Len(persisted.RwShares, 1)
+	suite.Equal(rwA.Name, persisted.RwShares[0].Name)
+}
+
+func (suite *UserServiceSuite) TestUpdateUser_UnknownShare_Rejected() {
+	// Arrange: user with one RW share.
+	username := fmt.Sprintf("badshare_%d", time.Now().UnixNano())
+	_, err := suite.userService.CreateUser(dto.User{
+		Username: username,
+		Password: new(dto.NewSecret("password")),
+		IsAdmin:  false,
+	})
+	suite.Require().NoError(err)
+
+	rwA := dbom.ExportedShare{Name: fmt.Sprintf("okrw_%d", time.Now().UnixNano())}
+	suite.Require().NoError(suite.db.Create(&rwA).Error)
+	suite.Require().NoError(suite.db.Model(&dbom.SambaUser{Username: username}).Association("RwShares").Append(&rwA))
+
+	// Act: request a share name that does not exist.
+	updatedUser, err := suite.userService.UpdateUser(username, dto.User{
+		Username: username,
+		RwShares: []string{"does-not-exist"},
+	})
+
+	// Assert: rejected without touching existing associations.
+	suite.Error(err)
+	suite.Nil(updatedUser)
+	suite.True(errors.Is(err, dto.ErrorShareNotFound), "expected ErrorShareNotFound but got %v", err)
+
+	var persisted dbom.SambaUser
+	suite.Require().NoError(
+		suite.db.Preload("RwShares").Preload("RoShares").
+			Where("username = ?", username).
+			First(&persisted).Error,
+	)
+	suite.Require().Len(persisted.RwShares, 1)
+	suite.Equal(rwA.Name, persisted.RwShares[0].Name)
 }
 
 /*

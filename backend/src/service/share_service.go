@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"sync/atomic"
 
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dbom"
@@ -107,6 +108,12 @@ type ShareService struct {
 	eventBus         events.EventBusInterface
 	sharesQueueMutex *sync.RWMutex
 	dbomConv         converter.DtoToDbomConverterImpl
+	settingService   SettingServiceInterface
+	// stdShareNamesMode caches the standard_share_names setting so ListShares
+	// (and every other annotating call) does not pay for a full settings-table
+	// Load on every request. It is refreshed from SettingEvents emitted by
+	// UpdateSettings; an empty cache falls back to a single Load.
+	stdShareNamesMode atomic.Value // stores dto.StandardShareNamesMode
 	//defaultConfig    *config.DefaultConfig
 }
 
@@ -120,6 +127,7 @@ type ShareServiceParams struct {
 	//MountRepo         repository.MountPointPathRepositoryInterface
 	EventBus events.EventBusInterface
 	//DefaultConfig *config.DefaultConfig
+	SettingService SettingServiceInterface `optional:"true"`
 }
 
 func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterface {
@@ -134,8 +142,9 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		//defaultConfig:    in.DefaultConfig,
 		sharesQueueMutex: &sync.RWMutex{},
 		dbomConv:         converter.DtoToDbomConverterImpl{},
+		settingService:   in.SettingService,
 	}
-	unsubscribe := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
+	unsubscribeMount := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
 		share, err := s.GetShareFromPath(event.MountPoint.Path)
 		if err != nil {
@@ -159,6 +168,15 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		return nil
 	})
 
+	// Keep the cached standard_share_names mode fresh without a DB round-trip:
+	// UpdateSettings emits the full Settings, so the mode update is free.
+	unsubscribeSetting := s.eventBus.OnSetting(func(_ context.Context, event events.SettingEvent) errors.E {
+		if event.Setting != nil {
+			s.setStandardShareNamesMode(event.Setting.StandardShareNames)
+		}
+		return nil
+	})
+
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
 			if os.Getenv("SRAT_MOCK") == "true" {
@@ -172,8 +190,11 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			return nil
 		},
 		OnStop: func(_ context.Context) error {
-			if unsubscribe != nil {
-				unsubscribe()
+			if unsubscribeMount != nil {
+				unsubscribeMount()
+			}
+			if unsubscribeSetting != nil {
+				unsubscribeSetting()
 			}
 			return nil
 		},
@@ -234,6 +255,7 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 	}
 	var conv converter.DtoToDbomConverterImpl
 	var dtoShares []dto.SharedResource
+	mode := s.currentStandardShareNamesMode()
 	for _, share := range shares {
 		dtoShare, err := conv.ExportedShareToSharedResource(share)
 		if err != nil {
@@ -246,6 +268,8 @@ func (s *ShareService) ListShares() ([]dto.SharedResource, errors.E) {
 			slog.Error("Error verifying share", "share", dtoShare.Name, "err", err)
 			continue
 		}
+
+		s.annotateStandardShareHiddenWithMode(&dtoShare, mode)
 
 		dtoShares = append(dtoShares, dtoShare)
 	}
@@ -275,6 +299,8 @@ func (s *ShareService) GetShare(name string) (*dto.SharedResource, errors.E) {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
 
+	s.annotateStandardShareHidden(&dtoShare)
+
 	return &dtoShare, nil
 }
 
@@ -301,6 +327,14 @@ func validateShareData(share dto.SharedResource, requireMountData bool) errors.E
 	}
 	if share.MountPointData != nil && share.MountPointData.Path != "" {
 		if share.MountPointData.Type == "" || share.MountPointData.DeviceId == "" {
+			return errors.WithStack(dto.ErrorShareValidation)
+		}
+		// Issue #1162: refuse shares pointing at volumes that are not mounted
+		// (or are marked invalid) instead of creating is_valid:false shares
+		// that spam "Share volume does not exist" warnings on every pass.
+		// Updates that keep the existing mount point carry no mount data and
+		// are unaffected; internal provisioning always passes mounted data.
+		if share.MountPointData.IsInvalid || !share.MountPointData.IsMounted {
 			return errors.WithStack(dto.ErrorShareValidation)
 		}
 	}
@@ -354,6 +388,8 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
+	s.annotateStandardShareHidden(&dtoShare)
 
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.ADD,
@@ -428,8 +464,13 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 			return errors.Wrap(err, "failed to clear RoUsers associations during update")
 		}
 
+		// Select the scalar columns explicitly so zero-values (e.g. false
+		// booleans, empty strings) are persisted. GORM Updates with a struct
+		// value skips zero-value fields, which made boolean share flags
+		// (GuestOk, TimeMachine, RecycleBin) enable-only (issue #1191).
 		if err := tx.Model(&currentShare).
 			Omit("Users", "RoUsers").
+			Select("Name", "Disabled", "VetoFiles", "TimeMachine", "RecycleBin", "GuestOk", "TimeMachineMaxSize", "Usage", "MountPointDataPath", "MountPointDataRoot").
 			Updates(&dbShare).Error; err != nil {
 			return err
 		}
@@ -470,6 +511,8 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		slog.Warn("New share verification failed", "share", createdDtoShare.Name, "err", err)
 	}
 
+	s.annotateStandardShareHidden(&createdDtoShare)
+
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
 		Share: &createdDtoShare,
@@ -485,10 +528,6 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if err != nil { // Leverage GetShare for not-found check
 		return err
 	}
-	_ = s.eventBus.EmitShare(events.ShareEvent{
-		Type:  events.EventTypes.REMOVE,
-		Share: ashare,
-	})
 
 	// Retrieve the share with associations to clear them before soft delete
 	var dbShare dbom.ExportedShare
@@ -513,6 +552,14 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	if errS != nil {
 		return errors.Wrap(errS, "failed to delete share")
 	}
+
+	// Emit after the mutation so subscribers observing the event (e.g.
+	// BroadcasterService re-listing shares) see the post-delete state
+	// (issue #1197, same staleness class as #971).
+	_ = s.eventBus.EmitShare(events.ShareEvent{
+		Type:  events.EventTypes.REMOVE,
+		Share: ashare,
+	})
 	return nil
 }
 
@@ -537,6 +584,8 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 	if err := s.VerifyShare(&dtoShare); err != nil {
 		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
 	}
+
+	s.annotateStandardShareHidden(&dtoShare)
 
 	return &dtoShare, nil
 }
@@ -615,6 +664,7 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
+	s.annotateStandardShareHidden(&dtoShare)
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
 		Share: &dtoShare,
@@ -641,6 +691,49 @@ func standardShareDir(name string) (string, bool) {
 		return "/" + name, true
 	}
 	return "", false
+}
+
+// currentStandardShareNamesMode loads the mode best-effort; failures and a
+// missing setting service default to both (visible) so listing never fails
+// because of annotation (issue #1142).
+// The mode is cached after the first Load and refreshed from SettingEvents,
+// so steady-state ListShares calls avoid the full settings-table Load
+// (a transaction over all properties plus conversion and defaults).
+func (s *ShareService) currentStandardShareNamesMode() dto.StandardShareNamesMode {
+	if cached, ok := s.stdShareNamesMode.Load().(dto.StandardShareNamesMode); ok {
+		return cached
+	}
+	if s.settingService == nil {
+		return dto.StandardShareNamesModeBoth
+	}
+	settings, err := s.settingService.Load()
+	if err != nil || settings == nil {
+		return dto.StandardShareNamesModeBoth
+	}
+	s.stdShareNamesMode.Store(settings.StandardShareNames)
+	return settings.StandardShareNames
+}
+
+// setStandardShareNamesMode refreshes the cached standard_share_names mode,
+// e.g. from SettingEvents, so readers never pay for a settings Load.
+func (s *ShareService) setStandardShareNamesMode(mode dto.StandardShareNamesMode) {
+	s.stdShareNamesMode.Store(mode)
+}
+
+// annotateStandardShareHiddenWithMode marks mode-hidden standard shares.
+func (s *ShareService) annotateStandardShareHiddenWithMode(share *dto.SharedResource, mode dto.StandardShareNamesMode) {
+	if share == nil {
+		return
+	}
+	if share.Status == nil {
+		share.Status = &dto.SharedResourceStatus{}
+	}
+	share.Status.IsHidden = dto.IsStandardShareHidden(share.Name, mode)
+}
+
+// annotateStandardShareHidden loads the mode once and annotates the share.
+func (s *ShareService) annotateStandardShareHidden(share *dto.SharedResource) {
+	s.annotateStandardShareHiddenWithMode(share, s.currentStandardShareNamesMode())
 }
 
 // VerifyShare checks the validity of a share and disables it if invalid

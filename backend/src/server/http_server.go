@@ -26,32 +26,28 @@ func NewHTTPServer(
 	listener net.Listener,
 	apiContext context.Context,
 	cxtClose context.CancelFunc,
+	state *dto.ContextState,
 ) *http.Server {
 	sloghttp.RequestIDKey = "X-Request-Id"
 	sloghttp.SpanIDKey = "X-Span-Id"
 	sloghttp.TraceIDKey = "X-Trace-Id"
+	// Request/response bodies are not logged by default: they may contain
+	// credentials (Samba user passwords, HA mount password) that bypass the
+	// logfusc.Secret protection applied at the struct level. Set
+	// SRAT_LOG_BODIES=true to re-enable body logging for debugging.
+	logBodies := os.Getenv("SRAT_LOG_BODIES") == "true"
 	handler := sloghttp.NewWithConfig(slog.Default(), sloghttp.Config{
 		DefaultLevel:       tlog.LevelTrace,
-		WithRequestBody:    true,
+		WithRequestBody:    logBodies,
 		WithRequestHeader:  true,
-		WithResponseBody:   true,
+		WithResponseBody:   logBodies,
 		WithResponseHeader: true,
 		WithUserAgent:      true,
 		WithRequestID:      true,
 		WithSpanID:         true,
 		WithTraceID:        true,
 	})(sloghttp.Recovery(mux))
-	handler = cors.New(
-		cors.Options{
-			//AllowedOrigins:   []string{"*"},
-			AllowOriginFunc:     func(origin string) bool { return true },
-			AllowedMethods:      []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
-			AllowedHeaders:      []string{"*"},
-			AllowCredentials:    true,
-			AllowPrivateNetwork: true,
-			MaxAge:              300,
-		},
-	).Handler(handler)
+	handler = newCORSHandler(state).Handler(handler)
 	srv := &http.Server{
 		ReadTimeout:  time.Second * 15,
 		WriteTimeout: time.Second * 15,
@@ -88,13 +84,45 @@ func NewHTTPServer(
 	return srv
 }
 
+// newCORSHandler builds the CORS middleware. In SecureMode (addon) only
+// explicitly configured origins are trusted and wildcard is never combined
+// with AllowCredentials. Dev mode stays permissive.
+func newCORSHandler(state *dto.ContextState) *cors.Cors {
+	if state != nil && state.SecureMode {
+		// Use AllowOriginFunc (not empty AllowedOrigins, which rs/cors
+		// treats as allow-all) so SecureMode with no configured origins
+		// fails closed via IsOriginAllowed.
+		return cors.New(
+			cors.Options{
+				AllowOriginFunc: func(origin string) bool {
+					return IsOriginAllowed(state, origin)
+				},
+				AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+				AllowedHeaders:   []string{"*"},
+				AllowCredentials: true,
+				MaxAge:           300,
+			},
+		)
+	}
+	return cors.New(
+		cors.Options{
+			AllowOriginFunc:     func(origin string) bool { return true },
+			AllowedMethods:      []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
+			AllowedHeaders:      []string{"*"},
+			AllowCredentials:    true,
+			AllowPrivateNetwork: true,
+			MaxAge:              300,
+		},
+	)
+}
+
 func NewMuxRouter(apiCtx *dto.ContextState, wsh *api.WebSocketHandler) *mux.Router {
 	router := mux.NewRouter()
 	if apiCtx.SecureMode {
-		router.Use(NewHAMiddleware( /*ingressClient*/ ))
+		router.Use(NewHAMiddleware(apiCtx))
 	}
 
-	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
+	RegisterPprof(router)
 	wsh.RegisterWs(router)
 	return router
 }

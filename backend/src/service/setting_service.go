@@ -124,8 +124,20 @@ func (s *settingService) Load() (setting *dto.Settings, err errors.E) {
 			setting.ExperimentalLabMode = defaultExperimentalLabMode()
 		}
 
-		if _, ok := props["SmartMode"]; !ok {
-			setting.SmartMode = dto.SmartModes.SMARTMODELEGACY
+		if _, ok := props["SmartOn"]; !ok {
+			setting.SmartOn = new(true)
+		}
+
+		if _, ok := props["AlertProtectedMode"]; !ok {
+			setting.AlertProtectedMode = new(true)
+		}
+
+		if _, ok := props["AlertAddonConfigChanged"]; !ok {
+			setting.AlertAddonConfigChanged = new(true)
+		}
+
+		if _, ok := props["AlertCustomComponent"]; !ok {
+			setting.AlertCustomComponent = new(true)
 		}
 
 		return nil
@@ -139,7 +151,10 @@ func defaultExperimentalLabMode() bool {
 
 // ValidateSettings validates and potentially modifies settings based on system capabilities and constraints.
 // This is the central point for all settings validation logic.
-// Empty hostname/workgroup is treated as defaulted (no error) per issue #1013 decision.
+// Empty hostname/workgroup is treated as defaulted (no error) per issue #1013 decision:
+// internal callers (boot persist, password fallback, sparse service updates) rely on
+// leniency here. The API boundary (PUT/PATCH /settings) additionally rejects empty
+// hostname/workgroup with 422, so external clients still get a strict contract.
 // Returns ErrorInvalidParameter wrapped error for 422 mapping on validation failures.
 func (self *settingService) ValidateSettings(setting *dto.Settings) errors.E {
 	if setting.Hostname != "" && !hostnameRegex.MatchString(setting.Hostname) {

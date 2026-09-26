@@ -22,7 +22,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v90/github"
+	"github.com/google/go-github/v91/github"
 
 	"go.uber.org/fx"
 )
@@ -33,6 +33,9 @@ var dockerNetwork *string
 var dbfile *string
 var supervisorURL *string
 var supervisorToken *string
+var ingressOrigin *string
+var allowedOrigins *string
+var supervisorAllowedIPs *string
 var logLevelString *string
 var upgradeDataDir *string
 
@@ -59,6 +62,9 @@ func main() {
 	silentMode := flag.Bool("silent", false, "Silent Mode. Remove unecessary banner")
 	supervisorToken = flag.String("ha-token", os.Getenv("SUPERVISOR_TOKEN"), "HomeAssistant Supervisor Token")
 	supervisorURL = flag.String("ha-url", "http://supervisor/", "HomeAssistant Supervisor URL")
+	ingressOrigin = flag.String("ingress-origin", os.Getenv("SRAT_INGRESS_ORIGIN"), "Home Assistant frontend origin trusted for CORS/WebSocket in addon mode")
+	allowedOrigins = flag.String("allowed-origins", os.Getenv("SRAT_ALLOWED_ORIGINS"), "Comma-separated extra trusted origins for CORS/WebSocket")
+	supervisorAllowedIPs = flag.String("supervisor-allowed-ips", os.Getenv("SUPERVISOR_NETWORK"), "Comma-separated extra IPs/CIDRs trusted by HA middleware")
 	dbfile = flag.String("db", "file::memory:?cache=shared&_pragma=foreign_keys(1)", "Database file")
 	logLevelString = flag.String("loglevel", "info", "Log level string (debug, info, warn, error)")
 	protectedMode := flag.Bool("protected-mode", false, "Addon protected mode")
@@ -201,11 +207,14 @@ func main() {
 		DockerNet:       *dockerNetwork,
 		UpdateDataDir:   *upgradeDataDir,
 		//UpdateFilePath:  "",
-		UpdateChannel:   updch,
-		DatabasePath:    *dbfile,
-		SupervisorToken: *supervisorToken,
-		ProtectedMode:   *protectedMode,
-		StartTime:       time.Now(),
+		UpdateChannel:        updch,
+		DatabasePath:         *dbfile,
+		SupervisorToken:      *supervisorToken,
+		ProtectedMode:        *protectedMode,
+		IngressOrigin:        *ingressOrigin,
+		AllowedOrigins:       dto.ParseCommaList(*allowedOrigins),
+		SupervisorAllowedIPs: dto.ParseCommaList(*supervisorAllowedIPs),
+		StartTime:            time.Now(),
 	}
 
 	appParams := appsetup.BaseAppParams{

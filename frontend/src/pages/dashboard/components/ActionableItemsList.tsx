@@ -16,7 +16,7 @@ import { useNavigate } from "react-router";
 import { useIgnoredIssues } from "../../../hooks/issueHooks";
 import { type LocationState, TabIDs } from "../../../store/locationState";
 import type { Partition } from "../../../store/sratApi";
-import { decodeEscapeSequence } from "../metrics/utils";
+import { decodeEscapeSequence } from "../../../utils/decodeEscapeSequence";
 import { MountShareWizard } from "./MountShareWizard";
 
 interface ActionableItemsListProps {

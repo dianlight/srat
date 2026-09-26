@@ -4,9 +4,13 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+
 jobs:
   set-environment:
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       environment: ${{ steps.setenv.outputs.environment }}
     steps:
@@ -24,6 +28,8 @@ jobs:
   create-sentry-release:
     name: Sentry Release Tracking
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: set-environment
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

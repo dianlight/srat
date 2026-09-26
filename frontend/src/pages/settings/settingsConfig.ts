@@ -64,7 +64,7 @@ export const categories: {
     "compatibility_mode",
     "allow_guest",
     "mdns_registration",
-    "smart_mode",
+    "smart_on",
     "experimental_lab_mode",
   ],
   Network: {
@@ -78,7 +78,12 @@ export const categories: {
   },
   //'Update': ['update_channel'],
   Telemetry: ["telemetry_mode"],
-  HomeAssistant: ["export_stats_to_ha", "ha_use_nfs"],
+  HomeAssistant: ["export_stats_to_ha", "enable_ha_discovery", "ha_use_nfs"],
+  Alerts: [
+    "alert_protected_mode",
+    "alert_addon_config_changed",
+    "alert_custom_component",
+  ],
 };
 
 export const beta_categories: {

@@ -14,7 +14,6 @@ import { SelectElement, TextFieldElement } from "react-hook-form-mui";
 import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
-  Smart_mode,
   Standard_share_names,
   type SystemCapabilities,
   useGetApiCapabilitiesQuery,
@@ -28,12 +27,10 @@ type GeneralPanelProps = {
 };
 
 export function GeneralPanel({ readOnly }: GeneralPanelProps) {
-  const { control, setValue, watch } = useFormContext<ApiSettings>();
-  const experimentalLabMode = Boolean(watch("experimental_lab_mode"));
+  const { control, setValue } = useFormContext<ApiSettings>();
   const { data: capabilities } = useGetApiCapabilitiesQuery();
-  const libSmartAvailable = Boolean(
-    (capabilities as SystemCapabilities)?.lib_smart_available,
-  );
+  const smartBackend =
+    (capabilities as SystemCapabilities)?.smart_backend ?? "legacy";
   const {
     data: hostname,
     isLoading: isHostnameFetching,
@@ -208,60 +205,39 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
         />
       </Tooltip>
 
-      {/* SMART Mode */}
+      {/* SMART */}
       <Tooltip
         title={
           <>
             <Typography variant="h6" component="div">
-              SMART Integration Mode
+              SMART Integration
             </Typography>
             <Typography variant="body2">
-              Controls how SRAT collects SMART data from disks.
+              Controls whether SRAT collects SMART data from disks. Disable to
+              prevent idle disks from spinning up.
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
-              <strong>None</strong>: Disables SMART polling and hides
-              SMART-related UI. Use this to prevent idle disks from spinning up.
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              <strong>Legacy</strong>: Uses the smartctl executable (default).
-            </Typography>
-            <Typography variant="body2" sx={{ mt: 0.5 }}>
-              <strong>Direct</strong>: Uses the <code>libsmartmon_go.so</code>{" "}
-              library backend (lab feature). Requires the binary built with{" "}
-              <code>-tags smartlib</code> and <code>libsmartmon_go.so</code>{" "}
-              present at runtime.
+              The active backend is detected at startup and read-only:{" "}
+              <strong>direct</strong> uses the <code>libsmartmon_go.so</code>{" "}
+              library backend, <strong>legacy</strong> shells out to the{" "}
+              <code>smartctl</code> executable.
             </Typography>
           </>
         }
       >
-        <SelectElement
-          label="SMART Mode"
-          name="smart_mode"
-          size="small"
-          fullWidth
-          options={[
-            { id: Smart_mode.None, label: "None (disabled)" },
-            { id: Smart_mode.Legacy, label: "Legacy (smartctl exec)" },
-            ...(experimentalLabMode && libSmartAvailable
-              ? [
-                  {
-                    id: Smart_mode.Direct,
-                    label: (
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        sx={{ alignItems: "center" }}
-                      >
-                        <span>Direct (lib backend)</span>
-                        <ScienceOutlinedIcon color="warning" fontSize="small" />
-                      </Stack>
-                    ),
-                  },
-                ]
-              : []),
-          ]}
-          {...commonProps}
-        />
+        <Box>
+          <SettingSwitchRow
+            ariaLabel="SMART enabled"
+            id="smart_on"
+            label="SMART enabled"
+            name="smart_on"
+            {...commonProps}
+          />
+          <Typography variant="body2" sx={{ mt: 0.5 }}>
+            Active backend: <strong>{smartBackend}</strong>
+            {smartBackend === "direct" ? " (lib backend)" : " (smartctl exec)"}
+          </Typography>
+        </Box>
       </Tooltip>
 
       {/* Standard Share Names */}

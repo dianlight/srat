@@ -2,12 +2,17 @@ package converter
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"log/slog"
 	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/unixsamba"
+	gocache "github.com/patrickmn/go-cache"
 )
 
 // goverter:converter
@@ -185,11 +190,58 @@ func checkUserValid(dbUser dbom.SambaUser) bool {
 	if dbUser.Username == "" || dbUser.Password == "" {
 		return false
 	}
+	key := userValidityKey(dbUser.Username, dbUser.Password)
+	if cached, ok := userValidityCache.Get(key); ok {
+		if valid, castOk := cached.(bool); castOk {
+			return valid
+		}
+		userValidityCache.Delete(key)
+	}
 	err := unixsamba.CheckSambaUser(context.Background(), dbUser.Username, dbUser.Password)
 	if err != nil {
 		slog.Warn("Failed to validate user with unixsamba", "username", dbUser.Username, "error", err)
 	}
-	return err == nil
+	valid := err == nil
+	userValidityCache.SetDefault(key, valid)
+	return valid
+}
+
+// userValidityCacheTTL bounds how long a Samba credential check result is
+// reused. ListShares converts every user of every share, so without this the
+// same account (e.g. admin on every share) pays for two pdbedit spawns per
+// share. A short TTL keeps the IsValid flag fresh while collapsing the
+// per-request N×M verification storm (and broadcaster ListShares bursts)
+// into one probe per unique credential set.
+var userValidityCacheTTL = 10 * time.Second
+
+var userValidityCache = gocache.New(userValidityCacheTTL, 30*time.Second)
+
+// userValidityHMACKey is a per-process random key for the credential-check
+// cache index. A fresh key per restart keeps cache entries unusable across
+// restarts and after heap dumps, without persisting any secret.
+var userValidityHMACKey = newUserValidityHMACKey()
+
+func newUserValidityHMACKey() []byte {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		slog.Error("Failed to generate credential cache HMAC key", "error", err)
+		panic("credential cache HMAC key generation failed")
+	}
+	return key
+}
+
+// userValidityKey authenticates the credential pair so plaintext passwords
+// never sit in the cache as map keys. This is a short-lived (10s) cache
+// index, not credential storage or verification, so a password-KDF
+// (bcrypt/Argon2/PBKDF2) is intentionally not used: HMAC-SHA256 with a
+// per-process random key is fast enough for the ListShares N×M probe storm
+// while remaining unforgeable without the in-memory key.
+func userValidityKey(username, password string) string {
+	mac := hmac.New(sha256.New, userValidityHMACKey)
+	_, _ = mac.Write([]byte(username))
+	_, _ = mac.Write([]byte{0})
+	_, _ = mac.Write([]byte(password))
+	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // checkUserValidStored maps the persisted IsValid flag into the DTO pointer

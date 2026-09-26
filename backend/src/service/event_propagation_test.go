@@ -239,9 +239,10 @@ func (suite *EventPropagationTestSuite) TestShareServiceToDirtyDataService() {
 	share := dto.SharedResource{
 		Name: "test-share",
 		MountPointData: &dto.MountPointData{
-			Path:     "/",
-			Type:     "ADDON",
-			DeviceId: "test_device_id",
+			Path:      "/",
+			Type:      "ADDON",
+			DeviceId:  "test_device_id",
+			IsMounted: true,
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
@@ -481,9 +482,10 @@ func (suite *EventPropagationTestSuite) TestEventPropagationChain() {
 	share := dto.SharedResource{
 		Name: "chain-test",
 		MountPointData: &dto.MountPointData{
-			Path:     "/mnt/chain",
-			Type:     "ADDON",
-			DeviceId: "test_device_id",
+			Path:      "/mnt/chain",
+			Type:      "ADDON",
+			DeviceId:  "test_device_id",
+			IsMounted: true,
 		},
 	}
 	_, err := suite.shareService.CreateShare(share)
@@ -702,6 +704,64 @@ func (suite *EventPropagationTestSuite) TestSettingEventPropagation() {
 	case <-time.After(2 * time.Second):
 		suite.T().Fatal("timeout waiting for setting event")
 	}
+}
+
+// TestDeleteShareEmitsPostDeleteList ensures the ShareEvent REMOVE handler
+// observes the post-delete share list, so WS broadcasts never contain the
+// deleted share (issue #1197, same staleness class as #971).
+func (suite *EventPropagationTestSuite) TestDeleteShareEmitsPostDeleteList() {
+	shareName := "delete-ws-probe-1197"
+	_ = suite.shareService.DeleteShare(shareName)
+
+	created, err := suite.shareService.CreateShare(dto.SharedResource{
+		Name: shareName,
+		MountPointData: &dto.MountPointData{
+			Path:      "/mnt/delete-ws-probe-1197",
+			Type:      "ADDON",
+			DeviceId:  "delete-ws-probe-1197-dev",
+			IsMounted: true,
+		},
+	})
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+
+	var capturedNames []string
+	var capturedType events.EventType
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	unsubscribe := suite.eventBus.OnShare(func(_ context.Context, event events.ShareEvent) errors.E {
+		if event.Type == events.EventTypes.REMOVE {
+			capturedType = event.Type
+			shares, listErr := suite.shareService.ListShares()
+			if listErr == nil {
+				capturedNames = make([]string, 0, len(shares))
+				for _, s := range shares {
+					capturedNames = append(capturedNames, s.Name)
+				}
+			}
+			wg.Done()
+		}
+		return nil
+	})
+	defer unsubscribe()
+
+	suite.Require().NoError(suite.shareService.DeleteShare(shareName))
+
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		suite.T().Fatal("timeout waiting for share REMOVE event")
+	}
+
+	suite.Equal(events.EventTypes.REMOVE, capturedType)
+	suite.NotContains(capturedNames, shareName)
 }
 
 /*

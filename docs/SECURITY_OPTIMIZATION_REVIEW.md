@@ -29,7 +29,11 @@ SRAT is a well-structured monorepo with solid architectural choices (Huma v2, FX
 
 ---
 
-#### [B-SEC-01] CORS wildcard origin with `AllowCredentials: true`
+#### [B-SEC-01] ~~CORS wildcard origin with `AllowCredentials: true`~~ ✅ RESOLVED
+
+**Severity:** High  
+**File:** `backend/src/server/http_server.go:44-54`
+**Status:** Resolved by task 004 (SecureMode uses exact configured-origin matching via `dto.TrustedOrigins`/`dto.IsOriginAllowed`, never wildcard + credentials; dev stays permissive; tests in `server/cors_test.go` and `server/http_server_test.go`).
 
 **Severity:** High  
 **File:** `backend/src/server/http_server.go:44-54`
@@ -47,7 +51,11 @@ The CORS spec prohibits wildcard origins when `Access-Control-Allow-Credentials:
 
 ---
 
-#### [B-SEC-02] WebSocket upgrader accepts any origin
+#### [B-SEC-02] ~~WebSocket upgrader accepts any origin~~ ✅ RESOLVED
+
+**Severity:** High  
+**File:** `backend/src/api/ws.go:52-57`
+**Status:** Resolved by task 004 (SecureMode exact-match `Origin` check via `IngressOrigin` + `AllowedOrigins`; dev stays permissive; 403 test in `api/ws_origin_test.go`).
 
 **Severity:** High  
 **File:** `backend/src/api/ws.go:52-57`
@@ -76,6 +84,8 @@ The entire `ingress_session` cookie validation block is disabled. The middleware
 **Fix:** Re-enable the commented-out validation using `ingressClient` with the 30-second `gocache` TTL that is already coded.  
 **Task:** [004] Security Hardening (planned).
 
+**Partial mitigation (Task [031]):** disabling request/response body logging by default closes the credential-harvesting side channel (spoofed requests can no longer land passwords in log sinks). The spoofing vector itself remains open until session validation is re-enabled.
+
 ---
 
 #### [B-SEC-04] Hardcoded trusted IP prefixes, naive IPv6 splitting
@@ -90,7 +100,11 @@ IP prefixes are hardcoded to a single Docker network. Additionally, `strings.Spl
 
 ---
 
-#### [B-SEC-05] pprof route registered unconditionally in production router
+#### [B-SEC-05] ~~pprof route registered unconditionally in production router~~ ✅ RESOLVED
+
+**Severity:** Medium  
+**File:** `backend/src/server/http_server.go:97`
+**Status:** Resolved by task 004 (`RegisterPprof` no-op in prod, route only behind `//go:build pprof`; 404/present tests).
 
 **Severity:** Medium  
 **File:** `backend/src/server/http_server.go:97`
@@ -106,9 +120,9 @@ The route exists regardless of the `pprof` build tag. Any accidental import of `
 
 ---
 
-#### [B-SEC-06] Request and response body logging in all modes - password leakage
+#### [B-SEC-06] ~~Request and response body logging in all modes - password leakage~~ ✅ RESOLVED
 
-**Severity:** High  
+**Severity:** ~~High~~ Resolved — fixed in Task [031]  
 **File:** `backend/src/server/http_server.go:35-40`
 
 ```go
@@ -119,7 +133,9 @@ WithResponseBody: true,
 Raw JSON request bodies are logged before Huma deserializes them. `dto.User.Password` (Samba passwords) and `dto.Settings.HASmbPassword` appear in plaintext in every log sink because the `logfusc.Secret` wrapper only masks Go struct printing, not raw JSON.
 
 **Fix:** Disable body logging by default; enable only under `SRAT_LOG_BODIES=true`.  
-**Task:** [031] Production Logging Safety (new).
+**Task:** [031] Production Logging Safety — **complete**.
+
+**Resolution:** `NewHTTPServer` now gates both flags on `logBodies := os.Getenv("SRAT_LOG_BODIES") == "true"`. The AppConfig event log in `DirtyDataService` was also narrowed to option names only (values may carry the addon password). Guard tests: `TestNewHTTPServerRequestBodyLogging` (secret absent by default, present under opt-in) and `TestSetDirtyAppConfigDoesNotLogOptionValues`. Flag documented in `docs/SETTINGS_DOCUMENTATION.md`.
 
 ---
 

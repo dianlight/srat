@@ -333,6 +333,301 @@ func (suite *SmartServiceSuite) TestGetHealthStatusSuccess() {
 	suite.Equal("healthy", health.OverallStatus)
 }
 
+// TestGetHealthStatus_TrustsDevicePassedOverCheckHealth is a regression test
+// for #1196: when CheckHealth reports failure but the drive-reported
+// overall-health (smart_status.passed, the same source as `smartctl -H`) is
+// PASSED and no failing attributes exist, the drive must be reported healthy.
+func (suite *SmartServiceSuite) TestGetHealthStatus_TrustsDevicePassedOverCheckHealth() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			SmartSupport: &smartmontools.SmartSupport{
+				Available: true,
+				Enabled:   true,
+			},
+			SmartStatus: &smartmontools.SmartStatus{
+				Passed: true,
+			},
+			AtaSmartData: &smartmontools.AtaSmartData{
+				Table: []smartmontools.SmartAttribute{
+					{
+						ID:     5, // Reallocated Sectors Count
+						Name:   "Reallocated_Sector_Ct",
+						Value:  100,
+						Worst:  100,
+						Thresh: 10,
+					},
+				},
+			},
+		}, nil)
+	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(health)
+	suite.True(health.Passed, "drive-reported PASSED with no failing attributes must stay healthy")
+	suite.Equal("healthy", health.OverallStatus)
+	suite.Empty(health.FailingAttributes)
+}
+
+// TestGetHealthStatus_VerifyClientOverrulesLibFalseAlarm is a regression test
+// for #1196: the lib backend omits smart_status and its CheckHealth can false
+// alarm on drives `smartctl -H` passes (smartctl -a exit 0). When the exec
+// verify client reports healthy with no failing attributes, the drive must be
+// reported healthy.
+func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyClientOverrulesLibFalseAlarm() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	// Lib-backend shape: no SmartStatus, healthy attribute table.
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			SmartSupport: &smartmontools.SmartSupport{
+				Available: true,
+				Enabled:   true,
+			},
+			AtaSmartData: &smartmontools.AtaSmartData{
+				Table: []smartmontools.SmartAttribute{
+					{
+						ID:     5,
+						Name:   "Reallocated_Sector_Ct",
+						Value:  100,
+						Worst:  100,
+						Thresh: 10,
+					},
+				},
+			},
+		}, nil)
+	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	verifyMock := mock.Mock[smartmontools.SmartClient](ctrl)
+	mock.When(verifyMock.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(true, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	suite.service.MockVerifyClient(verifyMock)
+
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(health)
+	suite.True(health.Passed, "exec verify PASSED with no failing attributes must report healthy")
+	suite.Equal("healthy", health.OverallStatus)
+	suite.Empty(health.FailingAttributes)
+}
+
+// TestGetHealthStatus_VerifyClientConfirmsFailure guards the fallback: when
+// the exec verify client agrees the drive is failing, the result stays
+// failing.
+func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyClientConfirmsFailure() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			SmartSupport: &smartmontools.SmartSupport{
+				Available: true,
+				Enabled:   true,
+			},
+			AtaSmartData: &smartmontools.AtaSmartData{
+				Table: []smartmontools.SmartAttribute{},
+			},
+		}, nil)
+	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	verifyMock := mock.Mock[smartmontools.SmartClient](ctrl)
+	mock.When(verifyMock.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	suite.service.MockVerifyClient(verifyMock)
+
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(health)
+	suite.False(health.Passed)
+	suite.Equal("failing", health.OverallStatus)
+}
+
+// TestGetHealthStatus_VerifyClientErrorKeepsPrimary ensures a verify failure
+// never flips the result: the primary assessment stands.
+func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyClientErrorKeepsPrimary() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			SmartSupport: &smartmontools.SmartSupport{
+				Available: true,
+				Enabled:   true,
+			},
+			AtaSmartData: &smartmontools.AtaSmartData{
+				Table: []smartmontools.SmartAttribute{},
+			},
+		}, nil)
+	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	verifyMock := mock.Mock[smartmontools.SmartClient](ctrl)
+	mock.When(verifyMock.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, fmt.Errorf("smartctl not found"))
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	suite.service.MockVerifyClient(verifyMock)
+
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(health)
+	suite.False(health.Passed)
+}
+
+// TestGetTestStatus_VerifyClientGroundTruth is a regression test for #1196:
+// when the primary (lib) backend omits self_test.status, the exec verify
+// client provides ground truth, including tests started outside this service.
+func (suite *SmartServiceSuite) TestGetTestStatus_VerifyClientGroundTruth() {
+	canonicalID := "ata-TEST_DEVICE_VERIFY_GROUND_TRUTH"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	// Primary lib-backend shape: SelfTest present, Status nil.
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			AtaSmartData: &smartmontools.AtaSmartData{
+				SelfTest: &smartmontools.SelfTest{},
+			},
+		}, nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	verifyMock := mock.Mock[smartmontools.SmartClient](ctrl)
+	mock.When(verifyMock.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			AtaSmartData: &smartmontools.AtaSmartData{
+				SelfTest: &smartmontools.SelfTest{
+					Status: &smartmontools.StatusField{Value: 250, String: "short self-test in progress, 20% remaining"},
+				},
+			},
+		}, nil)
+	suite.service.MockVerifyClient(verifyMock)
+
+	status, err := suite.service.GetTestStatus(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Require().NotNil(status)
+	suite.True(status.Running, "verify client in-progress status must be reported")
+	suite.Equal("short", status.TestType)
+	suite.Equal(80, status.PercentComplete)
+}
+
+// TestGetTestStatus_VerifyClientErrorFallsBackToTracker ensures a verify
+// failure degrades gracefully to tracked progress instead of an error.
+func (suite *SmartServiceSuite) TestGetTestStatus_VerifyClientErrorFallsBackToTracker() {
+	canonicalID := "ata-TEST_DEVICE_VERIFY_ERROR_TRACKER"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenAnswer(matchers.Answer(func(args []any) []any {
+		cb := args[3].(smartmontools.ProgressCallback)
+		cb(0, "Test started")
+		return []any{nil}
+	}))
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			AtaSmartData: &smartmontools.AtaSmartData{
+				SelfTest: &smartmontools.SelfTest{},
+			},
+		}, nil)
+
+	ctrl := mock.NewMockController(suite.T())
+	verifyMock := mock.Mock[smartmontools.SmartClient](ctrl)
+	mock.When(verifyMock.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(nil, fmt.Errorf("smartctl not found"))
+	suite.service.MockVerifyClient(verifyMock)
+
+	suite.Require().NoError(suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT))
+
+	status, err := suite.service.GetTestStatus(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Require().NotNil(status)
+	suite.True(status.Running, "verify failure must fall back to tracked progress")
+}
+
+// TestGetHealthStatus_CheckHealthFailureWithEvidenceStaysFailing guards the
+// reconciliation: a false CheckHealth with failing attributes present, or with
+// the drive itself reporting FAILED, must still report failing.
+func (suite *SmartServiceSuite) TestGetHealthStatus_CheckHealthFailureWithEvidenceStaysFailing() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			SmartSupport: &smartmontools.SmartSupport{
+				Available: true,
+				Enabled:   true,
+			},
+			SmartStatus: &smartmontools.SmartStatus{
+				Passed: true,
+			},
+			AtaSmartData: &smartmontools.AtaSmartData{
+				Table: []smartmontools.SmartAttribute{
+					{
+						ID:     5, // Reallocated Sectors Count below threshold
+						Name:   "Reallocated_Sector_Ct",
+						Value:  1,
+						Worst:  1,
+						Thresh: 10,
+					},
+				},
+			},
+		}, nil)
+	mock.When(suite.smartClient.CheckHealth(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(false, nil)
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	health, err := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.Require().NotNil(health)
+	suite.False(health.Passed, "failing attributes must keep the drive failing")
+	suite.Equal("failing", health.OverallStatus)
+	suite.NotEmpty(health.FailingAttributes)
+}
+
 func (suite *SmartServiceSuite) TestGetSmartStatusParsesPackedRawValues() {
 	// Regression test for #907: firmware-packed 48-bit raw attribute values must
 	// not be exposed as-is. smartctl reports raw strings like
@@ -635,6 +930,89 @@ func (suite *SmartServiceSuite) TestDisableSMARTSuccess() {
 	suite.NoError(err)
 }
 
+func (suite *SmartServiceSuite) TestDisableSMARTSuccessWhenInfoReadFailsAfterDisable() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	mock.When(suite.smartClient.DisableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil, fmt.Errorf("SMART is disabled"))
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	var captured events.SmartEvent
+	var emitted bool
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		captured = se
+		emitted = true
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.DisableSMART(suite.T().Context(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.True(emitted, "expected a minimal disabled-state SmartEvent")
+	suite.Equal(tempFile.Name(), captured.SmartInfo.DiskId)
+	suite.False(captured.SmartInfo.Enabled)
+	suite.True(captured.SmartInfo.Supported)
+}
+
+func (suite *SmartServiceSuite) TestDisableSMARTPreservesModelDetailsWhenInfoReadFailsAfterDisable() {
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+
+	fullInfo := &smartmontools.SMARTInfo{
+		ModelFamily:  "TestFamily",
+		ModelName:    "TestModel",
+		SerialNumber: "SN123",
+		Firmware:     "FW1",
+		SmartSupport: &smartmontools.SmartSupport{Available: true, Enabled: true},
+	}
+	calls := 0
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenAnswer(func(args []any) []any {
+			calls++
+			if calls == 1 {
+				return []any{fullInfo, nil}
+			}
+			return []any{nil, fmt.Errorf("SMART is disabled")}
+		})
+
+	_, err := suite.service.GetSmartInfo(suite.T().Context(), tempFile.Name())
+	suite.Require().NoError(err)
+
+	mock.When(suite.smartClient.DisableSMART(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.IsSMARTSupported(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(&smartmontools.SmartSupport{Available: true, Enabled: false}, nil)
+
+	var captured events.SmartEvent
+	var emitted bool
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		captured = se
+		emitted = true
+		return nil
+	})
+	defer unsubscribe()
+
+	err = suite.service.DisableSMART(suite.T().Context(), tempFile.Name())
+
+	suite.NoError(err)
+	suite.True(emitted, "expected a disabled-state SmartEvent")
+	suite.Equal(tempFile.Name(), captured.SmartInfo.DiskId)
+	suite.False(captured.SmartInfo.Enabled)
+	suite.True(captured.SmartInfo.Supported)
+	suite.Equal("TestFamily", captured.SmartInfo.ModelFamily)
+	suite.Equal("TestModel", captured.SmartInfo.ModelName)
+	suite.Equal("SN123", captured.SmartInfo.SerialNumber)
+	suite.Equal("FW1", captured.SmartInfo.Firmware)
+}
+
 // TestEnableSMART_EventDiskIdMatchesDeviceId verifies that the SmartEvent emitted by
 // EnableSMART carries the canonical deviceId (as passed to the function), not the raw
 // device path returned by the device-to-device mapper.
@@ -780,9 +1158,10 @@ func (suite *SmartServiceSuite) TestGetTestStatusInProgress() {
 	suite.Equal(70, status.PercentComplete, "PercentComplete must be 100 - remaining")
 }
 
-// TestStartSelfTest_CompletionEventEmitted verifies that StartSelfTest emits a
-// final SmartEvent with Running=false and the canonical deviceId after the test
-// completes, so the frontend always receives a definitive completion signal.
+// TestStartSelfTest_CompletionEventEmitted verifies that StartSelfTest drives
+// completion purely from SDK progress callbacks: the initial callback emits
+// Running=true and the final callback emits Running=false with the canonical
+// deviceId, so the frontend receives a definitive completion signal (#1196).
 func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
 	canonicalID := "ata-TEST_DEVICE_COMPLETION"
 	tempFile, _ := os.CreateTemp("", "testdevice")
@@ -791,8 +1170,17 @@ func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
 	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
 		return tempFile.Name(), nil
 	})
-	// RunSelfTestWithProgress is not explicitly mocked — returns nil with no
-	// progress callbacks invoked. The only event emitted is the completion one.
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenAnswer(matchers.Answer(func(args []any) []any {
+		cb := args[3].(smartmontools.ProgressCallback)
+		cb(0, "Test started")
+		cb(100, "completed without error")
+		return []any{nil}
+	}))
 
 	var capturedEvents []events.SmartEvent
 	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
@@ -804,7 +1192,13 @@ func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
 	err := suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT)
 
 	suite.NoError(err)
-	suite.Require().NotEmpty(capturedEvents, "StartSelfTest must emit at least one SmartEvent")
+	suite.Require().NotEmpty(capturedEvents, "StartSelfTest must emit SmartEvents from progress callbacks")
+
+	// The first event must report the test as running
+	suite.True(capturedEvents[0].SmartTestStatus.Running,
+		"first SmartEvent from StartSelfTest must have Running=true")
+	suite.Equal(canonicalID, capturedEvents[0].SmartTestStatus.DiskId,
+		"progress event must carry the canonical deviceId, not the raw device path")
 
 	// The last event must be the completion event
 	last := capturedEvents[len(capturedEvents)-1]
@@ -814,6 +1208,119 @@ func (suite *SmartServiceSuite) TestStartSelfTest_CompletionEventEmitted() {
 		"completion event must carry the canonical deviceId, not the raw device path")
 	suite.Equal(100, last.SmartTestStatus.PercentComplete,
 		"completion event must have PercentComplete=100")
+}
+
+// TestStartSelfTest_NoPrematureCompletionEvent is a regression test for #1196:
+// StartSelfTest must not emit a Running=false completion event synchronously.
+// When the SDK invokes no progress callbacks, no SmartEvent may be emitted.
+func (suite *SmartServiceSuite) TestStartSelfTest_NoPrematureCompletionEvent() {
+	canonicalID := "ata-TEST_DEVICE_NO_PREMATURE"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenReturn(nil)
+
+	var capturedEvents []events.SmartEvent
+	unsubscribe := suite.eventBus.OnSmart(func(_ context.Context, se events.SmartEvent) goerrors.E {
+		capturedEvents = append(capturedEvents, se)
+		return nil
+	})
+	defer unsubscribe()
+
+	err := suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT)
+
+	suite.NoError(err)
+	suite.Empty(capturedEvents,
+		"StartSelfTest must not emit a completion event before any progress callback fires")
+}
+
+// TestStartSelfTest_AlreadyInProgress is a regression test for #1196: starting
+// a second test while the tracker reports a running test must fail with
+// ErrorSMARTTestInProgress (mapped to 422 by the API layer) without touching
+// the drive again.
+func (suite *SmartServiceSuite) TestStartSelfTest_AlreadyInProgress() {
+	canonicalID := "ata-TEST_DEVICE_IN_PROGRESS"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenAnswer(matchers.Answer(func(args []any) []any {
+		cb := args[3].(smartmontools.ProgressCallback)
+		cb(0, "Test started")
+		return []any{nil}
+	}))
+
+	suite.Require().NoError(suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT))
+
+	err := suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT)
+
+	suite.Error(err)
+	suite.True(goerrors.Is(err, dto.ErrorSMARTTestInProgress),
+		"second StartSelfTest while a test runs must return ErrorSMARTTestInProgress, got %v", err)
+	mock.Verify(suite.smartClient, matchers.Times(1)).RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Any[string](),
+		mock.Any[string](),
+		mock.Any[smartmontools.ProgressCallback](),
+	)
+}
+
+// TestGetTestStatus_TrackerFallbackWhenDriveBlind is a regression test for
+// #1196: on backends that omit self_test.status (lib/direct), GetTestStatus
+// must report the running test tracked from StartSelfTest callbacks instead
+// of unknown/unknown.
+func (suite *SmartServiceSuite) TestGetTestStatus_TrackerFallbackWhenDriveBlind() {
+	canonicalID := "ata-TEST_DEVICE_TRACKER_FALLBACK"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenAnswer(matchers.Answer(func(args []any) []any {
+		cb := args[3].(smartmontools.ProgressCallback)
+		cb(0, "Test started")
+		return []any{nil}
+	}))
+	// Lib/direct backend shape: SelfTest present (capabilities) but Status nil.
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			AtaSmartData: &smartmontools.AtaSmartData{
+				SelfTest: &smartmontools.SelfTest{
+					PollingMinutes: &smartmontools.PollingMinutes{Short: 1, Extended: 48, Conveyance: 2},
+				},
+			},
+		}, nil)
+
+	suite.Require().NoError(suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT))
+
+	status, err := suite.service.GetTestStatus(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Require().NotNil(status)
+	suite.True(status.Running, "GetTestStatus must report Running=true from the tracker while the test runs")
+	suite.Equal("short", status.TestType)
+	suite.Equal(canonicalID, status.DiskId)
 }
 
 func (suite *SmartServiceSuite) TestAbortSelfTestDeviceNotExist() {
@@ -838,6 +1345,46 @@ func (suite *SmartServiceSuite) TestAbortSelfTestSuccess() {
 
 	// Assert
 	suite.NoError(err)
+}
+
+// TestAbortSelfTest_MarksTrackerAborted is a regression test for #1196: after
+// aborting a tracked running test, GetTestStatus must report Running=false
+// (instead of falling back to unknown) while the backend omits drive status.
+func (suite *SmartServiceSuite) TestAbortSelfTest_MarksTrackerAborted() {
+	canonicalID := "ata-TEST_DEVICE_ABORT_TRACKER"
+	tempFile, _ := os.CreateTemp("", "testdevice")
+	defer os.Remove(tempFile.Name())
+
+	suite.service.MockDeviceToDevice(func(deviceId string) (string, error) {
+		return tempFile.Name(), nil
+	})
+	mock.When(suite.smartClient.RunSelfTestWithProgress(
+		mock.Any[context.Context](),
+		mock.Exact(tempFile.Name()),
+		mock.Exact("short"),
+		mock.Any[smartmontools.ProgressCallback](),
+	)).ThenAnswer(matchers.Answer(func(args []any) []any {
+		cb := args[3].(smartmontools.ProgressCallback)
+		cb(0, "Test started")
+		return []any{nil}
+	}))
+	mock.When(suite.smartClient.AbortSelfTest(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).ThenReturn(nil)
+	mock.When(suite.smartClient.GetSMARTInfo(mock.Any[context.Context](), mock.Exact(tempFile.Name()))).
+		ThenReturn(&smartmontools.SMARTInfo{
+			AtaSmartData: &smartmontools.AtaSmartData{
+				SelfTest: &smartmontools.SelfTest{},
+			},
+		}, nil)
+
+	suite.Require().NoError(suite.service.StartSelfTest(context.Background(), canonicalID, dto.SmartTestTypes.SMARTTESTTYPESHORT))
+	suite.Require().NoError(suite.service.AbortSelfTest(context.Background(), canonicalID))
+
+	status, err := suite.service.GetTestStatus(context.Background(), canonicalID)
+
+	suite.NoError(err)
+	suite.Require().NotNil(status)
+	suite.False(status.Running, "aborted test must report Running=false")
+	suite.Contains(status.Status, "abort")
 }
 
 // TestUserCapacityParsing tests that both legacy (int64) and new (object) user_capacity formats

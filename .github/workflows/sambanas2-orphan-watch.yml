@@ -1,0 +1,279 @@
+name: SambaNAS2 orphan watch
+
+# Daily check for dianlight/hassio-addons SambaNAS2 issues with no counterpart
+# in dianlight/srat issues or docs/tasks/*.md (same index the `sync-tasks`
+# skill builds for Mode A IMPORT).
+#
+# Read-only by design: publishes a job summary only, never comments on issues,
+# never opens issues or PRs.
+#
+# AI triage uses dianlight/opencode-modelselect-action with
+# task-type=issue-triage, tier=auto. If selection fails, the deterministic
+# report is still published and AI triage is skipped with a notice.
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # daily at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  detect:
+    name: Detect unreferenced SambaNAS2 issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      orphans: ${{ steps.detect.outputs.orphans }}
+      count: ${{ steps.detect.outputs.count }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Detect orphans
+        id: detect
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          # Open hassio-addons issues (the issues API also returns PRs — dropped below).
+          # NOTE: --paginate emits one JSON array per page, so merge with jq -s 'add'.
+          gh api --paginate "/repos/dianlight/hassio-addons/issues?state=open&per_page=100" \
+            --jq '[.[] | {number, title, body: (.body // ""), user: .user.login,
+                           labels: [.labels[].name], created_at, html_url,
+                           is_pr: (has("pull_request"))}]' \
+            > /tmp/addons_pages.json
+          jq -s 'add' /tmp/addons_pages.json > /tmp/addons_issues.json
+
+          # Open + closed srat issues (title + body only — enough for reference matching).
+          gh api --paginate "/repos/dianlight/srat/issues?state=all&per_page=100" \
+            --jq '[.[] | select(has("pull_request") | not)
+                           | {number, text: ((.title // "") + "\n" + (.body // ""))}]' \
+            > /tmp/srat_pages.json
+          jq -s 'add' /tmp/srat_pages.json > /tmp/srat_issues.json
+
+          ORPHANS_JSON="$(python3 - <<'PYEOF'
+          import json
+          import re
+
+          with open("/tmp/addons_issues.json") as fh:
+              addons = json.load(fh)
+          with open("/tmp/srat_issues.json") as fh:
+              srat = json.load(fh)
+
+          bot_authors = {"renovate", "github-actions[bot]", "dependabot[bot]"}
+          orphans = []
+
+          for issue in addons:
+              if issue["is_pr"]:
+                  continue
+              if issue["user"] in bot_authors:
+                  continue
+              if issue["title"].strip().lower() == "dependency dashboard":
+                  continue
+
+              haystack = "\n".join([issue["title"], issue["body"]] + issue["labels"])
+              # SambaNAS2-related: name/label match or the issue-form "### Addon" field.
+              if not re.search(r"sambanas2?", haystack, re.IGNORECASE):
+                  continue
+              addon_field = re.search(r"^### Addon\s*\n+(.+)$",
+                                      issue["body"], re.IGNORECASE | re.MULTILINE)
+              if addon_field and not re.search(r"sambanas2?",
+                                               addon_field.group(1).strip(),
+                                               re.IGNORECASE):
+                  continue
+
+              n = issue["number"]
+              patterns = [
+                  rf"hassio-addons#{n}\b",
+                  rf"hassio-addons/issues/{n}\b",
+                  rf"dianlight/hassio-addons#{n}\b",
+              ]
+
+              referenced = any(
+                  re.search(p, entry["text"], re.IGNORECASE) for entry in srat
+                  for p in patterns
+              )
+
+              if not referenced:
+                  import subprocess
+                  hit = subprocess.run(
+                      ["grep", "-rIlE",
+                       rf"hassio-addons(#{n}\b|/issues/{n}\b)",
+                       "docs/tasks", "--include=*.md"],
+                      capture_output=True, text=True,
+                  )
+                  referenced = hit.returncode == 0
+
+              if not referenced:
+                  orphans.append({
+                      "number": n,
+                      "title": issue["title"],
+                      "url": issue["html_url"],
+                      "author": issue["user"],
+                      "created_at": issue["created_at"],
+                      "labels": issue["labels"],
+                  })
+
+          print(json.dumps(orphans))
+          PYEOF
+          )"
+
+          COUNT="$(echo "$ORPHANS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')"
+          echo "orphans=$ORPHANS_JSON" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "$ORPHANS_JSON" > /tmp/orphans.json
+
+          {
+            echo "## SambaNAS2 orphan watch"
+            echo ""
+            echo "SambaNAS2-related open issues in dianlight/hassio-addons with no reference"
+            echo "in srat issues or docs/tasks: **$COUNT**."
+            echo ""
+            if [[ "$COUNT" == "0" ]]; then
+              echo "All SambaNAS2 issues are tracked. Nothing to do."
+            else
+              echo "| Issue | Author | Created | Labels |"
+              echo "| --- | --- | --- | --- |"
+              python3 - "$ORPHANS_JSON" <<'PYEOF'
+          import json, sys
+          for o in json.loads(sys.argv[1]):
+              labels = ", ".join(o["labels"]) or "—"
+              print(f"| [#{o['number']}]({o['url']}) {o['title']} "
+                    f"| {o['author']} | {o['created_at'][:10]} | {labels} |")
+          PYEOF
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload orphans artifact
+        if: steps.detect.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: sambanas2-orphans
+          path: /tmp/orphans.json
+          retention-days: 7
+
+  triage:
+    name: AI triage orphans
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: detect
+    if: needs.detect.outputs.count != '0'
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Mask secrets in logs
+        shell: bash
+        run: |
+          echo "::add-mask::${{ secrets.OPENCODE_API_KEY }}"
+          echo "::add-mask::${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Select model
+        id: resolve
+        continue-on-error: true
+        uses: dianlight/opencode-modelselect-action@97f7f5c377aae0f922a08222d433b1eb0475bddf # v1
+        with:
+          task-type: issue-triage
+          tier: auto
+          opencode-token: ${{ secrets.OPENCODE_API_KEY }}
+
+      - name: Triage skipped (no model resolved)
+        if: steps.resolve.outcome != 'success'
+        run: |
+          {
+            echo ""
+            echo "> AI triage skipped: model selection (task-type \`issue-triage\`) failed."
+            echo "> Check the select-model step log, then re-run."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install read-only git shim
+        # Belt-and-braces for the agent's own shell: turns `git push` into a
+        # printed no-op while delegating every other git command to the real
+        # binary (git aliases cannot shadow builtins, so no alias trick).
+        # Runner-local only; nothing leaves the workspace.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          REAL_GIT="$(command -v git)"
+          mkdir -p "$RUNNER_TEMP/git-shim"
+          printf '#!/bin/bash\nif [ "$1" = "push" ]; then echo "push disabled: triage job is read-only"; exit 0; fi\nexec "%s" "$@"\n' "$REAL_GIT" > "$RUNNER_TEMP/git-shim/git"
+          chmod +x "$RUNNER_TEMP/git-shim/git"
+          echo "$RUNNER_TEMP/git-shim" >> "$GITHUB_PATH"
+
+      - name: Install opencode CLI
+        # Installed directly instead of via anomalyco/opencode/github: the
+        # `github run` wrapper always ends its session with `git push` of a
+        # dispatch branch, which fails on the read-only token and fails the
+        # step. Plain `opencode run` has no such behavior.
+        run: |
+          curl -fsSL https://opencode.ai/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+
+      - name: Run opencode triage
+        id: triage
+        if: steps.resolve.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 25
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          OPENCODE_DISABLE_AUTOUPDATE: "true"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRIAGE_MODEL: ${{ steps.resolve.outputs.model }}
+          ORPHANS_JSON: ${{ needs.detect.outputs.orphans }}
+        run: |
+          export PATH="$HOME/.opencode/bin:$PATH"
+          PROMPT="You are triaging unreferenced SambaNAS2 addon issues for the SRAT project.
+          The orphan list (JSON: number, title, url, author, created_at, labels) is: $ORPHANS_JSON.
+
+          ## Read-only constraints (strict)
+          - Do NOT comment on any issue, do NOT open issues or PRs, do NOT push, do NOT commit.
+          - Do NOT run any \`git\` command (push, commit, branch, status, diff, log — none).
+            Just write the report file and exit 0.
+          - You may run \`gh issue view\` / \`gh api\` reads and \`grep\`/\`rg\` reads only.
+          - Write your triage report to \`orphan-triage.md\` in the workspace root
+            (workspace writes are permitted; never write outside the workspace
+            — permission prompts hang the runner) and exit 0.
+
+          ## Task
+          Work quickly: fetch each issue body once, scan only \`docs/tasks/*.md\`
+          headers + Objective paragraphs and open srat issue titles. Do NOT
+          explore backend/frontend source code — classification only.
+          For each orphan:
+          1. Read the issue body (\`gh issue view <n> --repo dianlight/hassio-addons --json title,body,labels\`).
+          2. Classify: bug / feature / question / needs-info, and whether it is SRAT-related
+             (backend, frontend, custom component) or pure-addon (Dockerfile, s6 services, docs).
+          3. Find the closest existing counterpart using the \`sync-tasks\` heuristic: compare issue
+             title words against \`docs/tasks/*.md\` titles + Objective paragraphs (≥ 2 significant
+             words in common) and against open srat issues (\`gh search issues\`).
+          4. Recommend exactly one: link the best matching \`docs/tasks/NNN_*.md\` or \`dianlight/srat#NNN\`,
+             or state \"no match — candidate for a new task\" with a one-line suggested task title.
+
+          ## Report format (markdown, one section per orphan)
+          ### hassio-addons#NNN — <title>
+          - **Type:** bug|feature|question|needs-info — **Area:** srat|addon
+          - **Summary:** one line
+          - **Suggested match:** <task file / srat issue / none + proposed task title>"
+          opencode run --model "$TRIAGE_MODEL" "$PROMPT"
+
+      - name: Publish triage report
+        if: steps.triage.outcome == 'success'
+        run: |
+          if [[ -f orphan-triage.md ]]; then
+            {
+              echo ""
+              echo "## AI triage"
+              echo ""
+              cat orphan-triage.md
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Triage ran but produced no report file." >> "$GITHUB_STEP_SUMMARY"
+          fi

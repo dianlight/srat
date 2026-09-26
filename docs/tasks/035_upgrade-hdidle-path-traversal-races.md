@@ -3,7 +3,7 @@
 # [FIX]: Upgrade & HDIdle Path Traversal, Timer Race, and Data Race
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
+**Status:** 🔄 In Progress
 **Issue Link:** _None — discovered in security/reliability review 2026-04-28_
 
 ## 🎯 Objective
@@ -24,11 +24,14 @@ Fix four related security and reliability defects in the upgrade and HDIdle subs
 
 ## 📝 Task List
 
-- [ ] Task 1: In `upgrade_service.go extractFile`, remove the `dest != "."` guard — always verify `strings.HasPrefix(filepath.Clean(destPath), filepath.Clean(dest)+string(os.PathSeparator))`
+- [x] Task 1: In `upgrade_service.go extractFile`, remove the `dest != "."` guard — always verify `strings.HasPrefix(filepath.Clean(destPath), filepath.Clean(dest)+string(os.PathSeparator))`
+  > ✅ **Done** — superseded by `checkZipPath` + `checkResolvedDir` + `checkSymlinkTargetInDir` (`upgrade_service.go:510-589`): `filepath.Rel` verdict plus `EvalSymlinks` re-resolution, so relative dests such as `"."` and planted-symlink bypasses are handled.
 - [ ] Task 2: Add `pattern:"[a-zA-Z0-9_-]+"` constraint to the `DiskID` path parameter struct tags in `hdidle_handler.go` (all four handler methods)
-- [ ] Task 3: After constructing `devicePath := "/dev/disk/by-id/" + input.DiskID`, assert `strings.HasPrefix(filepath.Clean(devicePath), "/dev/disk/by-id/")` and return HTTP 400 on violation
+- [x] Task 3: After constructing `devicePath := "/dev/disk/by-id/" + input.DiskID`, assert `strings.HasPrefix(filepath.Clean(devicePath), "/dev/disk/by-id/")` and return HTTP 400 on violation
+  > ✅ **Done (service layer)** — `HDIdleService.ResolveDevicePath` (`hdidle_service.go:331`) rejects `..`, backslashes, NUL, and bare identifiers with slashes, and re-checks cleaned absolute `/dev/` paths stay under `/dev/`. Handler-level `pattern` tag (Task 2) still open.
 - [ ] Task 4: Fix the debounce timer race in `watchForDevelopUpdates`: after `debounceTimer.Stop()` returns false, drain the timer channel (`<-debounceTimer.C`); protect the `selfupdate.Apply` call with a `sync.Mutex` so only one invocation runs at a time
-- [ ] Task 5: Fix `HDIdleService.IsRunning()` data race: add `s.mu.RLock()` / `s.mu.RUnlock()`, or replace with an `atomic.Bool running` field updated under the mutex
+- [x] Task 5: Fix `HDIdleService.IsRunning()` data race: add `s.mu.RLock()` / `s.mu.RUnlock()`, or replace with an `atomic.Bool running` field updated under the mutex
+  > ✅ **Done** — `IsRunning()` now takes `s.mu.RLock()` (`hdidle_service.go:276-280`).
 - [ ] Task 6: Replace `http.DefaultClient.Do(req)` in `upgrade_service.go:553` with a dedicated `http.Client{Timeout: 30*time.Minute}`; remove the `// #nosec G704` suppression
 - [ ] Task 7: Add tests: (a) verify `extractFile` rejects `../escape` zip entries with `dest = "."`; (b) verify `DiskID = "../../sda"` returns 400; (c) run `go test -race` on `hdidle_service.go` coverage
 - [ ] Task 8: Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-07, B-SEC-08, B-SEC-09, B-REL-05, B-REL-06 resolved
@@ -74,8 +77,8 @@ func (s *HDIdleService) IsRunning() bool { return s.running.Load() }
 
 ## 🔗 Code References & TODOs
 
-- [ ] `TODO: backend/src/service/upgrade_service.go:467-470` — remove dest != "." escape
+- [x] `TODO: backend/src/service/upgrade_service.go:467-470` — remove dest != "." escape (done via `checkZipPath` Rel verdict + `checkResolvedDir` symlink re-resolution)
 - [ ] `TODO: backend/src/api/hdidle_handler.go:60,80,116,220` — add pattern constraint + path assertion
 - [ ] `TODO: backend/src/service/upgrade_service.go:251-256` — fix debounce timer race
-- [ ] `TODO: backend/src/service/hdidle_service.go` — fix IsRunning data race
+- [x] `TODO: backend/src/service/hdidle_service.go` — fix IsRunning data race (done, `RLock` guarded)
 - [ ] `TODO: backend/src/service/upgrade_service.go:553` — replace DefaultClient

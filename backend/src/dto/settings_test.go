@@ -31,7 +31,7 @@ func TestSettings_AllFields(t *testing.T) {
 		ExportStatsToHA:     &exportStats,
 		HAUseNFS:            &haUseNFS,
 		SMBoverQUIC:         &smbOverQUIC,
-		SmartMode:           dto.SmartModes.SMARTMODENONE,
+		SmartOn:             new(true),
 		ExperimentalLabMode: true,
 	}
 
@@ -56,7 +56,9 @@ func TestSettings_AllFields(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.True(t, *settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -76,7 +78,8 @@ func TestSettings_ZeroValues(t *testing.T) {
 	assert.Nil(t, settings.ExportStatsToHA)
 	assert.Nil(t, settings.HAUseNFS)
 	assert.Nil(t, settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.Nil(t, settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.False(t, settings.ExperimentalLabMode)
 }
 
@@ -125,7 +128,7 @@ func TestSettings_BooleanPointers(t *testing.T) {
 		ExportStatsToHA:     &falseVal,
 		HAUseNFS:            &trueVal,
 		SMBoverQUIC:         &trueVal,
-		SmartMode:           dto.SmartModes.SMARTMODENONE,
+		SmartOn:             &falseVal,
 		ExperimentalLabMode: true,
 	}
 
@@ -133,7 +136,9 @@ func TestSettings_BooleanPointers(t *testing.T) {
 	assert.False(t, *settings.ExportStatsToHA)
 	assert.True(t, *settings.HAUseNFS)
 	assert.True(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.False(t, *settings.SmartOn)
+	assert.False(t, settings.SmartEnabled())
 	assert.True(t, settings.ExperimentalLabMode)
 }
 
@@ -163,7 +168,9 @@ func TestSettings_DefaultValues(t *testing.T) {
 	assert.False(t, *settings.HAUseNFS)
 	assert.NotNil(t, settings.SMBoverQUIC)
 	assert.False(t, *settings.SMBoverQUIC)
-	assert.Equal(t, dto.SmartModes.SMARTMODENONE, settings.SmartMode)
+	assert.NotNil(t, settings.SmartOn)
+	assert.True(t, *settings.SmartOn)
+	assert.True(t, settings.SmartEnabled())
 	assert.False(t, settings.ExperimentalLabMode)
 }
 
@@ -180,4 +187,52 @@ func TestSettings_ExperimentalLabMode_TrueIsSerializedToJSON(t *testing.T) {
 	data, err := json.Marshal(settings)
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"experimental_lab_mode":true`)
+}
+
+func TestSettings_AlertHelpersDefaultEnabled(t *testing.T) {
+	var nilSettings *dto.Settings
+	assert.True(t, nilSettings.ProtectedModeAlertEnabled())
+	assert.True(t, nilSettings.AddonConfigChangedAlertEnabled())
+	assert.True(t, nilSettings.CustomComponentAlertEnabled())
+
+	empty := &dto.Settings{}
+	assert.True(t, empty.ProtectedModeAlertEnabled())
+	assert.True(t, empty.AddonConfigChangedAlertEnabled())
+	assert.True(t, empty.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertHelpersRespectToggles(t *testing.T) {
+	settings := &dto.Settings{
+		AlertProtectedMode:      new(false),
+		AlertAddonConfigChanged: new(true),
+		AlertCustomComponent:    new(false),
+	}
+	assert.False(t, settings.ProtectedModeAlertEnabled())
+	assert.True(t, settings.AddonConfigChangedAlertEnabled())
+	assert.False(t, settings.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertDefaults(t *testing.T) {
+	settings := dto.Settings{}
+
+	err := defaults.Set(&settings)
+	require.NoError(t, err)
+
+	require.NotNil(t, settings.AlertProtectedMode)
+	assert.True(t, *settings.AlertProtectedMode)
+	require.NotNil(t, settings.AlertAddonConfigChanged)
+	assert.True(t, *settings.AlertAddonConfigChanged)
+	require.NotNil(t, settings.AlertCustomComponent)
+	assert.True(t, *settings.AlertCustomComponent)
+	assert.True(t, settings.ProtectedModeAlertEnabled())
+	assert.True(t, settings.AddonConfigChangedAlertEnabled())
+	assert.True(t, settings.CustomComponentAlertEnabled())
+}
+
+func TestSettings_AlertProtectedMode_FalseIsSerializedToJSON(t *testing.T) {
+	settings := dto.Settings{AlertProtectedMode: new(false)}
+	data, err := json.Marshal(settings)
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"alert_protected_mode":false`,
+		"alert_protected_mode:false must be present in JSON (pointer omitempty keeps explicit false)")
 }

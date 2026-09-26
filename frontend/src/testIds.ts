@@ -17,6 +17,10 @@ export const testIds = {
   dashboard: {
     hdidleSuggestionBadge: "dashboard-hdidle-suggestion-badge",
     smartIcon: "disk-health-smart-icon",
+    newsReleaseIcon: "dashboard-news-release-icon",
+    newsAnnouncementIcon: "dashboard-news-announcement-icon",
+    newsAbstract: "dashboard-news-abstract",
+    newsSeeAll: "dashboard-news-see-all",
   },
   volumes: {
     // Intentionally shared across all FontAwesome partition action icons;
@@ -24,6 +28,7 @@ export const testIds = {
     partitionActionIcon: "partition-action-icon",
     actionsGrid: "partition-actions-grid",
     partitionActionsRoot: "partition-actions-root",
+    mountHookHarness: "volumes-mount-hook-harness",
   },
   shares: {
     legacyBadge: "shares-legacy-badge",

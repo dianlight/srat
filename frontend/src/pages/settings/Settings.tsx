@@ -4,6 +4,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import InsightsIcon from "@mui/icons-material/Insights";
 import LanIcon from "@mui/icons-material/Lan";
 import MenuIcon from "@mui/icons-material/Menu";
+import NotificationsIcon from "@mui/icons-material/Notifications";
 import SearchIcon from "@mui/icons-material/Search";
 import SecurityIcon from "@mui/icons-material/Security";
 import TuneIcon from "@mui/icons-material/Tune";
@@ -28,13 +29,13 @@ import { useOpenWizard } from "../../components/wizard/SetupWizard";
 import { TabIDs } from "../../store/locationState";
 import {
   type Settings as ApiSettings,
-  Smart_mode,
   useGetApiSettingsQuery,
   usePutApiSettingsMutation,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { AppConfigurationPanel } from "./AppConfigurationPanel";
+import { AlertsPanel } from "./panels/AlertsPanel";
 import { GeneralPanel } from "./panels/GeneralPanel";
 import { HomeAssistantPanel } from "./panels/HomeAssistantPanel";
 import { NetworkAccessControlPanel } from "./panels/NetworkAccessControlPanel";
@@ -95,7 +96,7 @@ export function Settings() {
   const methods = useForm({
     mode: "onBlur",
     values: globalConfig as ApiSettings,
-    defaultValues: { smart_mode: Smart_mode.Legacy },
+    defaultValues: { smart_on: true },
     disabled: readOnly,
   });
   const { handleSubmit, reset, formState } = methods;
@@ -110,7 +111,11 @@ export function Settings() {
       })
       .catch((err) => {
         console.error("Settings update error:", err);
-        reset();
+        // keepFieldsRef: preserve field registrations so server-absent fields
+        // (e.g. compatibility_mode) are not re-injected as undefined into
+        // _formValues, which would silently drift from _defaultValues and
+        // leave isDirty stuck true (same pattern RHF uses for values sync).
+        reset(globalConfig as ApiSettings, { keepFieldsRef: true });
       });
   }
 
@@ -142,6 +147,9 @@ export function Settings() {
         break;
       case "telemetry":
         icon = <InsightsIcon {...iconProps} />;
+        break;
+      case "alerts":
+        icon = <NotificationsIcon {...iconProps} />;
         break;
       case "homeassistant":
         icon = <HomeIcon {...iconProps} />;
@@ -183,6 +191,8 @@ export function Settings() {
         return <NetworkAccessControlPanel readOnly={readOnly} />;
       case "telemetry":
         return <TelemetryPanel readOnly={readOnly} />;
+      case "alerts":
+        return <AlertsPanel readOnly={readOnly} />;
       case "homeassistant":
         return <HomeAssistantPanel readOnly={readOnly} />;
       default:
@@ -405,7 +415,11 @@ export function Settings() {
                 }}
               >
                 <Button
-                  onClick={() => reset()}
+                  onClick={() =>
+                    reset(globalConfig as ApiSettings, {
+                      keepFieldsRef: true,
+                    })
+                  }
                   disabled={!formState.isDirty}
                   variant="outlined"
                   fullWidth={true}

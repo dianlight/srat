@@ -15,10 +15,11 @@ import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import {
   type Partition,
-  Severity,
+  type Problem,
   Status,
   useDeleteApiProblemsByProblemKeyMutation,
   useGetApiProblemsQuery,
+  usePutApiProblemsByProblemKeyMutation,
 } from "../../store/sratApi";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
@@ -31,6 +32,7 @@ export function DashboardActions() {
   const { data: evdata } = useGetServerEventsQuery();
   const { data: problems } = useGetApiProblemsQuery();
   const [dismissProblem] = useDeleteApiProblemsByProblemKeyMutation();
+  const [upsertProblem] = usePutApiProblemsByProblemKeyMutation();
   const { isAvailable: labFeatureAvailable } = useLabFeatures();
   const customComponentLabActive = labFeatureAvailable("ha_custom_component");
 
@@ -142,6 +144,41 @@ export function DashboardActions() {
     }
   }
 
+  // Permanent ignore: the backend stores the flag and never re-raises the
+  // alert (or notifies HA) until it is dismissed/re-enabled.
+  function handleIgnoreIssue(issue: Problem): void {
+    const key = issue.problem_key;
+    if (!key) {
+      return;
+    }
+    void upsertProblem({
+      problemKey: key,
+      problem: { ...issue, ignored: true, status: Status.Ignored },
+    });
+  }
+
+  // Re-enable a previously ignored alert. The problem is recreated right
+  // away when its condition still holds (e.g. protected mode still on).
+  function handleReenableIssue(id: number | string): void {
+    if (typeof id !== "string") {
+      return;
+    }
+    const issue = mergedProblems.find((problem) => problem?.problem_key === id);
+    if (issue?.problem_key) {
+      void upsertProblem({
+        problemKey: issue.problem_key,
+        problem: { ...issue, ignored: false, status: Status.Created },
+      });
+    } else {
+      void dismissProblem({ problemKey: id });
+    }
+  }
+
+  // Protected mode now surfaces as a regular backend problem
+  // (problem_key "protected_mode") honoring ignores and the Alerts settings
+  // category. Partition actions stay disabled while protected.
+  const isProtectedMode = evdata?.hello?.protected_mode === true;
+
   // Set initial expanded state based on content
   useEffect(() => {
     if (
@@ -199,55 +236,27 @@ export function DashboardActions() {
         </Box>
       </AccordionSummary>
       <AccordionDetails>
-        {evdata?.hello?.protected_mode ? (
-          <>
-            <IssueCard
-              key="protected-mode"
-              issue={{
-                id: -1,
-                problem_key: "protected_mode",
-                title: "Addon in Protected Mode",
-                description:
-                  "The addon is currently in protected mode. In this mode, no disks can be mounted to prevent unauthorized access. To disable protected mode, navigate to the addon settings in your Home Assistant interface and toggle the protected mode option off. Ensure you understand the security implications before disabling.",
-                severity: Severity.Error,
-                status: Status.Created,
-                ignored: false,
-                repeating: 0,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-              }}
-              showIgnored={false}
-            />
-            <ActionableItemsList
-              actionablePartitions={actionablePartitions}
-              isLoading={isLoading}
-              error={error}
-              showIgnored={showIgnored}
-              disabled={true}
-            />
-          </>
-        ) : (
-          <>
-            {(
-              mergedProblems.filter(Boolean) as NonNullable<
-                (typeof mergedProblems)[number]
-              >[]
-            ).map((issue) => (
-              <IssueCard
-                key={issue.problem_key}
-                issue={issue}
-                onResolve={handleResolveIssue}
-                showIgnored={showIgnored}
-              />
-            ))}
-            <ActionableItemsList
-              actionablePartitions={actionablePartitions}
-              isLoading={isLoading}
-              error={error}
-              showIgnored={showIgnored}
-            />
-          </>
-        )}
+        {(
+          mergedProblems.filter(Boolean) as NonNullable<
+            (typeof mergedProblems)[number]
+          >[]
+        ).map((issue) => (
+          <IssueCard
+            key={issue.problem_key}
+            issue={issue}
+            onResolve={handleResolveIssue}
+            onIgnore={handleIgnoreIssue}
+            onReenable={handleReenableIssue}
+            showIgnored={showIgnored}
+          />
+        ))}
+        <ActionableItemsList
+          actionablePartitions={actionablePartitions}
+          isLoading={isLoading}
+          error={error}
+          showIgnored={showIgnored}
+          disabled={isProtectedMode}
+        />
       </AccordionDetails>
     </Accordion>
   );

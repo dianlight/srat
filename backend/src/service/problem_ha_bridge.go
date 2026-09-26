@@ -81,6 +81,49 @@ func (b *ProblemHABridge) handleProblemEvent(ctx context.Context, event events.P
 		return nil
 	}
 
+	// REMOVE events (dismissed problems, disabled alerts, re-armed ignores)
+	// must clear any HA notification instead of creating one.
+	if event.Type == events.EventTypes.REMOVE {
+		notificationID, _, _ := toNotificationPayload(event.Problem)
+		if b.canUseHA() {
+			if err := b.flushQueue(); err != nil {
+				tlog.WarnContext(ctx, "Failed to flush queued HA problem notifications", "error", err)
+			}
+			if err := b.haService.DismissPersistentNotification(notificationID); err != nil {
+				tlog.WarnContext(ctx, "Failed to dismiss HA persistent notification for problem", "problem_key", event.Problem.ProblemKey, "error", err)
+			}
+		} else {
+			b.enqueue(problemNotificationAction{dismiss: true, id: notificationID})
+		}
+		return nil
+	}
+
+	// Permanently ignored alerts stay silent: clear any stale HA
+	// notification so nothing lingers, and never re-notify.
+	if event.Problem.Ignored || event.Problem.Status == dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSIGNORED {
+		notificationID, _, _ := toNotificationPayload(event.Problem)
+		if b.canUseHA() {
+			if err := b.haService.DismissPersistentNotification(notificationID); err != nil {
+				tlog.WarnContext(ctx, "Failed to dismiss HA persistent notification for ignored problem", "problem_key", event.Problem.ProblemKey, "error", err)
+			}
+		} else {
+			b.enqueue(problemNotificationAction{dismiss: true, id: notificationID})
+		}
+		return nil
+	}
+
+	// Alerts disabled in the Alerts settings category stay silent as well.
+	if !b.isAlertEnabled(event.Problem.ProblemKey) {
+		notificationID, _, _ := toNotificationPayload(event.Problem)
+		if b.canUseHA() {
+			if err := b.haService.DismissPersistentNotification(notificationID); err != nil {
+				tlog.WarnContext(ctx, "Failed to dismiss HA persistent notification for disabled alert", "problem_key", event.Problem.ProblemKey, "error", err)
+			}
+		} else {
+			b.enqueue(problemNotificationAction{dismiss: true, id: notificationID})
+		}
+		return nil
+	}
 	// Suppress custom-component notify/repair/alerts when the
 	// ha_custom_component alpha lab feature is not active (lab mode off or
 	// production build where the feature is omitted). Terminal events still
@@ -179,6 +222,21 @@ func (b *ProblemHABridge) canUseHA() bool {
 func (b *ProblemHABridge) isComponentConnected() bool {
 	return b.state != nil && b.state.HAWsComponent != nil &&
 		b.state.HAWsComponent.Component == dto.HomeAssistantComponentSRAT
+}
+
+// isAlertEnabled reports whether the alert for problemKey may notify HA
+// given the current Alerts settings. Fail-open on missing service or load
+// errors so notification behavior degrades to the historical default; the
+// emitters remain the primary gate and suppress at the source.
+func (b *ProblemHABridge) isAlertEnabled(problemKey string) bool {
+	if b.settingService == nil {
+		return true
+	}
+	settings, err := b.settingService.Load()
+	if err != nil || settings == nil {
+		return true
+	}
+	return AlertEnabledForKey(settings, problemKey)
 }
 
 // isCustomComponentLabEnabled delegates to the shared lab-features helper so

@@ -37,7 +37,7 @@ function TestHarness({
       local_master: false,
       compatibility_mode: false,
       allow_guest: false,
-      smart_mode: "legacy",
+      smart_on: true,
       experimental_lab_mode: false,
       mdns_registration: false,
       ...defaultValues,
@@ -74,7 +74,7 @@ describe("GeneralPanel switch accessibility", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByLabelText(/smart mode/i),
+      screen.getByRole("switch", { name: /smart enabled/i }),
     ).toBeInTheDocument();
   });
 

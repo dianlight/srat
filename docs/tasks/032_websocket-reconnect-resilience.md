@@ -3,7 +3,7 @@
 # [FIX]: WebSocket Reconnect Resilience and Frontend Safety Guards
 
 **Target Repo:** `srat`
-**Status:** 📅 Planned
+**Status:** 🔄 In Progress
 **Issue Link:** _None — discovered in security/performance review 2026-04-28_
 
 ## 🎯 Objective
@@ -25,12 +25,14 @@ Fix four related issues in the frontend WebSocket layer and `App.tsx` command-ou
 ## 📝 Task List
 
 - [ ] Task 1: Add `reconnectAttempt` counter to the `onCacheEntryAdded` scope; implement exponential backoff: `delay = Math.min(base * 2 ** attempt, maxDelay) + Math.random() * 200`; cap at 30s; reset counter on successful `open`
-- [ ] Task 2: Wrap `JSON.parse(data)` in `wsApi.ts` listener in try/catch; log malformed frames with `console.warn` and skip
+- [x] Task 2: Wrap `JSON.parse(data)` in `wsApi.ts` listener in try/catch; log malformed frames with `console.warn` and skip
+  > ✅ **Done** — both the event-frame parse (`wsApi.ts:196-206`) and the command-event parse (`wsApi.ts:239-249`) are wrapped in try/catch with `console.error` and early return.
 - [ ] Task 3: Remove `globalThis.__SRAT_WS_INACTIVITY_MS` and `__SRAT_WS_RECONNECT_MS` configuration channel; expose timing via RTK Query `createApi` options or a `wsConfig` argument to the endpoint instead
 - [ ] Task 4: Replace `mergeCommandLines` in `App.tsx` with a `Map<string, CommandOutputLineSnapshot>` keyed by `${timestamp}:${channel}:${line}`; update `mergeCommandSession` to use the Map; convert back to array only when rendering
 - [ ] Task 5: Fix `isStopped` race in `wsApi.ts` finally block: set `isStopped = true` before `ws?.close()`, and guard `setWsConnected` with `if (!isStopped)`
 - [ ] Task 6: Wrap `JSON.parse(localStorage.getItem(IGNORED_ISSUES_KEY))` in `issueHooks.ts` in try/catch returning `[]`
-- [ ] Task 7: Wrap `JSON.parse(storedVisibility)` in `SystemMetricsAccordion.tsx` in try/catch returning the default value
+- [x] Task 7: Wrap `JSON.parse(storedVisibility)` in `SystemMetricsAccordion.tsx` in try/catch returning the default value
+  > ✅ **Done** — `SystemMetricsAccordion.tsx:81-127` wraps the parse in try/catch (logs and falls back), and the save path is guarded too.
 - [ ] Task 8: Add/extend tests: verify reconnect delay increases on repeated disconnects; verify malformed frame is discarded without Redux state mutation; verify localStorage failure returns default state
 - [ ] Task 9: Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark F-SEC-04, F-SEC-05, F-PERF-04, F-PERF-05, F-REL-02 resolved
 
@@ -75,8 +77,8 @@ try {
 ## 🔗 Code References & TODOs
 
 - [ ] `TODO: frontend/src/store/wsApi.ts:142-150` — add exponential backoff
-- [ ] `TODO: frontend/src/store/wsApi.ts:197` — wrap JSON.parse in try/catch
+- [x] `TODO: frontend/src/store/wsApi.ts:197` — wrap JSON.parse in try/catch (done, both event and command parses guarded)
 - [ ] `TODO: frontend/src/store/wsApi.ts:44-46` — remove globalThis configuration
 - [ ] `TODO: frontend/src/App.tsx:34-57` — optimize mergeCommandLines
 - [ ] `TODO: frontend/src/hooks/issueHooks.ts:8-10` — safe localStorage parse
-- [ ] `TODO: frontend/src/pages/dashboard/metrics/SystemMetricsAccordion.tsx:83` — safe localStorage parse
+- [x] `TODO: frontend/src/pages/dashboard/metrics/SystemMetricsAccordion.tsx:83` — safe localStorage parse (done)

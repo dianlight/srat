@@ -698,4 +698,64 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       expect(toastErrorMock.mock.calls.length).toBe(1);
     });
   });
+
+  it("dismisses toast when problem becomes ignored and allows re-creation", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    const problem = makeProblem({ problem_key: "protected_mode", status: "created" });
+    wsStateRef.current = { heartbeat: { alive: true }, problem };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+    await waitFor(() => {
+      expect(toastWarnMock.mock.calls.length).toBe(1);
+    });
+    expect(getUnreadCount()).toBe(1);
+
+    const ignored = makeProblem({
+      problem_key: "protected_mode",
+      status: "ignored",
+      ignored: true,
+      updated_at: "2026-01-02T00:00:00Z",
+    });
+    wsStateRef.current = { heartbeat: { alive: true }, problem: ignored };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastDismissMock.mock.calls.length).toBe(1);
+    });
+    expect(toastDismissMock.mock.calls[0]).toEqual(["problem-protected_mode"]);
+    expect(getUnreadCount()).toBe(0);
+
+    toastIsActiveMock.mockReturnValue(false);
+    const recreated = makeProblem({
+      problem_key: "protected_mode",
+      status: "created",
+      ignored: false,
+      updated_at: "2026-01-03T00:00:00Z",
+    });
+    wsStateRef.current = { heartbeat: { alive: true }, problem: recreated };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(toastWarnMock.mock.calls.length).toBe(2);
+    });
+    expect(getUnreadCount()).toBe(1);
+  });
 });

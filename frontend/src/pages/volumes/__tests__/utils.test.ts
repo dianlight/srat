@@ -128,6 +128,29 @@ describe("volumes utils", () => {
 		expect(real[0].legacy_device_name).toBe("sdd1");
 	});
 
+	it("extractSuggestedMountPath finds the hint in 406 detail lines", async () => {
+		const { extractSuggestedMountPath } = await import("../utils");
+
+		expect(
+			extractSuggestedMountPath({
+				detail:
+					"Message: path contains invalid characters\nSuggestedPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1\nPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1\n",
+			}),
+		).toBe("/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1");
+	});
+
+	it("extractSuggestedMountPath returns undefined without a hint", async () => {
+		const { extractSuggestedMountPath } = await import("../utils");
+
+		expect(extractSuggestedMountPath({ detail: "Invalid Parameter" })).toBeUndefined();
+		expect(extractSuggestedMountPath(null)).toBeUndefined();
+		expect(
+			extractSuggestedMountPath({
+				errors: [{ message: "SuggestedPath: /mnt/fixed_path" }],
+			}),
+		).toBe("/mnt/fixed_path");
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});

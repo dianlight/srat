@@ -29,7 +29,7 @@ import (
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v90/github"
+	"github.com/google/go-github/v91/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -112,6 +112,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewSmartService,
 			service.NewProblemService,
 			service.NewProblemHABridge,
+			service.NewProtectedModeAlertService,
 			service.NewRepairService,
 			service.NewMDNSService,
 			service.NewAddonConfigWatcherService,
@@ -128,6 +129,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 		),
 		fx.Invoke(func(service.AddonConfigWatcherServiceInterface) {}),
 		fx.Invoke(func(service.ProblemHABridgeInterface) {}),
+		fx.Invoke(func(service.ProtectedModeAlertServiceInterface) {}),
 		fx.Invoke(func(b service.BrokerClientInterface, ctx context.Context) {
 			// Ensure per-install Ed25519 keypair exists in DB (persistent client_id)
 			if _, err := b.GetKeyPair(ctx); err != nil {

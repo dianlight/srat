@@ -208,6 +208,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	autopatch.AutoPatch(api)
 
 	glc := dto.Settings{
+		Hostname:            "test-host",
 		Workgroup:           "pluto-admin",
 		ExperimentalLabMode: true,
 	}
@@ -233,6 +234,46 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler() {
 	*/
 }
 
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_SyncsComponentIssueWhenLabOff() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	status := &dto.HomeAssistantCustomComponentStatus{Installed: false, Connected: false}
+	mock.When(suite.haComponentSvc.GetStatus()).ThenReturn(status, nil)
+	mock.When(suite.haComponentSvc.SyncIssueStatus(mock.Exact(status))).ThenReturn(nil)
+
+	labOff := false
+	rr := api.Put("/settings", dto.Settings{
+		Hostname:            "test-host",
+		Workgroup:           "WORKGROUP",
+		ExperimentalLabMode: labOff,
+	})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+
+	_, _ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).GetStatus()
+	_ = mock.Verify(suite.haComponentSvc, matchers.Times(1)).SyncIssueStatus(mock.Exact(status))
+}
+
+func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_RejectsEmptyHostnameWorkgroup() {
+	_, api := humatest.New(suite.T())
+	suite.api.RegisterSettings(api)
+	autopatch.AutoPatch(api)
+
+	// Empty hostname must be rejected with 422 even though the service layer
+	// stays lenient per #1013 for internal sparse updates.
+	rr := api.Put("/settings", dto.Settings{Hostname: "", Workgroup: "WORKGROUP"})
+	suite.Require().Equal(http.StatusUnprocessableEntity, rr.Code, "Response body: %s", rr.Body.String())
+
+	// Empty workgroup must be rejected with 422 as well.
+	rr = api.Put("/settings", dto.Settings{Hostname: "test-host", Workgroup: ""})
+	suite.Require().Equal(http.StatusUnprocessableEntity, rr.Code, "Response body: %s", rr.Body.String())
+
+	// Valid names are still accepted.
+	rr = api.Put("/settings", dto.Settings{Hostname: "test-host", Workgroup: "WORKGROUP"})
+	suite.Require().Equal(http.StatusOK, rr.Code, "Response body: %s", rr.Body.String())
+}
+
 func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithAllowGuest() {
 	_, api := humatest.New(suite.T())
 	suite.api.RegisterSettings(api)
@@ -241,6 +282,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithAllowGuest() {
 	// Test with AllowGuest enabled
 	allowGuestEnabled := true
 	glc := dto.Settings{
+		Hostname:   "test-host",
 		Workgroup:  "testworkgroup",
 		AllowGuest: &allowGuestEnabled,
 	}
@@ -274,6 +316,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandlerWithSMBoverQUIC() {
 	// Test with SMBoverQUIC enabled
 	smbOverQuicEnabled := true
 	glc := dto.Settings{
+		Hostname:    "test-host",
 		Workgroup:   "testworkgroup",
 		SMBoverQUIC: &smbOverQuicEnabled,
 	}
@@ -305,6 +348,7 @@ func (suite *SettingsHandlerSuite) TestUpdateSettingsHandler_PreservesHASmbPassw
 	autopatch.AutoPatch(api)
 
 	initial := dto.Settings{
+		Hostname:      "test-host",
 		Workgroup:     "initial-wg",
 		HASmbPassword: logfusc.NewSecret("super-secret"),
 	}
@@ -330,6 +374,7 @@ func (suite *SettingsHandlerSuite) TestGetSettingsHandler_DoesNotLeakSecrets() {
 	autopatch.AutoPatch(api)
 
 	initial := dto.Settings{
+		Hostname:      "test-host",
 		Workgroup:     "secret-wg",
 		HASmbPassword: logfusc.NewSecret("top-secret"),
 	}

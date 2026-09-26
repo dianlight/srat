@@ -24,6 +24,8 @@ import type { Problem } from "../store/sratApi";
 interface IssueCardProps {
   issue: Problem;
   onResolve?: (id: number | string) => void;
+  onIgnore?: (issue: Problem) => void;
+  onReenable?: (id: number | string) => void;
   showIgnored?: boolean;
 }
 
@@ -91,12 +93,16 @@ const getSeverityConfig = (severity: string, theme: Theme) => {
 const IssueCard: React.FC<IssueCardProps> = ({
   issue,
   onResolve,
+  onIgnore,
+  onReenable,
   showIgnored,
 }) => {
   const theme = useTheme();
   const { isIssueIgnored } = useIgnoredIssues();
   const resolveKey = issue.problem_key;
-  const isIgnored = isIssueIgnored(resolveKey);
+  // Server-side ignore (issue.ignored) hides the card immediately after the
+  // backend refetch; the local list covers partitions and pre-server states.
+  const isIgnored = isIssueIgnored(resolveKey) || issue.ignored === true;
   const severityConfig = getSeverityConfig(issue.severity || "info", theme);
 
   // When showIgnored is false, show only non-ignored items
@@ -162,7 +168,7 @@ const IssueCard: React.FC<IssueCardProps> = ({
         )}
       </CardContent>
       <CardActions sx={{ justifyContent: "space-between" }}>
-        <Box>
+        <Box sx={{ display: "flex", gap: 1 }}>
           {!issue.ignored && onResolve && (
             <Button
               size="small"
@@ -171,6 +177,20 @@ const IssueCard: React.FC<IssueCardProps> = ({
               onClick={() => onResolve(resolveKey)}
             >
               Resolve
+            </Button>
+          )}
+          {!issue.ignored && onIgnore && (
+            <Button size="small" variant="text" onClick={() => onIgnore(issue)}>
+              Ignore
+            </Button>
+          )}
+          {issue.ignored && onReenable && (
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => onReenable(resolveKey)}
+            >
+              Re-enable
             </Button>
           )}
         </Box>

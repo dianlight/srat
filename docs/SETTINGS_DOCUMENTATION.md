@@ -21,15 +21,22 @@
     - [Telemetry Mode](#telemetry-mode)
   - [Home Assistant Settings](#home-assistant-settings)
     - [Export Stats to Home Assistant](#export-stats-to-home-assistant)
+    - [Advertise to Home Assistant](#advertise-to-home-assistant)
     - [Use Home Assistant mDNS Proxy](#use-home-assistant-mdns-proxy)
     - [Use Network File System for Home Assistant Integration (Experimental)](#use-network-file-system-for-home-assistant-integration-experimental)
     - [Configuration Change Detection](#configuration-change-detection)
+  - [Alerts Settings](#alerts-settings)
+    - [Protected Mode Alert](#protected-mode-alert)
+    - [Add-on Configuration Changed Alert](#add-on-configuration-changed-alert)
+    - [Custom Component Alerts (Lab)](#custom-component-alerts-lab)
+    - [Ignoring Alerts](#ignoring-alerts)
   - [Implementation Details](#implementation-details)
     - [Template Generation](#template-generation)
     - [back-end Storage](#back-end-storage)
     - [API Endpoint](#api-endpoint)
     - [Frontend Integration](#frontend-integration)
     - [Lab Feature Tiers (Alpha/Beta)](#lab-feature-tiers-alphabeta)
+    - [Environment Variables](#environment-variables)
   - [Related Documentation](#related-documentation)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -169,6 +176,15 @@ This document provides detailed information about all SRAT settings available in
 - **Default**: `true`
 - **Description**: When enabled, exports share statistics and Samba server statistics to Home Assistant as entities
 
+### Advertise to Home Assistant
+
+- **Type**: Boolean
+- **Default**: `false`
+- **Description**: When enabled, the add-on advertises itself via Supervisor discovery so the SRAT custom component can discover it automatically. Only enable this after installing the custom component. When disabled (default), no discovery message is sent, so Home Assistant never attempts a `srat` config flow and never logs "Cannot find integration srat" on restart.
+- **Requirements**: The SRAT custom component must be installed for discovery to succeed
+- **UI Location**: Settings → HomeAssistant → Advertise to Home Assistant
+- **API Field**: `enable_ha_discovery` (boolean)
+
 ### Use Home Assistant mDNS Proxy
 
 - **Type**: Boolean
@@ -235,6 +251,52 @@ This document provides detailed information about all SRAT settings available in
   - The system monitors the `/homeassistant/custom_components/srat/manifest.json` file for changes
   - Configuration file changes trigger a `app_config_changed` WebSocket event sent to connected clients
   - Detection is event-driven and low-overhead, using efficient file watching and content hashing
+
+## Alerts Settings
+
+- **UI Location**: Settings → Alerts
+- **Purpose**: Master switches for every alert SRAT raises in the dashboard
+  and in Home Assistant. Turning an alert off dismisses any existing problem
+  and suppresses future ones until re-enabled.
+
+### Protected Mode Alert
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Warns while the add-on runs in protected mode, when no
+  disks can be mounted. Raised as problem `protected_mode` with error
+  severity, so it surfaces as an ignorable Home Assistant repair issue when
+  the custom component is connected, or as a persistent notification
+  otherwise.
+- **API Field**: `alert_protected_mode` (boolean)
+
+### Add-on Configuration Changed Alert
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Enables the `addon_config_changed` problem raised by
+  [Configuration Change Detection](#configuration-change-detection).
+- **API Field**: `alert_addon_config_changed` (boolean)
+
+### Custom Component Alerts (Lab)
+
+- **Type**: Boolean
+- **Default**: `true`
+- **Description**: Enables the `custom_component_restart_required` and
+  `custom_component_missing` problems.
+- **Availability**: Only shown when lab mode is enabled (and hidden in
+  production builds, like all `ha_custom_component` alpha surfaces).
+- **API Field**: `alert_custom_component` (boolean)
+
+### Ignoring Alerts
+
+- Ignoring an alert (dashboard Ignore button, or ignoring the Home Assistant
+  repair issue) suppresses it permanently: the backend stores the ignore and
+  never re-raises the alert, nor notifies Home Assistant about it again.
+- Dismissing/resolving an alert only hides it once; it is raised again on the
+  next reconcile while its condition still holds.
+- Re-enable an ignored alert from Settings → Alerts, or re-arm it from the
+  dashboard (Re-enable button on ignored issues).
 
 ## Implementation Details
 
@@ -308,6 +370,29 @@ Enforcement is server-side only: alpha features are omitted from
 builds, so no frontend environment logic is required for correctness. The
 frontend consumes the registry through the `useLabFeatures()` hook
 (`isAvailable(key)`) to show or hide lab-gated UI.
+
+### Environment Variables
+
+These variables tune back-end behavior outside the settings UI. They are read
+once at startup.
+
+- `SRAT_LOG_BODIES` — re-enables HTTP request/response body logging for
+  debugging (`true` to enable, anything else disables). Bodies are **not**
+  logged by default because they may contain credentials (Samba user
+  passwords, HA mount password) that bypass the `Secret` masking applied at
+  the struct level. Only enable temporarily while troubleshooting, and never
+  in production with real credentials.
+
+  ```bash
+  SRAT_LOG_BODIES=true ./srat-server
+  ```
+
+- `SRAT_MOCK` — enables mock mode for tests (`true`).
+- `SRAT_INGRESS_ORIGIN` — Home Assistant frontend origin trusted for
+  CORS/WebSocket in add-on mode.
+- `SRAT_ALLOWED_ORIGINS` — comma-separated extra trusted origins.
+- `SUPERVISOR_NETWORK` — allowed Supervisor network CIDR/IPs for the Home
+  Assistant IP allowlist.
 
 ## Related Documentation
 

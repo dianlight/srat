@@ -26,3 +26,18 @@ func (m StandardShareNamesMode) MarshalJSON() ([]byte, error) {
 	}
 	return json.Marshal(string(m))
 }
+
+// IsStandardShareHidden reports whether a standard share name is hidden by
+// the mode (issue #1142). Mirrors applyStandardShareNamesPolicy: old hides
+// the new names, new hides the legacy names, both (or unset) hides nothing.
+// Matching is case-sensitive; non-standard names are never hidden.
+func IsStandardShareHidden(name string, mode StandardShareNamesMode) bool {
+	switch mode {
+	case StandardShareNamesModeOld:
+		return name == "local_apps" || name == "app_configs"
+	case StandardShareNamesModeNew:
+		return name == "addons" || name == "addon_configs"
+	default:
+		return false
+	}
+}

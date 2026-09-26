@@ -202,7 +202,8 @@ export const customHandlers: RequestHandler[] = [
 					number: 1,
 					title: `${String(params.repo)} announcement`,
 					html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
-					created_at: "2026-04-01T12:00:00.000Z",
+					created_at: "2026-09-01T12:00:00.000Z",
+					body: "Mock announcement abstract for dashboard news widget.",
 				},
 			]),
 			{
@@ -333,6 +334,111 @@ export const customHandlers: RequestHandler[] = [
 				},
 			},
 		);
+	}),
+
+	// Deterministic volume mount endpoint used by mount dialog/hook tests.
+	http.post(/.*\/api\/volume\/mount(?:\?.*)?$/, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as Record<
+			string,
+			unknown
+		>;
+
+		return new Response(
+			JSON.stringify({
+				path:
+					(typeof body.path === "string" && body.path) || "/mnt/test-volume",
+				type: "HOST",
+				is_mounted: true,
+				is_write_supported: true,
+				fstype:
+					(typeof body.fstype === "string" && body.fstype) || "ext4",
+				is_to_mount_at_startup: false,
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
+	// Deterministic SMART status endpoint used by SmartStatusPanel tests.
+	http.get(/.*\/api\/disk\/.+\/smart\/status(?:\?.*)?$/, () => {
+		return new Response(
+			JSON.stringify({
+				enabled: true,
+				in_standby: false,
+				is_in_danger: false,
+				is_in_warning: false,
+				is_test_passed: true,
+				is_test_running: false,
+				others: {},
+				power_cycle_count: { value: 500 },
+				power_on_hours: { value: 10000 },
+				temperature: { value: 35, min: 20, max: 45 },
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
+	// Deterministic SMART self-test status endpoint used by SmartStatusPanel tests.
+	http.get(/.*\/api\/disk\/.+\/smart\/test(?:\?.*)?$/, () => {
+		return new Response(
+			JSON.stringify({
+				disk_id: "mock-disk",
+				lba_of_first_error: "",
+				percent_complete: 0,
+				running: false,
+				status: "idle",
+				test_type: "none",
+			}),
+			{
+				status: 200,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			},
+		);
+	}),
+
+	// Deterministic SMART operation endpoints (start/abort/enable/disable).
+	http.post(/.*\/api\/disk\/.+\/smart\/test\/start(?:\?.*)?$/, () => {
+		return new Response(JSON.stringify("started"), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
+	http.post(/.*\/api\/disk\/.+\/smart\/test\/abort(?:\?.*)?$/, () => {
+		return new Response(JSON.stringify("aborted"), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
+	http.post(/.*\/api\/disk\/.+\/smart\/enable(?:\?.*)?$/, () => {
+		return new Response(JSON.stringify("enabled"), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
+	http.post(/.*\/api\/disk\/.+\/smart\/disable(?:\?.*)?$/, () => {
+		return new Response(JSON.stringify("disabled"), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
 	}),
 
 	// Example: Settings endpoint mock

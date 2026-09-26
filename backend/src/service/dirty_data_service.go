@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"maps"
+	"slices"
 	"sync"
 	"time"
 
@@ -26,6 +28,11 @@ type DirtyDataService struct {
 	timer            *time.Timer
 	eventBus         events.EventBusInterface
 	timerMutex       sync.Mutex
+	// trackerMu guards dataDirtyTracker: event callbacks arrive on
+	// arbitrary emitter goroutines while the timer callback and HTTP
+	// handlers read it concurrently. Never hold trackerMu and timerMutex
+	// at the same time — snapshot across the boundary instead.
+	trackerMu sync.Mutex
 }
 
 func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.EventBusInterface) DirtyDataServiceInterface {
@@ -57,7 +64,7 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 			return nil
 		})
 		unsubscribe[3] = eventBus.OnAppConfig(func(ctx context.Context, event events.AppConfigEvent) errors.E {
-			slog.DebugContext(ctx, "DirtyDataService received AppConfig event", "config", event.Config)
+			slog.DebugContext(ctx, "DirtyDataService received AppConfig event", "options", appConfigOptionKeys(event.Config))
 			p.setDirtyAppConfig()
 			return nil
 		})
@@ -88,8 +95,27 @@ func NewDirtyDataService(lc fx.Lifecycle, ctx context.Context, eventBus events.E
 	return p
 }
 
+// appConfigOptionKeys returns the sorted names of changed addon options for
+// logging. Values are never logged: the options map is user-controlled and
+// may contain credentials such as the addon password (task 031).
+func appConfigOptionKeys(config *dto.AppConfigUpdateRequest) []string {
+	if config == nil {
+		return nil
+	}
+	return slices.Sorted(maps.Keys(config.Options))
+}
+
+// snapshot returns a copy of the dirty tracker for lock-free use.
+func (p *DirtyDataService) snapshot() dto.DataDirtyTracker {
+	p.trackerMu.Lock()
+	defer p.trackerMu.Unlock()
+	return p.dataDirtyTracker
+}
+
 // start or reset timer for 15 seconds
 func (p *DirtyDataService) startTimer() {
+	snapshot := p.snapshot()
+
 	p.timerMutex.Lock()
 	defer p.timerMutex.Unlock()
 
@@ -99,15 +125,17 @@ func (p *DirtyDataService) startTimer() {
 
 	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
 		Type:             events.EventTypes.START,
-		DataDirtyTracker: p.dataDirtyTracker,
+		DataDirtyTracker: snapshot,
 	})
 
 	p.timer = time.AfterFunc(5*time.Second, func() {
+		snapshot := p.snapshot()
+
 		p.timerMutex.Lock()
 		defer p.timerMutex.Unlock()
 		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
 			Type:             events.EventTypes.RESTART,
-			DataDirtyTracker: p.dataDirtyTracker,
+			DataDirtyTracker: snapshot,
 		})
 		p.timer = nil
 	})
@@ -115,6 +143,8 @@ func (p *DirtyDataService) startTimer() {
 
 // stop the timer
 func (p *DirtyDataService) stopTimer() {
+	p.timerMutex.Lock()
+	defer p.timerMutex.Unlock()
 	if p.timer != nil {
 		p.timer.Stop()
 		p.timer = nil
@@ -122,27 +152,37 @@ func (p *DirtyDataService) stopTimer() {
 }
 
 func (p *DirtyDataService) setDirtyShares() {
+	p.trackerMu.Lock()
 	p.dataDirtyTracker.Shares = true
+	p.trackerMu.Unlock()
 	p.startTimer()
 }
 
 func (p *DirtyDataService) setDirtyUsers() {
-	slog.DebugContext(p.ctx, "DirtyDataService setDirtyUsers triggered", "tracker", p.dataDirtyTracker)
+	p.trackerMu.Lock()
 	p.dataDirtyTracker.Users = true
+	snapshot := p.dataDirtyTracker
+	p.trackerMu.Unlock()
+	slog.DebugContext(p.ctx, "DirtyDataService setDirtyUsers triggered", "tracker", snapshot)
 	p.startTimer()
 }
 
 func (p *DirtyDataService) setDirtySettings() {
+	p.trackerMu.Lock()
 	p.dataDirtyTracker.Settings = true
+	p.trackerMu.Unlock()
 	p.startTimer()
 }
 
 func (p *DirtyDataService) setDirtyAppConfig() {
+	p.trackerMu.Lock()
+	defer p.trackerMu.Unlock()
 	p.dataDirtyTracker.AppConfig = true
 }
 
 func (p *DirtyDataService) hasManagedDirtyData() bool {
-	return p.dataDirtyTracker.Shares || p.dataDirtyTracker.Users || p.dataDirtyTracker.Settings
+	snapshot := p.snapshot()
+	return snapshot.Shares || snapshot.Users || snapshot.Settings
 }
 
 // GetDirtyDataTracker returns the dirty data tracker
@@ -150,12 +190,15 @@ func (p *DirtyDataService) GetDirtyDataTracker() dto.DataDirtyTracker {
 	if p.hasManagedDirtyData() && !p.IsTimerRunning() {
 		p.startTimer()
 	}
-	return p.dataDirtyTracker
+	return p.snapshot()
 }
 
 // Reset all dirty status to false
 func (p *DirtyDataService) resetDirtyStatus() {
+	p.trackerMu.Lock()
 	p.dataDirtyTracker = dto.DataDirtyTracker{}
+	snapshot := p.dataDirtyTracker
+	p.trackerMu.Unlock()
 	p.stopTimer()
 	// Emit clean tracker so Broadcaster can update its deduplication hash
 	// and heartbeat correctly reflects clean state. Without this, the next
@@ -164,7 +207,7 @@ func (p *DirtyDataService) resetDirtyStatus() {
 	if p.eventBus != nil {
 		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
 			Type:             events.EventTypes.CLEAN,
-			DataDirtyTracker: p.dataDirtyTracker,
+			DataDirtyTracker: snapshot,
 		})
 	}
 }
@@ -175,9 +218,12 @@ func (p *DirtyDataService) ResetDirtyDataTracker() {
 
 // check if timer is running
 func (p *DirtyDataService) IsTimerRunning() bool {
+	p.timerMutex.Lock()
+	defer p.timerMutex.Unlock()
 	return p.timer != nil
 }
 
 func (p *DirtyDataService) IsClean() bool {
-	return !p.dataDirtyTracker.Shares && !p.dataDirtyTracker.Users && !p.dataDirtyTracker.Settings && !p.dataDirtyTracker.AppConfig && p.timer == nil
+	snapshot := p.snapshot()
+	return !snapshot.Shares && !snapshot.Users && !snapshot.Settings && !snapshot.AppConfig && !p.IsTimerRunning()
 }

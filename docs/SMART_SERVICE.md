@@ -104,11 +104,10 @@ C-API). The bindings module is
 `smartmon_config.h` must be copied next to the SDK headers
 (`/usr/local/include/smartmon/`).
 
-The Direct SMART mode is visible in the UI only when all three conditions are met:
-
-1. The binary was compiled with `-tags smartlib`, **and**
-2. `libsmartmon_go.so` is detected at startup (`ApiCtx.LibSmartAvailable == true`), **and**
-3. Experimental Lab Mode is enabled in Settings.
+The active SMART backend is detected at startup, exposed read-only as
+`smart_backend` in `GET /api/capabilities` (`direct` when the lib backend is
+loaded, otherwise `legacy`), and shown in Settings → General next to the
+SMART toggle. The `smart_on` setting is the only writable SMART control.
 
 ## Default Variant Policy (Addon Consumption)
 
@@ -175,15 +174,15 @@ The watcher logs (`docker logs -f app_local_sambanas2`) will show
 **Verification**:
 
 ```bash
-curl http://192.168.0.68:3000/api/capabilities   # lib_smart_available: true
-curl http://192.168.0.68:3000/api/settings       # smart_mode: direct, experimental_lab_mode: true
+curl http://192.168.0.68:3000/api/capabilities   # lib_smart_available: true, smart_backend: direct
+curl http://192.168.0.68:3000/api/settings       # smart_on: true
 docker logs app_local_sambanas2 --since 5m | grep -i "SMART lib backend"
 # → "SMART lib backend loaded (direct mode available)"
 ```
 
-The UI (Settings → General → SMART Mode) then exposes the `Direct (lib backend)`
-option. Set `smart_mode` to `direct` and `experimental_lab_mode` to `true` via
-`PUT /api/settings` (full-body update) to select it.
+The UI (Settings → General → SMART) shows a SMART on/off toggle plus the
+read-only active backend. Ensure `smart_on` is `true` via `PUT /api/settings`
+(full-body update) to keep SMART polling enabled.
 
 **Remote-environment gotchas** (observed on the 192.168.0.68 HAOS host):
 

@@ -46,7 +46,7 @@ func (c *ConfigToDtoConverterImpl) ConfigToSettings(source config.Config, target
 	}
 	pBool4 := source.SMBoverQUIC
 	target.SMBoverQUIC = &pBool4
-	target.SmartMode = configSmartModeFromConfig(source)
+	target.SmartOn = configSmartOnFromConfig(source)
 	pBool5 := source.MDNSRegistration
 	target.MDNSRegistration = &pBool5
 	pBool6 := source.UseComponentMDNSProxy

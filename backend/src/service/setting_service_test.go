@@ -297,13 +297,27 @@ func (suite *SettingServiceSuite) TestUpdateSettings_SaveAndLoad_AllFieldTypes()
 			},
 		},
 		{
-			name: "SmartMode_None",
+			name: "SmartOn_False",
 			settingsFactory: func() dto.Settings {
-				return dto.Settings{SmartMode: dto.SmartModes.SMARTMODENONE}
+				return dto.Settings{SmartOn: new(false)}
 			},
 			verifyFunc: func(loaded *dto.Settings, err error) {
 				suite.Require().NoError(err)
-				suite.Equal(dto.SmartModes.SMARTMODENONE, loaded.SmartMode)
+				suite.NotNil(loaded.SmartOn)
+				suite.False(*loaded.SmartOn)
+				suite.False(loaded.SmartEnabled())
+			},
+		},
+		{
+			name: "SmartOn_True",
+			settingsFactory: func() dto.Settings {
+				return dto.Settings{SmartOn: new(true)}
+			},
+			verifyFunc: func(loaded *dto.Settings, err error) {
+				suite.Require().NoError(err)
+				suite.NotNil(loaded.SmartOn)
+				suite.True(*loaded.SmartOn)
+				suite.True(loaded.SmartEnabled())
 			},
 		},
 		{
@@ -582,6 +596,37 @@ func (suite *SettingServiceSuite) TestUpdateSettings_NilPointerFields() {
 			suite.TearDownTest()
 			suite.SetupTest()
 			suite.testFieldUpdateAndLoad(tc.name, tc.settingsFactory, tc.verifyFunc)
+		})
+	}
+}
+
+func (suite *SettingServiceSuite) TestValidateSettings_HostnameWorkgroupLeniency() {
+	testCases := []struct {
+		name          string
+		hostname      string
+		workgroup     string
+		expectError   bool
+		errorContains string
+	}{
+		{name: "Valid", hostname: "homeassistant", workgroup: "WORKGROUP", expectError: false},
+		// #1013: empty values are defaulted (no error) at the service layer.
+		// The API boundary (PUT/PATCH /settings) additionally rejects them with 422.
+		{name: "EmptyHostnameLenient", hostname: "", workgroup: "WORKGROUP", expectError: false},
+		{name: "EmptyWorkgroupLenient", hostname: "homeassistant", workgroup: "", expectError: false},
+		{name: "InvalidHostname", hostname: "-bad-", workgroup: "WORKGROUP", expectError: true, errorContains: "hostname"},
+		{name: "InvalidWorkgroup", hostname: "homeassistant", workgroup: "bad workgroup!", expectError: true, errorContains: "workgroup"},
+	}
+
+	for _, tc := range testCases {
+		suite.Run(tc.name, func() {
+			settings := dto.Settings{Hostname: tc.hostname, Workgroup: tc.workgroup}
+			err := suite.settingService.UpdateSettings(&settings)
+			if tc.expectError {
+				suite.Require().Error(err, "expected validation error for hostname=%q workgroup=%q", tc.hostname, tc.workgroup)
+				suite.Contains(strings.ToLower(err.Error()), tc.errorContains)
+			} else {
+				suite.Require().NoError(err)
+			}
 		})
 	}
 }

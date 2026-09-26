@@ -49,13 +49,12 @@ type WebSocketHandlerParams struct {
 
 func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 	// Instantiate a WebSocket broker
+	state := p.State
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
-			// Allow connections from any origin in development
-			// In production, you should check the origin
-			return true
+			return checkWebSocketOrigin(state, r)
 		},
 	}
 
@@ -74,6 +73,18 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 		eventMap:       dto.WebEventMap,
 		ObjectMap:      reverseMap,
 	}
+}
+
+// checkWebSocketOrigin enforces the shared dto.IsOriginAllowed policy (same
+// normalization as CORS). Dev mode stays permissive; SecureMode allows empty
+// Origin (non-browser HA component) and exact matches against IngressOrigin
+// plus AllowedOrigins.
+func checkWebSocketOrigin(state *dto.ContextState, r *http.Request) bool {
+	origin := ""
+	if r != nil {
+		origin = r.Header.Get("Origin")
+	}
+	return dto.IsOriginAllowed(state, origin)
 }
 
 func reverseMap(m map[string]any) map[string]string {
@@ -161,6 +172,16 @@ func (self *WebSocketHandler) setHomeAssistantComponentConnection(message dto.He
 		HAVersion:   message.HAVersion,
 		EntryID:     message.EntryID,
 		ConnectedAt: time.Now(),
+	}
+
+	if message.Component == dto.HomeAssistantComponentSRAT && self.haComponentSvc != nil {
+		// Fresh helo from the SRAT component: when the connected version
+		// matches the installed files, Home Assistant restarted after the
+		// install/upgrade and the restart reminder is stale. Best-effort
+		// only; reconciliation must never fail the handshake.
+		if err := self.haComponentSvc.NotifyComponentConnected(self.ctx); err != nil {
+			slog.WarnContext(self.ctx, "Failed to reconcile restart-required problem after helo", "error", err)
+		}
 	}
 
 	if self.repairService != nil {
@@ -291,6 +312,14 @@ func (self *WebSocketHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 
 	conn, err := self.upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		// A failed handshake means the peer is not speaking WebSocket
+		// (health probes or plain-HTTP fetches of /ws). The upgrader already
+		// answered with an HTTP error, so this is client-caused noise, not a
+		// server fault: log at debug without a stack trace.
+		if _, ok := errors.AsType[websocket.HandshakeError](err); ok {
+			tlog.DebugContext(self.ctx, "Ignoring non-WebSocket request to /ws", "remote", r.RemoteAddr, "error", err)
+			return
+		}
 		slog.ErrorContext(self.ctx, "Failed to upgrade connection to WebSocket", "error", err)
 		return
 	}

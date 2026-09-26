@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // HomeAssistantComponentConnection stores runtime metadata about the currently
 // connected SRAT Home Assistant custom component.
@@ -40,4 +43,25 @@ type ContextState struct {
 	HAWsComponent             *HomeAssistantComponentConnection // Connected Home Assistant custom component metadata for the active /ws session
 	LibSmartAvailable         bool                              // Whether the lib SMART backend (libsmartmon_go.so) is available at runtime
 	LibSmartUnavailableReason string                            // Reason why the lib SMART backend is unavailable (empty when LibSmartAvailable is true)
+	// IngressOrigin is the Home Assistant frontend origin trusted for
+	// CORS/WebSocket checks in addon mode (empty means dev permissive mode).
+	IngressOrigin string
+	// AllowedOrigins lists extra trusted origins for CORS and WebSocket
+	// CheckOrigin, e.g. additional HA URLs.
+	AllowedOrigins []string
+	// SupervisorAllowedIPs lists extra IPs/CIDRs trusted by the HA
+	// middleware on top of the built-in loopback and Supervisor defaults.
+	SupervisorAllowedIPs []string
+}
+
+// ParseCommaList splits a comma-separated flag/env value into trimmed,
+// non-empty items. It returns nil for empty input.
+func ParseCommaList(s string) []string {
+	var out []string
+	for item := range strings.SplitSeq(s, ",") {
+		if trimmed := strings.TrimSpace(item); trimmed != "" {
+			out = append(out, trimmed)
+		}
+	}
+	return out
 }

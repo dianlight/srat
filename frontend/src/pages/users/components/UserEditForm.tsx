@@ -21,6 +21,10 @@ interface UserEditFormProps {
   onCancel?: () => void;
   disabled?: boolean;
   availableShares?: string[];
+  /** Names of disabled shares: rendered muted to separate them from enabled ones. */
+  disabledShares?: string[];
+  /** Names of shares hidden by the standard_share_names preference: excluded from options. */
+  hiddenShares?: string[];
 }
 
 export function UserEditForm({
@@ -29,6 +33,8 @@ export function UserEditForm({
   onCancel,
   disabled = false,
   availableShares = [],
+  disabledShares = [],
+  hiddenShares = [],
 }: UserEditFormProps) {
   const isNewUser = userData?.doCreate === true;
   const isAdmin = userData?.is_admin === true;
@@ -53,6 +59,15 @@ export function UserEditForm({
   const selectedRwShares = watch("rw_shares") || [];
   const selectedRoShares = watch("ro_shares") || [];
 
+  const hiddenShareNames = new Set(hiddenShares);
+  const disabledShareNames = new Set(disabledShares);
+  const isShareDisabled = (share: string) => disabledShareNames.has(share);
+  // Enforce the standard_share_names preference inside the form as well:
+  // hidden old/new internal names are never offered as options.
+  const visibleShares = availableShares.filter(
+    (share) => !hiddenShareNames.has(share),
+  );
+
   const renderShareTags = (
     values: string[],
     getTagProps: (params: { index: number }) => Record<string, unknown>,
@@ -62,17 +77,37 @@ export function UserEditForm({
       .filter((share) => Boolean(share))
       .map((share, index) => {
         const { key, ...tagProps } = getTagProps({ index });
+        const shareDisabled = isShareDisabled(share);
         return (
           <Chip
             key={key as React.Key}
-            label={share}
+            label={shareDisabled ? `${share} (disabled)` : share}
             size="small"
-            color={color}
+            color={shareDisabled ? "default" : color}
             variant="outlined"
+            sx={shareDisabled ? { opacity: 0.7 } : undefined}
             {...tagProps}
           />
         );
       });
+
+  const renderShareOption = (
+    props: React.HTMLAttributes<HTMLLIElement> & { key: React.Key },
+    option: string,
+  ) => {
+    const { key, ...optionProps } = props;
+    const optionDisabled = isShareDisabled(option);
+    return (
+      <li key={key} {...optionProps}>
+        <Typography
+          variant="body2"
+          color={optionDisabled ? "text.disabled" : "default"}
+        >
+          {optionDisabled ? `${option} (disabled)` : option}
+        </Typography>
+      </li>
+    );
+  };
 
   const handleFormSubmit = (data: UsersProps) => {
     const uniqueRwShares = Array.from(
@@ -204,7 +239,7 @@ export function UserEditForm({
               multiple
               name="rw_shares"
               label="Read/Write Shares"
-              options={availableShares}
+              options={visibleShares}
               control={control}
               autocompleteProps={{
                 disabled,
@@ -212,6 +247,7 @@ export function UserEditForm({
                 limitTags: 5,
                 getOptionDisabled: (option) =>
                   selectedRoShares.includes(option),
+                renderOption: renderShareOption,
                 renderValue: (values, getTagProps) =>
                   renderShareTags(values as string[], getTagProps, "success"),
               }}
@@ -236,7 +272,7 @@ export function UserEditForm({
               multiple
               name="ro_shares"
               label="Read-Only Shares"
-              options={availableShares}
+              options={visibleShares}
               control={control}
               autocompleteProps={{
                 disabled,
@@ -244,6 +280,7 @@ export function UserEditForm({
                 limitTags: 5,
                 getOptionDisabled: (option) =>
                   selectedRwShares.includes(option),
+                renderOption: renderShareOption,
                 renderValue: (values, getTagProps) =>
                   renderShareTags(values as string[], getTagProps, "secondary"),
               }}

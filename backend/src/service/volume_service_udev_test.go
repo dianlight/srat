@@ -5,17 +5,20 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/darwinstubs/mount/loop"
+	"github.com/dianlight/srat/repository"
+	"github.com/dianlight/srat/service/volume"
+	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type fakeVolumeMounter struct {
@@ -58,51 +61,85 @@ func (f *failingCacheWriteMounter) Unmount(md *dto.MountPointData, force bool) e
 	return nil
 }
 
-func newTestVolumeService(t testing.TB, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
+// wireVolumeComponents builds the volume subpackage collaborators for a
+// test facade. Every helper-constructed facade gets a real temp-file SQLite
+// repository so Persist/Load paths behave like production.
+func wireVolumeComponents(svc *VolumeService, db *gorm.DB, mounter volume.Mounter) {
+	mountRepo := repository.NewMountPointPathRepository(db)
+	svc.repo = volume.NewMountRepository(svc.ctx, mountRepo, svc.disks, svc.eventBus)
+	svc.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx:        svc.ctx,
+		Disks:      svc.disks,
+		Filesystem: svc.fs_service,
+		Mounter:    mounter,
+		EventBus:   svc.eventBus,
+		Repo:       mountRepo,
+		ProtectedMode: func() bool {
+			return svc.state.ProtectedMode
+		},
+		Volumes: func() ([]*dto.Disk, errors.E) {
+			return svc.GetVolumesData()
+		},
+	})
+	svc.udevHandler = volume.NewUdevHandler(volume.HandlerParams{
+		Ctx:          svc.ctx,
+		Disks:        svc.disks,
+		Hardware:     svc.hardwareClient,
+		EventBus:     svc.eventBus,
+		Repo:         svc.repo,
+		Orchestrator: svc.orchestrator,
+		Filesystem:   svc.fs_service,
+		Refresh:      svc.getVolumesData,
+		ResetRecheck: svc.resetProvisionalRecheckBudget,
+		ProcfsMounts: func() ([]*procfs.MountInfo, error) {
+			return svc.procfsGetMounts()
+		},
+	})
+}
+
+func newTestVolumeService(t testing.TB, disks *dto.DiskMap, mounter volume.Mounter) *VolumeService {
 	t.Helper()
 
 	ctx := context.Background()
 	eventBus := events.NewEventBus(ctx)
 	fsService := NewFilesystemService(ctx, func() {}, eventBus)
 
-	return &VolumeService{
+	svc := &VolumeService{
 		ctx:        ctx,
 		state:      &dto.ContextState{},
 		fs_service: fsService,
-		mounter:    mounter,
 		eventBus:   eventBus,
 		disks:      disks,
-
-		automountBackoffBase: 2 * time.Second,
-		maxAutomountAttempts: 5,
-		automountRetries:     map[string]automountRetryState{},
 	}
-}
 
-// newAutomountRetryVolumeService wires a VolumeService with a real database
-// (persistMountPoint requires it) and subscribes handleMountPointEvent to the
-// event bus, mirroring the NewVolumeService wiring. The database is a unique
-// temp-file SQLite DB per test so rows persisted by one test never leak into
-// another test's connection (the package's shared-memory DSN is process-wide).
-func newAutomountRetryVolumeService(t testing.TB, disks *dto.DiskMap, mounter VolumeMountManagerInterface) *VolumeService {
-	t.Helper()
-	svc := newTestVolumeService(t, disks, mounter)
-
-	dbPath := filepath.Join(t.TempDir(), "test.db")
-
+	// Real database: HandleMountPointEvent persists every event it sees, so
+	// automount tests need working storage. A unique temp-file DB per test
+	// keeps rows from leaking across tests sharing the process.
+	var db *gorm.DB
 	app := fxtest.New(t,
 		fx.Provide(
 			func() *dto.ContextState {
-				return &dto.ContextState{DatabasePath: dbPath}
+				return &dto.ContextState{DatabasePath: filepath.Join(t.TempDir(), "test.db")}
 			},
 			dbom.NewDB,
 		),
-		fx.Populate(&svc.db),
+		fx.Populate(&db),
 	)
 	app.RequireStart()
 	t.Cleanup(func() { app.RequireStop() })
 
-	unsub := svc.eventBus.OnMountPoint(svc.handleMountPointEvent)
+	wireVolumeComponents(svc, db, mounter)
+	return svc
+}
+
+// newAutomountRetryVolumeService wires a VolumeService with a real database
+// (HandleMountPointEvent persists every event it sees) and subscribes the
+// mount point handler to the event bus, mirroring the NewVolumeService wiring.
+func newAutomountRetryVolumeService(t testing.TB, disks *dto.DiskMap, mounter volume.Mounter) *VolumeService {
+	t.Helper()
+	svc := newTestVolumeService(t, disks, mounter)
+
+	unsub := svc.eventBus.OnMountPoint(svc.udevHandler.HandleMountPointEvent)
 	t.Cleanup(unsub)
 
 	return svc
@@ -146,7 +183,7 @@ func TestHandlePartitionUdevAddEvent_RetriesStartupMount(t *testing.T) {
 	mounter := &fakeVolumeMounter{}
 	svc := newTestVolumeService(t, disks, mounter)
 
-	handled := svc.handlePartitionUdevAddEvent(devName)
+	handled := svc.udevHandler.HandlePartitionUdevAddEvent(devName)
 
 	assert.True(t, handled)
 	assert.Equal(t, 1, mounter.mountCalls)
@@ -182,7 +219,7 @@ func TestHandlePartitionUdevRemoveEvent_UnmountsAndEvictsPartition(t *testing.T)
 	mounter := &fakeVolumeMounter{}
 	svc := newTestVolumeService(t, disks, mounter)
 
-	svc.handlePartitionUdevRemoveEvent(devName)
+	svc.udevHandler.HandlePartitionUdevRemoveEvent(devName)
 
 	assert.Equal(t, 1, mounter.unmountCalls)
 	_, found := disks.GetPartition(diskID, partitionID)
@@ -233,14 +270,7 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 		EventBus:  eventBus,
 	})
 
-	svc := &VolumeService{
-		ctx:        ctx,
-		state:      &dto.ContextState{},
-		fs_service: fsService,
-		mounter:    mounter,
-		eventBus:   eventBus,
-		disks:      disks,
-	}
+	svc := newTestVolumeService(t, disks, mounter)
 
 	mountData := dto.MountPointData{
 		Path:        mountPath,
@@ -254,7 +284,7 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 
 	require.NoError(t, svc.MountVolume(&mountData))
 	t.Cleanup(func() {
-		_ = svc.unmountVolume(&mountData, true)
+		_ = svc.orchestrator.UnmountVolume(mountPath, true)
 	})
 
 	cachedMount, ok := disks.GetMountPoint(diskID, partitionID, mountPath)
@@ -262,7 +292,7 @@ func TestHandlePartitionUdevRemoveEvent_LoopbackExt4EvictsCache(t *testing.T) {
 	require.NotNil(t, cachedMount)
 	require.True(t, cachedMount.IsMounted)
 
-	svc.handlePartitionUdevRemoveEvent(devName)
+	svc.udevHandler.HandlePartitionUdevRemoveEvent(devName)
 
 	_, found := disks.GetPartition(diskID, partitionID)
 	assert.False(t, found)
@@ -319,7 +349,7 @@ func TestHandleMountPointEvent_AutomountRetryBounded(t *testing.T) {
 
 	// Zero the backoff so every emitted event may attempt a mount; the
 	// attempt budget alone must bound the number of Mount calls.
-	svc.automountBackoffBase = 0
+	svc.orchestrator.SetAutomountTuning(0, 5)
 
 	// Emit the same stale ADD event repeatedly; the event bus emits
 	// synchronously, so this mirrors the re-entrant event loop.
@@ -425,11 +455,10 @@ func TestHandlePartitionUdevAddEvent_AutomountRetryBounded(t *testing.T) {
 
 	mounter := &failingCacheWriteMounter{}
 	svc := newTestVolumeService(t, disks, mounter)
-	svc.automountBackoffBase = 0
-	svc.maxAutomountAttempts = 5
+	svc.orchestrator.SetAutomountTuning(0, 5)
 
 	for i := 0; i < 20; i++ {
-		svc.handlePartitionUdevAddEvent(devName)
+		svc.udevHandler.HandlePartitionUdevAddEvent(devName)
 	}
 
 	assert.Equal(t, 5, mounter.mountCalls, "udev automount retries must be bounded by the retry budget")

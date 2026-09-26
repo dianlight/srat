@@ -302,12 +302,35 @@ func (self *SettingsHanler) UpdateSettings(ctx context.Context, input *struct {
 }) (*struct{ Body dto.Settings }, error) {
 	config := input.Body
 
+	// Hostname/workgroup are required at the API boundary (the service layer
+	// stays lenient per #1013 for internal sparse updates). This also covers
+	// autopatch-PATCH, which merges fragments into the stored settings first.
+	if config.Hostname == "" {
+		err := tozderrors.WithMessagef(dto.ErrorInvalidParameter, "hostname is required")
+		return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
+	}
+	if config.Workgroup == "" {
+		err := tozderrors.WithMessagef(dto.ErrorInvalidParameter, "workgroup is required")
+		return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
+	}
+
 	err := self.settingService.UpdateSettings(&config)
 	if err != nil {
 		if tozderrors.Is(err, dto.ErrorInvalidParameter) {
 			return nil, huma.Error422UnprocessableEntity("Invalid settings", err)
 		}
 		return nil, huma.Error500InternalServerError("Failed to update settings: %v", err)
+	}
+
+	// Lab mode or the custom-component alert toggle may have been switched
+	// off: dismiss stale custom-component problems so toasts and HA
+	// notifications stay silent. Cleanup-only: with the alerts disabled
+	// SyncIssueStatus dismisses but never raises.
+	if self.haComponentSvc != nil &&
+		!service.AlertEnabledForKey(&config, service.AlertProblemKeyCustomComponentMissing) {
+		if status, statusErr := self.haComponentSvc.GetStatus(); statusErr == nil && status != nil {
+			_ = self.haComponentSvc.SyncIssueStatus(status)
+		}
 	}
 
 	return &struct{ Body dto.Settings }{Body: config}, nil
