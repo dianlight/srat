@@ -28,6 +28,12 @@ frontend/package-lock.json
 backend/src/config/metadata_constants.go
 backend/src/internal/updatekey/update-public-key.key
 backend/src/service/filesystem/example/example
+
+# OpenCode model selection cache
+.opencode/.modelselect-cache/
+
+# OpenCode model selection cache
+.opencode/.modelselect-cache/
 backend/src/internal/updatekey/update-private-key.key
 backend/src/internal/assets/srat.zip
 

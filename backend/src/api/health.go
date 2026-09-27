@@ -13,6 +13,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/apps"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
@@ -34,6 +35,39 @@ type HealthHanler struct {
 	diskStatsService    service.DiskStatsService
 	networkStatsService service.NetworkStatsService
 	haRootService       service.HaRootServiceInterface
+	callTimeouts        healthCallTimeouts
+}
+
+// healthCallTimeouts bounds the blocking service calls made from the run loop
+// so that a single wedged service can never stop heartbeat broadcasts
+// (issue #1252).
+type healthCallTimeouts struct {
+	// heavy bounds addon stats (HTTP to the supervisor), samba process
+	// enumeration and smbstatus subprocess calls. Default 10s.
+	heavy time.Duration
+	// light bounds disk/network stats and the dirty tracker, which mostly
+	// block on in-process mutexes. Default 5s.
+	light time.Duration
+}
+
+func defaultHealthCallTimeouts() healthCallTimeouts {
+	return healthCallTimeouts{
+		heavy: 10 * time.Second,
+		light: 5 * time.Second,
+	}
+}
+
+// withDefaults fills zero/negative values with the defaults so handlers
+// constructed without explicit timeouts (e.g. tests) still get bounded calls.
+func (t healthCallTimeouts) withDefaults() healthCallTimeouts {
+	d := defaultHealthCallTimeouts()
+	if t.heavy <= 0 {
+		t.heavy = d.heavy
+	}
+	if t.light <= 0 {
+		t.light = d.light
+	}
+	return t
 }
 
 type HealthHandlerParams struct {
@@ -75,6 +109,33 @@ func logHealthFetchError(ctx context.Context, component string, err error) {
 	tlog.DebugContext(ctx, "Warning getting "+component+" for health ping", "err", err)
 }
 
+// callWithTimeout runs fn in a goroutine bounded by timeout so that a service
+// call blocking indefinitely cannot wedge the health run loop (issue #1252).
+// It returns true when fn finished within the timeout, false otherwise.
+//
+// On timeout the abandoned goroutine may still complete later, so fn must only
+// write to call-local state; callers apply results to the handler after a true
+// return and keep the previous values on false.
+func (self *HealthHanler) callWithTimeout(timeout time.Duration, component string, fn func()) bool {
+	ctx, cancel := context.WithTimeout(self.ctx, timeout)
+	defer cancel()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		fn()
+	}()
+	select {
+	case <-done:
+		return true
+	case <-ctx.Done():
+		if self.ctx.Err() == nil {
+			tlog.WarnContext(self.ctx, "Health check call timed out; skipping update",
+				"component", component, "timeout", timeout)
+		}
+		return false
+	}
+}
+
 func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler {
 	_healthHanlerIntanceMutex.Lock()
 	defer _healthHanlerIntanceMutex.Unlock()
@@ -101,6 +162,7 @@ func NewHealthHandler(lc fx.Lifecycle, param HealthHandlerParams) *HealthHanler 
 	} else {
 		p.OutputEventsInterleave = 5 * time.Second
 	}
+	p.callTimeouts = defaultHealthCallTimeouts()
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
@@ -143,15 +205,24 @@ func (self *HealthHanler) HealthStatusHandler(ctx context.Context, input *struct
 	return &struct{ Body bool }{Body: self.Alive}, nil
 }
 
-// checkSamba checks the status of the Samba process using the sambaService.
-// If the Samba process is running, it converts the process information to a
-// SambaProcessStatus DTO and updates the HealthPing.SambaProcessStatus field.
-// If the Samba process is not running or an error occurs, it sets the
-// HealthPing.SambaProcessStatus.Pid to -1.
-func (self *HealthHanler) checkSamba() {
-	sambaProcess, err := self.sambaService.GetServerProcesses()
-	if err != nil {
-		tlog.ErrorContext(self.ctx, "Error reading processes", "err", err)
+// checkSamba checks the status of the Samba process using the sambaService,
+// bounded by timeout so a hung process scan cannot wedge the run loop
+// (issue #1252). It updates the HealthPing.SambaProcessStatus field only when
+// a fresh, non-nil result arrives within the timeout; on error, nil result or
+// timeout the previous value is kept.
+func (self *HealthHanler) checkSamba(timeout time.Duration) {
+	var sambaProcess *dto.ServerProcessStatus
+	var fetchErr errors.E
+	if !self.callWithTimeout(timeout, "samba process status", func() {
+		sambaProcess, fetchErr = self.sambaService.GetServerProcesses()
+		if fetchErr != nil {
+			tlog.ErrorContext(self.ctx, "Error reading processes", "err", fetchErr)
+		}
+	}) {
+		return
+	}
+	if sambaProcess == nil {
+		return
 	}
 	self.SambaProcessStatus = *sambaProcess
 }
@@ -168,8 +239,13 @@ func (self *HealthHanler) checkSamba() {
 // 4. Updates the AliveTime with the current time in milliseconds.
 // 5. Emits a health message using the EventEmitter and logs any errors.
 // 6. Sleeps for the duration specified by OutputEventsInterleave before repeating.
+//
+// Every service call is bounded by callTimeouts (issue #1252): a call that
+// exceeds its budget is abandoned and the loop continues with the previous
+// value for that field, so heartbeat broadcasts never stop.
 func (self *HealthHanler) run() error {
 	var ticks int
+	timeouts := self.callTimeouts.withDefaults()
 	for {
 		select {
 		case <-self.ctx.Done():
@@ -187,48 +263,73 @@ func (self *HealthHanler) run() error {
 			isHeavyTick := (ticks == 0)
 			ticks = (ticks + 1) % 12
 
-			stats, err := self.addonsService.GetStats()
-			if err != nil {
-				slog.WarnContext(self.ctx, "Warning getting addon stats for health ping", "err", err)
-				self.AddonStats = nil // Clear stats on error
-			} else {
-				self.AddonStats = stats
+			var stats *apps.AppStatsData
+			if self.callWithTimeout(timeouts.heavy, "addon stats", func() {
+				var err errors.E
+				stats, err = self.addonsService.GetStats()
+				if err != nil {
+					slog.WarnContext(self.ctx, "Warning getting addon stats for health ping", "err", err)
+					stats = nil
+				}
+			}) {
+				self.AddonStats = stats // Clear stats on error, keep previous on timeout
 			}
 			if isHeavyTick {
-				self.checkSamba()
+				self.checkSamba(timeouts.heavy)
 			}
-			diskStats, err := self.diskStatsService.GetDiskStats()
-			if err != nil {
-				logHealthFetchError(self.ctx, "disk stats", err)
-				self.DiskHealth = nil
-			} else {
+			var diskStats *dto.DiskHealth
+			if self.callWithTimeout(timeouts.light, "disk stats", func() {
+				var err errors.E
+				diskStats, err = self.diskStatsService.GetDiskStats()
+				if err != nil {
+					logHealthFetchError(self.ctx, "disk stats", err)
+					diskStats = nil
+				}
+			}) {
 				self.DiskHealth = diskStats
-				// Also broadcast the disk health separately for Home Assistant integration
-				self.broadcaster.BroadcastMessage(*diskStats)
+				if diskStats != nil {
+					// Also broadcast the disk health separately for Home Assistant integration
+					self.broadcaster.BroadcastMessage(*diskStats)
+				}
 			}
-			netStats, err := self.networkStatsService.GetNetworkStats()
-			if err != nil {
-				slog.WarnContext(self.ctx, "Warning getting network stats for health ping", "err", err)
-				self.NetworkHealth = nil
-			} else {
+			var netStats *dto.NetworkStats
+			if self.callWithTimeout(timeouts.light, "network stats", func() {
+				var err errors.E
+				netStats, err = self.networkStatsService.GetNetworkStats()
+				if err != nil {
+					slog.WarnContext(self.ctx, "Warning getting network stats for health ping", "err", err)
+					netStats = nil
+				}
+			}) {
 				self.NetworkHealth = netStats
 			}
 			if isHeavyTick {
-				sambaStatus, err := self.sambaService.GetSambaStatus()
-				if err != nil {
-					logHealthFetchError(self.ctx, "samba status", err)
-					self.SambaStatus = nil
-				} else {
+				var sambaStatus *dto.SambaStatus
+				if self.callWithTimeout(timeouts.heavy, "samba status", func() {
+					var err errors.E
+					sambaStatus, err = self.sambaService.GetSambaStatus()
+					if err != nil {
+						logHealthFetchError(self.ctx, "samba status", err)
+						sambaStatus = nil
+					}
+				}) {
 					self.SambaStatus = sambaStatus
-					// Also broadcast the samba status separately for Home Assistant integration
-					self.broadcaster.BroadcastMessage(*sambaStatus)
+					if sambaStatus != nil {
+						// Also broadcast the samba status separately for Home Assistant integration
+						self.broadcaster.BroadcastMessage(*sambaStatus)
+					}
 				}
 
 				// Also broadcast the samba process status separately for Home Assistant integration
 				self.broadcaster.BroadcastMessage(self.SambaProcessStatus)
 			}
 
-			self.Dirty = self.dirtyService.GetDirtyDataTracker()
+			var dirty dto.DataDirtyTracker
+			if self.callWithTimeout(timeouts.light, "dirty data tracker", func() {
+				dirty = self.dirtyService.GetDirtyDataTracker()
+			}) {
+				self.Dirty = dirty
+			}
 			self.AliveTime = time.Now().UnixMilli()
 			self.broadcaster.BroadcastMessage(self.HealthPing)
 
