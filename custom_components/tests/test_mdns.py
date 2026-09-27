@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -231,3 +232,111 @@ async def test_mdns_registers_legacy_event_name_for_backward_compatibility(
     mock_zeroconf.async_register_service.assert_called_once()
     service_info = mock_zeroconf.async_register_service.call_args[0][0]
     assert service_info.name == "legacy._smb._tcp.local."
+
+
+async def test_mdns_event_after_unload_does_not_register(
+    hass: HomeAssistant,
+    mock_config_entry_data: dict[str, Any],
+) -> None:
+    """Test a late mdns_register event delivered after unload is ignored."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=mock_config_entry_data,
+        entry_id="test_mdns_late_event",
+    )
+    entry.add_to_hass(hass)
+
+    mock_zeroconf = AsyncMock()
+    mock_zeroconf.async_register_service = AsyncMock()
+    mock_zeroconf.async_unregister_service = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.srat.async_get_clientsession",
+            return_value=_mock_session(200),
+        ),
+        patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
+        patch(
+            "custom_components.srat.mdns_service.async_get_async_instance",
+            return_value=mock_zeroconf,
+        ),
+    ):
+        ws = _make_ws_mock()
+        mock_ws_cls.return_value = ws
+
+        assert await async_setup_component(hass, DOMAIN, {})
+        await hass.async_block_till_done()
+
+        mdns_handler = ws._listeners.get("mdns_register")
+        assert mdns_handler is not None
+
+        mdns_handler({"hostname": "sambanas", "port": 445, "enabled": True})
+        await hass.async_block_till_done()
+        assert mock_zeroconf.async_register_service.call_count == 1
+
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+
+        # A race can still deliver a captured event after cleanup closed the
+        # service; it must not re-register the advertisement.
+        mdns_handler({"hostname": "sambanas", "port": 445, "enabled": True})
+        await hass.async_block_till_done()
+
+    assert mock_zeroconf.async_register_service.call_count == 1
+    assert mock_zeroconf.async_unregister_service.call_count >= 1
+
+
+async def test_mdns_cleanup_cancels_inflight_apply(
+    hass: HomeAssistant,
+    mock_config_entry_data: dict[str, Any],
+) -> None:
+    """Test unload cancels an in-flight _apply task instead of leaking it."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data=mock_config_entry_data,
+        entry_id="test_mdns_inflight",
+    )
+    entry.add_to_hass(hass)
+
+    started = asyncio.Event()
+
+    async def _blocking_register(*args: Any, **kwargs: Any) -> None:
+        """Simulate a register call that hangs until cancelled."""
+        started.set()
+        await asyncio.Event().wait()  # never set: only cancellation ends this
+
+    mock_zeroconf = AsyncMock()
+    mock_zeroconf.async_register_service = AsyncMock(side_effect=_blocking_register)
+    mock_zeroconf.async_unregister_service = AsyncMock()
+
+    with (
+        patch(
+            "custom_components.srat.async_get_clientsession",
+            return_value=_mock_session(200),
+        ),
+        patch("custom_components.srat.SRATWebSocketClient") as mock_ws_cls,
+        patch(
+            "custom_components.srat.mdns_service.async_get_async_instance",
+            return_value=mock_zeroconf,
+        ),
+    ):
+        ws = _make_ws_mock()
+        mock_ws_cls.return_value = ws
+
+        assert await async_setup_component(hass, DOMAIN, {})
+        await hass.async_block_till_done()
+
+        mdns_handler = ws._listeners.get("mdns_register")
+        assert mdns_handler is not None
+
+        mdns_handler({"hostname": "sambanas", "port": 445, "enabled": True})
+        await asyncio.wait_for(started.wait(), timeout=5)
+
+        # Unload must cancel the hanging task and finish (no deadlock).
+        assert await asyncio.wait_for(
+            hass.config_entries.async_unload(entry.entry_id), timeout=10
+        )
+        await hass.async_block_till_done()
+
+    # The tracked registration is cleaned up by async_cleanup under the lock.
+    assert mock_zeroconf.async_unregister_service.call_count >= 1

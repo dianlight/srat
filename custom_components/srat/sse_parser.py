@@ -30,7 +30,12 @@ def parse_sse_frame(data: str) -> dict[str, Any] | None:
         elif line.startswith("id:"):
             raw_id = line[len("id:") :].strip()
         elif line.startswith("data:"):
-            data_lines.append(line[len("data:") :].strip())
+            # SSE removes only one optional space after the colon; keep the
+            # rest of the raw value (leading extras and internal spacing).
+            value = line[len("data:") :]
+            if value.startswith(" "):
+                value = value[1:]
+            data_lines.append(value)
         else:
             continue
     if not event:

@@ -31,3 +31,17 @@ def test_parse_malformed_returns_none() -> None:
     assert parse_sse_frame("id: 1\ndata: {}") is None
     assert parse_sse_frame("id: 1\nevent: volumes") is None
     assert parse_sse_frame("") is None
+
+
+def test_parse_data_removes_only_one_optional_space() -> None:
+    """Only the single optional space after the colon is removed (SSE spec)."""
+    frame = parse_sse_frame("id: 1\nevent: volumes\ndata:  value")
+    assert frame is not None
+    assert frame["data"] == " value"
+
+
+def test_parse_data_without_space_kept_verbatim() -> None:
+    """A value with no space after the colon is untouched."""
+    frame = parse_sse_frame('event: volumes\ndata:{"a": 1}')
+    assert frame is not None
+    assert frame["data"] == '{"a": 1}'

@@ -49,7 +49,7 @@ class DiskData(TypedDict, total=False):
     size: int
     connectionBus: str
     removable: bool
-    partitions: list[PartitionData]
+    partitions: list[PartitionData] | dict[str, PartitionData]
 
 
 class VolumeRepository:
@@ -66,14 +66,38 @@ class VolumeRepository:
         return None
 
     @staticmethod
+    def iter_partitions(disk: Any) -> list[Any]:
+        """Return a disk's partitions from either keyed-map or list payloads.
+
+        The backend serializes ``partitions`` as a JSON object keyed by
+        partition id; tolerate that shape, a plain list, or anything else
+        (returning an empty list rather than raising).
+        """
+        if not isinstance(disk, dict):
+            return []
+        partitions = disk.get("partitions", [])
+        if isinstance(partitions, dict):
+            # The map key is the partition id; mirror it into the value when
+            # the payload omitted ``id`` so id-based lookups still match.
+            result: list[Any] = []
+            for key, value in partitions.items():
+                if not isinstance(value, dict):
+                    continue
+                if value.get("id") is None:
+                    value = {**value, "id": key}
+                result.append(value)
+            return result
+        if isinstance(partitions, list):
+            return partitions
+        return []
+
+    @staticmethod
     def find_partition(disks: Any, partition_id: str) -> PartitionData | None:
         """Find a partition by id across all disks."""
         if not isinstance(disks, list):
             return None
         for disk in disks:
-            if not isinstance(disk, dict):
-                continue
-            for part in disk.get("partitions", []):
+            for part in VolumeRepository.iter_partitions(disk):
                 if isinstance(part, dict) and part.get("id") == partition_id:
                     return part  # type: ignore[return-value]
         return None
@@ -83,7 +107,10 @@ class VolumeRepository:
         """Find per-disk IO stats in health data."""
         if not isinstance(health, dict):
             return None
-        result = health.get("disk_io", {}).get(device_name)
+        disk_io = health.get("disk_io", {})
+        if not isinstance(disk_io, dict):
+            return None
+        result = disk_io.get(device_name)
         return result if isinstance(result, dict) else None
 
     @staticmethod
@@ -91,7 +118,10 @@ class VolumeRepository:
         """Find per-partition health info in health data."""
         if not isinstance(health, dict):
             return None
-        result = health.get("partition_health", {}).get(device)
+        partition_health = health.get("partition_health", {})
+        if not isinstance(partition_health, dict):
+            return None
+        result = partition_health.get(device)
         return result if isinstance(result, dict) else None
 
 
@@ -122,7 +152,7 @@ async def async_setup_entry(
             for disk in disks:
                 if isinstance(disk, dict):
                     entities.append(SRATDiskSensor(coordinator, entry, disk))
-                    for partition in disk.get("partitions", []):
+                    for partition in VolumeRepository.iter_partitions(disk):
                         if isinstance(partition, dict):
                             entities.append(
                                 SRATPartitionSensor(coordinator, entry, partition, disk)

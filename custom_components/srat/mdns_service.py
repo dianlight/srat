@@ -27,6 +27,8 @@ class SRATMdnsService:
         self._lock = asyncio.Lock()
         self._remove_legacy: Any = None
         self._remove_current: Any = None
+        self._closed = False
+        self._tasks: set[asyncio.Future[None]] = set()
 
     async def _register_mdns(self, info: ServiceInfo) -> None:
         """Register a Zeroconf ServiceInfo with Home Assistant's shared zeroconf."""
@@ -43,6 +45,8 @@ class SRATMdnsService:
     @callback
     def _on_mdns_register(self, event_data: dict) -> None:
         """Handle mdns_register WebSocket events from the backend."""
+        if self._closed:
+            return
         enabled: bool = bool(event_data.get("enabled", False))
         hostname: str = str(event_data.get("hostname", ""))
         port: int = int(event_data.get("port", 445))
@@ -52,6 +56,8 @@ class SRATMdnsService:
 
         async def _apply() -> None:
             async with self._lock:
+                if self._closed:
+                    return
                 if self._registered_info is not None:
                     try:
                         await self._unregister_mdns(self._registered_info)
@@ -79,13 +85,18 @@ class SRATMdnsService:
                     port=port,
                     properties={"path": "/"},
                 )
+                # Track the info before awaiting so a cancellation between
+                # register and assignment cannot leak the advertisement.
+                self._registered_info = info
                 try:
                     await self._register_mdns(info)
-                    self._registered_info = info
                 except Exception:
+                    self._registered_info = None
                     _LOGGER.exception("mDNS: failed to register %s", service_name)
 
-        self._hass.async_create_task(_apply())
+        task = self._hass.async_create_task(_apply())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def register(self, ws_client: SRATWebSocketClient) -> None:
         """Subscribe to backend mDNS events."""
@@ -107,9 +118,17 @@ class SRATMdnsService:
 
     async def async_cleanup(self) -> None:
         """Deregister mDNS if it was registered."""
-        if self._registered_info is not None:
-            try:
-                await self._unregister_mdns(self._registered_info)
-            except Exception:
-                _LOGGER.debug("mDNS: unregister on unload failed")
-            self._registered_info = None
+        self._closed = True
+        pending = tuple(self._tasks)
+        if pending:
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            self._tasks.difference_update(pending)
+        async with self._lock:
+            if self._registered_info is not None:
+                try:
+                    await self._unregister_mdns(self._registered_info)
+                except Exception:
+                    _LOGGER.debug("mDNS: unregister on unload failed")
+                self._registered_info = None
