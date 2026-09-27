@@ -228,6 +228,11 @@ export const wsApi = createApi({
                     if (ping.dirty_tracking?.shares) {
                       dispatch(sratApi.util.invalidateTags(["share"]));
                     }
+                  } else if (eventTypeEnum === Supported_events.Volumes) {
+                    // Issue #1253: keep the REST volumes cache fresh on every
+                    // live volumes frame so mount/unmount transitions heal
+                    // without a manual reload even if a frame is missed.
+                    dispatch(sratApi.util.invalidateTags(["volume"]));
                   }
                 } catch {}
               } else if (
