@@ -330,6 +330,52 @@ describe("wsApi dirty-tracking auto-invalidation", () => {
         subscription.unsubscribe();
     });
 
+    it("invalidates the volume tag on volumes events (issue #1253)", async () => {
+        const setup = await setupSocket();
+        if (!setup) {
+            expect(true).toBe(true);
+            return;
+        }
+        const { socket, subscription, spy, store, wsApi } = setup;
+
+        const payload = [
+            {
+                id: "disk-fmtui01",
+                partitions: {
+                    sda1: {
+                        id: "part-1",
+                        mount_point_data: {
+                            mnt1: { path: "/mnt/FMTUI01", is_mounted: false },
+                        },
+                    },
+                },
+            },
+        ];
+
+        socket?.emit("message", {
+            data: `id: 288\nevent: ${Supported_events.Volumes}\ndata: ${JSON.stringify(payload)}`,
+        });
+
+        const invalidated = await waitForCondition(
+            () => spy.mock.calls.length >= 1,
+        );
+        expect(invalidated).toBe(true);
+        expect(spy.mock.calls[0]?.[0]).toEqual(["volume"]);
+
+        // The live payload must also land in the WS cache.
+        const updated = await waitForCondition(() => {
+            // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+            const state = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
+            return (
+                state?.data?.[Supported_events.Volumes]?.[0]?.partitions?.sda1
+                    ?.mount_point_data?.mnt1?.is_mounted === false
+            );
+        });
+        expect(updated).toBe(true);
+
+        subscription.unsubscribe();
+    });
+
     it("does not invalidate any tag when dirty flags are false", async () => {
         const setup = await setupSocket();
         if (!setup) {
