@@ -352,6 +352,7 @@ export function Users() {
               readOnly={isReadOnly}
               expandedItems={expandedGroups}
               onExpandedItemsChange={setExpandedGroups}
+              hiddenShares={hiddenShareNames}
             />
           </Paper>
         }

@@ -215,6 +215,39 @@ describe("UsersTreeView component", () => {
         expect(shareChip).toBeTruthy();
     });
 
+    it("excludes hidden shares from the share count chip", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { UsersTreeView } = await import("../UsersTreeView");
+
+        // Shares hidden by the standard_share_names preference (issue #1255):
+        // the chip must match the filtered count shown in UserDetailsPanel.
+        const mockUsers = [
+            {
+                username: "user1",
+                is_admin: false,
+                rw_shares: ["share1", "share2", "hidden-old"],
+                ro_shares: ["share3", "hidden-new"],
+            },
+        ];
+
+        render(
+            React.createElement(UsersTreeView as any, {
+                users: mockUsers,
+                selectedUserKey: undefined,
+                onUserSelect: () => { },
+                expandedItems: ["group-users"],
+                onExpandedItemsChange: () => { },
+                hiddenShares: ["hidden-old", "hidden-new"],
+            })
+        );
+
+        // Only 3 of 5 shares are visible → chip must read "3 shares"
+        const shareChip = await screen.findByText("3 shares");
+        expect(shareChip).toBeTruthy();
+        expect(screen.queryByText("5 shares")).toBeNull();
+    });
+
     it("sorts users alphabetically within groups", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
