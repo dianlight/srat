@@ -19,6 +19,7 @@ from custom_components.srat.sensor import (
     SRATSambaProcessStatusSensor,
     SRATSambaStatusSensor,
     SRATVolumeStatusSensor,
+    VolumeRepository,
 )
 from custom_components.srat.websocket_client import SRATWebSocketClient
 
@@ -336,3 +337,97 @@ async def test_partition_health_sensor(
     attrs = sensor.extra_state_attributes
     assert attrs["fstype"] == "ext4"
     assert attrs["usage_percent"] == 50.0
+
+
+# -- VolumeRepository --
+
+
+def test_find_partition_in_list_payload() -> None:
+    """Partitions serialized as a list are found by id."""
+    disks = [{"id": "d1", "partitions": [{"id": "p1", "device": "sda1"}]}]
+    found = VolumeRepository.find_partition(disks, "p1")
+    assert found is not None
+    assert found["device"] == "sda1"
+
+
+def test_find_partition_in_dict_payload() -> None:
+    """Partitions serialized as a keyed map (live backend shape) are found."""
+    disks = [{"id": "d1", "partitions": {"p1": {"id": "p1", "device": "sda1"}}}]
+    found = VolumeRepository.find_partition(disks, "p1")
+    assert found is not None
+    assert found["device"] == "sda1"
+
+
+def test_find_partition_uses_map_key_when_id_omitted() -> None:
+    """A map value without ``id`` falls back to its key (the partition id)."""
+    disks = [{"id": "d1", "partitions": {"p1": {"device": "sda1"}}}]
+    found = VolumeRepository.find_partition(disks, "p1")
+    assert found is not None
+    assert found["id"] == "p1"
+    assert found["device"] == "sda1"
+
+
+def test_find_partition_tolerates_invalid_containers() -> None:
+    """None/other invalid partitions containers never raise."""
+    assert VolumeRepository.find_partition(None, "p1") is None
+    assert VolumeRepository.find_partition("nope", "p1") is None
+    assert (
+        VolumeRepository.find_partition([{"id": "d1", "partitions": None}], "p1")
+        is None
+    )
+    assert (
+        VolumeRepository.find_partition([{"id": "d1", "partitions": 42}], "p1") is None
+    )
+    assert (
+        VolumeRepository.find_partition(
+            [{"id": "d1", "partitions": {"p1": None}}], "p1"
+        )
+        is None
+    )
+
+
+def test_find_disk_io_tolerates_invalid_container() -> None:
+    """None disk_io container or non-dict entries return None instead of raising."""
+    assert VolumeRepository.find_disk_io(None, "sda") is None
+    assert VolumeRepository.find_disk_io({"disk_io": None}, "sda") is None
+    assert VolumeRepository.find_disk_io({"disk_io": "x"}, "sda") is None
+    assert VolumeRepository.find_disk_io({"disk_io": {"sda": None}}, "sda") is None
+    stats = VolumeRepository.find_disk_io(
+        {"disk_io": {"sda": {"read_bytes": 1}}}, "sda"
+    )
+    assert stats == {"read_bytes": 1}
+
+
+def test_find_partition_health_tolerates_invalid_container() -> None:
+    """None partition_health container or non-dict entries return None."""
+    assert VolumeRepository.find_partition_health(None, "/dev/sda1") is None
+    assert (
+        VolumeRepository.find_partition_health({"partition_health": None}, "d") is None
+    )
+    assert (
+        VolumeRepository.find_partition_health({"partition_health": "x"}, "d") is None
+    )
+    assert (
+        VolumeRepository.find_partition_health({"partition_health": {"d": []}}, "d")
+        is None
+    )
+    info = VolumeRepository.find_partition_health(
+        {"partition_health": {"d": {"fstype": "ext4"}}}, "d"
+    )
+    assert info == {"fstype": "ext4"}
+
+
+def test_find_disk_miss_and_invalid_input() -> None:
+    """Unknown disk ids and non-list payloads return None."""
+    disks = [{"id": "d1", "device": "sda"}]
+    assert VolumeRepository.find_disk(disks, "d1") == {"id": "d1", "device": "sda"}
+    assert VolumeRepository.find_disk(disks, "nope") is None
+    assert VolumeRepository.find_disk(None, "d1") is None
+    assert VolumeRepository.find_disk("nope", "d1") is None
+
+
+def test_iter_partitions_non_dict_disk() -> None:
+    """A non-dict disk yields no partitions instead of raising."""
+    assert VolumeRepository.iter_partitions(None) == []
+    assert VolumeRepository.iter_partitions("nope") == []
+    assert VolumeRepository.iter_partitions([{"id": "d1"}]) == []
