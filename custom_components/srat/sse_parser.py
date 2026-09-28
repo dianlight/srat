@@ -21,7 +21,10 @@ def parse_sse_frame(data: str) -> dict[str, Any] | None:
     event: str | None = None
     raw_id: str | None = None
     data_lines: list[str] = []
-    for raw_line in data.strip().splitlines():
+    for raw_line in data.splitlines():
+        # Field detection runs on a stripped view; ``data:`` values are read
+        # from the raw line so leading extras and trailing whitespace survive
+        # (SSE raw-data contract: only one optional space after the colon).
         line = raw_line.strip()
         if not line:
             continue
@@ -30,9 +33,8 @@ def parse_sse_frame(data: str) -> dict[str, Any] | None:
         elif line.startswith("id:"):
             raw_id = line[len("id:") :].strip()
         elif line.startswith("data:"):
-            # SSE removes only one optional space after the colon; keep the
-            # rest of the raw value (leading extras and internal spacing).
-            value = line[len("data:") :]
+            offset = len(raw_line) - len(raw_line.lstrip())
+            value = raw_line[offset + len("data:") :]
             if value.startswith(" "):
                 value = value[1:]
             data_lines.append(value)
