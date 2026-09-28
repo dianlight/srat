@@ -415,3 +415,19 @@ def test_find_partition_health_tolerates_invalid_container() -> None:
         {"partition_health": {"d": {"fstype": "ext4"}}}, "d"
     )
     assert info == {"fstype": "ext4"}
+
+
+def test_find_disk_miss_and_invalid_input() -> None:
+    """Unknown disk ids and non-list payloads return None."""
+    disks = [{"id": "d1", "device": "sda"}]
+    assert VolumeRepository.find_disk(disks, "d1") == {"id": "d1", "device": "sda"}
+    assert VolumeRepository.find_disk(disks, "nope") is None
+    assert VolumeRepository.find_disk(None, "d1") is None
+    assert VolumeRepository.find_disk("nope", "d1") is None
+
+
+def test_iter_partitions_non_dict_disk() -> None:
+    """A non-dict disk yields no partitions instead of raising."""
+    assert VolumeRepository.iter_partitions(None) == []
+    assert VolumeRepository.iter_partitions("nope") == []
+    assert VolumeRepository.iter_partitions([{"id": "d1"}]) == []

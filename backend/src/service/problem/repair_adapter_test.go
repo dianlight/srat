@@ -131,3 +131,18 @@ func TestSyncBestEffort(t *testing.T) {
 	ApplyProblemLifecycle(ctx, store, event)
 	assert.Equal(t, 2, store.lifecycles)
 }
+
+func TestDismissProblem_NilStore_Noop(t *testing.T) {
+	ctx := context.Background()
+	assert.NotPanics(t, func() {
+		DismissProblem(ctx, nil, "r1")
+	})
+}
+
+func TestApplyProblemLifecycle_NilStore_Noop(t *testing.T) {
+	ctx := context.Background()
+	event := dto.RepairLifecycleMessage{RepairID: "r1", Status: dto.RepairLifecycleStatuses.REPAIRLIFECYCLESTATUSFIXED}
+	assert.NotPanics(t, func() {
+		ApplyProblemLifecycle(ctx, nil, event)
+	})
+}

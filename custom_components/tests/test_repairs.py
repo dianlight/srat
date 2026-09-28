@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from homeassistant.core import HomeAssistant
@@ -93,6 +95,38 @@ def test_repair_proxy_register_and_unregister(hass: HomeAssistant) -> None:
 
     proxy.unregister()
     remove_listener.assert_called_once()
+
+
+async def test_on_repair_command_tracks_task_and_unregister_cancels(
+    hass: HomeAssistant,
+) -> None:
+    """Repair command tasks must be tracked and cancelled on unregister."""
+    ws_client = MagicMock(spec=SRATWebSocketClient)
+    proxy = SRATRepairProxy(hass=hass, ws_client=ws_client)
+
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def _blocking_handler(payload: Any) -> None:
+        started.set()
+        await release.wait()
+
+    with patch.object(
+        SRATRepairProxy, "async_handle_repair_command", side_effect=_blocking_handler
+    ):
+        proxy._on_repair_command({"repair_id": "disk_space_low", "action": "upsert"})
+        await asyncio.wait_for(started.wait(), timeout=5)
+
+        assert len(proxy._pending_tasks) == 1
+        task = next(iter(proxy._pending_tasks))
+
+        proxy.unregister()
+
+        assert len(proxy._pending_tasks) == 0
+        release.set()
+        await hass.async_block_till_done()
+
+    assert task.done()
 
 
 # --- Translation key coverage tests ---

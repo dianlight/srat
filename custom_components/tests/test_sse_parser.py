@@ -59,3 +59,15 @@ def test_parse_data_preserves_trailing_whitespace_last_line() -> None:
     frame = parse_sse_frame("event: volumes\ndata: value  ")
     assert frame is not None
     assert frame["data"] == "value  "
+
+
+def test_parse_frame_with_blank_line() -> None:
+    """Blank lines inside a frame are skipped."""
+    frame = parse_sse_frame('event: volumes\n\ndata: {"a": 1}')
+    assert frame == {"id": None, "event": "volumes", "data": '{"a": 1}'}
+
+
+def test_parse_frame_ignores_unknown_field() -> None:
+    """Unknown SSE fields (e.g. retry:) are ignored."""
+    frame = parse_sse_frame('event: volumes\nretry: 100\ndata: {"a": 1}')
+    assert frame == {"id": None, "event": "volumes", "data": '{"a": 1}'}
