@@ -45,3 +45,17 @@ def test_parse_data_without_space_kept_verbatim() -> None:
     frame = parse_sse_frame('event: volumes\ndata:{"a": 1}')
     assert frame is not None
     assert frame["data"] == '{"a": 1}'
+
+
+def test_parse_data_preserves_trailing_whitespace() -> None:
+    """Trailing whitespace in a data value survives (SSE raw-data contract)."""
+    frame = parse_sse_frame("event: volumes\ndata:  value  \nid: 4")
+    assert frame is not None
+    assert frame["data"] == " value  "
+
+
+def test_parse_data_preserves_trailing_whitespace_last_line() -> None:
+    """Trailing whitespace survives even when the data line ends the frame."""
+    frame = parse_sse_frame("event: volumes\ndata: value  ")
+    assert frame is not None
+    assert frame["data"] == "value  "
