@@ -112,32 +112,49 @@ func (p *DirtyDataService) snapshot() dto.DataDirtyTracker {
 	return p.dataDirtyTracker
 }
 
-// start or reset timer for 15 seconds
+// start or reset timer for 5 seconds.
+//
+// The synchronous event bus dispatches listeners inline (SyncSignal), and
+// the RESTART listener writes Samba configs and restarts services, which
+// takes seconds. Emitting while holding timerMutex would deadlock: the
+// RESTART handler emits CLEAN → resetDirtyStatus → stopTimer tries to
+// re-lock the non-reentrant mutex, and concurrent startTimer/IsTimerRunning
+// callers block until the slow handler returns (#1275). So timer state is
+// updated under lock, the lock is released, and only then is the event
+// emitted.
 func (p *DirtyDataService) startTimer() {
 	snapshot := p.snapshot()
 
 	p.timerMutex.Lock()
-	defer p.timerMutex.Unlock()
-
 	if p.timer != nil {
 		p.timer.Stop()
 	}
-
-	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-		Type:             events.EventTypes.START,
-		DataDirtyTracker: snapshot,
-	})
-
 	p.timer = time.AfterFunc(5*time.Second, func() {
-		snapshot := p.snapshot()
+		p.fireTimer()
+	})
+	p.timerMutex.Unlock()
 
-		p.timerMutex.Lock()
-		defer p.timerMutex.Unlock()
+	if p.eventBus != nil {
 		p.eventBus.EmitDirtyData(events.DirtyDataEvent{
-			Type:             events.EventTypes.RESTART,
+			Type:             events.EventTypes.START,
 			DataDirtyTracker: snapshot,
 		})
-		p.timer = nil
+	}
+}
+
+// fireTimer clears timer state under lock, then emits the RESTART event
+// without holding any lock (see startTimer for why).
+func (p *DirtyDataService) fireTimer() {
+	p.timerMutex.Lock()
+	p.timer = nil
+	p.timerMutex.Unlock()
+
+	if p.eventBus == nil {
+		return
+	}
+	p.eventBus.EmitDirtyData(events.DirtyDataEvent{
+		Type:             events.EventTypes.RESTART,
+		DataDirtyTracker: p.snapshot(),
 	})
 }
 

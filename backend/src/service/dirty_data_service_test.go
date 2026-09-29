@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -222,4 +223,83 @@ func (suite *DirtyDataServiceTestSuite) TestResetDirtyStatus_NilEventBusDoesNotP
 	})
 	suite.Equal(dto.DataDirtyTracker{}, svc.dataDirtyTracker)
 	suite.True(svc.IsClean())
+}
+
+// TestStartTimer_EmitDoesNotHoldTimerMutex is a regression test for #1275:
+// startTimer held timerMutex across the synchronous EmitDirtyData, so a
+// blocking OnDirtyData handler (e.g. ServerService writing Samba configs)
+// deadlocked any concurrent IsTimerRunning/GetDirtyDataTracker caller and
+// self-deadlocked on stopTimer. Emitting must not block timer-state readers.
+func (suite *DirtyDataServiceTestSuite) TestStartTimer_EmitDoesNotHoldTimerMutex() {
+	suite.dirtyDataService.ResetDirtyDataTracker()
+
+	release := make(chan struct{})
+	unsub := suite.eventBus.OnDirtyData(func(_ context.Context, _ events.DirtyDataEvent) errors.E {
+		<-release
+		return nil
+	})
+	defer unsub()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		suite.eventBus.EmitUser(events.UserEvent{User: &dto.User{}})
+	}()
+
+	suite.Require().Eventually(func() bool {
+		return suite.dirtyDataService.IsTimerRunning()
+	}, 5*time.Second, 10*time.Millisecond, "timer must start even while an emit handler blocks")
+
+	select {
+	case <-done:
+		close(release)
+		suite.Fail("EmitUser returned while handler still blocked: emit holds timerMutex")
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	close(release)
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		suite.Fail("EmitUser did not return after handler released")
+	}
+}
+
+// TestTimerCallback_EmitDoesNotHoldTimerMutex covers the timer-fire path of
+// #1275: the AfterFunc callback must clear timer state under lock, release,
+// then emit RESTART so a slow handler cannot block IsTimerRunning callers.
+func (suite *DirtyDataServiceTestSuite) TestTimerCallback_EmitDoesNotHoldTimerMutex() {
+	svc := &DirtyDataService{
+		ctx:              suite.ctx,
+		dataDirtyTracker: dto.DataDirtyTracker{Users: true},
+		eventBus:         suite.eventBus,
+	}
+
+	release := make(chan struct{})
+	unsub := suite.eventBus.OnDirtyData(func(_ context.Context, e events.DirtyDataEvent) errors.E {
+		if e.Type == events.EventTypes.RESTART {
+			<-release
+		}
+		return nil
+	})
+	defer unsub()
+
+	fired := make(chan struct{})
+	go func() {
+		defer close(fired)
+		svc.fireTimer()
+	}()
+
+	// The callback must clear timer state before emitting, so readers
+	// never block on a slow RESTART handler.
+	suite.Require().Eventually(func() bool {
+		return !svc.IsTimerRunning()
+	}, 5*time.Second, 10*time.Millisecond, "fireTimer must release timerMutex before emitting RESTART")
+
+	close(release)
+	select {
+	case <-fired:
+	case <-time.After(5 * time.Second):
+		suite.Fail("fireTimer did not return after RESTART handler released")
+	}
 }
