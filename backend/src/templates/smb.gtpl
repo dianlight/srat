@@ -148,8 +148,8 @@
    {{ if .data.ro_users -}}
    read list = {{ .data.ro_users|join " " }}
    {{- end }}
-   force user = root
-   force group = root
+   {{ if .data.force_user }}force user = {{ .data.force_user }}{{ end }}
+   {{ if .data.force_group }}force group = {{ .data.force_group }}{{ end }}
 
    {{ if and .data.veto_files (gt (len .data.veto_files) 0) -}}
    veto files = /{{ .data.veto_files | join "/" }}/

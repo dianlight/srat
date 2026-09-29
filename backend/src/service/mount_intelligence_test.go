@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -117,4 +118,62 @@ func TestHashDirtyTracker_IsStableAndDistinct(t *testing.T) {
 
 	assert.Equal(t, hashA1, hashA2)
 	assert.NotEqual(t, hashA1, hashB)
+}
+
+type stubForceUserGroupProber struct {
+	user  string
+	group string
+}
+
+func (s stubForceUserGroupProber) GetSambaForceUserGroup(fsType string) (string, string) {
+	if fsType == "ntfs" || fsType == "ntfs3" {
+		return "", ""
+	}
+	return s.user, s.group
+}
+
+func TestEnrichExportedShareForceUserGroup_NilShareIsNoop(t *testing.T) {
+	enrichExportedShareForceUserGroup(nil, nil, nil)
+}
+
+func TestEnrichExportedShareForceUserGroup_NilProberFallsBackToRoot(t *testing.T) {
+	dbs := dbom.ExportedShare{}
+	fstype := "ntfs"
+	enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{FSType: &fstype}, nil)
+	assert.Equal(t, "root", dbs.ForceUser)
+	assert.Equal(t, "root", dbs.ForceGroup)
+}
+
+func TestEnrichExportedShareForceUserGroup_NtfsOmitsForceUser(t *testing.T) {
+	for _, fsType := range []string{"ntfs", "ntfs3"} {
+		dbs := dbom.ExportedShare{}
+		ft := fsType
+		enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{FSType: &ft}, stubForceUserGroupProber{user: "root", group: "root"})
+		assert.Equal(t, "", dbs.ForceUser, fsType)
+		assert.Equal(t, "", dbs.ForceGroup, fsType)
+	}
+}
+
+func TestEnrichExportedShareForceUserGroup_Ext4KeepsRoot(t *testing.T) {
+	dbs := dbom.ExportedShare{}
+	fstype := "ext4"
+	enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{FSType: &fstype}, stubForceUserGroupProber{user: "root", group: "root"})
+	assert.Equal(t, "root", dbs.ForceUser)
+	assert.Equal(t, "root", dbs.ForceGroup)
+}
+
+func TestEnrichExportedShareForceUserGroup_FallsBackToPartitionFsType(t *testing.T) {
+	dbs := dbom.ExportedShare{}
+	partFs := "ntfs3"
+	enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{Partition: &dto.Partition{FsType: &partFs}}, stubForceUserGroupProber{user: "root", group: "root"})
+	assert.Equal(t, "", dbs.ForceUser)
+	assert.Equal(t, "", dbs.ForceGroup)
+}
+
+func TestEnrichExportedShareForceUserGroup_UnknownFsFallsBackToRoot(t *testing.T) {
+	dbs := dbom.ExportedShare{}
+	fstype := "weirdfs"
+	enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{FSType: &fstype}, stubForceUserGroupProber{user: "root", group: "root"})
+	assert.Equal(t, "root", dbs.ForceUser)
+	assert.Equal(t, "root", dbs.ForceGroup)
 }

@@ -30,6 +30,16 @@ type MountFlagService interface {
 	// Returns an empty list if the filesystem type is not recognized or has no specific flags.
 	GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E)
 
+	// GetDefaultMountFlags returns the adapter-declared mount defaults for
+	// the given filesystem type. Unknown filesystems return an empty list.
+	GetDefaultMountFlags(fsType string) ([]dto.MountFlag, errors.E)
+
+	// GetSambaForceUserGroup returns the Samba "force user" and "force group"
+	// values declared by the filesystem adapter. Empty strings mean the
+	// corresponding smb.conf line must be omitted. Unknown filesystems fall
+	// back to the legacy "root"/"root" values.
+	GetSambaForceUserGroup(fsType string) (string, string)
+
 	// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
 	// Falls back to the provided filesystem type when no adapter is found.
 	ResolveLinuxFsModule(fsType string) string
@@ -366,6 +376,37 @@ func (s *FilesystemService) ResolveLinuxFsModule(fsType string) string {
 	}
 
 	return module
+}
+
+// GetDefaultMountFlags returns the adapter-declared mount defaults for the
+// given filesystem type. Filesystems with native Unix permissions return an
+// empty list. Unknown filesystem types return an empty list with no error so
+// that mounting can proceed without defaults.
+func (s *FilesystemService) GetDefaultMountFlags(fsType string) ([]dto.MountFlag, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.DebugContext(s.ctx, "GetDefaultMountFlags: adapter not found, no defaults", "fsType", fsType, "error", err)
+		return []dto.MountFlag{}, nil
+	}
+
+	if defaults := adapter.GetDefaultMountFlags(); defaults != nil {
+		return defaults, nil
+	}
+	return []dto.MountFlag{}, nil
+}
+
+// GetSambaForceUserGroup returns the Samba "force user" and "force group"
+// values declared by the filesystem adapter. Empty strings mean the
+// corresponding smb.conf line should be omitted. Unknown filesystem types
+// fall back to the legacy "root"/"root" values.
+func (s *FilesystemService) GetSambaForceUserGroup(fsType string) (string, string) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.DebugContext(s.ctx, "GetSambaForceUserGroup: adapter not found, using legacy root", "fsType", fsType, "error", err)
+		return "root", "root"
+	}
+
+	return adapter.GetSambaForceUser(), adapter.GetSambaForceGroup()
 }
 
 // GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)

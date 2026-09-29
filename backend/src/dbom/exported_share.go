@@ -25,4 +25,9 @@ type ExportedShare struct {
 	MountPointDataPath *string
 	MountPointDataRoot *string
 	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath,MountPointDataRoot;references:Path,Root"`
+	// ForceUser and ForceGroup carry the Samba "force user"/"force group"
+	// values resolved from the backing filesystem adapter. They are
+	// ephemeral (not persisted): empty means the smb.conf lines are omitted.
+	ForceUser  string `gorm:"-"`
+	ForceGroup string `gorm:"-"`
 }

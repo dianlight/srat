@@ -46,6 +46,16 @@ func (a *ApfsAdapter) GetMountFlags() []dto.MountFlag {
 	}
 }
 
+// GetDefaultMountFlags returns the APFS mount defaults. APFS on Linux is
+// read-only via apfs-fuse with no ACL support, so ownership is fixed at
+// mount time (#1264).
+func (a *ApfsAdapter) GetDefaultMountFlags() []dto.MountFlag {
+	return []dto.MountFlag{
+		{Name: "uid", NeedsValue: true, FlagValue: "0"},
+		{Name: "gid", NeedsValue: true, FlagValue: "0"},
+	}
+}
+
 // IsSupported checks if APFS is supported on the system
 func (a *ApfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	// APFS is read-only on Linux via apfs-fuse package

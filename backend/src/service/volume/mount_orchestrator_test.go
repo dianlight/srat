@@ -17,9 +17,10 @@ import (
 )
 
 type fakeOrchestratorFS struct {
-	flagsErr errors.E
-	label    string
-	labelErr errors.E
+	flagsErr     errors.E
+	label        string
+	labelErr     errors.E
+	defaultFlags []dto.MountFlag
 }
 
 func (f *fakeOrchestratorFS) MountFlagsToSyscallFlagAndData(input []dto.MountFlag) (uintptr, string, errors.E) {
@@ -27,6 +28,10 @@ func (f *fakeOrchestratorFS) MountFlagsToSyscallFlagAndData(input []dto.MountFla
 		return 0, "", f.flagsErr
 	}
 	return 0, "", nil
+}
+
+func (f *fakeOrchestratorFS) GetDefaultMountFlags(_ string) ([]dto.MountFlag, errors.E) {
+	return f.defaultFlags, nil
 }
 
 func (f *fakeOrchestratorFS) GetPartitionLabel(_ context.Context, _, _ string) (string, errors.E) {

@@ -348,6 +348,26 @@ func (b *baseAdapter) GetLinuxFsModule() string {
 	return b.name
 }
 
+// GetDefaultMountFlags returns no defaults. Adapters for filesystems
+// without native permission models (NTFS, exFAT, FAT, HFS+) override
+// this to declare the ownership/permission mapping applied at mount.
+func (b *baseAdapter) GetDefaultMountFlags() []dto.MountFlag {
+	return nil
+}
+
+// GetSambaForceUser returns the legacy Samba "force user" value.
+// The default preserves the historical behavior of forcing root so
+// that filesystems with native Unix permissions keep their current
+// semantics unless the adapter opts out.
+func (b *baseAdapter) GetSambaForceUser() string {
+	return "root"
+}
+
+// GetSambaForceGroup returns the legacy Samba "force group" value.
+func (b *baseAdapter) GetSambaForceGroup() string {
+	return "root"
+}
+
 // GetAliasNames returns other filesystem names that should resolve to this adapter.
 func (b *baseAdapter) GetAliasNames() []string {
 	aliases := slices.Clone(b.aliasNames)
