@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import logging
 import re
 from typing import Any, TypedDict
@@ -130,48 +131,89 @@ def _sanitize_id(value: str) -> str:
     return _NON_ALNUM.sub("_", value).lower().strip("_")
 
 
+def _build_disk_entities(
+    coordinator: SRATDataCoordinator,
+    entry: SRATConfigEntry,
+) -> list[SensorEntity]:
+    """Build per-disk and per-partition sensors from current coordinator data."""
+    disks = coordinator.data.get("disks") if coordinator.data else None
+    entities: list[SensorEntity] = []
+    if isinstance(disks, list):
+        for disk in disks:
+            if not isinstance(disk, dict):
+                continue
+            entities.append(SRATDiskSensor(coordinator, entry, disk))
+            for partition in VolumeRepository.iter_partitions(disk):
+                if isinstance(partition, dict):
+                    entities.append(
+                        SRATPartitionSensor(coordinator, entry, partition, disk)
+                    )
+    return entities
+
+
+def _build_health_entities(
+    coordinator: SRATDataCoordinator,
+    entry: SRATConfigEntry,
+) -> list[SensorEntity]:
+    """Build per-disk IO and per-partition health sensors from current data."""
+    health = coordinator.data.get("disk_health") if coordinator.data else None
+    entities: list[SensorEntity] = []
+    if isinstance(health, dict):
+        for device_name, stats in health.get("disk_io", {}).items():
+            if isinstance(stats, dict):
+                entities.append(
+                    SRATDiskIOSensor(coordinator, entry, device_name, stats)
+                )
+        for device, info in health.get("partition_health", {}).items():
+            if isinstance(info, dict):
+                entities.append(
+                    SRATPartitionHealthSensor(coordinator, entry, device, info)
+                )
+    return entities
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: SRATConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up SRAT sensors from a config entry."""
+    """Set up SRAT sensors from a config entry.
+
+    The four always-on sensors are created immediately. Dynamic disk,
+    partition and per-device health sensors are built from coordinator data;
+    because the backend only emits ``volumes`` on mount/unmount transitions
+    (and ``disk_health`` only inside ``heartbeat`` frames) that data may not
+    have arrived yet, so creation is deferred via
+    ``coordinator.async_when_data_ready`` until the first usable payload.
+    See issue #1263.
+    """
     coordinator = entry.runtime_data.coordinator
 
-    entities: list[SensorEntity] = [
-        SRATSambaStatusSensor(coordinator, entry),
-        SRATSambaProcessStatusSensor(coordinator, entry),
-        SRATVolumeStatusSensor(coordinator, entry),
-        SRATGlobalDiskHealthSensor(coordinator, entry),
-    ]
+    async_add_entities(
+        [
+            SRATSambaStatusSensor(coordinator, entry),
+            SRATSambaProcessStatusSensor(coordinator, entry),
+            SRATVolumeStatusSensor(coordinator, entry),
+            SRATGlobalDiskHealthSensor(coordinator, entry),
+        ],
+        update_before_add=False,
+    )
 
-    # Add dynamic disk and partition sensors based on initial data
-    if coordinator.data:
-        disks = coordinator.data.get("disks", [])
-        if isinstance(disks, list):
-            for disk in disks:
-                if isinstance(disk, dict):
-                    entities.append(SRATDiskSensor(coordinator, entry, disk))
-                    for partition in VolumeRepository.iter_partitions(disk):
-                        if isinstance(partition, dict):
-                            entities.append(
-                                SRATPartitionSensor(coordinator, entry, partition, disk)
-                            )
+    def _add_when_ready(builder: Callable[[], list[SensorEntity]]) -> bool:
+        entities = builder()
+        if not entities:
+            return False  # keep waiting for a payload with content
+        async_add_entities(entities, update_before_add=False)
+        return True
 
-        health = coordinator.data.get("disk_health")
-        if isinstance(health, dict):
-            for device_name, stats in health.get("disk_io", {}).items():
-                if isinstance(stats, dict):
-                    entities.append(
-                        SRATDiskIOSensor(coordinator, entry, device_name, stats)
-                    )
-            for device, info in health.get("partition_health", {}).items():
-                if isinstance(info, dict):
-                    entities.append(
-                        SRATPartitionHealthSensor(coordinator, entry, device, info)
-                    )
+    def _add_disks_when_ready() -> bool:
+        return _add_when_ready(lambda: _build_disk_entities(coordinator, entry))
 
-    async_add_entities(entities, update_before_add=False)
+    def _add_health_when_ready() -> bool:
+        return _add_when_ready(lambda: _build_health_entities(coordinator, entry))
+
+    coordinator.async_when_data_ready("disks", _add_disks_when_ready)
+    coordinator.async_when_data_ready("disk_health", _add_health_when_ready)
 
 
 class SRATSensorBase(CoordinatorEntity[SRATDataCoordinator], SensorEntity):

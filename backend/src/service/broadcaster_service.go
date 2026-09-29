@@ -318,6 +318,13 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 		slog.WarnContext(broker.ctx, "Error sending welcome message to SSE client", "err", err)
 	}
 
+	// Send a volumes snapshot so freshly connected clients (e.g. the Home
+	// Assistant component) can materialize disk/partition sensors without
+	// waiting for a mount/unmount transition (issue #1263).
+	if disks := broker.disks.All(); len(disks) > 0 {
+		broker.dispatchEvent(send, broadcastEvent{Message: disks})
+	}
+
 	for {
 		select {
 		case <-broker.ctx.Done():
