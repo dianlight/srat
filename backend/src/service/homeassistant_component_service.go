@@ -343,12 +343,16 @@ func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(ctx context.Cont
 		root = s.state.CustomComponentsPath
 	}
 
+	installPath := filepath.Join(root, dto.CustomComponentSRATName)
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
 
-	installPath := filepath.Join(root, dto.CustomComponentSRATName)
 	if err := os.RemoveAll(installPath); err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(installPath, 0o755); err != nil {
 		return err
 	}
 
@@ -363,9 +367,22 @@ func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(ctx context.Cont
 			continue
 		}
 
-		destination := filepath.Join(root, cleanedName)
-		cleanRoot := filepath.Clean(root)
-		if !strings.HasPrefix(destination, cleanRoot+string(os.PathSeparator)) {
+		// Strip an optional top-level srat/ prefix for backward compatibility
+		// with archives built before the HACS root-level layout fix.
+		relativeName := cleanedName
+		if relativeName == dto.CustomComponentSRATName {
+			continue
+		}
+		if strings.HasPrefix(relativeName, dto.CustomComponentSRATName+"/") {
+			relativeName = strings.TrimPrefix(relativeName, dto.CustomComponentSRATName+"/")
+		}
+		if relativeName == "" || relativeName == "." {
+			continue
+		}
+
+		destination := filepath.Join(installPath, relativeName)
+		cleanInstall := filepath.Clean(installPath)
+		if destination != cleanInstall && !strings.HasPrefix(destination, cleanInstall+string(os.PathSeparator)) {
 			return fmt.Errorf("illegal file path in archive: %s", file.Name)
 		}
 
@@ -506,9 +523,14 @@ func readManifestVersionFromCustomComponentArchive(zipArchive []byte) (string, e
 		return "", err
 	}
 
+	// Accept both the HACS root-level layout (manifest.json) and the legacy
+	// nested layout (srat/manifest.json) for backward compatibility.
+	nestedVersion := ""
 	for _, file := range archiveReader.File {
 		cleanedName := strings.TrimPrefix(filepath.Clean(file.Name), "/")
-		if cleanedName != filepath.Join(dto.CustomComponentSRATName, "manifest.json") {
+		isRoot := cleanedName == "manifest.json"
+		isNested := cleanedName == filepath.Join(dto.CustomComponentSRATName, "manifest.json")
+		if !isRoot && !isNested {
 			continue
 		}
 
@@ -531,10 +553,17 @@ func readManifestVersionFromCustomComponentArchive(zipArchive []byte) (string, e
 			return "", fmt.Errorf("custom component archive manifest has empty version")
 		}
 
-		return manifest.Version, nil
+		if isRoot {
+			return manifest.Version, nil
+		}
+		nestedVersion = manifest.Version
 	}
 
-	return "", fmt.Errorf("custom component archive missing %s/manifest.json", dto.CustomComponentSRATName)
+	if nestedVersion != "" {
+		return nestedVersion, nil
+	}
+
+	return "", fmt.Errorf("custom component archive missing manifest.json")
 }
 
 func versionLessOrEqual(currentVersion string, candidateVersion string) (bool, error) {
