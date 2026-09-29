@@ -177,3 +177,32 @@ func TestEnrichExportedShareForceUserGroup_UnknownFsFallsBackToRoot(t *testing.T
 	assert.Equal(t, "root", dbs.ForceUser)
 	assert.Equal(t, "root", dbs.ForceGroup)
 }
+
+func TestEnrichExportedShareForceUserGroup_RealFilesystemService(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// nil event bus is safe: GetSambaForceUserGroup only consults the
+	// adapter registry, never the bus. This proves the live wiring used by
+	// jSONFromDatabase (real *FilesystemService as forceUserGroupProber).
+	prober := NewFilesystemService(ctx, cancel, nil)
+
+	ntfs := dbom.ExportedShare{}
+	enrichExportedShareForceUserGroup(&ntfs, &dto.MountPointData{FSType: new("ntfs")}, prober)
+	assert.Equal(t, "", ntfs.ForceUser)
+	assert.Equal(t, "", ntfs.ForceGroup)
+
+	ntfs3 := dbom.ExportedShare{}
+	enrichExportedShareForceUserGroup(&ntfs3, &dto.MountPointData{FSType: new("ntfs3")}, prober)
+	assert.Equal(t, "", ntfs3.ForceUser)
+	assert.Equal(t, "", ntfs3.ForceGroup)
+
+	ext4 := dbom.ExportedShare{}
+	enrichExportedShareForceUserGroup(&ext4, &dto.MountPointData{FSType: new("ext4")}, prober)
+	assert.Equal(t, "root", ext4.ForceUser)
+	assert.Equal(t, "root", ext4.ForceGroup)
+
+	unknown := dbom.ExportedShare{}
+	enrichExportedShareForceUserGroup(&unknown, &dto.MountPointData{FSType: new("weirdfs")}, prober)
+	assert.Equal(t, "root", unknown.ForceUser)
+	assert.Equal(t, "root", unknown.ForceGroup)
+}
