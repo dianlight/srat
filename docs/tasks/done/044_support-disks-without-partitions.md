@@ -4,7 +4,7 @@
 
 **Target Repo:** `srat`
 **Status:** ✅ Complete
-**Issue Link:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716)
+**Issue Link:** [dianlight/srat#849](https://github.com/dianlight/srat/issues/849), [dianlight/hassio-addons#716](https://github.com/dianlight/hassio-addons/issues/716), [dianlight/hassio-addons#727](https://github.com/dianlight/hassio-addons/issues/727) (tracked via `srat#1248` mirror — 4TB USB main-partition-missing follow-up, same Supervisor/UDisks2 filtering family; covered by child-synthesis + fstype-probe fallbacks)
 
 ## 🎯 Objective
 
