@@ -63,6 +63,11 @@ type UdevHandler struct {
 	resetRecheck func()
 	procfsMounts func() ([]*procfs.MountInfo, error)
 
+	// deviceNotFoundRetryDelay bounds the startup race where a by-id symlink
+	// (or the Supervisor hardware snapshot) is not yet visible when the first
+	// automount runs (hassio-addons#767). Zero means the production default.
+	deviceNotFoundRetryDelay time.Duration
+
 	// probe, when non-nil, is invoked by ProcessUdevEvent before the event
 	// is dispatched. Tests use it to observe consumed uevents.
 	probe func(netlink.UEvent)
@@ -71,16 +76,17 @@ type UdevHandler struct {
 // NewUdevHandler creates a UdevHandler.
 func NewUdevHandler(in HandlerParams) *UdevHandler {
 	return &UdevHandler{
-		ctx:          in.Ctx,
-		disks:        in.Disks,
-		hardware:     in.Hardware,
-		eventBus:     in.EventBus,
-		repo:         in.Repo,
-		orchestrator: in.Orchestrator,
-		fs:           in.Filesystem,
-		refresh:      in.Refresh,
-		resetRecheck: in.ResetRecheck,
-		procfsMounts: in.ProcfsMounts,
+		ctx:                      in.Ctx,
+		disks:                    in.Disks,
+		hardware:                 in.Hardware,
+		eventBus:                 in.EventBus,
+		repo:                     in.Repo,
+		orchestrator:             in.Orchestrator,
+		fs:                       in.Filesystem,
+		refresh:                  in.Refresh,
+		resetRecheck:             in.ResetRecheck,
+		procfsMounts:             in.ProcfsMounts,
+		deviceNotFoundRetryDelay: 5 * time.Second,
 	}
 }
 
@@ -104,6 +110,12 @@ func (h *UdevHandler) SetContext(ctx context.Context) {
 // SetProcfsMounts replaces the procfs parser (used by tests).
 func (h *UdevHandler) SetProcfsMounts(f func() ([]*procfs.MountInfo, error)) {
 	h.procfsMounts = f
+}
+
+// SetDeviceNotFoundRetryDelay overrides the delayed refresh interval used
+// after a transient device-not-found automount failure (used by tests).
+func (h *UdevHandler) SetDeviceNotFoundRetryDelay(d time.Duration) {
+	h.deviceNotFoundRetryDelay = d
 }
 
 // MatchPartitionWithDevName reports whether a partition answers to a kernel
@@ -253,8 +265,40 @@ func (h *UdevHandler) SchedulePartitionAddRetry(devName string) {
 		if h.hardware != nil {
 			h.hardware.InvalidateHardwareInfo()
 		}
+		if h.refresh == nil {
+			return
+		}
 		if err := h.refresh(); err != nil {
 			slog.ErrorContext(h.ctx, "Delayed retry: failed to refresh volume cache for partition", "devname", devName, "err", err)
+		}
+	})
+}
+
+// ScheduleDeviceNotFoundRetry schedules a delayed volume refresh after a
+// transient device-not-found automount failure. On soft add-on restart the
+// by-id symlink (or the Supervisor hardware snapshot) may not be visible yet
+// when the first automount runs (hassio-addons#767); without a scheduled
+// refresh no further udev event arrives and the mount never retries. The
+// chain stays bounded because each retry still records an automount failure
+// against maxAutomountAttempts.
+func (h *UdevHandler) ScheduleDeviceNotFoundRetry(mountPath string) {
+	delay := h.deviceNotFoundRetryDelay
+	if delay <= 0 {
+		delay = 5 * time.Second
+	}
+	time.AfterFunc(delay, func() {
+		if h.ctx.Err() != nil {
+			return
+		}
+		slog.DebugContext(h.ctx, "Delayed retry: refreshing volume cache for missing device", "mount_point", mountPath)
+		if h.hardware != nil {
+			h.hardware.InvalidateHardwareInfo()
+		}
+		if h.refresh == nil {
+			return
+		}
+		if err := h.refresh(); err != nil {
+			slog.ErrorContext(h.ctx, "Delayed retry: failed to refresh volume cache for missing device", "mount_point", mountPath, "err", err)
 		}
 	})
 }
@@ -655,6 +699,12 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 				return nil
 			}
 			slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", e.MountPoint, "err", err)
+			if errors.Is(err, dto.ErrorDeviceNotFound) {
+				if h.hardware != nil {
+					h.hardware.InvalidateHardwareInfo()
+				}
+				h.ScheduleDeviceNotFoundRetry(e.MountPoint.Path)
+			}
 			h.orchestrator.RecordAutomountFailure(e.MountPoint.Path)
 			h.orchestrator.createAutomountFailureNotification(e.MountPoint.Path, e.MountPoint.DeviceId, err)
 		} else {
