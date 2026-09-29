@@ -22,9 +22,11 @@ import (
 )
 
 // FilesystemOps is the subset of FilesystemServiceInterface used by the
-// orchestrator: flag conversion for mount syscalls and label reads.
+// orchestrator: flag conversion for mount syscalls, adapter-declared
+// default flags, and label reads.
 type FilesystemOps interface {
 	MountFlagsToSyscallFlagAndData(inputFlags []dto.MountFlag) (uintptr, string, errors.E)
+	GetDefaultMountFlags(fsType string) ([]dto.MountFlag, errors.E)
 	GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E)
 }
 
@@ -236,7 +238,31 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		slog.DebugContext(o.ctx, "Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
 	}
 
-	flags, data, err := o.fs.MountFlagsToSyscallFlagAndData(*md.Flags)
+	// Merge adapter-declared default mount flags (e.g. NTFS "permissions",
+	// exFAT/FAT "uid/gid/umask") underneath user-provided flags.
+	// User-provided flags win on name collision so explicit configuration
+	// is never overridden by defaults.
+	effectiveFlags := *md.Flags
+	if md.FSType != nil && *md.FSType != "" {
+		if defaults, defaultsErr := o.fs.GetDefaultMountFlags(*md.FSType); defaultsErr == nil && len(defaults) > 0 {
+			present := make(map[string]struct{}, len(effectiveFlags))
+			for _, f := range effectiveFlags {
+				present[strings.ToLower(strings.TrimSpace(f.Name))] = struct{}{}
+			}
+			for _, d := range defaults {
+				if _, ok := present[strings.ToLower(strings.TrimSpace(d.Name))]; !ok {
+					effectiveFlags = append(effectiveFlags, d)
+				}
+			}
+			if len(effectiveFlags) != len(*md.Flags) {
+				slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "defaults", defaults)
+			}
+		} else if defaultsErr != nil {
+			slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "err", defaultsErr)
+		}
+	}
+
+	flags, data, err := o.fs.MountFlagsToSyscallFlagAndData(effectiveFlags)
 	if err != nil {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"Device", md.DeviceId,

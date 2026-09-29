@@ -136,6 +136,7 @@ type ServerService struct {
 	status           dto.ServerProcessStatus
 	internalServices []ServerProcessStatus
 	disks            *dto.DiskMap
+	fs_service       MountFlagProber
 }
 
 type ServerServiceParams struct {
@@ -154,6 +155,14 @@ type ServerServiceParams struct {
 	CommandRunner     commandexec.Executor
 	InternalProcesses []ServerProcessStatus `group:"internal_services"`
 	Disks             *dto.DiskMap          `optional:"true"`
+	Fs_service        MountFlagProber       `optional:"true"`
+}
+
+// MountFlagProber is the narrow capability ServerService needs from the
+// filesystem layer: resolving the Samba force user/group declared by the
+// filesystem adapter for a share's backing filesystem.
+type MountFlagProber interface {
+	GetSambaForceUserGroup(fsType string) (string, string)
 }
 
 type serviceConfig struct {
@@ -251,6 +260,7 @@ func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerSe
 	p.internalServices = in.InternalProcesses
 
 	p.disks = in.Disks
+	p.fs_service = in.Fs_service
 
 	var unsubscribe [1]func()
 	unsubscribe[0] = p.eventBus.OnDirtyData(func(ctx context.Context, event events.DirtyDataEvent) errors.E {
@@ -507,11 +517,15 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		if share.Status != nil && !share.Status.IsValid {
 			continue
 		}
+		if share.MountPointData != nil && share.MountPointData.Partition == nil {
+			enrichSharePartitionFromCache(&share, self.disks)
+		}
 		dbs := dbom.ExportedShare{}
 		err = self.dbomConv.SharedResourceToExportedShare(share, &dbs)
 		if err != nil {
 			return tconfig, errors.WithStack(err)
 		}
+		enrichExportedShareForceUserGroup(&dbs, share.MountPointData, self.fs_service)
 		nshare = append(nshare, dbs)
 	}
 

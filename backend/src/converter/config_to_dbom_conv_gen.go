@@ -56,6 +56,12 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 		target.Usage = string(source.Usage)
 	}
 	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
+	if source.ForceUser != "" {
+		target.ForceUser = source.ForceUser
+	}
+	if source.ForceGroup != "" {
+		target.ForceGroup = source.ForceGroup
+	}
 	return nil
 }
 func (c *ConfigToDbomConverterImpl) SambaUserToUser(source dbom.SambaUser, target *config.User) error {
@@ -115,6 +121,12 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	if source.Path != "" {
 		pString2 := source.Path
 		target.MountPointDataRoot = &pString2
+	}
+	if source.ForceUser != "" {
+		target.ForceUser = source.ForceUser
+	}
+	if source.ForceGroup != "" {
+		target.ForceGroup = source.ForceGroup
 	}
 	return nil
 }

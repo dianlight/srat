@@ -53,6 +53,7 @@ type ConfigToDtoConverter interface {
 	ShareToSharedResource(source config.Share, users []dto.User) (dto.SharedResource, error)
 
 	// goverter:update target
+	// goverter:ignore ForceUser ForceGroup
 	// goverter:map MountPointData.Path Path
 	// goverter:map MountPointData.FSType FS
 	// goverter:context users

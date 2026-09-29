@@ -53,6 +53,18 @@ func (a *VfatAdapter) GetMountFlags() []dto.MountFlag {
 	}
 }
 
+// GetDefaultMountFlags returns the FAT mount defaults. FAT has no ACL
+// support, so ownership and permissions are fixed at mount time.
+// Defaulting to uid/gid 0 with an open umask keeps existing root-owned
+// semantics while allowing Samba-mapped users to read and write (#1264).
+func (a *VfatAdapter) GetDefaultMountFlags() []dto.MountFlag {
+	return []dto.MountFlag{
+		{Name: "uid", NeedsValue: true, FlagValue: "0"},
+		{Name: "gid", NeedsValue: true, FlagValue: "0"},
+		{Name: "umask", NeedsValue: true, FlagValue: "000"},
+	}
+}
+
 // IsSupported checks if vfat is supported on the system
 func (a *VfatAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()

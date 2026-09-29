@@ -22,6 +22,12 @@ type Share struct {
 	TimeMachineMaxSize *string  `json:"timemachine_max_size,omitempty"`
 	Usage              string   `json:"usage,omitempty"`
 	VetoFiles          []string `json:"veto_files,omitempty"`
+	// ForceUser and ForceGroup carry the Samba "force user"/"force group"
+	// values resolved from the backing filesystem adapter. Empty means the
+	// corresponding smb.conf line is omitted so the authenticated Samba
+	// user (and the on-disk ACLs) are honored.
+	ForceUser  string `json:"force_user,omitempty"`
+	ForceGroup string `json:"force_group,omitempty"`
 }
 
 type Shares map[string]Share

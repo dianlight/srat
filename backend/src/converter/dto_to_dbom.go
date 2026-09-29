@@ -43,12 +43,14 @@ type DtoToDbomConverter interface {
 	// goverter:map Supported | trueConst
 	HDIdleDeviceToHDIdleDeviceSupportDTO(source dbom.HDIdleDevice) (dto.HDIdleDeviceSupport, error)
 
-	// goverter:ignore CreatedAt UpdatedAt DeletedAt
+	// goverter:ignore CreatedAt UpdatedAt DeletedAt ForceUser ForceGroup
 	// goverter:map MountPointData.Path MountPointDataPath
 	// goverter:map MountPointData.Root MountPointDataRoot
 	sharedResourceToExportedShare(source dto.SharedResource) (dbom.ExportedShare, error)
 
 	// goverter:ignore Status
+	// goverter:map ForceUser _
+	// goverter:map ForceGroup _
 	ExportedShareToSharedResource(source dbom.ExportedShare) (dto.SharedResource, error)
 
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
@@ -96,7 +98,7 @@ type DtoToDbomConverter interface {
 	// goverter:update target
 	// goverter:useZeroValueOnPointerInconsistency
 	// goverter:ignore CreatedAt UpdatedAt DeletedAt
-	// goverter:ignore Users RoUsers MountPointData
+	// goverter:ignore Users RoUsers MountPointData ForceUser ForceGroup
 	// goverter:map MountPointData.Path MountPointDataPath
 	// goverter:map MountPointData.Root MountPointDataRoot
 	// goverter:useUnderlyingTypeMethods

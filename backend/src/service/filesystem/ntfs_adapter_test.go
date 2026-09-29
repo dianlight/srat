@@ -85,6 +85,33 @@ func (suite *NtfsAdapterTestSuite) TestGetMountFlags() {
 	suite.True(foundPermissions)
 }
 
+// TestGetDefaultMountFlags verifies the NTFS adapter declares open
+// fmask/dmask defaults (valid on both ntfs3 and ntfs-3g) so that
+// Samba-mapped users can read/write instead of hitting the root-ownership
+// lockout (hassio-addons#769 / srat#1264).
+func (suite *NtfsAdapterTestSuite) TestGetDefaultMountFlags() {
+	defaults := suite.adapter.GetDefaultMountFlags()
+	suite.Require().Len(defaults, 2)
+
+	byName := make(map[string]dto.MountFlag, len(defaults))
+	for _, flag := range defaults {
+		byName[flag.Name] = flag
+	}
+	for _, name := range []string{"fmask", "dmask"} {
+		flag, ok := byName[name]
+		suite.Require().True(ok, "missing default flag %s", name)
+		suite.True(flag.NeedsValue)
+		suite.Equal("000", flag.FlagValue)
+	}
+}
+
+// TestGetSambaForceUserGroup verifies NTFS shares do not force root so the
+// authenticated Samba user (and on-disk ACLs) are honored (#1264).
+func (suite *NtfsAdapterTestSuite) TestGetSambaForceUserGroup() {
+	suite.Equal("", suite.adapter.GetSambaForceUser())
+	suite.Equal("", suite.adapter.GetSambaForceGroup())
+}
+
 func (suite *NtfsAdapterTestSuite) TestIsSupported() {
 	support, err := suite.adapter.IsSupported(suite.ctx)
 	suite.NoError(err)
