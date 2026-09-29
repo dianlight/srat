@@ -131,7 +131,7 @@ async def test_setup_entry_health_check_fails(
 async def test_setup_entry_prefers_supervisor_gateway_host(
     hass: HomeAssistant,
 ) -> None:
-    """Test Supervisor-discovered entries prefer the gateway host for SRAT."""
+    """Supervisor-discovered entries fall back from loopback to the gateway host."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -143,10 +143,24 @@ async def test_setup_entry_prefers_supervisor_gateway_host(
     )
     entry.add_to_hass(hass)
 
+    mock_resp = AsyncMock()
+    mock_resp.status = 200
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    def _get_side_effect(url: str, **kwargs: Any) -> Any:
+        if "127.0.0.1" in url:
+            raise aiohttp.ClientConnectionError("loopback refused")
+        return mock_ctx
+
+    probing_session = MagicMock(spec=aiohttp.ClientSession)
+    probing_session.get = MagicMock(side_effect=_get_side_effect)
+
     with (
         patch(
             "custom_components.srat.async_get_clientsession",
-            return_value=_mock_session(200),
+            return_value=probing_session,
         ),
         patch(
             "custom_components.srat.SRATWebSocketClient",
@@ -181,10 +195,24 @@ async def test_setup_entry_auto_supervisor_endpoint_resolution(
     )
     entry.add_to_hass(hass)
 
+    mock_resp = AsyncMock()
+    mock_resp.status = 200
+    mock_ctx = AsyncMock()
+    mock_ctx.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    def _get_side_effect(url: str, **kwargs: Any) -> Any:
+        if "127.0.0.1" in url:
+            raise aiohttp.ClientConnectionError("loopback refused")
+        return mock_ctx
+
+    probing_session = MagicMock(spec=aiohttp.ClientSession)
+    probing_session.get = MagicMock(side_effect=_get_side_effect)
+
     with (
         patch(
             "custom_components.srat.async_get_clientsession",
-            return_value=_mock_session(200),
+            return_value=probing_session,
         ),
         patch(
             "custom_components.srat.resolve_supervisor_addon_endpoint",

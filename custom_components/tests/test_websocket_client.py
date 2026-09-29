@@ -129,10 +129,10 @@ async def test_listen_loop_resends_helo_after_reconnect(
     second_ws.send_json.assert_awaited_once_with(expected_payload)
 
 
-async def test_listen_loop_prefers_supervisor_gateway_host(
+async def test_listen_loop_tries_loopback_gateway_then_hostname(
     hass: HomeAssistant,
 ) -> None:
-    """Test that Supervisor add-on connections try the gateway host first."""
+    """Supervisor add-on connections try loopback, gateway, then hostname."""
     client = SRATWebSocketClient(
         hass=hass,
         host="local-sambanas2",
@@ -149,6 +149,7 @@ async def test_listen_loop_prefers_supervisor_gateway_host(
     session = MagicMock(spec=aiohttp.ClientSession)
     session.ws_connect = MagicMock(
         side_effect=[
+            aiohttp.ClientConnectionError("loopback refused"),
             aiohttp.ClientConnectionError("gateway failed"),
             _WebSocketContextManager(
                 ws,
@@ -163,9 +164,10 @@ async def test_listen_loop_prefers_supervisor_gateway_host(
     ):
         await client._listen_loop()
 
-    assert session.ws_connect.call_args_list[0].args[0] == "ws://172.30.32.1:62246/ws"
+    assert session.ws_connect.call_args_list[0].args[0] == "ws://127.0.0.1:62246/ws"
+    assert session.ws_connect.call_args_list[1].args[0] == "ws://172.30.32.1:62246/ws"
     assert (
-        session.ws_connect.call_args_list[1].args[0] == "ws://local-sambanas2:62246/ws"
+        session.ws_connect.call_args_list[2].args[0] == "ws://local-sambanas2:62246/ws"
     )
     ws.send_json.assert_awaited_once_with(
         {

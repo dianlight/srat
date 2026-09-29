@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.hassio import get_supervisor_client
 
-from .const import SUPERVISOR_GATEWAY_HOST
+from .const import LOOPBACK_HOST, SUPERVISOR_GATEWAY_HOST
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -23,15 +23,21 @@ def iter_connection_hosts(host: str, addon_slug: str | None = None) -> tuple[str
     Home Assistant Supervisor discovery commonly exposes add-on hostnames such as
     ``core-...`` or ``local-...``. In the test environment those names are not a
     reliable websocket target from Home Assistant Core, while the Supervisor
-    gateway host is. Prefer the gateway first for Supervisor-managed add-ons, but
-    retain the discovered hostname as a fallback.
+    gateway host is. For Supervisor-managed add-ons, try the loopback address
+    first: when Home Assistant Core and the add-on both run with host networking,
+    a gateway-routed request arrives with the host LAN address as source and is
+    rejected by the backend IP allowlist, while loopback is always trusted.
+    Retain the gateway and the discovered hostname as fallbacks for
+    bridge-networked setups where loopback is unreachable.
     """
     normalized_host = host.strip()
     if not normalized_host:
-        return (SUPERVISOR_GATEWAY_HOST,)
+        return (LOOPBACK_HOST, SUPERVISOR_GATEWAY_HOST)
 
     if addon_slug or normalized_host.startswith(("core-", "local-")):
-        return tuple(dict.fromkeys((SUPERVISOR_GATEWAY_HOST, normalized_host)))
+        return tuple(
+            dict.fromkeys((LOOPBACK_HOST, SUPERVISOR_GATEWAY_HOST, normalized_host))
+        )
 
     return (normalized_host,)
 

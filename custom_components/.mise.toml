@@ -36,11 +36,12 @@ run = [
       OUTPUT=$(cd "$(dirname "${usage_output?}")" && pwd)/$(basename "${usage_output?}")
       TMPDIR=$(mktemp -d)
       trap "rm -rf $TMPDIR" EXIT
-      cp -r srat "$TMPDIR/"
+      mkdir -p "$TMPDIR/stage"
+      cp -a srat/. "$TMPDIR/stage/"
       if [ -n "${usage_version:-}" ]; then
         python3 -c "
 import json
-path = '$TMPDIR/srat/manifest.json'
+path = '$TMPDIR/stage/manifest.json'
 with open(path) as f:
     d = json.load(f)
 d['version'] = '${usage_version}'
@@ -49,7 +50,7 @@ with open(path, 'w') as f:
 print('Injected manifest version: ${usage_version}')
 "
       fi
-      (cd "$TMPDIR" && zip -qr "$OUTPUT" srat -x "srat/__pycache__/*" "srat/*.pyc")
+      (cd "$TMPDIR/stage" && zip -qr "$OUTPUT" . -x "__pycache__/*" "*.pyc")
     ''',
     "echo \"HACS component zip created at ${usage_output?}\"",
 ]
