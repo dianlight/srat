@@ -8,6 +8,7 @@ and ``disk_health``.  The ``volumes`` event carries the disk list.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import logging
 from typing import Any
 
@@ -60,6 +61,12 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "disk_health": None,
         }
 
+        # One-shot callbacks keyed by data slot, fired when the slot first
+        # holds usable data (issue #1263: the backend only emits ``volumes``
+        # on mount/unmount transitions, so platforms must defer entity
+        # creation until the first payload arrives).
+        self._data_ready_callbacks: dict[str, list[Callable[[], bool]]] = {}
+
         # Register WebSocket listeners for real-time updates
         # Event types match backend/src/dto/webevent_type.go string values
         ws_client.register_listener("volumes", self._on_volumes)
@@ -70,10 +77,56 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self.data
 
     @callback
+    def async_when_data_ready(
+        self, key: str, on_ready: Callable[[], bool]
+    ) -> Callable[[], None]:
+        """Register a callback fired when ``data[key]`` first holds usable data.
+
+        The backend only emits ``volumes`` on mount/unmount transitions, so
+        slots seeded ``None`` may stay empty for the whole session. Platforms
+        that build dynamic entities register here instead of reading
+        ``self.data`` once at setup.
+
+        The callback must return ``True`` once it has consumed the data (the
+        registration is then dropped), or ``False`` to stay registered for a
+        later, more complete payload (e.g. an empty disk list).
+
+        If the key already holds data the callback is invoked immediately.
+
+        Returns:
+            A function that unregisters the callback.
+        """
+        if self.data.get(key) is not None and on_ready():
+            return lambda: None
+        callbacks = self._data_ready_callbacks.setdefault(key, [])
+        callbacks.append(on_ready)
+
+        def _unregister() -> None:
+            if on_ready in callbacks:
+                callbacks.remove(on_ready)
+
+        return _unregister
+
+    @callback
+    def _fire_data_ready(self, *keys: str) -> None:
+        """Notify consumers of ``keys`` whose data just became available."""
+        for key in keys:
+            if self.data.get(key) is None:
+                continue
+            pending = self._data_ready_callbacks.pop(key, [])
+            still_waiting: list[Callable[[], bool]] = []
+            for cb in pending:
+                if not cb():
+                    still_waiting.append(cb)
+            if still_waiting:
+                self._data_ready_callbacks[key] = still_waiting
+
+    @callback
     def _on_volumes(self, data: Any) -> None:
         """Handle ``volumes`` event (list of disks)."""
         self.data["disks"] = data if isinstance(data, list) else None
         self.async_set_updated_data(dict(self.data))
+        self._fire_data_ready("disks")
 
     @callback
     def _on_heartbeat(self, data: Any) -> None:
@@ -97,3 +150,4 @@ class SRATDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         if "disk_health" in data:
             self.data["disk_health"] = data.get("disk_health")
         self.async_set_updated_data(dict(self.data))
+        self._fire_data_ready("samba_status", "process_status", "disk_health")
