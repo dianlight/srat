@@ -879,4 +879,20 @@ func (s *UdevHandlerTestSuite) TestScheduleDeviceNotFoundRetry_CancelledAndNilGu
 		nilHandler.ScheduleDeviceNotFoundRetry("/mnt/1266-nil")
 		time.Sleep(100 * time.Millisecond)
 	}, "nil hardware/refresh must be safe")
+
+	errHandler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, Hardware: s.hardware, EventBus: s.eventBus,
+		Repo: s.repo,
+		Orchestrator: volume.NewMountOrchestrator(volume.OrchestratorParams{
+			Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+			Mounter: &fakeOrchestratorMounter{}, EventBus: s.eventBus, Repo: s.mountRepoIf,
+			Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+		}),
+		Refresh: func() errors.E { return errors.New("refresh boom") },
+	})
+	errHandler.SetDeviceNotFoundRetryDelay(10 * time.Millisecond)
+	s.NotPanics(func() {
+		errHandler.ScheduleDeviceNotFoundRetry("/mnt/1266-err")
+		time.Sleep(100 * time.Millisecond)
+	}, "refresh errors must be logged, not panic")
 }
