@@ -573,6 +573,71 @@ func (suite *HaDiscoveryServiceTestSuite) TestRegisterDiscoveryHandlesHTTPError(
 	suite.app.RequireStart()
 }
 
+func (suite *HaDiscoveryServiceTestSuite) TestUnregisterDiscoveryNotFoundIsBenign() {
+	hostname := "test-addon-host"
+	testUUID := openapi_types.UUID{}
+	_ = testUUID.UnmarshalText([]byte("550e8400-e29b-41d4-a716-446655440000"))
+
+	suite.state = &dto.ContextState{
+		SupervisorURL:   "http://supervisor",
+		SupervisorToken: "test-token",
+	}
+
+	suite.wg = &sync.WaitGroup{}
+	suite.ctx, suite.cancel = context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, suite.wg))
+
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() (context.Context, context.CancelFunc) {
+				return suite.ctx, suite.cancel
+			},
+			func() *dto.ContextState { return suite.state },
+			func(ctx context.Context) events.EventBusInterface {
+				return events.NewEventBus(ctx)
+			},
+			service.NewHaDiscoveryService,
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			mock.Mock[service.AddonsServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
+			mock.Mock[service.HaWsServiceInterface],
+			mock.Mock[discovery.ClientWithResponsesInterface],
+		),
+		fx.Populate(&suite.haDiscoveryService),
+		fx.Invoke(func(
+			addonsService service.AddonsServiceInterface,
+			settingService service.SettingServiceInterface,
+			discoveryClient discovery.ClientWithResponsesInterface,
+		) {
+			mock.When(settingService.Load()).ThenReturn(discoveryEnabledSettings(), nil)
+			mock.When(addonsService.GetInfo(mock.Any[context.Context]())).
+				ThenReturn(&apps.AppInfoData{
+					Hostname: &hostname,
+				}, nil)
+
+			// Mock registration so discoveryUUID is populated
+			mock.When(discoveryClient.CreateDiscoveryServiceWithResponse(
+				mock.Any[context.Context](),
+				mock.Any[discovery.CreateDiscoveryServiceJSONRequestBody](),
+			)).ThenReturn(successDiscoveryResponse(&testUUID), nil)
+
+			// Supervisor already cleaned up the discovery message (404)
+			mock.When(discoveryClient.DeleteDiscoveryServiceWithResponse(
+				mock.Any[context.Context](),
+				mock.Any[openapi_types.UUID](),
+			)).ThenReturn(&discovery.DeleteDiscoveryServiceResponse{
+				HTTPResponse: &http.Response{StatusCode: http.StatusNotFound},
+				Body:         []byte(`{"result":"error","message":"Discovery message not found"}`),
+				JSON404:      &discovery.ErrorResponse{},
+			}, nil)
+		}),
+	)
+	suite.app.RequireStart()
+
+	// 404 on unregistration means the message is already gone — benign, not an error
+	err := suite.haDiscoveryService.UnregisterDiscovery(suite.ctx)
+	suite.NoError(err, "HTTP 404 during unregistration should be treated as success")
+}
+
 func (suite *HaDiscoveryServiceTestSuite) TestUnregisterDiscoverySuccess() {
 	hostname := "test-addon-host"
 	testUUID := openapi_types.UUID{}
