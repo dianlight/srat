@@ -669,6 +669,62 @@ func (s *UdevHandlerTestSuite) TestHandleFilesystemTaskEvent_FormatSuccess_Patch
 	s.Equal("formatted-label", *part.Name)
 }
 
+// TestHandleFilesystemTaskEvent_FormatSuccess_DeviceSpellingMismatch_Patches
+// is the #1063 regression test for the silent-miss class: the format task can
+// carry a different spelling of the device (legacy /dev path) than the one
+// the refreshed cache holds (by-id path). The patch must still land.
+func (s *UdevHandlerTestSuite) TestHandleFilesystemTaskEvent_FormatSuccess_DeviceSpellingMismatch_Patches() {
+	diskID, partID := "disk-h-13", "part-h-13"
+	diskIDCopy, partIDCopy := diskID, partID
+	byID := "/dev/disk/by-id/ata-TEST-part1"
+	legacyPath := "/dev/sdz13"
+	legacyName := "sdz13"
+	oldLabel := "old-label"
+	byIDCopy, legacyPathCopy, legacyNameCopy, oldLabelCopy := byID, legacyPath, legacyName, oldLabel
+	parts := map[string]dto.Partition{partID: {
+		Id: &partIDCopy, DiskId: &diskIDCopy,
+		DevicePath: &byIDCopy, LegacyDevicePath: &legacyPathCopy, LegacyDeviceName: &legacyNameCopy,
+		Name: &oldLabelCopy,
+	}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	s.Require().NoError(s.handler.HandleFilesystemTaskEvent(s.ctx, events.FilesystemTaskEvent{
+		Task: &dto.FilesystemTask{
+			Operation: "format", Status: "success",
+			Device: legacyPath, FilesystemType: "ext4", Label: "new-label",
+		},
+	}))
+	part, ok := s.disks.GetPartition(diskID, partID)
+	s.Require().True(ok)
+	s.Require().NotNil(part.Name)
+	s.Equal("new-label", *part.Name)
+}
+
+// TestApplyFormatOverrides_StaleHardwareRelabeled covers the #1063 overwrite
+// class: after a format success, a refresh carrying stale hardware data must
+// be re-labeled by the recorded override, and the override must drop once the
+// hardware inventory agrees with it.
+func (s *UdevHandlerTestSuite) TestApplyFormatOverrides_StaleHardwareRelabeled() {
+	diskID, partID := "disk-h-14", "part-h-14"
+	s.seedHandlerDisk(diskID, partID, "sdz14", "/dev/sdz14")
+	s.Require().NoError(s.handler.HandleFilesystemTaskEvent(s.ctx, events.FilesystemTaskEvent{
+		Task: &dto.FilesystemTask{
+			Operation: "format", Status: "success",
+			Device: "/dev/sdz14", FilesystemType: "ext4", Label: "fresh-label",
+		},
+	}))
+
+	stale, ok := s.disks.GetPartition(diskID, partID)
+	s.Require().True(ok)
+	stale.Name = new("stale-label")
+	s.Require().True(s.handler.ApplyFormatOverrides(&stale), "stale hardware label must be re-labeled")
+	s.Equal("fresh-label", *stale.Name)
+
+	stale.Name = new("fresh-label")
+	s.False(s.handler.ApplyFormatOverrides(&stale), "agreeing hardware must drop the override")
+}
+
 func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_Failure_NotifiesAndBounds() {
 	ha := &fakeNotifier{}
 	mounter := &fakeOrchestratorMounter{

@@ -1776,6 +1776,76 @@ func (suite *VolumeServiceTestSuite) TestHandleFilesystemTaskEvent_EmitErrorLogg
 	suite.Contains(logs, "sentinel disk handler failure")
 }
 
+// TestFormatSuccess_StaleHardwareRefresh_PreservesNewLabel is the #1063
+// end-to-end regression test: the hardware inventory keeps reporting the
+// pre-format label after a successful format, yet the REST-level volumes data
+// must show the new label — including after a later full refresh (e.g. a
+// provisional recheck or HA start event) re-enumerates the stale hardware.
+func (suite *VolumeServiceTestSuite) TestFormatSuccess_StaleHardwareRefresh_PreservesNewLabel() {
+	diskID := "disk-1063-format"
+	partitionID := "disk-1063-format-part1"
+	oldLabel := "SRATLBL01"
+	newLabel := "SRATFMT02"
+	fsType := "ext4"
+	devicePath := "/dev/disk/by-id/ata-1063-part1"
+	legacyPath := "/dev/sdh1"
+	diskIDCopy, partCopy, oldCopy, fsCopy, devCopy, legCopy := diskID, partitionID, oldLabel, fsType, devicePath, legacyPath
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).
+		ThenReturn(map[string]dto.Disk{
+			diskID: {
+				Id:    &diskIDCopy,
+				Model: new("1063 Format Disk"),
+				Partitions: &map[string]dto.Partition{
+					partitionID: {
+						Id:               &partCopy,
+						DiskId:           &diskIDCopy,
+						Name:             &oldCopy,
+						FsType:           &fsCopy,
+						DevicePath:       &devCopy,
+						LegacyDevicePath: &legCopy,
+					},
+				},
+			},
+		}, nil).
+		Verify(matchers.AtLeastOnce())
+
+	// Populate the cache from the stale hardware inventory.
+	_, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+
+	// Format succeeds with the new label: the cache must show it (REST level).
+	suite.eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{
+		Event: events.Event{Type: events.EventTypes.STOP},
+		Task: &dto.FilesystemTask{
+			Device:         devicePath,
+			Operation:      "format",
+			FilesystemType: fsType,
+			Status:         "success",
+			Label:          newLabel,
+		},
+	})
+	disks, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+	suite.Require().Len(disks, 1)
+	suite.Require().NotNil(disks[0].Partitions)
+	part, ok := (*disks[0].Partitions)[partitionID]
+	suite.Require().True(ok)
+	suite.Require().NotNil(part.Name)
+	suite.Equal(newLabel, *part.Name)
+
+	// A later full refresh (hardware still stale) must not clobber the label.
+	suite.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{
+		Event: events.Event{Type: events.EventTypes.START},
+	})
+	disks, errVolumes = suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+	suite.Require().Len(disks, 1)
+	part, ok = (*disks[0].Partitions)[partitionID]
+	suite.Require().True(ok)
+	suite.Require().NotNil(part.Name)
+	suite.Equal(newLabel, *part.Name, "stale hardware refresh must not revert the post-format label")
+}
+
 // TestBootWarmupWarmsCacheAndWarmRequestSkipsHardware verifies the H10 fix:
 // the volume cache is warmed at service start (OnStart), the lazy path in
 // GetVolumesData remains as fallback, and a cache-warm request returns

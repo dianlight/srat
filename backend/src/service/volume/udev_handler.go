@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dianlight/srat/dto"
@@ -68,10 +69,36 @@ type UdevHandler struct {
 	// automount runs (hassio-addons#767). Zero means the production default.
 	deviceNotFoundRetryDelay time.Duration
 
+	// formatOverrides holds authoritative post-format labels keyed by device
+	// spelling (see formatLabelOverride). Guarded by formatMu.
+	formatMu        sync.Mutex
+	formatOverrides map[string]*formatLabelOverride
+
 	// probe, when non-nil, is invoked by ProcessUdevEvent before the event
 	// is dispatched. Tests use it to observe consumed uevents.
 	probe func(netlink.UEvent)
 }
+
+// formatLabelOverride is an authoritative post-format label (+fs type) for one
+// partition. The hardware inventory (Supervisor udev cache) can keep reporting
+// the pre-format label for minutes after a format (#1063), and any later
+// volume refresh would overwrite the patched DiskMap name with that stale
+// value. Overrides are re-applied during refresh enrichment until they expire
+// or the hardware inventory agrees with them.
+type formatLabelOverride struct {
+	label  string
+	fsType string
+	at     time.Time
+}
+
+// formatOverrideTTL bounds how long a post-format label stays authoritative.
+// It covers the Supervisor udev lag (minutes) without pinning a stale label
+// forever when hardware never converges.
+var formatOverrideTTL = 30 * time.Minute
+
+// maxFormatOverrides caps the override map so a format-heavy session cannot
+// grow it without bound; the oldest entries are evicted first.
+const maxFormatOverrides = 256
 
 // NewUdevHandler creates a UdevHandler.
 func NewUdevHandler(in HandlerParams) *UdevHandler {
@@ -762,7 +789,7 @@ func (h *UdevHandler) patchPartitionAfterFormat(ctx context.Context, devicePath,
 	}
 	diskID, partitionID := h.findDiskAndPartitionForDevicePath(devicePath)
 	if diskID == "" || partitionID == "" {
-		slog.DebugContext(ctx, "No partition found to patch after format", "device", devicePath)
+		slog.WarnContext(ctx, "No partition found to patch after format", "device", devicePath)
 		return
 	}
 	part, ok := h.disks.GetPartition(diskID, partitionID)
@@ -794,12 +821,151 @@ func (h *UdevHandler) patchPartitionAfterFormat(ctx context.Context, devicePath,
 		patched.Name = new(resolvedLabel)
 	}
 	// Skip the write when nothing changed to avoid needless cache churn.
+	// The override is recorded regardless: it shields the authoritative label
+	// from later refreshes that still carry stale hardware data (#1063).
+	if resolvedLabel != "" {
+		h.recordFormatOverride(&part, resolvedLabel, strings.TrimSpace(fsType))
+	}
 	if (patched.Name == nil && part.Name == nil || patched.Name != nil && part.Name != nil && *patched.Name == *part.Name) &&
 		(patched.FsType == nil && part.FsType == nil || patched.FsType != nil && part.FsType != nil && *patched.FsType == *part.FsType) {
 		return
 	}
 	if err := h.disks.AddPartition(diskID, patched); err != nil {
 		slog.WarnContext(ctx, "Failed to patch partition name after format", "device", devicePath, "disk", diskID, "partition", partitionID, "err", err)
+	}
+}
+
+// recordFormatOverride stores the authoritative post-format label under every
+// known spelling of the partition so later lookups match regardless of the
+// path form a refresh carries (#1063).
+func (h *UdevHandler) recordFormatOverride(part *dto.Partition, label, fsType string) {
+	if part == nil || strings.TrimSpace(label) == "" {
+		return
+	}
+	keys := formatOverrideKeys(part)
+	if len(keys) == 0 {
+		return
+	}
+	h.formatMu.Lock()
+	defer h.formatMu.Unlock()
+	if h.formatOverrides == nil {
+		h.formatOverrides = make(map[string]*formatLabelOverride)
+	}
+	// Bound the map before growing it.
+	for len(h.formatOverrides)+len(keys) > maxFormatOverrides {
+		evicted := false
+		for k, v := range h.formatOverrides {
+			if time.Since(v.at) >= formatOverrideTTL {
+				delete(h.formatOverrides, k)
+				evicted = true
+			}
+		}
+		if !evicted {
+			for k := range h.formatOverrides {
+				delete(h.formatOverrides, k)
+				break
+			}
+		}
+	}
+	entry := &formatLabelOverride{label: strings.TrimSpace(label), fsType: strings.TrimSpace(fsType), at: time.Now()}
+	for _, k := range keys {
+		h.formatOverrides[k] = entry
+	}
+}
+
+// formatOverrideKeys returns every non-empty device spelling of a partition,
+// normalized for map lookup.
+func formatOverrideKeys(part *dto.Partition) []string {
+	if part == nil {
+		return nil
+	}
+	var candidates []string
+	if part.DevicePath != nil {
+		candidates = append(candidates, *part.DevicePath)
+	}
+	if part.LegacyDevicePath != nil {
+		candidates = append(candidates, *part.LegacyDevicePath)
+	}
+	if part.LegacyDeviceName != nil {
+		candidates = append(candidates, *part.LegacyDeviceName)
+	}
+	if part.Id != nil {
+		candidates = append(candidates, *part.Id)
+	}
+	var keys []string
+	seen := make(map[string]struct{}, len(candidates))
+	for _, c := range candidates {
+		k := strings.TrimSpace(c)
+		if k == "" {
+			continue
+		}
+		if _, dup := seen[k]; dup {
+			continue
+		}
+		seen[k] = struct{}{}
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// ApplyFormatOverrides re-applies the authoritative post-format label (and fs
+// type) onto a freshly enumerated hardware partition. It returns true when it
+// changed the partition. The volume refresh calls it for every hardware
+// partition before publishing, so a stale Supervisor inventory cannot clobber
+// a just-formatted label (#1063). Entries expire after formatOverrideTTL or
+// are dropped once the hardware inventory agrees with them.
+func (h *UdevHandler) ApplyFormatOverrides(part *dto.Partition) bool {
+	return h.applyFormatOverridesAt(part, time.Now())
+}
+
+func (h *UdevHandler) applyFormatOverridesAt(part *dto.Partition, now time.Time) bool {
+	if h == nil || part == nil {
+		return false
+	}
+	h.formatMu.Lock()
+	defer h.formatMu.Unlock()
+	if len(h.formatOverrides) == 0 {
+		return false
+	}
+	var entry *formatLabelOverride
+	for _, k := range formatOverrideKeys(part) {
+		if e, ok := h.formatOverrides[k]; ok {
+			entry = e
+			break
+		}
+	}
+	if entry == nil {
+		return false
+	}
+	if now.Sub(entry.at) >= formatOverrideTTL {
+		h.deleteFormatOverride(entry)
+		return false
+	}
+	nameAgrees := part.Name != nil && *part.Name == entry.label
+	fsAgrees := entry.fsType == "" || (part.FsType != nil && *part.FsType == entry.fsType)
+	if nameAgrees && fsAgrees {
+		h.deleteFormatOverride(entry)
+		return false
+	}
+	changed := false
+	if !nameAgrees && entry.label != "" {
+		part.Name = new(entry.label)
+		changed = true
+	}
+	if !fsAgrees && entry.fsType != "" {
+		part.FsType = new(entry.fsType)
+		changed = true
+	}
+	return changed
+}
+
+// deleteFormatOverride removes every key pointing at the entry. Callers must
+// hold formatMu.
+func (h *UdevHandler) deleteFormatOverride(entry *formatLabelOverride) {
+	for k, v := range h.formatOverrides {
+		if v == entry {
+			delete(h.formatOverrides, k)
+		}
 	}
 }
 
@@ -813,7 +979,10 @@ func (h *UdevHandler) findDiskAndPartitionForDevicePath(devicePath string) (stri
 			continue
 		}
 		for partitionID, partition := range *disk.Partitions {
-			if strings.TrimSpace(h.disks.GetPartitionDevicePath(&partition)) == normalizedDevice {
+			// Tolerant match across spellings (#1063): the format task
+			// device can be a by-id path while the refreshed cache holds
+			// the legacy path (or vice versa).
+			if MatchPartitionWithDevName(&partition, normalizedDevice) {
 				return diskID, partitionID
 			}
 		}
@@ -832,7 +1001,7 @@ func (h *UdevHandler) findDiskForDevicePath(devicePath string) *dto.Disk {
 			continue
 		}
 		for _, partition := range *disk.Partitions {
-			if strings.TrimSpace(h.disks.GetPartitionDevicePath(&partition)) == normalizedDevice {
+			if MatchPartitionWithDevName(&partition, normalizedDevice) {
 				return disk
 			}
 		}
