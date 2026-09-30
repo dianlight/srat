@@ -238,8 +238,8 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		slog.DebugContext(o.ctx, "Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
 	}
 
-	// Merge adapter-declared default mount flags (e.g. NTFS "permissions",
-	// exFAT/FAT "uid/gid/umask") underneath user-provided flags.
+	// Merge adapter-declared default mount flags (e.g. NTFS fmask/dmask,
+	// exFAT/FAT uid/gid/umask) underneath user-provided flags.
 	// User-provided flags win on name collision so explicit configuration
 	// is never overridden by defaults.
 	effectiveFlags := *md.Flags
