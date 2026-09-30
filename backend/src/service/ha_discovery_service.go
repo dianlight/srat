@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"log/slog"
+	"net/http"
 	"sync"
 
 	"github.com/dianlight/srat/dto"
@@ -214,6 +215,15 @@ func (s *haDiscoveryService) UnregisterDiscovery(ctx context.Context) error {
 		return errors.New("discovery unregistration failed: empty response")
 	}
 
+	if resp.StatusCode() == http.StatusNotFound {
+		// The discovery message was already removed by the Supervisor (e.g. an
+		// addon restart or config change) — unregistration is idempotent.
+		slog.InfoContext(ctx, "Supervisor discovery already unregistered (404)", "uuid", uuid.String())
+		s.mu.Lock()
+		s.discoveryUUID = nil
+		s.mu.Unlock()
+		return nil
+	}
 	if resp.StatusCode() < 200 || resp.StatusCode() >= 300 {
 		return errors.Errorf("discovery unregistration failed: HTTP %d — %s", resp.StatusCode(), string(resp.Body))
 	}
