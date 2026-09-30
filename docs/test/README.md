@@ -1,4 +1,3 @@
-
 # Test Cases
 
 This directory contains test case specifications for the SRAT project. Test cases are designed to be executed on remote test environments with Home Assistant and the SRAT addon.
