@@ -328,6 +328,14 @@ func (s *VolumeService) getVolumesData() errors.E {
 				// the handler). Reduces P events to one per disk.
 				changedPartitions = make([]*dto.Partition, 0, len(*disk.Partitions))
 				for pid, part := range *disk.Partitions {
+					// #1063: re-apply authoritative post-format labels before
+					// enrichment so a stale hardware inventory cannot clobber
+					// a just-formatted name. The fs-type override (when set)
+					// also steers the FilesystemInfo lookup below to the new
+					// filesystem instead of the stale one.
+					if s.udevHandler != nil {
+						s.udevHandler.ApplyFormatOverrides(&part)
+					}
 					if part.FsType != nil && *part.FsType != "" {
 						if cached, ok := filesystemSupportCache[*part.FsType]; ok {
 							part.FilesystemInfo = cached

@@ -3,7 +3,9 @@ package volume
 
 import (
 	"errors"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 )
@@ -60,4 +62,48 @@ func TestLogUdevMonitorError_Levels(t *testing.T) {
 	h.logUdevMonitorError(errors.New("unable to parse uevent: invalid env data"))
 	h.logUdevMonitorError(errors.New("unable to parse uevent: truncated"))
 	h.logUdevMonitorError(errors.New("netlink socket failed"))
+}
+
+func TestApplyFormatOverrides_ExpiredEntryIgnored(t *testing.T) {
+	h := &UdevHandler{}
+	dev, partID, diskID := "/dev/sdz99", "part-x", "disk-x"
+	devCopy, partCopy, diskCopy := dev, partID, diskID
+	seed := dto.Partition{Id: &partCopy, DiskId: &diskCopy, DevicePath: &devCopy, Name: new("old")}
+	h.recordFormatOverride(&seed, "new-label", "ext4")
+
+	h.formatMu.Lock()
+	for _, e := range h.formatOverrides {
+		e.at = time.Now().Add(-formatOverrideTTL - time.Minute)
+	}
+	h.formatMu.Unlock()
+
+	devCopy2, partCopy2, diskCopy2, oldCopy := dev, partID, diskID, "old"
+	stale := dto.Partition{Id: &partCopy2, DiskId: &diskCopy2, DevicePath: &devCopy2, Name: &oldCopy}
+	if h.ApplyFormatOverrides(&stale) {
+		t.Error("expired override must not rewrite the partition")
+	}
+	if *stale.Name != "old" {
+		t.Errorf("expired override changed the name to %q", *stale.Name)
+	}
+	h.formatMu.Lock()
+	defer h.formatMu.Unlock()
+	if len(h.formatOverrides) != 0 {
+		t.Errorf("expired override must be evicted, %d entries left", len(h.formatOverrides))
+	}
+}
+
+func TestRecordFormatOverride_CapsMapSize(t *testing.T) {
+	h := &UdevHandler{}
+	for i := 0; i < maxFormatOverrides+10; i++ {
+		dev := "/dev/sdz-cap-" + strconv.Itoa(i)
+		partID, diskID := "part-cap-"+strconv.Itoa(i), "disk-cap"
+		devCopy, partCopy, diskCopy := dev, partID, diskID
+		seed := dto.Partition{Id: &partCopy, DiskId: &diskCopy, DevicePath: &devCopy}
+		h.recordFormatOverride(&seed, "label", "ext4")
+	}
+	h.formatMu.Lock()
+	defer h.formatMu.Unlock()
+	if len(h.formatOverrides) > maxFormatOverrides {
+		t.Errorf("override map grew to %d entries, cap is %d", len(h.formatOverrides), maxFormatOverrides)
+	}
 }
