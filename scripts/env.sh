@@ -2,13 +2,18 @@
 # Environment setup for SRAT build and test scripts
 # Sets common environment variables and functions
 
-#  API_URL and SUPERVISOR_ENDPOINT
+#  API_URL and SUPERVISOR_ENDPOINT (pre-set API_URL always wins — remote
+# test envs reach the backend on a host-specific port, not :3000)
+if [ -z "${API_URL}" ]; then
+	if [ -n "${SUPERVISOR_URL}" ]; then
+		export API_URL="${SUPERVISOR_URL%/}:3000/"
+	else
+		echo "WARN: Defaulting API_URL to http://localhost:3000/ - ensure this is correct for your environment"
+		export API_URL="http://localhost:3000/"
+	fi
+fi
 if [ -n "${SUPERVISOR_URL}" ]; then
-	export API_URL="${SUPERVISOR_URL%/}:3000/"
 	export SUPERVISOR_ENDPOINT="${SUPERVISOR_URL%/}"
-else
-	echo "WARN: Defaulting API_URL to http://localhost:3000/ - ensure this is correct for your environment"
-	export API_URL="http://localhost:3000/"
 fi
 
 # VERSION
