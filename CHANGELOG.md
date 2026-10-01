@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- Complete Apple stream module stacks for ordinary shares; use basic SMB on FAT filesystems and disable AAPL when mixing these shares
+
 ### 🏗 Chore
 
 ## 2026.9.2-rc16
