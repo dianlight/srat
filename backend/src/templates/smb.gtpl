@@ -1,11 +1,4 @@
 # DEBUG: {{ toJson . }}
-{{- $noXattrFS := list "vfat" "msdos" "exfat" -}}
-{{- $hasNoXattrShare := false -}}
-{{- range .shares -}}
-{{- if and (not .disabled) (has .fs $noXattrFS) -}}
-{{- $hasNoXattrShare = true -}}
-{{- end -}}
-{{- end }}
 [global]
    {{if not .local_master -}}
    local master = no
@@ -54,8 +47,7 @@
    #   fruit:copyfile       - Enables Mac copyfile ioctl (default: no, set yes for full compatibility)
    # These are GLOBAL ONLY: setting them per-share has no effect.
    vfs objects = acl_xattr catia fruit streams_xattr
-   # AAPL is global; mixed fruit/non-fruit shares otherwise depend on first connection order.
-   fruit:aapl = {{ $hasNoXattrShare | ternary "no" "yes" }}
+   fruit:aapl = yes
    fruit:model = MacSamba
    fruit:nfs_aces = no
    fruit:copyfile = yes
@@ -135,6 +127,7 @@
 
 {{ define "SHT" }}
 {{- $unsupported := list "vfat"	"msdos"	"f2fs"	"fuseblk" "exfat" -}}
+{{- $noXattrFS := list "vfat" "msdos" "exfat" -}}
 {{- $rosupported := list "apfs"}}
 {{- $name := regexReplaceAll "[^A-Za-z0-9_/ ]" .data.name "_" | regexFind "[A-Za-z0-9_ ]+$" | upper -}}
 [{{- $name -}}]
@@ -185,19 +178,19 @@
 
 # TM:{{ if has .data.fs $unsupported }}unsupported{{else}}{{ .data.timemachine }}{{ end }} US:{{ .data.users|default .username|join "," }} {{ .data.ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .data.usage }} CL:{{ .data.usage }}{{ end }} FS:{{ .data.fs | default "native" }} {{ if .data.recycle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
 # Note:"Setting vfs objects in a share will overwrite the globally configured option, it will NOT supplement them."
-{{- if has .data.fs .no_xattr_fs }}
-   # FAT filesystems cannot store the xattrs required by acl_xattr and Apple streams.
-   vfs objects = catia{{ if .data.recycle_bin_enabled }} recycle{{ end }}
-{{- else }}
-   vfs objects = acl_xattr catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
-{{- end }}
-
 {{- if and .data.timemachine (has .data.fs $unsupported | not ) }}
+   vfs objects = acl_xattr catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
+
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes
    {{ if .data.timemachine_max_size -}}
    fruit:time machine max size = {{ .data.timemachine_max_size }}
    {{- end }}
+{{ else }}
+   # Known FAT filesystems cannot store streams_xattr data; retain their existing stack.
+   # This is not full Apple metadata support on these filesystems.
+   vfs objects = acl_xattr catia fruit{{ if not (has .data.fs $noXattrFS) }} streams_xattr{{ end }}{{ if .data.recycle_bin_enabled }} recycle{{ end }}
+
 {{ end }}
 
 {{ end }}
@@ -207,7 +200,6 @@
                {{- if not $dd.disabled -}}
                   {{- $root2 := deepCopy $root -}}
                   {{- $_ := set $root2 "data" $dd -}}
-                  {{- $_ := set $root2 "no_xattr_fs" $noXattrFS -}}
                   {{- template "SHT" $root2 -}}
                {{- end -}}
         {{/* - end - */}}
