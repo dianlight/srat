@@ -587,7 +587,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 	// Setup mock responses - mount exists but update fails with 400
 	getMountsResponse := &mount.GetMountsResponse{
 		HTTPResponse: &http.Response{StatusCode: 200},
-		Body:         []byte(`{"result":"ok","data":{"mounts":[{"name":"test-share","server":"172.30.32.1","usage":"media","state":"inactive"}]}}`),
+		Body:         []byte(`{"result":"ok","data":{"mounts":[{"name":"test_share","server":"172.30.32.1","usage":"media","state":"inactive"}]}}`),
 		JSON200: &struct {
 			Data *struct {
 				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
@@ -601,7 +601,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogi
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   new("test-share"),
+						Name:   new("test_share"),
 						Server: new("172.30.32.1"),
 						Usage:  new(mount.MountUsage("media")),
 						State:  new("inactive"), // Inactive state triggers update
@@ -673,7 +673,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 	// Setup mock responses - mount exists but update fails with 400, then succeeds after remove+recreate
 	getMountsResponse := &mount.GetMountsResponse{
 		HTTPResponse: &http.Response{StatusCode: 200},
-		Body:         []byte(`{"result":"ok","data":{"mounts":[{"name":"test-share","server":"172.30.32.1","usage":"share","state":"inactive"}]}}`),
+		Body:         []byte(`{"result":"ok","data":{"mounts":[{"name":"test_share","server":"172.30.32.1","usage":"share","state":"inactive"}]}}`),
 		JSON200: &struct {
 			Data *struct {
 				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
@@ -687,7 +687,7 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_WithRetryLo
 			}{
 				Mounts: &[]mount.Mount{
 					{
-						Name:   new("test-share"),
+						Name:   new("test_share"),
 						Server: new("172.30.32.1"),
 						Usage:  new(mount.MountUsage("share")),
 						State:  new("inactive"), // Inactive state triggers update
