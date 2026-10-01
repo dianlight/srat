@@ -321,6 +321,48 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess() {
 	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())
 }
 
+// TestNetworkMountShare_HyphenatedNameSanitizesMountName asserts that share names
+// with hyphens (allowed at creation) sanitize mount.Name to underscore form while
+// preserving the raw SMB share in mount.Share (issue #1299).
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_HyphenatedNameSanitizesMountName() {
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	testShare := dto.SharedResource{
+		Name:  "test-share-1790832463",
+		Usage: "media",
+	}
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Name)
+	suite.Equal("test_share_1790832463", *captured.Name, "mount.Name must replace hyphens with underscores")
+	suite.Require().NotNil(captured.Share)
+	suite.Equal("test-share-1790832463", *captured.Share, "mount.Share must keep raw SMB share name")
+}
+
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400WithRetrySuccess() {
 	// Setup mock responses - first create fails with 400, then remove succeeds, then create succeeds
 	getMountsResponse := &mount.GetMountsResponse{
