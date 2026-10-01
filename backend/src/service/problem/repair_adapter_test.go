@@ -146,3 +146,56 @@ func TestApplyProblemLifecycle_NilStore_Noop(t *testing.T) {
 		ApplyProblemLifecycle(ctx, nil, event)
 	})
 }
+
+func TestMapProblemSeverity(t *testing.T) {
+	cases := []struct {
+		name     string
+		input    dto.ProblemSeverity
+		expected dto.RepairIssueSeverity
+	}{
+		{"critical", dto.ProblemSeverities.PROBLEMSEVERITYCRITICAL, dto.RepairIssueSeverities.REPAIRISSUESEVERITYCRITICAL},
+		{"error", dto.ProblemSeverities.PROBLEMSEVERITYERROR, dto.RepairIssueSeverities.REPAIRISSUESEVERITYERROR},
+		{"warning", dto.ProblemSeverities.PROBLEMSEVERITYWARNING, dto.RepairIssueSeverities.REPAIRISSUESEVERITYWARNING},
+		{"info degrades to warning", dto.ProblemSeverities.PROBLEMSEVERITYINFO, dto.RepairIssueSeverities.REPAIRISSUESEVERITYWARNING},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expected, MapProblemSeverity(tc.input))
+		})
+	}
+}
+
+func TestBuildCommandFromProblem(t *testing.T) {
+	p := &dto.Problem{
+		ProblemKey:     "protected_mode",
+		Title:          "Protected mode",
+		Severity:       dto.ProblemSeverities.PROBLEMSEVERITYERROR,
+		TranslationKey: "protected_mode",
+		IsFixable:      true,
+		IsPersistent:   true,
+	}
+	cmd := BuildCommandFromProblem(p, dto.RepairCommandActions.REPAIRCOMMANDACTIONUPSERT)
+	require.NotEmpty(t, cmd.CommandID)
+	assert.Equal(t, "protected_mode", cmd.RepairID)
+	assert.Equal(t, "protected_mode", cmd.TranslationKey)
+	assert.Equal(t, dto.RepairIssueSeverities.REPAIRISSUESEVERITYERROR, cmd.Severity)
+	require.NoError(t, cmd.Validate())
+
+	fallback := &dto.Problem{ProblemKey: "k1", Title: "Title fallback", Severity: dto.ProblemSeverities.PROBLEMSEVERITYINFO}
+	fallbackCmd := BuildCommandFromProblem(fallback, dto.RepairCommandActions.REPAIRCOMMANDACTIONUPSERT)
+	assert.Equal(t, "k1", fallbackCmd.RepairID)
+	assert.Equal(t, "Title fallback", fallbackCmd.TranslationKey)
+	assert.Equal(t, dto.RepairIssueSeverities.REPAIRISSUESEVERITYWARNING, fallbackCmd.Severity)
+	require.NoError(t, fallbackCmd.Validate())
+
+	delCmd := BuildCommandFromProblem(p, dto.RepairCommandActions.REPAIRCOMMANDACTIONDELETE)
+	assert.Equal(t, "protected_mode", delCmd.RepairID)
+	require.NoError(t, delCmd.Validate())
+
+	nilCmd := BuildCommandFromProblem(nil, dto.RepairCommandActions.REPAIRCOMMANDACTIONUPSERT)
+	assert.Empty(t, nilCmd.RepairID)
+
+	emptyCmd := BuildCommandFromProblem(&dto.Problem{}, dto.RepairCommandActions.REPAIRCOMMANDACTIONUPSERT)
+	assert.Empty(t, emptyCmd.RepairID)
+	assert.Error(t, emptyCmd.Validate())
+}
