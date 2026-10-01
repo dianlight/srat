@@ -364,8 +364,12 @@ func (self *SupervisorService) NetworkUnmountShare(ctx context.Context, shareNam
 	}
 
 	name := sanitizeSupervisorMountName(shareName)
-	_, ok := mounts[name]
-	if !ok {
+	if _, ok := mounts[name]; ok {
+		// sanitized mount exists
+	} else if _, ok := mounts[shareName]; ok {
+		// legacy hyphenated mount exists (pre-#1299); unmount raw name
+		name = shareName
+	} else {
 		slog.InfoContext(ctx, "Share not mounted in ha_supervisor, skipping unmount", "share", shareName)
 		// not mounted
 		return nil
