@@ -213,6 +213,13 @@ func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.
 	return self.networkMountShareWithRetry(ctx, share, 3)
 }
 
+// sanitizeSupervisorMountName maps SRAT share names to HA Supervisor mount names.
+// Supervisor validates mount name against ^[A-Za-z0-9_]+$ (issue #1299) while SRAT
+// allows hyphens. Only Name is sanitized; Share keeps the raw SMB name.
+func sanitizeSupervisorMountName(name string) string {
+	return strings.ReplaceAll(name, "-", "_")
+}
+
 func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, share dto.SharedResource, retries int) errors.E {
 
 	if retries <= 0 {
@@ -240,7 +247,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		return errors.Errorf("Error getting HAUseNFS setting from ha_supervisor: value is nil")
 	}
 
-	rmount, ok := mounts[share.Name]
+	rmount, ok := mounts[sanitizeSupervisorMountName(share.Name)]
 	enrichSharePartitionFromCache(&share, self.disks)
 	if !ok {
 		// new mount
@@ -248,6 +255,9 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
 			return errors.Wrap(err, "failed converting share to HA mount payload")
 		}
+		sanitized := sanitizeSupervisorMountName(share.Name)
+		rmount.Name = &sanitized
+		rmount.Share = &share.Name
 		rmount.Server = &self.state.AddonIpAddress
 
 		if *useNfs && isShareNFSExportable(ctx, share) {
@@ -276,7 +286,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 			// Try to remove it and retry the mount creation
 			if resp.StatusCode() == 400 {
 				// Attempt to remove the potentially stale mount
-				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(ctx, share.Name)
+				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(ctx, sanitizeSupervisorMountName(share.Name))
 				if removeErr == nil && removeResp.StatusCode() == 200 {
 					// Successfully removed, retry creation
 					retryResp, retryErr := self.mount_client.CreateMountWithResponse(ctx, rmount)
@@ -305,6 +315,9 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
 			return errors.Wrap(err, "failed converting share to HA mount update payload")
 		}
+		mountName := sanitizeSupervisorMountName(share.Name)
+		rmount.Name = &mountName
+		rmount.Share = &share.Name
 		if *useNfs && isShareNFSExportable(ctx, share) {
 			nfsPath := resolveActualMountPointPath(share)
 			if nfsPath == "" {
@@ -319,22 +332,22 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 			rmount.Username = mountUsername
 			rmount.Password = &mountPassword
 		}
-		resp, err := self.mount_client.UpdateMountWithResponse(ctx, *rmount.Name, rmount)
+		resp, err := self.mount_client.UpdateMountWithResponse(ctx, mountName, rmount)
 		if err != nil {
-			return errors.Errorf("Error updating mount %s from ha_supervisor: %w", *rmount.Name, err)
+			return errors.Errorf("Error updating mount %s from ha_supervisor: %w", mountName, err)
 		}
 		if resp.StatusCode() != 200 {
 			// If we get a 400 error, it might be because the systemd unit is in a stale state
 			// Try to remove it and recreate the mount (similar to create path)
 			if resp.StatusCode() == 400 {
 				// Attempt to remove the potentially stale mount
-				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(ctx, share.Name)
+				removeResp, removeErr := self.mount_client.RemoveMountWithResponse(ctx, mountName)
 				if removeErr == nil && removeResp.StatusCode() == 200 {
 					return self.networkMountShareWithRetry(ctx, share, retries-1)
 				}
 			}
 			// Original error or retry strategy didn't work
-			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", share.Name, resp.StatusCode(), string(resp.Body))
+			return errors.Errorf("Error updating mount %s from ha_supervisor: %d %#v", mountName, resp.StatusCode(), string(resp.Body))
 		}
 	}
 	return nil
@@ -350,14 +363,19 @@ func (self *SupervisorService) NetworkUnmountShare(ctx context.Context, shareNam
 		return errE
 	}
 
-	_, ok := mounts[shareName]
-	if !ok {
+	name := sanitizeSupervisorMountName(shareName)
+	if _, ok := mounts[name]; ok {
+		// sanitized mount exists
+	} else if _, ok := mounts[shareName]; ok {
+		// legacy hyphenated mount exists (pre-#1299); unmount raw name
+		name = shareName
+	} else {
 		slog.InfoContext(ctx, "Share not mounted in ha_supervisor, skipping unmount", "share", shareName)
 		// not mounted
 		return nil
 	}
 
-	resp, err := self.mount_client.RemoveMountWithResponse(ctx, shareName)
+	resp, err := self.mount_client.RemoveMountWithResponse(ctx, name)
 	if err != nil {
 		return errors.Errorf("Error unmounting share %s from ha_supervisor: %w", shareName, err)
 	}
@@ -422,7 +440,7 @@ func (self *SupervisorService) networkUnmountLostShares(ctx context.Context) err
 			}
 			switch share.Usage {
 			case "media", "share", "backup":
-				delete(mounts, share.Name)
+				delete(mounts, sanitizeSupervisorMountName(share.Name))
 			}
 		}
 		// Unmount any remaining mounts
