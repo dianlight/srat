@@ -140,21 +140,35 @@ export function DashboardActions() {
 
   function handleResolveIssue(id: number | string): void {
     if (typeof id === "string") {
-      void dismissProblem({ problemKey: id });
+      dismissProblem({ problemKey: id })
+        .unwrap()
+        .catch((err) => {
+          console.error("Failed to dismiss problem", id, err);
+        });
     }
   }
 
   // Permanent ignore: the backend stores the flag and never re-raises the
   // alert (or notifies HA) until it is dismissed/re-enabled.
   function handleIgnoreIssue(issue: Problem): void {
-    const key = issue.problem_key;
+    const key = issue?.problem_key?.trim();
     if (!key) {
+      console.error("Cannot ignore problem without problem_key", issue);
       return;
     }
-    void upsertProblem({
+    upsertProblem({
       problemKey: key,
-      problem: { ...issue, ignored: true, status: Status.Ignored },
-    });
+      problem: {
+        ...issue,
+        problem_key: key,
+        ignored: true,
+        status: Status.Ignored,
+      },
+    })
+      .unwrap()
+      .catch((err) => {
+        console.error("Failed to ignore problem", key, err);
+      });
   }
 
   // Re-enable a previously ignored alert. The problem is recreated right
@@ -165,12 +179,20 @@ export function DashboardActions() {
     }
     const issue = mergedProblems.find((problem) => problem?.problem_key === id);
     if (issue?.problem_key) {
-      void upsertProblem({
+      upsertProblem({
         problemKey: issue.problem_key,
         problem: { ...issue, ignored: false, status: Status.Created },
-      });
+      })
+        .unwrap()
+        .catch((err) => {
+          console.error("Failed to re-enable problem", id, err);
+        });
     } else {
-      void dismissProblem({ problemKey: id });
+      dismissProblem({ problemKey: id })
+        .unwrap()
+        .catch((err) => {
+          console.error("Failed to dismiss problem", id, err);
+        });
     }
   }
 
