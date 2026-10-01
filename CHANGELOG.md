@@ -8,7 +8,7 @@
 
 ### 🐛 Bug Fixes
 
-- Complete Apple stream module stacks for ordinary shares; use basic SMB on FAT filesystems and disable AAPL when mixing these shares
+- Load the Apple stream module on ordinary non-FAT shares and preserve the separator before the recycle module
 
 ### 🏗 Chore
 
