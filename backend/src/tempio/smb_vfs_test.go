@@ -35,8 +35,7 @@ func TestSmbTemplateVFSStack(t *testing.T) {
 					noXattrs := fs == "exfat" || fs == "vfat" || fs == "msdos"
 					want := "vfs objects = acl_xattr catia fruit streams_xattr"
 					if noXattrs {
-						want = "vfs objects = catia"
-						assert.NotContains(t, section, "fruit:")
+						want = "vfs objects = acl_xattr catia fruit"
 					}
 					if recycle {
 						want += " recycle"
@@ -48,7 +47,7 @@ func TestSmbTemplateVFSStack(t *testing.T) {
 					assert.Equal(t, timeMachine && tmSupported, strings.Contains(section, "fruit:time machine max size = 500G"))
 					global := smbSection(t, rendered, "global")
 					assert.Contains(t, global, "vfs objects = acl_xattr catia fruit streams_xattr")
-					assert.Contains(t, global, "fruit:aapl = "+map[bool]string{true: "no", false: "yes"}[noXattrs])
+					assert.Contains(t, global, "fruit:aapl = yes")
 				})
 			}
 		}
@@ -67,12 +66,12 @@ func TestSmbTemplateMixedSharesAAPL(t *testing.T) {
 			rendered, err := RenderTemplateBuffer(data, loadSmbTemplate(t))
 			require.NoError(t, err)
 			global := smbSection(t, rendered, "global")
-			assert.Contains(t, global, "fruit:aapl = "+map[bool]string{true: "yes", false: "no"}[disabled])
+			assert.Contains(t, global, "fruit:aapl = yes")
 			assert.Contains(t, smbSection(t, rendered, "TEST_SHARE"), "fruit:time machine = yes")
 			if disabled {
 				assert.NotContains(t, string(rendered), "[FAT_SHARE]")
 			} else {
-				assert.Contains(t, smbSection(t, rendered, "FAT_SHARE"), "vfs objects = catia")
+				assert.Contains(t, smbSection(t, rendered, "FAT_SHARE"), "vfs objects = acl_xattr catia fruit")
 			}
 		})
 	}
