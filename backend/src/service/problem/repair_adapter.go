@@ -3,6 +3,8 @@ package problem
 
 import (
 	"context"
+	"strings"
+	"uuid"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
@@ -97,5 +99,51 @@ func ApplyProblemLifecycle(ctx context.Context, store Store, event dto.RepairLif
 	}
 	if _, err := store.ApplyLifecycle(event.RepairID, MapRepairLifecycleStatus(event.Status), event.Error); err != nil {
 		tlog.WarnContext(ctx, "Failed to sync repair lifecycle to problem", "repair_id", event.RepairID, "status", event.Status, "error", err)
+	}
+}
+
+// MapProblemSeverity maps a problem severity to the repair severity.
+// Repair has no info level, so info degrades to warning.
+func MapProblemSeverity(severity dto.ProblemSeverity) dto.RepairIssueSeverity {
+	switch severity {
+	case dto.ProblemSeverities.PROBLEMSEVERITYCRITICAL:
+		return dto.RepairIssueSeverities.REPAIRISSUESEVERITYCRITICAL
+	case dto.ProblemSeverities.PROBLEMSEVERITYERROR:
+		return dto.RepairIssueSeverities.REPAIRISSUESEVERITYERROR
+	default:
+		return dto.RepairIssueSeverities.REPAIRISSUESEVERITYWARNING
+	}
+}
+
+// BuildCommandFromProblem builds the mirrored repair command for a problem.
+// Best-effort WS parity: callers must skip broadcast when RepairID is empty
+// or Validate fails. TranslationKey falls back to title then repair ID so
+// upsert commands satisfy validation.
+func BuildCommandFromProblem(problem *dto.Problem, action dto.RepairCommandAction) dto.RepairCommandMessage {
+	if problem == nil {
+		return dto.RepairCommandMessage{CommandID: uuid.New().String(), Action: action}
+	}
+	repairID := strings.TrimSpace(problem.ProblemKey)
+	if repairID == "" {
+		repairID = strings.TrimSpace(problem.Title)
+	}
+	translationKey := strings.TrimSpace(problem.TranslationKey)
+	if translationKey == "" {
+		translationKey = strings.TrimSpace(problem.Title)
+	}
+	if translationKey == "" {
+		translationKey = repairID
+	}
+	return dto.RepairCommandMessage{
+		CommandID:               uuid.New().String(),
+		RepairID:                repairID,
+		Action:                  action,
+		TranslationKey:          translationKey,
+		TranslationPlaceholders: problem.TranslationPlaceholders,
+		Data:                    problem.Data,
+		LearnMoreURL:            problem.LearnMoreURL,
+		Severity:                MapProblemSeverity(problem.Severity),
+		IsFixable:               problem.IsFixable,
+		IsPersistent:            problem.IsPersistent,
 	}
 }

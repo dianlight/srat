@@ -153,9 +153,36 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
 	expectNoBroadcast("filesystem task nil")
 
-	// 12. Problem event with Problem set -> problem broadcast
+	// 12. Problem event with Problem set -> problem + repair_command broadcasts (issue #1301 parity)
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, Problem: &dto.Problem{ProblemKey: "test-problem", Title: "Test"}})
 	expectBroadcast("problem")
+	timeout := time.After(250 * time.Millisecond)
+	select {
+	case msg := <-listener.Ch():
+		cmd, ok := msg.Message.(dto.RepairCommandMessage)
+		if !ok {
+			t.Fatalf("expected repair_command mirror for problem, got %T", msg.Message)
+		}
+		assert.Equal(t, "test-problem", cmd.RepairID)
+	case <-timeout:
+		t.Fatalf("expected repair_command mirror for problem")
+	}
+
+	// 12b. Problem REMOVE event -> problem + delete repair_command broadcasts
+	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.REMOVE}, Problem: &dto.Problem{ProblemKey: "test-problem", Title: "Test"}})
+	expectBroadcast("problem remove")
+	timeout = time.After(250 * time.Millisecond)
+	select {
+	case msg := <-listener.Ch():
+		cmd, ok := msg.Message.(dto.RepairCommandMessage)
+		if !ok {
+			t.Fatalf("expected delete repair_command mirror for problem remove, got %T", msg.Message)
+		}
+		assert.Equal(t, "test-problem", cmd.RepairID)
+		assert.Equal(t, dto.RepairCommandActionDelete, cmd.Action)
+	case <-timeout:
+		t.Fatalf("expected delete repair_command mirror for problem remove")
+	}
 
 	// 13. Problem event with nil Problem -> no broadcast
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
