@@ -842,6 +842,12 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Main may have advanced while build/release ran (the checkout is
+          # pinned at the release commit). Rebase onto latest main first so
+          # the reset applies on top and the push is fast-forward.
+          git fetch origin main
+          git rebase origin/main
+
           ESCAPED_VERSION="${VERSION//./\\.}"
           TEMP_CHANGELOG="CHANGELOG.md.tmp"
           THANKS_FILE=$(mktemp)
@@ -907,6 +913,8 @@ jobs:
 
           git add CHANGELOG.md
           git commit -m "chore(release): reset changelog for next development cycle"
+          # Retry path: another push may have landed between fetch and push.
+          git pull --rebase origin main
           git push origin main
 
           echo "### CHANGELOG reset" >> "$GITHUB_STEP_SUMMARY"
