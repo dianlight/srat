@@ -2,7 +2,7 @@
 
 # Changelog
 
-## [ 🚧 Unreleased ]
+## 2026.10.0-rc17
 
 ### ✨ Features
 
@@ -517,4 +517,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-09-20T13:05:05Z -->
+<!-- release-timestamp: 2026-10-02T19:54:50Z -->
