@@ -279,6 +279,44 @@ describe("VolumeMountDialog Component", () => {
         expect(selects.length).toBeGreaterThanOrEqual(0);
     });
 
+    it("logs debug when filesystem type changes", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Provider } = await import("react-redux");
+        const { VolumeMountDialog } = await import("../VolumeMountDialog");
+        const { createTestStore } = await import("/test/testing");
+
+        const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+        try {
+            const store = await createTestStore();
+            const mockClose = () => { };
+
+            render(
+                React.createElement(
+                    Provider,
+                    {
+                        store, children: React.createElement(VolumeMountDialog as any, {
+                            open: true,
+                            onClose: mockClose
+                        })
+                    }
+                )
+            );
+
+            const user = userEvent.setup();
+            const fstypeInput = await screen.findByRole("combobox", {
+                name: /file system type/i,
+            });
+            await user.click(fstypeInput);
+            await user.type(fstypeInput, "ext4{Enter}");
+
+            expect(debugSpy).toHaveBeenCalledWith("FS Type changed:", "ext4");
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
+
     it("displays mount flags options", async () => {
         const React = await import("react");
         const { render } = await import("@testing-library/react");

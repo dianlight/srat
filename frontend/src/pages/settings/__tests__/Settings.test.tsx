@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Provider } from "react-redux";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Settings } from "../Settings";
 import { createTestStore, getMswServer } from "/test/testing";
 
@@ -94,6 +94,50 @@ describe("Settings", () => {
         ).toBeDisabled(),
       { timeout: 3000 },
     );
+  });
+
+  it("logs debug when committing dirty settings via Apply", async () => {
+    const server = getMswServer();
+    const settingsJson = {
+      hostname: "homeassistant",
+      workgroup: "WORKGROUP",
+      allow_hosts: ["192.168.0.0/16"],
+      bind_all_interfaces: true,
+      interfaces: [],
+      multi_channel: false,
+      allow_guest: false,
+      telemetry_mode: "Disabled",
+      local_master: true,
+      export_stats_to_ha: false,
+      ha_use_nfs: false,
+      smb_over_quic: false,
+      smart_on: true,
+      experimental_lab_mode: false,
+      mdns_registration: false,
+      use_component_mdns_proxy: true,
+      standard_share_names: "new",
+    };
+    server.use(
+      http.get(/.*\/api\/settings$/, () => HttpResponse.json(settingsJson)),
+      http.put(/.*\/api\/settings$/, () => HttpResponse.json(settingsJson)),
+    );
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+    try {
+      const { user } = await renderSettings();
+
+      const workgroup = await screen.findByDisplayValue("WORKGROUP");
+      await user.clear(workgroup);
+      await user.type(workgroup, "TWG1234");
+
+      await user.click(screen.getByRole("button", { name: /^apply$/i }));
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        "Settings commit:",
+        expect.objectContaining({ workgroup: "TWG1234" }),
+      );
+    } finally {
+      debugSpy.mockRestore();
+    }
   });
 
   it("renders core layout with General panel and action bar", async () => {
