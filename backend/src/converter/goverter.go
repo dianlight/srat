@@ -61,7 +61,6 @@ func deviceToDeviceId(source string) (string, error) {
 				if err != nil {
 					continue
 				}
-				//slog.Debug("Resolved symlink", "link", linkPath, "resolved", resolved, "source", source)
 				if resolved == source || linkPath == source {
 					deviceID = entry.Name()
 					break
@@ -85,21 +84,17 @@ func DeviceIdToDevice(source string) (string, error) {
 }
 
 func mountPathToDeviceId(mountPath string) (string, error) {
-	//	slog.Debug("Resolving device ID for mount path", "mountPath", mountPath)
 	info, err := osutil.LoadMountInfo()
 	if err != nil {
 		slog.Warn("Error loading mount info", "err", err)
 		return "", nil
 	}
-	//	slog.Info("Loaded mount info", "count", len(info), "all", info)
 	for _, m := range info {
-		//		slog.Info("Mount info", "mount_dir", m.MountDir, "mount_source", m.MountSource, "mountPath", mountPath, "all", m)
 		if m.MountDir == mountPath {
 			return deviceToDeviceId(m.MountSource)
 		} else {
 			same, _ := mount.SameFilesystem(mountPath, m.MountDir)
 			if same {
-				//				slog.Info("Same filesystem detected", "mountPath", mountPath, "mountDir", m.MountDir)
 				return mountPathToDeviceId(m.MountDir)
 			}
 		}
@@ -124,7 +119,6 @@ func trueConst() bool {
 }
 
 func isWriteSupported(path string) *bool {
-	//tlog.Debug("Checking if path is writable", "path", path, "isWritable", osutil.IsWritable(path))
 	return new(osutil.IsWritable(path))
 
 }
@@ -135,7 +129,3 @@ func secretToString(secret dto.Secret[string]) string {
 func stringToSecret(str string) dto.Secret[string] {
 	return dto.NewSecret(str)
 }
-
-//func stringToSecretPtr(str string) *dto.Secret[string] {
-//	return new(dto.NewSecret(str))
-//}

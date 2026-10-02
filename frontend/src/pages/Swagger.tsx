@@ -36,7 +36,8 @@ export function Swagger() {
       .whenDefined("openapi-explorer")
       .then(() => {
         if (cancelled) return;
-        console.debug("openapi-explorer custom element is ready");
+        if (process.env.NODE_ENV !== "production")
+          console.debug("openapi-explorer custom element is ready");
         setLoaded(true);
       })
       .catch((err) => {
@@ -47,7 +48,8 @@ export function Swagger() {
 
     // Fallback timeout in case whenDefined doesn't resolve
     const timeout = setTimeout(() => {
-      console.debug("openapi-explorer timeout, marking as loaded anyway");
+      if (process.env.NODE_ENV !== "production")
+        console.debug("openapi-explorer timeout, marking as loaded anyway");
       setLoaded(true);
     }, 2000);
 

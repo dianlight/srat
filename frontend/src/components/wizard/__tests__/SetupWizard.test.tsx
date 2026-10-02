@@ -1,6 +1,6 @@
 /* eslint-disable */
 import { delay, http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMswServer } from "/test/testing";
 
 // Preserve the original matchMedia: the phone-sized test below overrides it
@@ -406,5 +406,134 @@ describe("SetupWizard", () => {
         await user.click(screen.getByRole("button", { name: /^finish$/i }));
     //    await delay(1000); // Wait for health check intervals to elapse and onClose to be called after clean health response
     //    await waitFor(() => expect(closeCalled).toBe(1), { timeout: 6000 }); FIXME: This test is currently flaky due to timing issues with the health check intervals and dirty tracking state. The intention is to verify that onClose is only called after the health check returns clean, but the exact timing can vary. A more robust approach may be needed to reliably test this behavior, such as exposing a callback or state update when the wizard attempts to close, rather than relying on setTimeout and waitFor with arbitrary delays.
+    });
+
+    it("closes after finish and logs debug through dirty→clean transitions", async () => {
+        const server = getMswServer();
+        // Health phase drives dirty_tracking: clean before finish, dirty right
+        // after (server applying changes), then clean again.
+        let healthPhase: "pre" | "dirty" | "post" = "pre";
+
+        const fullHealth = (dirtyTracking: Record<string, boolean>) => ({
+            alive: true,
+            aliveTime: Date.now(),
+            dirty_tracking: dirtyTracking,
+            last_error: "",
+            update_available: false,
+            samba_process_status: {},
+            addon_stats: {},
+            disk_health: {},
+            network_health: {},
+            samba_status: {
+                sessions: {},
+                smb_conf: "/etc/samba/smb.conf",
+                tcons: {},
+                timestamp: new Date().toISOString(),
+                version: "4.0.0",
+            },
+            uptime: 1,
+        });
+
+        server.use(
+            http.get(/.*\/api\/settings(?:\?.*)?$/, () =>
+                HttpResponse.json({ hostname: "mynas", workgroup: "WORKGROUP", telemetry_mode: "Disabled" })
+            ),
+            http.get(/.*\/api\/users(?:\?.*)?$/, () =>
+                HttpResponse.json([{ is_admin: true, has_default_password: false, username: "admin" }])
+            ),
+            http.get(/.*\/api\/hostname(?:\?.*)?$/, () => HttpResponse.json("mynas")),
+            http.get(/.*\/api\/nics(?:\?.*)?$/, () =>
+                HttpResponse.json([{ name: "eth0", addrs: [], flags: [], hardwareAddr: "", index: 0, mtu: 1500 }])
+            ),
+            http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([])),
+            http.get(/.*\/api\/telemetry\/internet-connection(?:\?.*)?$/, () => HttpResponse.json(false)),
+            http.put(/.*\/api\/settings(?:\?.*)?$/, () => HttpResponse.json({})),
+            http.put(/.*\/api\/useradmin(?:\?.*)?$/, () => HttpResponse.json({})),
+            http.get(/.*\/api\/health(?:\?.*)?$/, () => {
+                if (healthPhase === "dirty") {
+                    return HttpResponse.json(
+                        fullHealth({ settings: true, users: false, shares: false, app_config: true })
+                    );
+                }
+                return HttpResponse.json(
+                    fullHealth({ settings: false, users: false, shares: false, app_config: false })
+                );
+            }),
+        );
+
+        const { screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        // @ts-expect-error - query suffix ensures isolated module instance for test
+        const { SetupWizard } = await import("../SetupWizard?wizard-test-debug-finish");
+        const { sratApi } = await import("../../../store/sratApi");
+
+        const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+        const user = userEvent.setup();
+        let closeCalled = 0;
+
+        try {
+            const { store } = await renderWizard(SetupWizard, {
+                open: true,
+                onClose: () => {
+                    closeCalled += 1;
+                },
+            });
+
+            const hostnameInput = await screen.findByLabelText(/^hostname$/i);
+            await waitFor(() => {
+                expect((hostnameInput as HTMLInputElement).value.length).toBeGreaterThan(0);
+            });
+
+            const newPasswordInput = screen.getByLabelText(/^new password$/i);
+            const confirmPasswordInput = screen.getByLabelText(/^confirm password$/i);
+            await user.clear(newPasswordInput);
+            await user.type(newPasswordInput, "safepassword");
+            await user.clear(confirmPasswordInput);
+            await user.type(confirmPasswordInput, "safepassword");
+
+            // Advance to the Summary step (Security → Network → First Share → Telemetry → Lab → Summary).
+            for (let step = 0; step < 5; step++) {
+                await user.click(screen.getByRole("button", { name: /^next$/i }));
+            }
+            expect(
+                await screen.findByText(/review the selected settings before srat applies them/i)
+            ).toBeTruthy();
+
+            await user.click(screen.getByRole("button", { name: /^finish$/i }));
+
+            // 1. All mutations committed successfully.
+            await waitFor(
+                () =>
+                    expect(debugSpy).toHaveBeenCalledWith(
+                        "All settings applied successfully, waiting for clean state"
+                    ),
+                { timeout: 5000 }
+            );
+
+            // 2. Health reports dirty → waiting state is entered.
+            healthPhase = "dirty";
+            store.dispatch(sratApi.util.invalidateTags(["system"]));
+            await waitFor(
+                () =>
+                    expect(debugSpy).toHaveBeenCalledWith(
+                        "Settings are being applied, waiting for clean state"
+                    ),
+                { timeout: 5000 }
+            );
+
+            // 3. Health returns clean → wizard closes.
+            healthPhase = "post";
+            store.dispatch(sratApi.util.invalidateTags(["system"]));
+            await waitFor(
+                () =>
+                    expect(debugSpy).toHaveBeenCalledWith(
+                        "All dirty tracking flags are clean, closing wizard"
+                    ),
+                { timeout: 5000 }
+            );
+            await waitFor(() => expect(closeCalled).toBe(1), { timeout: 5000 });
+        } finally {
+            debugSpy.mockRestore();
+        }
     });
 });
