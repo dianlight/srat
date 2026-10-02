@@ -192,7 +192,6 @@ export function SystemMetricsAccordion({
   };
 
   const handleToggleMetric = (metricName: string) => {
-    //console.debug("Toggling metric visibility:", metricName, metricVisibility[metricName]);
     setMetricVisibility((prev) => {
       const prevMetric = prev[metricName];
       if (!prevMetric) return prev;

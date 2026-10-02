@@ -33,14 +33,12 @@ export function useHealth() {
 
   useEffect(() => {
     if (!isLoading && data) {
-      //console.log("Update Healt Data from REST API");
       setHealth((prev) => ({ ...prev, ...(data as HealthPing) }));
     }
   }, [data, isLoading]);
 
   useEffect(() => {
     if (!evloading && evdata?.heartbeat) {
-      //console.log("Update Healt Data from SSE", evdata.heartbeat);
       setHealth((prev) => ({ ...prev, ...evdata.heartbeat }));
     }
   }, [evdata?.heartbeat, evloading]);

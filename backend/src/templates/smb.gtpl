@@ -1,4 +1,3 @@
-# DEBUG: {{ toJson . }}
 [global]
    {{if not .local_master -}}
    local master = no
@@ -110,7 +109,7 @@
    load printers = no
    disable spoolss = yes
 
-# DEBUG: Log Level: {{ .log_level }}
+# Log Level: {{ .log_level }}
    debug class = yes
    {{ $log_level := dict "trace" "5" "debug" "auth_audit:2 auth:2 vfs:2" "info" "auth_audit:1 auth:1 vfs:1" "notice" "auth_audit:1 auth:0 vfs:0" "warning" "auth_audit:1 auth:0 vfs:0" "error" "auth_audit:0 auth:0 vfs:0"  "fatal" "0" -}}
    log level = {{ .log_level | default "fatal" | get $log_level }}

@@ -59,5 +59,3 @@ export const emptySplitApi = createApi({
   }),
   endpoints: () => ({}),
 });
-
-//console.debug("API URL is", apiUrl);

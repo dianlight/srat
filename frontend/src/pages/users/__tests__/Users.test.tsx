@@ -215,6 +215,53 @@ describe("Users component", () => {
         expect(dialogTitle).toBeTruthy();
     });
 
+    it("logs debug when submitting invalid user data", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { vi } = await import("vitest");
+        const { Provider } = await import("react-redux");
+        const { Users } = await import("../Users");
+        const { createTestStore } = await import("/test/testing");
+
+        const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+        try {
+            const store = await createTestStore();
+
+            render(
+                React.createElement(Provider, {
+                    store,
+                    children: React.createElement(Users as any),
+                })
+            );
+
+            // Open the create-user dialog
+            const addButton = await screen.findByLabelText("Create new user");
+            const user = userEvent.setup();
+            await user.click(addButton as any);
+            await screen.findByText("New User");
+
+            // Whitespace-only username passes RHF validation (pattern allows
+            // spaces) but is trimmed to "" in the form submit handler,
+            // hitting the invalid-data branch in onSubmitEditUser.
+            const username = await screen.findByLabelText(/username/i);
+            await user.type(username as any, "  ");
+            const password = await screen.findByLabelText(/^password/i);
+            await user.type(password as any, "test");
+            const repeat = await screen.findByLabelText(/repeat password/i);
+            await user.type(repeat as any, "test");
+
+            await user.click(screen.getByText("Create User"));
+
+            expect(debugSpy).toHaveBeenCalledWith(
+                "Data is invalid",
+                expect.objectContaining({ username: "" }),
+            );
+        } finally {
+            debugSpy.mockRestore();
+        }
+    });
+
     it("handles dialog close action", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");

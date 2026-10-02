@@ -7,6 +7,7 @@ const mockState = vi.hoisted(() => ({
     update: 0,
     remove: 0,
   },
+  confirmResult: undefined as undefined | { confirmed: boolean; reason?: string },
   locationState: {
     newShareData: {
       path: "/mnt/free",
@@ -169,7 +170,10 @@ vi.mock("../../../store/wsApi", () => ({
 }));
 
 vi.mock("material-ui-confirm", () => ({
-  useConfirm: () => () => Promise.resolve({ confirmed: true }),
+  useConfirm: () => () =>
+    Promise.resolve(
+      mockState.confirmResult ?? ({ confirmed: true } as { confirmed: boolean }),
+    ),
 }));
 
 vi.mock("react-toastify", () => ({
@@ -263,6 +267,7 @@ describe("Shares page", () => {
     mockState.mutationSpies.create = 0;
     mockState.mutationSpies.update = 0;
     mockState.mutationSpies.remove = 0;
+    mockState.confirmResult = undefined;
     mockState.locationState = {
       newShareData: {
         path: "/mnt/free",
@@ -320,5 +325,56 @@ describe("Shares page", () => {
     await user.click(deleteButton as any);
 
     expect(screen.getByTestId("select-share")).toBeTruthy();
+  });
+
+  it("logs debug output for edit, delete, and canceled delete confirm", async () => {
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const user = userEvent.setup();
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { createTestStore } = await import("/test/testing");
+    // @ts-expect-error - Query param ensures fresh module instance for mocks
+    const { Shares } = await import("../Shares?shares-cancel-test");
+
+    const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
+
+    const store = await createTestStore();
+
+    render(
+      React.createElement(
+        Provider as any,
+        { store },
+        React.createElement(Shares as any),
+      ),
+    );
+
+    const selectButton = await screen.findByTestId("select-share");
+    await user.click(selectButton as any);
+
+    // Edit Share debug fires on edit submit.
+    const updateButton = await screen.findByTestId("trigger-update");
+    await user.click(updateButton as any);
+    expect(debugSpy).toHaveBeenCalledWith(
+      "Edit Share",
+      expect.anything(),
+      expect.anything(),
+    );
+
+    // Cancelled confirm: Delete debug at entry + "cancel" debug.
+    mockState.confirmResult = { confirmed: false, reason: "cancel" };
+    const deleteButton = await screen.findByTestId("trigger-delete");
+    await user.click(deleteButton as any);
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      "Delete",
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(debugSpy).toHaveBeenCalledWith("cancel");
+
+    // Deletion must not have been issued.
+    expect(mockState.mutationSpies.remove).toBe(0);
+    debugSpy.mockRestore();
   });
 });

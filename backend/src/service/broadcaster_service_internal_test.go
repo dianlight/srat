@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/assert"
@@ -290,4 +291,32 @@ func TestBroadcasterSetupEventListeners_ShareListError(t *testing.T) {
 	case <-timeout:
 	}
 	_, _ = mock.Verify(shareService, matchers.Times(1)).ListShares()
+}
+
+// TestBroadcasterDispatchEvent covers the three dispatchEvent branches:
+// send error (non-benign → debug log), invalid event type (filtered-out debug
+// log), and successful dispatch.
+func TestBroadcasterDispatchEvent(t *testing.T) {
+	ctx := t.Context()
+	b := &BroadcasterService{
+		ctx:   ctx,
+		relay: broadcast.NewRelay[broadcastEvent](),
+		state: &dto.ContextState{},
+	}
+
+	t.Run("send error logs debug", func(t *testing.T) {
+		sendErr := errors.New("send failed")
+		b.dispatchEvent(func(ws.Message) errors.E { return sendErr },
+			broadcastEvent{ID: 1, Message: dto.HealthPing{}})
+	})
+
+	t.Run("successful dispatch does not panic", func(t *testing.T) {
+		b.dispatchEvent(func(ws.Message) errors.E { return nil },
+			broadcastEvent{ID: 2, Message: dto.HealthPing{}})
+	})
+
+	t.Run("invalid event type is filtered out", func(t *testing.T) {
+		b.dispatchEvent(func(ws.Message) errors.E { return nil },
+			broadcastEvent{ID: 3, Message: "not a ws event"})
+	})
 }

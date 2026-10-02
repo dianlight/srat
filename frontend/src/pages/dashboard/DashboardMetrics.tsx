@@ -7,7 +7,6 @@ const MAX_HISTORY_LENGTH = 10;
 
 export function DashboardMetrics() {
   const { health, isLoading, error } = useHealth();
-  //const { disks, isLoading: isLoadingVolumes, error: errorVolumes } = useVolume();
 
   const [connectionsHistory, setConnectionsHistory] = useState<
     Record<string, number[]>
