@@ -6,7 +6,42 @@
 
 ### ✨ Features
 
+- **Supervisor discovery opt-in**: Home Assistant Supervisor discovery is now gated behind an explicit `enable_ha_discovery` setting so the registration flow only runs when the user opts in. ([srat#1213](https://github.com/dianlight/srat/issues/1213))
+- **Ingress origin and allowlist plumbing**: Added ingress origin and IP allowlist wiring through `ContextState` so CORS, WebSocket origin, and pprof isolation can be enforced per-request. ([srat#1213](https://github.com/dianlight/srat/issues/1213))
+
 ### 🐛 Bug Fixes
+
+- **Time Machine recycle VFS**: Fixed Time Machine backups by using a dedicated recycle VFS module so deleted files land in the backup-compatible recycle bin. ([srat#1314](https://github.com/dianlight/srat/pull/1314))
+- **Protected-mode share visibility**: Non-internal shares are now correctly shown when protected mode is active. ([srat#1310](https://github.com/dianlight/srat/pull/1310))
+- **Hyphenated share mount names**: Supervisor mount names are now sanitized so hyphenated share names mount reliably instead of being rejected by the Supervisor API. ([srat#1307](https://github.com/dianlight/srat/pull/1307))
+- **Problem-repair command parity**: Problem lifecycle transitions (upsert/remove) now emit the matching `repair_command` WebSocket frame so REST mutations converge on both surfaces. ([srat#1301](https://github.com/dianlight/srat/issues/1301))
+- **Discovery unregister idempotency**: mDNS discovery unregister now treats HTTP 404 as success so duplicate cleanup calls don't surface as errors. ([srat#1285](https://github.com/dianlight/srat/pull/1285))
+- **Volume label retention across refresh**: Post-format filesystem labels now persist across stale hardware refreshes instead of being wiped. ([srat#1063](https://github.com/dianlight/srat/issues/1063))
+- **Automount retry on transient failures**: Mount attempts now retry on transient device-not-found errors during boot instead of giving up after the first failure. ([srat#1282](https://github.com/dianlight/srat/pull/1282))
+- **Per-filesystem mount defaults and force-user mapping**: Mount defaults (flags, ownership) are now applied per-filesystem-type with correct Samba `force-user` mapping, fixing NTFS/FAT and other non-ext4 volumes. ([srat#1264](https://github.com/dianlight/srat/issues/1264))
+- **Dirty-data event race**: Fixed a mutex race in `DirtyDataService` so dirty-data events are emitted safely and don't deadlock under concurrent updates. ([srat#1275](https://github.com/dianlight/srat/issues/1275))
+- **Volumes snapshot on WebSocket connect**: Clients now receive the full volumes snapshot immediately on WebSocket connect, eliminating a brief window of stale/empty disk state. ([srat#1273](https://github.com/dianlight/srat/pull/1273))
+- **Hidden share count chip**: The share count chip on the dashboard no longer counts hidden standard shares. ([srat#1269](https://github.com/dianlight/srat/pull/1269))
+- **Dashboard volume list refresh**: The Dashboard volume list now refreshes on unmount WebSocket events so removed disks disappear promptly. ([srat#1258](https://github.com/dianlight/srat/pull/1258))
+- **Health run-loop wedge prevention**: Bounded health run-loop calls so a stuck polling cycle can't wedge the service after boot. ([srat#1252](https://github.com/dianlight/srat/issues/1252))
+- **Notification badge from live state**: The notification badge count now derives from live problem state instead of accumulating stale entries. ([srat#1244](https://github.com/dianlight/srat/pull/1244))
+- **Transient disconnect reload suppression**: The UI no longer triggers a full reload on brief WebSocket reconnects, preventing disruptive flashes. ([srat#1240](https://github.com/dianlight/srat/pull/1240))
+- **Auto-clear restart reminder**: The restart-reminder problem now auto-clears when the HA component reconnects, instead of lingering until manual dismissal. ([srat#1232](https://github.com/dianlight/srat/pull/1232))
+- **Credential cache HMAC signing**: Credential cache entries are now signed with an HMAC using a per-process key to detect tampering. ([srat#1229](https://github.com/dianlight/srat/pull/1229))
+- **Upgrade extraction ZipSlip guard**: Added an inline ZipSlip path-traversal check to the upgrade extraction loop so malicious archive entries can't escape the target directory. ([srat#1227](https://github.com/dianlight/srat/pull/1227))
+- **CORS, WS origin, IP allowlist hardening**: Hardened CORS policies, WebSocket origin validation, IP allowlist enforcement, and pprof endpoint isolation. ([srat#1217](https://github.com/dianlight/srat/pull/1217))
+- **Production logging safety**: Disabled request-body logging and sanitized app-config logs to prevent accidental secret leakage in production. ([srat#1236](https://github.com/dianlight/srat/issues/1236))
+- **Dashboard ignore persistence**: Dashboard problem-ignore state now persists via the problems upsert API instead of being lost on reload. ([srat#1302](https://github.com/dianlight/srat/issues/1302))
+- **HACS zip layout + loopback WS**: Fixed the HACS release zip to place files at the root (not nested in a `srat/` folder) and made WebSocket connections prefer the loopback interface first. ([srat#1247](https://github.com/dianlight/srat/issues/1247))
+- **Custom component manifest cleanup**: Dropped the unused `aiohttp` requirement from the HACS custom-component manifest to avoid unnecessary dependency resolution.
+
+### 🔧 Maintenance
+
+- **Volume service decomposition**: Split the monolithic `volume_service` God Object into focused, testable units for partition, mount, and discovery flows. ([srat#1238](https://github.com/dianlight/srat/pull/1238))
+- **Repair-problem mirroring facade**: Centralized repair↔problem mirroring behind a single facade so the two surfaces stay consistent as logic evolves. ([srat#1236](https://github.com/dianlight/srat/pull/1236))
+- **Volumes page slim-down**: Slimmed the frontend Volumes page as the second step of the God Page refactor. ([srat#1235](https://github.com/dianlight/srat/issues/1235))
+- **HA WebSocket SSE parser hardening**: Hardened the custom-component WebSocket SSE parser and slimmed the HA client to reduce memory and reconnect churn. ([srat#1251](https://github.com/dianlight/srat/pull/1251))
+- **Dev/debug leftovers stripped**: Removed development and debug-only code paths left over from prior features to reduce the production surface. ([srat#1233](https://github.com/dianlight/srat/pull/1233))
 
 ### 🏗 Chore
 
