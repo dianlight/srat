@@ -186,8 +186,10 @@
    fruit:time machine max size = {{ .data.timemachine_max_size }}
    {{- end }}
 {{ else }}
+   {{- if has .data.fs $noXattrFS }}
    # Known FAT filesystems cannot store streams_xattr data; retain their existing stack.
    # This is not full Apple metadata support on these filesystems.
+   {{- end }}
    vfs objects = acl_xattr catia fruit{{ if not (has .data.fs $noXattrFS) }} streams_xattr{{ end }}{{ if .data.recycle_bin_enabled }} recycle{{ end }}
 
 {{ end }}
