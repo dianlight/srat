@@ -20,7 +20,7 @@ require (
 	github.com/getsentry/sentry-go v0.49.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/gofri/go-github-ratelimit/v2 v2.0.2
-	github.com/google/go-github/v91 v91.0.0
+	github.com/google/go-github/v92 v92.0.0
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/websocket v1.5.3
 	github.com/grandcat/zeroconf v1.0.0
