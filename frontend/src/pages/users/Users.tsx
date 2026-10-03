@@ -142,7 +142,8 @@ export function Users() {
 
   function onSubmitEditUser(data?: UsersProps) {
     if (!data?.username || (!data.password && data.doCreate)) {
-      console.debug("Data is invalid", data);
+      if (process.env.NODE_ENV !== "production")
+        console.debug("Data is invalid", data);
       return;
     }
 
@@ -352,6 +353,7 @@ export function Users() {
               readOnly={isReadOnly}
               expandedItems={expandedGroups}
               onExpandedItemsChange={setExpandedGroups}
+              hiddenShares={hiddenShareNames}
             />
           </Paper>
         }

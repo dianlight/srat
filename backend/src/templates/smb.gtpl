@@ -1,4 +1,3 @@
-# DEBUG: {{ toJson . }}
 [global]
    {{if not .local_master -}}
    local master = no
@@ -110,7 +109,7 @@
    load printers = no
    disable spoolss = yes
 
-# DEBUG: Log Level: {{ .log_level }}
+# Log Level: {{ .log_level }}
    debug class = yes
    {{ $log_level := dict "trace" "5" "debug" "auth_audit:2 auth:2 vfs:2" "info" "auth_audit:1 auth:1 vfs:1" "notice" "auth_audit:1 auth:0 vfs:0" "warning" "auth_audit:1 auth:0 vfs:0" "error" "auth_audit:0 auth:0 vfs:0"  "fatal" "0" -}}
    log level = {{ .log_level | default "fatal" | get $log_level }}
@@ -148,8 +147,8 @@
    {{ if .data.ro_users -}}
    read list = {{ .data.ro_users|join " " }}
    {{- end }}
-   force user = root
-   force group = root
+   {{ if .data.force_user }}force user = {{ .data.force_user }}{{ end }}
+   {{ if .data.force_group }}force group = {{ .data.force_group }}{{ end }}
 
    {{ if and .data.veto_files (gt (len .data.veto_files) 0) -}}
    veto files = /{{ .data.veto_files | join "/" }}/
@@ -178,7 +177,7 @@
 # TM:{{ if has .data.fs $unsupported }}unsupported{{else}}{{ .data.timemachine }}{{ end }} US:{{ .data.users|default .username|join "," }} {{ .data.ro_users|join "," }}{{- if .medialibrary.enable }}{{ if .data.usage }} CL:{{ .data.usage }}{{ end }} FS:{{ .data.fs | default "native" }} {{ if .data.recycle_bin_enabled }}RECYCLEBIN{{ end }} {{ end }}
 # Note:"Setting vfs objects in a share will overwrite the globally configured option, it will NOT supplement them."
 {{- if and .data.timemachine (has .data.fs $unsupported | not ) }}
-   vfs objects = acl_xattr catia fruit streams_xattr{{- if .data.recycle_bin_enabled -}} recycle{{- end }}
+   vfs objects = acl_xattr catia fruit streams_xattr{{ if .data.recycle_bin_enabled }} recycle{{ end }}
 
    # Time Machine Settings Ref: https://github.com/markthomas93/samba.apple.templates
    fruit:time machine = yes

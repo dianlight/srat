@@ -669,6 +669,62 @@ func (s *UdevHandlerTestSuite) TestHandleFilesystemTaskEvent_FormatSuccess_Patch
 	s.Equal("formatted-label", *part.Name)
 }
 
+// TestHandleFilesystemTaskEvent_FormatSuccess_DeviceSpellingMismatch_Patches
+// is the #1063 regression test for the silent-miss class: the format task can
+// carry a different spelling of the device (legacy /dev path) than the one
+// the refreshed cache holds (by-id path). The patch must still land.
+func (s *UdevHandlerTestSuite) TestHandleFilesystemTaskEvent_FormatSuccess_DeviceSpellingMismatch_Patches() {
+	diskID, partID := "disk-h-13", "part-h-13"
+	diskIDCopy, partIDCopy := diskID, partID
+	byID := "/dev/disk/by-id/ata-TEST-part1"
+	legacyPath := "/dev/sdz13"
+	legacyName := "sdz13"
+	oldLabel := "old-label"
+	byIDCopy, legacyPathCopy, legacyNameCopy, oldLabelCopy := byID, legacyPath, legacyName, oldLabel
+	parts := map[string]dto.Partition{partID: {
+		Id: &partIDCopy, DiskId: &diskIDCopy,
+		DevicePath: &byIDCopy, LegacyDevicePath: &legacyPathCopy, LegacyDeviceName: &legacyNameCopy,
+		Name: &oldLabelCopy,
+	}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	s.Require().NoError(s.handler.HandleFilesystemTaskEvent(s.ctx, events.FilesystemTaskEvent{
+		Task: &dto.FilesystemTask{
+			Operation: "format", Status: "success",
+			Device: legacyPath, FilesystemType: "ext4", Label: "new-label",
+		},
+	}))
+	part, ok := s.disks.GetPartition(diskID, partID)
+	s.Require().True(ok)
+	s.Require().NotNil(part.Name)
+	s.Equal("new-label", *part.Name)
+}
+
+// TestApplyFormatOverrides_StaleHardwareRelabeled covers the #1063 overwrite
+// class: after a format success, a refresh carrying stale hardware data must
+// be re-labeled by the recorded override, and the override must drop once the
+// hardware inventory agrees with it.
+func (s *UdevHandlerTestSuite) TestApplyFormatOverrides_StaleHardwareRelabeled() {
+	diskID, partID := "disk-h-14", "part-h-14"
+	s.seedHandlerDisk(diskID, partID, "sdz14", "/dev/sdz14")
+	s.Require().NoError(s.handler.HandleFilesystemTaskEvent(s.ctx, events.FilesystemTaskEvent{
+		Task: &dto.FilesystemTask{
+			Operation: "format", Status: "success",
+			Device: "/dev/sdz14", FilesystemType: "ext4", Label: "fresh-label",
+		},
+	}))
+
+	stale, ok := s.disks.GetPartition(diskID, partID)
+	s.Require().True(ok)
+	stale.Name = new("stale-label")
+	s.Require().True(s.handler.ApplyFormatOverrides(&stale), "stale hardware label must be re-labeled")
+	s.Equal("fresh-label", *stale.Name)
+
+	stale.Name = new("fresh-label")
+	s.False(s.handler.ApplyFormatOverrides(&stale), "agreeing hardware must drop the override")
+}
+
 func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_Failure_NotifiesAndBounds() {
 	ha := &fakeNotifier{}
 	mounter := &fakeOrchestratorMounter{
@@ -803,4 +859,96 @@ func (s *UdevHandlerTestSuite) TestHandlePartitionEvent_Batch_SyncsAllBranches()
 	stale, ok := s.disks.GetMountPoint(diskID, partID, "/mnt/h-stale")
 	s.Require().True(ok)
 	s.False(stale.IsMounted, "entry missing from procfs must be marked unmounted")
+}
+
+func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_DeviceNotFound_SchedulesRefresh() {
+	baseRefreshes := s.refreshCount()
+	baseInvalidates := s.hardware.count()
+	s.handler.SetDeviceNotFoundRetryDelay(50 * time.Millisecond)
+
+	diskID, partID := "disk-h-1266", "part-h-1266"
+	missingDevice := filepath.Join(s.T().TempDir(), "by-id-missing-part1")
+	s.Require().NoFileExists(missingDevice)
+	diskIDCopy, partIDCopy, devCopy := diskID, partID, missingDevice
+	parts := map[string]dto.Partition{partID: {Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	startup := true
+	md := &dto.MountPointData{
+		Path: "/mnt/1266-race", Root: "/", DeviceId: partID, Type: "ADDON",
+		Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+		IsToMountAtStartup: &startup, IsMounted: false,
+		Partition: &dto.Partition{Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy},
+	}
+	s.Require().NoError(s.handler.HandleMountPointEvent(s.ctx, events.MountPointEvent{
+		Type:       events.EventTypes.ADD,
+		MountPoint: md,
+	}))
+
+	s.Greater(s.hardware.count(), baseInvalidates, "device-not-found must invalidate the hardware cache")
+
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if s.refreshCount() > baseRefreshes {
+			break
+		}
+		if time.Now().After(deadline) {
+			s.Fail("device-not-found must schedule a delayed volume refresh")
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func (s *UdevHandlerTestSuite) TestScheduleDeviceNotFoundRetry_CancelledAndNilGuards() {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo,
+		Orchestrator: volume.NewMountOrchestrator(volume.OrchestratorParams{
+			Ctx: ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+			Mounter: &fakeOrchestratorMounter{}, EventBus: s.eventBus, Repo: s.mountRepoIf,
+			Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+		}),
+		Refresh: func() errors.E {
+			s.Fail("cancelled context must not refresh")
+			return nil
+		},
+	})
+	handler.SetDeviceNotFoundRetryDelay(0)
+	handler.ScheduleDeviceNotFoundRetry("/mnt/1266-cancelled")
+	time.Sleep(100 * time.Millisecond)
+
+	nilHandler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo,
+		Orchestrator: volume.NewMountOrchestrator(volume.OrchestratorParams{
+			Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+			Mounter: &fakeOrchestratorMounter{}, EventBus: s.eventBus, Repo: s.mountRepoIf,
+			Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+		}),
+	})
+	nilHandler.SetDeviceNotFoundRetryDelay(10 * time.Millisecond)
+	s.NotPanics(func() {
+		nilHandler.ScheduleDeviceNotFoundRetry("/mnt/1266-nil")
+		time.Sleep(100 * time.Millisecond)
+	}, "nil hardware/refresh must be safe")
+
+	errHandler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, Hardware: s.hardware, EventBus: s.eventBus,
+		Repo: s.repo,
+		Orchestrator: volume.NewMountOrchestrator(volume.OrchestratorParams{
+			Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+			Mounter: &fakeOrchestratorMounter{}, EventBus: s.eventBus, Repo: s.mountRepoIf,
+			Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+		}),
+		Refresh: func() errors.E { return errors.New("refresh boom") },
+	})
+	errHandler.SetDeviceNotFoundRetryDelay(10 * time.Millisecond)
+	s.NotPanics(func() {
+		errHandler.ScheduleDeviceNotFoundRetry("/mnt/1266-err")
+		time.Sleep(100 * time.Millisecond)
+	}, "refresh errors must be logged, not panic")
 }

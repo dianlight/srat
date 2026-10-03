@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/srat/service/volume"
@@ -91,4 +92,37 @@ func resolveActualMountPointPath(share dto.SharedResource) string {
 
 func matchPartitionWithDevName(partition *dto.Partition, devName string) bool {
 	return volume.MatchPartitionWithDevName(partition, devName)
+}
+
+// forceUserGroupProber is the narrow capability needed to resolve the Samba
+// force user/group declared by the filesystem adapter. FilesystemService
+// implements it; tests can stub it without pulling the full service.
+type forceUserGroupProber interface {
+	GetSambaForceUserGroup(fsType string) (string, string)
+}
+
+// enrichExportedShareForceUserGroup resolves the Samba "force user" and
+// "force group" for a share from its backing filesystem adapter and stores
+// them on the ephemeral ExportedShare fields. When no adapter is available
+// (nil prober, unknown fs, missing mount data) it falls back to the legacy
+// "root"/"root" values so the generated smb.conf is unchanged.
+func enrichExportedShareForceUserGroup(dbs *dbom.ExportedShare, md *dto.MountPointData, prober forceUserGroupProber) {
+	if dbs == nil {
+		return
+	}
+	forceUser, forceGroup := "root", "root"
+	if prober != nil && md != nil {
+		fsType := ""
+		if md.FSType != nil {
+			fsType = strings.TrimSpace(*md.FSType)
+		}
+		if fsType == "" && md.Partition != nil && md.Partition.FsType != nil {
+			fsType = strings.TrimSpace(*md.Partition.FsType)
+		}
+		if fsType != "" {
+			forceUser, forceGroup = prober.GetSambaForceUserGroup(fsType)
+		}
+	}
+	dbs.ForceUser = forceUser
+	dbs.ForceGroup = forceGroup
 }

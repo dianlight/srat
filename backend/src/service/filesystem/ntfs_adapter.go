@@ -57,6 +57,32 @@ func (a *NtfsAdapter) GetMountFlags() []dto.MountFlag {
 	}
 }
 
+// GetDefaultMountFlags returns the NTFS mount defaults. NTFS has no native
+// Unix ownership, so permissions are synthesized from masks at mount time.
+// Defaulting to open file/dir masks keeps existing root-owned semantics
+// while allowing Samba-mapped users to read and write instead of hitting
+// the "You need permission from Unix User\root" lockout reported in
+// hassio-addons#769 / srat#1264. fmask/dmask are valid on both the ntfs3
+// kernel driver and the ntfs-3g FUSE driver (unlike the ntfs-3g-only
+// "permissions" option, which ntfs3 rejects).
+func (a *NtfsAdapter) GetDefaultMountFlags() []dto.MountFlag {
+	return []dto.MountFlag{
+		{Name: "fmask", NeedsValue: true, FlagValue: "000"},
+		{Name: "dmask", NeedsValue: true, FlagValue: "000"},
+	}
+}
+
+// GetSambaForceUser returns empty so shares on NTFS do not force root,
+// letting Samba honor the authenticated user and the Windows ACLs.
+func (a *NtfsAdapter) GetSambaForceUser() string {
+	return ""
+}
+
+// GetSambaForceGroup returns empty so shares on NTFS do not force root.
+func (a *NtfsAdapter) GetSambaForceGroup() string {
+	return ""
+}
+
 // IsSupported checks if ntfs is supported on the system
 func (a *NtfsAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()

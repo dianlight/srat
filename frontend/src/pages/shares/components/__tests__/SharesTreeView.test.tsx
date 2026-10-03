@@ -140,7 +140,7 @@ describe("SharesTreeView component", () => {
     });
   });
 
-  it("hides non-internal shares while in protected mode", async () => {
+  it("renders non-internal shares in protected mode", async () => {
     const { overrides } = setupOverrides();
     const store = await createTestStore();
 
@@ -161,7 +161,7 @@ describe("SharesTreeView component", () => {
               disabled: false,
             },
           }}
-          expandedItems={["group-internal"]}
+          expandedItems={["group-internal", "group-none"]}
           onExpandedItemsChange={() => {}}
           selectedShareKey={undefined}
           onShareSelect={() => {}}
@@ -173,7 +173,7 @@ describe("SharesTreeView component", () => {
 
     const trees = screen.queryAllByRole("tree");
     expect(trees).toHaveLength(1);
-    expect(screen.queryByText("Documents")).toBeNull();
+    expect(screen.getByText("Documents")).toBeInTheDocument();
   });
 
   it("does not disable share when confirmation is declined", async () => {

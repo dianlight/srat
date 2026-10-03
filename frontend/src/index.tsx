@@ -16,7 +16,6 @@ import "./img/favicon.ico";
 // modes to avoid any runtime cost in production bundles. It is mounted at the
 // bottom of this file with the same dev/remote gating.
 import { DevInspector } from "@mcpc-tech/unplugin-dev-inspector-mcp/next";
-//import { type Listener, type Source, SSEProvider } from "react-hooks-sse";
 import { TourProvider } from "@reactour/tour";
 import * as Sentry from "@sentry/react";
 import { Provider } from "react-redux";
@@ -72,19 +71,9 @@ const theme = createTheme({
   },
 });
 
-/*
-if (
-  process.env.NODE_ENV === "development" ||
-  process.env.NODE_ENV === "remote"
-) {
-  import("virtual:dev-inspector-mcp")
-    .then(() => console.log("🕵️‍♀️ DevInspector Client ready"))
-    .catch((err) => console.error("🤦🏻‍♀️ DevInspector:", err));
-}
-*/
-
 if (import.meta.hot) {
-  console.debug("✅ Hot Module Replacement (HMR) is enabled!");
+  if (process.env.NODE_ENV !== "production")
+    console.debug("✅ Hot Module Replacement (HMR) is enabled!");
 }
 
 const sentryDsn = getSentryDsn();
@@ -101,24 +90,28 @@ Sentry.init({
   enabled: false,
 });
 
-if (getCurrentEnv() === "development") {
-  console.debug("👷‍♂️ Running in development mode");
-} else if (getCurrentEnv() === "remote") {
-  console.debug(`🌐 Running in remote mode: ${getApiUrl()}`);
-} else if (getCurrentEnv() === "production") {
-  console.debug("🚀 Running in production mode");
-} else {
-  console.debug(`ℹ️ Running in unknown mode: ${getCurrentEnv()}`);
+if (process.env.NODE_ENV !== "production") {
+  if (getCurrentEnv() === "development") {
+    console.debug("👷‍♂️ Running in development mode");
+  } else if (getCurrentEnv() === "remote") {
+    console.debug(`🌐 Running in remote mode: ${getApiUrl()}`);
+  } else if (getCurrentEnv() === "production") {
+    console.debug("🚀 Running in production mode");
+  } else {
+    console.debug(`ℹ️ Running in unknown mode: ${getCurrentEnv()}`);
+  }
 }
 
 const disableBody = (target: unknown) => {
   // Use CSS-based scroll prevention instead of aria-hidden to avoid accessibility issues
-  console.trace("Disabling body scroll", target);
+  if (process.env.NODE_ENV !== "production")
+    console.trace("Disabling body scroll", target);
   document.body.style.overflow = "hidden";
   document.body.style.paddingRight = "0px"; // Prevent layout shift
 };
 const enableBody = (target: unknown) => {
-  console.trace("Enabling body scroll", target);
+  if (process.env.NODE_ENV !== "production")
+    console.trace("Enabling body scroll", target);
   document.body.style.overflow = "";
   document.body.style.paddingRight = "";
 };

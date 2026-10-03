@@ -26,6 +26,7 @@ type BroadcasterServiceTestSuite struct {
 	broadcasterService service.BroadcasterServiceInterface
 	mockShareService   service.ShareServiceInterface
 	eventBus           events.EventBusInterface
+	diskMap            *dto.DiskMap
 	app                *fxtest.App
 	ctx                context.Context
 	cancel             context.CancelFunc
@@ -60,6 +61,7 @@ func (suite *BroadcasterServiceTestSuite) SetupTest() {
 		fx.Populate(&suite.ctx, &suite.cancel),
 		fx.Populate(&suite.eventBus),
 		fx.Populate(&suite.mockShareService),
+		fx.Populate(&suite.diskMap),
 		fx.Populate(&suite.broadcasterService),
 	)
 	suite.app.RequireStart()
@@ -83,6 +85,41 @@ func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannelAfterStop_D
 			return nil
 		})
 	})
+}
+
+func (suite *BroadcasterServiceTestSuite) TestProcessWebSocketChannel_SendsVolumesSnapshotOnConnect() {
+	// Issue #1263: the HA component seeds its disk sensors from the first
+	// ``volumes`` WS event. The backend only broadcasts disks on mount/unmount
+	// transitions, so a fresh connection must also receive a snapshot here.
+	diskID := "disk-001"
+	err := suite.diskMap.AddOrUpdate(&dto.Disk{Id: &diskID})
+	suite.Require().NoError(err)
+
+	messages := make(chan ws.Message, 8)
+
+	go suite.broadcasterService.ProcessWebSocketChannel(func(msg ws.Message) errors.E {
+		messages <- msg
+		return nil
+	})
+
+	select {
+	case msg := <-messages:
+		suite.IsType(dto.Welcome{}, msg.Data)
+	case <-time.After(2 * time.Second):
+		suite.Fail("websocket channel should send a welcome message first")
+		return
+	}
+
+	select {
+	case msg := <-messages:
+		disks, ok := msg.Data.([]*dto.Disk)
+		suite.Require().True(ok, "expected volumes snapshot []*dto.Disk, got %T", msg.Data)
+		suite.Require().Len(disks, 1)
+		suite.Require().NotNil(disks[0].Id)
+		suite.Equal(diskID, *disks[0].Id)
+	case <-time.After(2 * time.Second):
+		suite.Fail("websocket channel should send a volumes snapshot after welcome")
+	}
 }
 
 func (suite *BroadcasterServiceTestSuite) TestFilesystemTaskEvent_IsBroadcastToWebSocketClients() {

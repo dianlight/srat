@@ -157,9 +157,9 @@ func (suite *HomeAssistantComponentServiceSuite) TestUninstall_MissingDirectoryI
 
 func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_InstallsComponentFiles() {
 	zipContent := createCustomComponentArchive(suite.T(), map[string]string{
-		"srat/manifest.json": `{"version":"2026.05.1"}`,
-		"srat/__init__.py":   "# init",
-		"srat/sensor.py":     "# sensor",
+		"manifest.json": `{"version":"2026.05.1"}`,
+		"__init__.py":   "# init",
+		"sensor.py":     "# sensor",
 	})
 
 	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
@@ -186,7 +186,76 @@ func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_Rej
 	suite.Contains(err.Error(), "illegal file path")
 }
 
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_RejectsEmptyArchive() {
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), nil)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "archive is empty")
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_RejectsCorruptArchive() {
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), []byte("not-a-zip-archive"))
+	suite.Require().Error(err)
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_RejectsMissingManifest() {
+	zipContent := createCustomComponentArchive(suite.T(), map[string]string{
+		"sensor.py": "# sensor without manifest",
+	})
+
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "missing")
+}
+
 func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_UpgradeWhenAlreadyInstalled() {
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
+	suite.Require().NoError(os.WriteFile(filepath.Join(componentDir, "manifest.json"), []byte(`{"version":"2026.04.1"}`), 0o644))
+	suite.Require().NoError(os.WriteFile(filepath.Join(componentDir, "legacy.py"), []byte("# stale"), 0o644))
+
+	zipContent := createCustomComponentArchive(suite.T(), map[string]string{
+		"manifest.json": `{"version":"2026.04.9"}`,
+		"__init__.py":   "# upgraded",
+		"new_sensor.py": "# new",
+	})
+
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
+	suite.Require().NoError(err)
+
+	status, err := suite.service.GetStatus()
+	suite.Require().NoError(err)
+	suite.True(status.Installed)
+	suite.Require().NotNil(status.InstalledVersion)
+	suite.Equal("2026.04.9", *status.InstalledVersion)
+
+	_, err = os.Stat(filepath.Join(componentDir, "legacy.py"))
+	suite.True(os.IsNotExist(err), "stale files from previous install should be removed")
+	suite.FileExists(filepath.Join(componentDir, "new_sensor.py"))
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_InstallsLegacyNestedArchive() {
+	zipContent := createCustomComponentArchive(suite.T(), map[string]string{
+		"srat/manifest.json": `{"version":"2026.05.1"}`,
+		"srat/__init__.py":   "# init",
+		"srat/sensor.py":     "# sensor",
+	})
+
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), zipContent)
+	suite.Require().NoError(err)
+
+	status, err := suite.service.GetStatus()
+	suite.Require().NoError(err)
+	suite.True(status.Installed)
+	suite.Require().NotNil(status.InstalledVersion)
+	suite.Equal("2026.05.1", *status.InstalledVersion)
+
+	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
+	suite.FileExists(filepath.Join(componentDir, "manifest.json"))
+	suite.FileExists(filepath.Join(componentDir, "sensor.py"))
+	suite.NoFileExists(filepath.Join(componentDir, "srat", "manifest.json"))
+}
+
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_UpgradeWithLegacyNestedArchive() {
 	componentDir := filepath.Join(suite.tempRoot, dto.CustomComponentSRATName)
 	suite.Require().NoError(os.MkdirAll(componentDir, 0o755))
 	suite.Require().NoError(os.WriteFile(filepath.Join(componentDir, "manifest.json"), []byte(`{"version":"2026.04.1"}`), 0o644))

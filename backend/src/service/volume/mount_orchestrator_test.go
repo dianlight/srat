@@ -17,16 +17,24 @@ import (
 )
 
 type fakeOrchestratorFS struct {
-	flagsErr errors.E
-	label    string
-	labelErr errors.E
+	flagsErr     errors.E
+	label        string
+	labelErr     errors.E
+	defaultFlags []dto.MountFlag
+	defaultsErr  errors.E
+	lastInput    []dto.MountFlag
 }
 
 func (f *fakeOrchestratorFS) MountFlagsToSyscallFlagAndData(input []dto.MountFlag) (uintptr, string, errors.E) {
+	f.lastInput = append([]dto.MountFlag(nil), input...)
 	if f.flagsErr != nil {
 		return 0, "", f.flagsErr
 	}
 	return 0, "", nil
+}
+
+func (f *fakeOrchestratorFS) GetDefaultMountFlags(_ string) ([]dto.MountFlag, errors.E) {
+	return f.defaultFlags, f.defaultsErr
 }
 
 func (f *fakeOrchestratorFS) GetPartitionLabel(_ context.Context, _, _ string) (string, errors.E) {
@@ -323,6 +331,118 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_ValidationBranches() {
 	s.Require().Error(err)
 	s.ErrorIs(err, dto.ErrorDeviceNotFound)
 	s.Zero(s.mounter.mountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_AppliesDefaultMountFlags() {
+	fs := &fakeOrchestratorFS{defaultFlags: []dto.MountFlag{
+		{Name: "dmask", NeedsValue: true, FlagValue: "000"},
+		{Name: "fmask", NeedsValue: true, FlagValue: "000"},
+	}}
+	s.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: fs,
+		Mounter: s.mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		ProtectedMode: func() bool { return false },
+		Volumes: func() ([]*dto.Disk, errors.E) {
+			return s.disks.All(), nil
+		},
+	})
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-def", "part-orch-def", deviceFile)
+	fstype := "ntfs"
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt"), Root: "/", DeviceId: "part-orch-def",
+		FSType: &fstype,
+		Flags:  &dto.MountFlags{{Name: "ro"}},
+		Partition: &dto.Partition{
+			Id: new("part-orch-def"), DevicePath: &deviceFile,
+		},
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md))
+	s.Equal(1, s.mounter.mountCalls)
+
+	byName := make(map[string]string, len(fs.lastInput))
+	for _, flag := range fs.lastInput {
+		byName[flag.Name] = flag.FlagValue
+	}
+	s.Contains(byName, "ro", "user flag must be preserved")
+	s.Equal("000", byName["dmask"], "adapter default must be merged")
+	s.Equal("000", byName["fmask"], "adapter default must be merged")
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_UserFlagWinsOnDefaultCollision() {
+	fs := &fakeOrchestratorFS{defaultFlags: []dto.MountFlag{
+		{Name: "dmask", NeedsValue: true, FlagValue: "000"},
+		{Name: "fmask", NeedsValue: true, FlagValue: "000"},
+	}}
+	s.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: fs,
+		Mounter: s.mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		ProtectedMode: func() bool { return false },
+		Volumes: func() ([]*dto.Disk, errors.E) {
+			return s.disks.All(), nil
+		},
+	})
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-coll", "part-orch-coll", deviceFile)
+	fstype := "ntfs"
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt"), Root: "/", DeviceId: "part-orch-coll",
+		FSType: &fstype,
+		Flags:  &dto.MountFlags{{Name: "dmask", NeedsValue: true, FlagValue: "0022"}},
+		Partition: &dto.Partition{
+			Id: new("part-orch-coll"), DevicePath: &deviceFile,
+		},
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md))
+
+	var dmaskValues []string
+	var fmaskSeen bool
+	for _, flag := range fs.lastInput {
+		if flag.Name == "dmask" {
+			dmaskValues = append(dmaskValues, flag.FlagValue)
+		}
+		if flag.Name == "fmask" {
+			fmaskSeen = true
+		}
+	}
+	s.Equal([]string{"0022"}, dmaskValues, "explicit user flag must win, exactly once")
+	s.True(fmaskSeen, "non-colliding default must still be merged")
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_DefaultFlagsErrorStillMounts() {
+	fs := &fakeOrchestratorFS{defaultsErr: errors.New("registry boom")}
+	s.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: fs,
+		Mounter: s.mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		ProtectedMode: func() bool { return false },
+		Volumes: func() ([]*dto.Disk, errors.E) {
+			return s.disks.All(), nil
+		},
+	})
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-deferr", "part-orch-deferr", deviceFile)
+	fstype := "ntfs"
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt"), Root: "/", DeviceId: "part-orch-deferr",
+		FSType: &fstype,
+		Flags:  &dto.MountFlags{{Name: "ro"}},
+		Partition: &dto.Partition{
+			Id: new("part-orch-deferr"), DevicePath: &deviceFile,
+		},
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md), "defaults resolution failure must not block the mount")
+	s.Equal(1, s.mounter.mountCalls)
+	s.Len(fs.lastInput, 1, "only user flags reach conversion when defaults fail")
+	s.Equal("ro", fs.lastInput[0].Name)
 }
 
 func (s *MountOrchestratorTestSuite) TestMountVolume_InvalidFlags() {

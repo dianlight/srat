@@ -15,6 +15,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/server/ws"
+	"github.com/dianlight/srat/service/problem"
 	"github.com/dianlight/tlog"
 	"github.com/teivah/broadcast"
 	"gitlab.com/tozd/go/errors"
@@ -178,6 +179,26 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		}
 		slog.DebugContext(ctx, "BroadcasterService received Problem event", "problem_key", event.Problem.ProblemKey, "status", event.Problem.Status)
 		broker.BroadcastMessage(*event.Problem)
+		// Problem-to-repair WS parity (issue #1301): every problem lifecycle
+		// transition also emits a repair_command frame so REST mutations via
+		// PUT /api/problems/* converge on both surfaces. Repair-originated
+		// mutations therefore yield a duplicate repair frame (one from
+		// RepairService, one from this mirror); both carry the same RepairID
+		// and satisfy the 1:1 parity assertion. Best-effort: invalid mirrors
+		// are skipped and never fail the primary problem broadcast.
+		action := dto.RepairCommandActionUpsert
+		if event.Type == events.EventTypes.REMOVE {
+			action = dto.RepairCommandActionDelete
+		}
+		cmd := problem.BuildCommandFromProblem(event.Problem, action)
+		if strings.TrimSpace(cmd.RepairID) == "" {
+			return nil
+		}
+		if err := cmd.Validate(); err != nil {
+			slog.DebugContext(ctx, "Skipping invalid problem-to-repair mirror", "problem_key", event.Problem.ProblemKey, "error", err)
+			return nil
+		}
+		broker.BroadcastMessage(cmd)
 		return nil
 	})
 
@@ -318,6 +339,13 @@ func (broker *BroadcasterService) ProcessWebSocketChannel(send ws.Sender) {
 		slog.WarnContext(broker.ctx, "Error sending welcome message to SSE client", "err", err)
 	}
 
+	// Send a volumes snapshot so freshly connected clients (e.g. the Home
+	// Assistant component) can materialize disk/partition sensors without
+	// waiting for a mount/unmount transition (issue #1263).
+	if disks := broker.disks.All(); len(disks) > 0 {
+		broker.dispatchEvent(send, broadcastEvent{Message: disks})
+	}
+
 	for {
 		select {
 		case <-broker.ctx.Done():
@@ -345,7 +373,7 @@ func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastE
 		})
 		if err != nil {
 			if !strings.Contains(err.Error(), ": broken pipe") && !strings.Contains(err.Error(), "websocket: close sent") {
-				slog.DebugContext(broker.ctx, "DEBUG: Error sending event to client",
+				slog.DebugContext(broker.ctx, "Error sending event to client",
 					"event_id", event.ID,
 					"event_type", fmt.Sprintf("%T", event.Message),
 					"err", err,
@@ -353,11 +381,11 @@ func (broker *BroadcasterService) dispatchEvent(send ws.Sender, event broadcastE
 			}
 			return
 		}
-		tlog.TraceContext(broker.ctx, "DEBUG: Successfully dispatched event to WS client",
+		tlog.TraceContext(broker.ctx, "Successfully dispatched event to WS client",
 			"event_id", event.ID,
 			"event_type", fmt.Sprintf("%T", event.Message))
 	} else {
-		slog.DebugContext(broker.ctx, "DEBUG: Event filtered out (not valid WS event)",
+		slog.DebugContext(broker.ctx, "Event filtered out (not valid WS event)",
 			"event_id", event.ID,
 			"event_type", fmt.Sprintf("%T", event.Message))
 	}

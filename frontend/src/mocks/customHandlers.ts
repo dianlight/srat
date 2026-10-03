@@ -470,6 +470,22 @@ export const customHandlers: RequestHandler[] = [
 		);
 	}),
 
+	// Deterministic problem upsert endpoint used by dashboard ignore tests.
+	// Echoes the request body so PUT /api/problems/:problemKey is observable
+	// in tests (issue 1302: IGNORE must reach the backend).
+	http.put(/.*\/api\/problems\/.+(?:\?.*)?$/, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as Record<
+			string,
+			unknown
+		>;
+		return new Response(JSON.stringify(body), {
+			status: 200,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
+	}),
+
 	// OAuth broker mocks – validate SRAT-Signature (Ed25519) instead of Bearer
 	// Client registration is public (self-certifying), other endpoints require SRAT-Signature
 	http.post(/.*\/v1\/clients(?:\/.*)?$/, async ({ request }) => {

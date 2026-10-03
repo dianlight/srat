@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/server/ws"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/assert"
@@ -153,9 +154,36 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	eventBus.EmitFilesystemTask(events.FilesystemTaskEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
 	expectNoBroadcast("filesystem task nil")
 
-	// 12. Problem event with Problem set -> problem broadcast
+	// 12. Problem event with Problem set -> problem + repair_command broadcasts (issue #1301 parity)
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}, Problem: &dto.Problem{ProblemKey: "test-problem", Title: "Test"}})
 	expectBroadcast("problem")
+	timeout := time.After(250 * time.Millisecond)
+	select {
+	case msg := <-listener.Ch():
+		cmd, ok := msg.Message.(dto.RepairCommandMessage)
+		if !ok {
+			t.Fatalf("expected repair_command mirror for problem, got %T", msg.Message)
+		}
+		assert.Equal(t, "test-problem", cmd.RepairID)
+	case <-timeout:
+		t.Fatalf("expected repair_command mirror for problem")
+	}
+
+	// 12b. Problem REMOVE event -> problem + delete repair_command broadcasts
+	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.REMOVE}, Problem: &dto.Problem{ProblemKey: "test-problem", Title: "Test"}})
+	expectBroadcast("problem remove")
+	timeout = time.After(250 * time.Millisecond)
+	select {
+	case msg := <-listener.Ch():
+		cmd, ok := msg.Message.(dto.RepairCommandMessage)
+		if !ok {
+			t.Fatalf("expected delete repair_command mirror for problem remove, got %T", msg.Message)
+		}
+		assert.Equal(t, "test-problem", cmd.RepairID)
+		assert.Equal(t, dto.RepairCommandActionDelete, cmd.Action)
+	case <-timeout:
+		t.Fatalf("expected delete repair_command mirror for problem remove")
+	}
 
 	// 13. Problem event with nil Problem -> no broadcast
 	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.UPDATE}})
@@ -263,4 +291,32 @@ func TestBroadcasterSetupEventListeners_ShareListError(t *testing.T) {
 	case <-timeout:
 	}
 	_, _ = mock.Verify(shareService, matchers.Times(1)).ListShares()
+}
+
+// TestBroadcasterDispatchEvent covers the three dispatchEvent branches:
+// send error (non-benign → debug log), invalid event type (filtered-out debug
+// log), and successful dispatch.
+func TestBroadcasterDispatchEvent(t *testing.T) {
+	ctx := t.Context()
+	b := &BroadcasterService{
+		ctx:   ctx,
+		relay: broadcast.NewRelay[broadcastEvent](),
+		state: &dto.ContextState{},
+	}
+
+	t.Run("send error logs debug", func(t *testing.T) {
+		sendErr := errors.New("send failed")
+		b.dispatchEvent(func(ws.Message) errors.E { return sendErr },
+			broadcastEvent{ID: 1, Message: dto.HealthPing{}})
+	})
+
+	t.Run("successful dispatch does not panic", func(t *testing.T) {
+		b.dispatchEvent(func(ws.Message) errors.E { return nil },
+			broadcastEvent{ID: 2, Message: dto.HealthPing{}})
+	})
+
+	t.Run("invalid event type is filtered out", func(t *testing.T) {
+		b.dispatchEvent(func(ws.Message) errors.E { return nil },
+			broadcastEvent{ID: 3, Message: "not a ws event"})
+	})
 }

@@ -17,6 +17,7 @@ This skill is **test-case driven**: every remote run is anchored to one or more 
 - Checking that the addon starts/restarts cleanly after a build change
 - Investigating a bug that can only be reproduced on the real device
 - Any time the user says "test remote", "deploy to test", "check HA", or "verify on addon"
+- Verifying an addon-image fix (Dockerfile/rootfs) the way a real user receives it — true fresh install (uninstall + reinstall); see "Addon Image Fresh-Install Verification"
 
 ## Prerequisites
 
@@ -262,6 +263,12 @@ mise run //frontend:dev:remote
 ```
 
 - `API_URL` **must be an env var** (`http://192.168.0.68:3000/` for remote). The Bun macro `getApiUrl()` is evaluated at import time (`frontend/src/index.html` imported at `frontend/bun.build.ts:8`) **before** `build()` sets `process.env.API_URL`; passing `-a http://...` alone leaves the macro as `dynamic` → same-origin `http://localhost:3080/` + `ws://localhost:3080/ws` (returns HTML 200, not WS, so `useVolume` shows `Error loading volumes: [object Object]`). See `docs/tasks/045_full-mobile-support.md:65`.
+- **Phase-0 baked-URL check (mandatory before any UI case):** `scripts/env.sh` (sourced by every mise shell via root `.mise.toml` `[env]`) **overwrites a pre-set `API_URL`** — historically it derived `${SUPERVISOR_URL%/}:3000/` unconditionally, so an exported `API_URL=http://<ip>:62983/` was silently replaced and the bundle baked `:3000` (browser showed `ERR_CONNECTION_REFUSED` on every API call with 0 app errors). After starting the server, verify the BAKED url, not the flag:
+  ```bash
+  BUNPID=$(pgrep -f "bun.build.ts -w" | head -1); ps eww -p $BUNPID | tr ' ' '\n' | grep "^API_URL"
+  JS=$(curl -s http://localhost:3080/ | grep -oE '/_bun/client/[^"]+\.js' | head -1); curl -s "http://localhost:3080$JS" | grep -oE "192\.168\.0\.[0-9]+:[0-9]+" | sort -u
+  ```
+  Both must show the backend port (`:62983` when no host socat exists). If the bundle bakes `:3000`, kill the server, ensure `scripts/env.sh` respects pre-set `API_URL`, and restart (a `touch` hot-rebuild is NOT enough — the macro bakes at server startup).
 - `SUPERVISOR_URL` is the canonical source; derive `API_URL` as `${SUPERVISOR_URL%/}:3000/` if not set explicitly. Always verify with:
   ```bash
   curl -H "Origin: http://localhost:3080" http://192.168.0.68:3000/api/volumes -v  # expect Access-Control-Allow-Origin: http://localhost:3080
@@ -515,6 +522,9 @@ All cases done → Step 9 Summary
 | No test cases found in docs/test/ | Fresh repo or cases not yet created | Invoke `test-plan` skill to scaffold cases before building |
 | User wants more coverage | Func-id gaps detected | Delegate to `test-plan`, then re-run remote test with new manifest |
 | Deploy transferred but old code still runs; `lab_features` still 404s or version line stale | s6 `srat/run` prefers `srat-server-musl`; static-only deploy never executes | Deploy the musl variant too (`build --zig`); verify with Step 1a (`ps` + endpoint flip + version line) |
+| Browser hits `:3000` with `ERR_CONNECTION_REFUSED` while server was started with `-a :62983` | `scripts/env.sh` overwrote the exported `API_URL` (macro bakes at server startup; hot-rebuild won't fix) | Check server env (`ps eww`) + baked bundle URL (Step 5 Phase-0 check); fix `env.sh` to respect pre-set `API_URL`; restart server |
+| Embedded `srat.zip` contains BOTH root files and nested `srat/` dup | `zip -qr` merges into the stale gitignored artifact instead of recreating | `rm backend/src/internal/assets/srat.zip` and rebuild via `package-hacs`; verify `unzip -l \| grep -c "srat/"` → 0 |
+| Format-spare candidate selected | Partition may carry an LVM signature or data despite looking empty | Before ANY format: `lsblk -o NAME,SIZE,FSTYPE,LABEL` + API `fs_type`; refuse LVM members / oversized partitions without explicit re-confirmation; note protected mode blocks `mkfs` (`Operation not permitted`) and `mount` (403) unconditionally |
 | `same version or older as current, skipping installation` in addon logs, no restart | Updater refuses semver-older binaries (`2026.8.0-dev.99` < `2026.8.0-rc13`); `-dev` alone does not imply newer | Rebuild with a version comparing newer than running (core bump, e.g. `2026.8.1-dev.1` still classifies `development`); same-version reinstalls are allowed on the develop channel |
 | Watcher installs only `srat-cli`, server binaries never applied (`Detected updated files ... [srat-cli]` only) | One rsync burst transfers cli+server; 500 ms debounce fires on cli while the server file still transfers, then the install restarts the service and later file events are lost (seenModTimes reseeded at startup) | Deploy variants one at a time with a pause, or retrigger per file: `cat <file> > <file>.tmp && cat <file>.tmp > <file> && rm <file>.tmp` in the upgrade dir (plain `touch` emits only ATTRIB, which the watcher ignores — needs Write/Create); wait ~50 s per file for install+restart |
 | Deployed-build pre-check: which binary actually runs? | Stale image binary or wrong variant can silently serve old code | Triple-check: `md5sum` installed vs upgrade-dir file, fresh `telemetry configured ... version=<expected>` line, and middleware/log caller line numbers matching source (e.g. `ha_middleware.go:66`; a different line like `:99` means stale code) |
@@ -523,6 +533,11 @@ All cases done → Step 9 Summary
 | Direct-LAN 401s never observable via `:3000` | Host socat `:3000 → 127.0.0.1:64289` makes every external request arrive as loopback `127.0.0.1` (trusted) | Do not assert 401 from LAN through `:3000`; IP-rejection is covered by `ha_middleware_test.go` unit tests; live-verify the allow path (200 + `homeassistant` fallback warn) and caller line instead |
 | HA UI `:8123` unreachable; ingress session APIs 401/404 with addon token | Lab HA serves HTTPS on 443 (self-signed); Supervisor restricts ingress session minting/`validate_session` to HA user auth (`@require_home_assistant`) | Use `curl -sk https://<ip>/...` for HA/ingress; expect bogus-session → 401 from the proxy; valid-session passthrough needs HA user creds (record as untested-live, not failed) |
 | Host `/dev/root` 100% full (`df -h /`); `docker exec` or writes fail | 253 MB rootfs fills easily; zram `/tmp` is only 15 MB | Never write to `/` or `/tmp` on the host and never use `docker cp` for large files; transfer straight into `/mnt/data/supervisor/app_configs/local_sambanas2/upgrade/` (bind-mount, plenty of space) via tmp-file + `chmod 0755` + atomic `mv` |
+| Mutating API call returns `000` (timeout/reset) but the change applied server-side (verified via follow-up GET) | Wedged synchronous event path: an emitter goroutine is stuck inside a sync `Emit*` (e.g. DirtyDataService `timerMutex` self-deadlock, see srat#1279) — the DB write commits before the emit hangs | Do NOT retry blindly (dup-key/double-apply risk — verify via GET first). Confirm the wedge: `health` shows `dirty data tracker` timeouts and/or smb.conf mtime frozen. Capture a SIGQUIT stack dump before restarting: start a hanging call in background, `docker exec app_local_sambanas2 sh -c "kill -QUIT <srat-pid>"`, then `docker logs app_local_sambanas2` and look for goroutines parked in `sync.Mutex.Lock` with srat frames (holder + waiters). File it with the dump excerpt |
+| `POST /api/filesystem/format` 422 `expected required property filesystemType` | Field is `filesystemType` (not `fstype`); id field is `partitionId` | Send `{"partitionId":"...","filesystemType":"...","label":"...","force":false,"verbose":true}` |
+| `PATCH /api/volume/settings` 422 `expected required property is_mounted/type` | `PatchMountPointData` embeds full `dto.MountPointData` — required fields must be present at top level too, not just inside `mountPointData` | Merge: copy `mountPointData` fields to top level alongside `path`/`root`/`mountPointData` (fetch current object from `GET /api/volumes`, flip the flag, merge, send) |
+| After any addon (re)start, share/user/settings mutations hang but mount/format/label/check/GETs work | First RESTART timer cycle wedges the dirty tracker (srat#1279: AfterFunc holds `timerMutex` across sync RESTART emit → self-deadlock via CLEAN → `stopTimer`); only the boot-first-cycle smb.conf write lands | Until #1279 is fixed: perform share/user/settings mutations only if strictly needed and verify each via GET; prefer mount/format/label/check flows and unit-level verification for smb.conf logic; note the limitation in the case evidence instead of re-running wedged calls |
+| Where to keep Playwright screenshots | No repo convention; worktree root pollutes the diff | Save with case-scoped names (`<case-id>_<desc>.png`, e.g. `003-007-mounted-live-refresh.png`) and record the worktree-relative path in the manifest evidence column; leave files untracked as run evidence |
 
 ## Increase Custom Component Verbosity
 
@@ -576,6 +591,22 @@ Update addon options before restart:
 ```
 mcp_home-assistan_ha_set_addon_options  →  slug: "local_sambanas2", options: { ... }
 ```
+
+## Addon Image Fresh-Install Verification
+
+Use when a fix lives in the addon Dockerfile/rootfs (not the srat binary) and must be verified the way a real user receives it: uninstall + reinstall. A factory reset is NOT enough; dev-binary deploys (upgrade dir) do NOT exercise the addon image.
+
+Key facts (learned 2026-09-30, srat#1246):
+
+- **Supervisor always pulls the image from the registry on install** — preloading with `docker save | ssh docker load` does NOT work (manifest fetch 404s, then pull fails). The tag must exist in GHCR.
+- **Dev HA host is amd64 (x86_64)** — build with `docker buildx build --platform linux/amd64 --build-arg BUILD_ARCH=amd64` (SRAT downloads `srat_x86_64.zip`; arm64 builds fail with `no matching manifest for linux/amd64`).
+- **GHCR auth**: `echo $(gh auth token) | docker login ghcr.io -u dianlight --password-stdin` (gh CLI has `write:packages` + `delete:packages`).
+- **Install a locally built image**: build → `docker push ghcr.io/dianlight/addon-sambanas2:<unique-tag>` (e.g. `2026.9.1-iss1246`) → bump `version:` in host `/addons/hassio-addons/sambanas2/config.yaml` → `docker restart hassio_supervisor` (plain `ha supervisor reload` does NOT rescan the local repo) → uninstall → install.
+- **Uninstall does NOT wipe `/addon_configs/<slug>`** — move it aside (`mv /addon_configs/local_sambanas2 /addon_configs/local_sambanas2.old-<tag>`) for a truly fresh state; supervisor only removes its own `/data/apps/data/<slug>`.
+- **Fresh install runs the RELEASED srat binary** (SRAT_VERSION build arg in the image), not dev builds — binary-level fixes are invisible until a release is pinned.
+- **`EnableHaDiscovery` defaults to `false`** (`dto/settings.go`) — default fresh installs never register supervisor discovery, so discovery symptoms (e.g. the unregister 404) cannot reproduce without enabling `enable_ha_discovery` first.
+- **Dockerfile build gotcha**: base `ghcr.io/hassio-addons/base:21.0.5` pins `libcrypto3/libssl3=3.5.8` in world while Alpine serves `openssl-3.5.9` → `apk add openssl` fails; workaround `apk add -u libcrypto3 libssl3` before adding packages.
+- **Cleanup**: delete the test tag after the run: `gh api -X DELETE /user/packages/container/addon-sambanas2/versions/<version-id>` (list first: `gh api /user/packages/container/addon-sambanas2/versions --jq '.[] | {id, name}'`).
 
 ## Usage Examples
 

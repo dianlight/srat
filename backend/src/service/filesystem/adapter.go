@@ -27,6 +27,26 @@ type FilesystemAdapter interface {
 	// GetMountFlags returns filesystem-specific mount flags
 	GetMountFlags() []dto.MountFlag
 
+	// GetDefaultMountFlags returns the mount flags that should be applied
+	// by default when a volume of this filesystem type is mounted without
+	// explicit user-provided flags. This allows filesystems without native
+	// permission models (NTFS, exFAT, FAT, HFS+) to present sane ownership
+	// and permissions instead of root-only access. Filesystems with native
+	// Unix permissions return nil (no defaults needed).
+	GetDefaultMountFlags() []dto.MountFlag
+
+	// GetSambaForceUser returns the Samba "force user" value for shares
+	// backed by this filesystem. Empty string means no "force user" line
+	// should be emitted, letting Samba honor the authenticated user so
+	// Windows ACLs and Unix ownership are respected. Returning "root"
+	// preserves the legacy behavior of forcing all access as root.
+	GetSambaForceUser() string
+
+	// GetSambaForceGroup returns the Samba "force group" value for shares
+	// backed by this filesystem. Empty string means no "force group" line
+	// should be emitted. Returning "root" preserves legacy behavior.
+	GetSambaForceGroup() string
+
 	// Mount mounts a source device/file to target using filesystem-specific behavior.
 	// If fsType is empty, adapter should try auto-detection when supported.
 	// prepareTarget is an optional callback used to prepare the mount target directory.

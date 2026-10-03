@@ -126,10 +126,6 @@ export function SharesTreeView({
 
       const usageGroup = shareProps.usage || Usage.None;
 
-      if (protectedMode && usageGroup !== Usage.Internal) {
-        return;
-      }
-
       if (!groups[usageGroup]) {
         groups[usageGroup] = [];
       }
@@ -144,7 +140,7 @@ export function SharesTreeView({
     }
 
     return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [shares, protectedMode]);
+  }, [shares]);
 
   const safeShareName = (name: string): string =>
     name ? encodeURIComponent(name) : name;

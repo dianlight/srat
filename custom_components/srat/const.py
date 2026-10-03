@@ -13,6 +13,7 @@ CONF_PORT_AUTO = 0
 DEFAULT_PORT = 8099
 DEFAULT_HOST = "localhost"
 SUPERVISOR_GATEWAY_HOST = "172.30.32.1"
+LOOPBACK_HOST = "127.0.0.1"
 ADDON_API_PORT = 3000
 
 # Addon slugs that can be auto-discovered via the Supervisor API.

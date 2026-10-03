@@ -22,7 +22,7 @@ import (
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v91/github"
+	"github.com/google/go-github/v92/github"
 
 	"go.uber.org/fx"
 )
@@ -186,15 +186,10 @@ func main() {
 	}
 
 	slog.Debug("Startup Options", "Flags", os.Args)
-	//	slog.Debug("Starting SRAT", "version", config.Version, "pid", state.ID, "address", state.Address, "listeners", fmt.Sprintf("%T", state.Listener))
 
 	if command == "start" && *smbConfigFile == "" {
 		log.Fatalf("Missing samba config! %s", *smbConfigFile)
 	}
-
-	//if !strings.Contains(*dbfile, "?") {
-	//	*dbfile = *dbfile + "?cache=shared&_pragma=foreign_keys(1)"
-	//}
 
 	apiCtx, apiCancel := context.WithCancel(context.WithValue(context.Background(), ctxkeys.WaitGroup, &sync.WaitGroup{}))
 	defer apiCancel() // Ensure context is cancelled on exit

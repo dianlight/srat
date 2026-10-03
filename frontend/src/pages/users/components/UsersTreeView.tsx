@@ -17,6 +17,9 @@ interface UsersTreeViewProps {
   readOnly?: boolean;
   expandedItems: string[];
   onExpandedItemsChange: (items: string[]) => void;
+  /** Names of shares hidden by the standard_share_names preference: excluded
+   *  from the share count chip so it matches UserDetailsPanel (issue #1255). */
+  hiddenShares?: string[];
 }
 
 function isUserListEntry(user: UserListEntry): user is User {
@@ -29,8 +32,10 @@ export function UsersTreeView({
   onUserSelect,
   expandedItems,
   onExpandedItemsChange,
+  hiddenShares = [],
 }: UsersTreeViewProps) {
   const theme = useTheme();
+  const hiddenShareNames = new Set(hiddenShares);
 
   const getInvalidUserMessage = (user: User): string => {
     const messageKeys = [
@@ -92,8 +97,14 @@ export function UsersTreeView({
     const isSelected = selectedUserKey === userKey;
     const isUserInvalid = user.is_valid !== true;
     const invalidMessage = isUserInvalid ? getInvalidUserMessage(user) : "";
-    const userRwShares = user.rw_shares || [];
-    const userRoShares = user.ro_shares || [];
+    // Mirror UserDetailsPanel: hidden standard_share_names variants are not
+    // displayed anywhere, so the count chip must exclude them as well.
+    const userRwShares = (user.rw_shares || []).filter(
+      (share) => !hiddenShareNames.has(share),
+    );
+    const userRoShares = (user.ro_shares || []).filter(
+      (share) => !hiddenShareNames.has(share),
+    );
     const totalShares = userRwShares.length + userRoShares.length;
 
     return (

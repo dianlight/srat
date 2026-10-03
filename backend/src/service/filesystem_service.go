@@ -19,14 +19,26 @@ import (
 	"gitlab.com/tozd/go/errors"
 )
 
-// FilesystemServiceInterface defines the methods for managing filesystem types and mount flags.
-type FilesystemServiceInterface interface {
+// Filesystem role interfaces split the former 22-method monolith by responsibility.
+// New code should depend on the narrow role it needs; FilesystemServiceInterface
+// remains as the composite for existing wiring and is being migrated away from.
+type MountFlagService interface {
 	// GetStandardMountFlags returns a list of common, filesystem-agnostic mount flags.
 	GetStandardMountFlags() ([]dto.MountFlag, errors.E)
 
 	// GetFilesystemSpecificMountFlags returns a list of mount flags specific to a given filesystem type.
 	// Returns an empty list if the filesystem type is not recognized or has no specific flags.
 	GetFilesystemSpecificMountFlags(fsType string) ([]dto.MountFlag, errors.E)
+
+	// GetDefaultMountFlags returns the adapter-declared mount defaults for
+	// the given filesystem type. Unknown filesystems return an empty list.
+	GetDefaultMountFlags(fsType string) ([]dto.MountFlag, errors.E)
+
+	// GetSambaForceUserGroup returns the Samba "force user" and "force group"
+	// values declared by the filesystem adapter. Empty strings mean the
+	// corresponding smb.conf line must be omitted. Unknown filesystems fall
+	// back to the legacy "root"/"root" values.
+	GetSambaForceUserGroup(fsType string) (string, string)
 
 	// ResolveLinuxFsModule returns the Linux filesystem module/fstype name for mounting.
 	// Falls back to the provided filesystem type when no adapter is found.
@@ -39,7 +51,9 @@ type FilesystemServiceInterface interface {
 	SyscallFlagToMountFlag(syscallFlag uintptr) ([]dto.MountFlag, errors.E)
 
 	SyscallDataToMountFlag(data string) ([]dto.MountFlag, errors.E)
+}
 
+type FilesystemInfoService interface {
 	// FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
 	FsTypeFromDevice(devicePath string) (string, errors.E)
 
@@ -57,11 +71,15 @@ type FilesystemServiceInterface interface {
 	// GetSupportAndInfo returns filesystem support information along with name and description.
 	// This is the preferred method for API handlers to get filesystem information.
 	GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E)
+}
 
+type FilesystemFormatter interface {
 	// FormatPartition formats a device with the specified filesystem type.
 	// Returns an error if formatting cannot start, is already in progress, or fails.
 	FormatPartition(ctx context.Context, devicePath, fsType string, options dto.FormatOptions) (*dto.CheckResult, errors.E)
+}
 
+type FilesystemChecker interface {
 	// CheckPartition checks a device's filesystem for errors.
 	// Returns an error if check cannot start, is already in progress, or fails.
 	CheckPartition(ctx context.Context, devicePath, fsType string, options dto.CheckOptions) (*dto.CheckResult, errors.E)
@@ -71,21 +89,39 @@ type FilesystemServiceInterface interface {
 
 	// GetPartitionState returns the state of a partition's filesystem.
 	GetPartitionState(ctx context.Context, devicePath, fsType string) (*dto.FilesystemState, errors.E)
+}
 
+type FilesystemLabelService interface {
 	// GetPartitionLabel returns the label of a partition's filesystem.
 	GetPartitionLabel(ctx context.Context, devicePath, fsType string) (string, errors.E)
 
 	// SetPartitionLabel sets the label of a partition's filesystem.
 	SetPartitionLabel(ctx context.Context, devicePath, fsType, label string) errors.E
+}
 
+type FilesystemMounter interface {
 	// MountPartition mounts a source to target by delegating mount mechanics to the filesystem adapter.
 	MountPartition(ctx context.Context, source, target, fsType, data string, flags uintptr, prepareTarget func() error) (*mount.MountPoint, errors.E)
 
 	// UnmountPartition unmounts a target by delegating unmount mechanics to the filesystem adapter.
 	UnmountPartition(ctx context.Context, target, fsType string, force, lazy bool) errors.E
+}
 
+type FilesystemBlockDeviceService interface {
 	// CreateBlockDevice creates a loop block device node using mknod.
 	CreateBlockDevice(ctx context.Context, device string) errors.E
+}
+
+// FilesystemServiceInterface is the composite of all filesystem role interfaces.
+// Prefer the narrow role interfaces at new call sites.
+type FilesystemServiceInterface interface {
+	MountFlagService
+	FilesystemInfoService
+	FilesystemFormatter
+	FilesystemChecker
+	FilesystemLabelService
+	FilesystemMounter
+	FilesystemBlockDeviceService
 }
 
 // FilesystemService implements the FilesystemServiceInterface.
@@ -342,6 +378,37 @@ func (s *FilesystemService) ResolveLinuxFsModule(fsType string) string {
 	return module
 }
 
+// GetDefaultMountFlags returns the adapter-declared mount defaults for the
+// given filesystem type. Filesystems with native Unix permissions return an
+// empty list. Unknown filesystem types return an empty list with no error so
+// that mounting can proceed without defaults.
+func (s *FilesystemService) GetDefaultMountFlags(fsType string) ([]dto.MountFlag, errors.E) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.DebugContext(s.ctx, "GetDefaultMountFlags: adapter not found, no defaults", "fsType", fsType, "error", err)
+		return []dto.MountFlag{}, nil
+	}
+
+	if defaults := adapter.GetDefaultMountFlags(); defaults != nil {
+		return defaults, nil
+	}
+	return []dto.MountFlag{}, nil
+}
+
+// GetSambaForceUserGroup returns the Samba "force user" and "force group"
+// values declared by the filesystem adapter. Empty strings mean the
+// corresponding smb.conf line should be omitted. Unknown filesystem types
+// fall back to the legacy "root"/"root" values.
+func (s *FilesystemService) GetSambaForceUserGroup(fsType string) (string, string) {
+	adapter, err := s.registry.Get(fsType)
+	if err != nil {
+		slog.DebugContext(s.ctx, "GetSambaForceUserGroup: adapter not found, using legacy root", "fsType", fsType, "error", err)
+		return "root", "root"
+	}
+
+	return adapter.GetSambaForceUser(), adapter.GetSambaForceGroup()
+}
+
 // GetMountFlagsAndData converts a list of MountFlag structs into the syscall flags (uintptr)
 // and the data string (string) for the syscall.Mount function.
 // It processes flags that correspond to standard mount(2) bitmask options.
@@ -527,7 +594,6 @@ func (s *FilesystemService) GetSupportAndInfo(ctx context.Context, fsType string
 		return nil, errors.Wrap(err, "failed to check filesystem support")
 	}
 
-	//standardFlags, _ := s.GetStandardMountFlags()
 	customFlags, _ := s.GetFilesystemSpecificMountFlags(adapter.GetName())
 
 	return &dto.FilesystemInfo{

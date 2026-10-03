@@ -129,10 +129,10 @@ async def test_listen_loop_resends_helo_after_reconnect(
     second_ws.send_json.assert_awaited_once_with(expected_payload)
 
 
-async def test_listen_loop_prefers_supervisor_gateway_host(
+async def test_listen_loop_tries_loopback_gateway_then_hostname(
     hass: HomeAssistant,
 ) -> None:
-    """Test that Supervisor add-on connections try the gateway host first."""
+    """Supervisor add-on connections try loopback, gateway, then hostname."""
     client = SRATWebSocketClient(
         hass=hass,
         host="local-sambanas2",
@@ -149,6 +149,7 @@ async def test_listen_loop_prefers_supervisor_gateway_host(
     session = MagicMock(spec=aiohttp.ClientSession)
     session.ws_connect = MagicMock(
         side_effect=[
+            aiohttp.ClientConnectionError("loopback refused"),
             aiohttp.ClientConnectionError("gateway failed"),
             _WebSocketContextManager(
                 ws,
@@ -163,9 +164,10 @@ async def test_listen_loop_prefers_supervisor_gateway_host(
     ):
         await client._listen_loop()
 
-    assert session.ws_connect.call_args_list[0].args[0] == "ws://172.30.32.1:62246/ws"
+    assert session.ws_connect.call_args_list[0].args[0] == "ws://127.0.0.1:62246/ws"
+    assert session.ws_connect.call_args_list[1].args[0] == "ws://172.30.32.1:62246/ws"
     assert (
-        session.ws_connect.call_args_list[1].args[0] == "ws://local-sambanas2:62246/ws"
+        session.ws_connect.call_args_list[2].args[0] == "ws://local-sambanas2:62246/ws"
     )
     ws.send_json.assert_awaited_once_with(
         {
@@ -377,3 +379,203 @@ async def test_listen_loop_calls_endpoint_resolver_before_each_reconnect(
     assert resolve_call_count == 2
     assert captured_urls[0] == "ws://172.30.32.1:3001/ws"
     assert captured_urls[1] == "ws://172.30.32.1:3002/ws"
+
+
+def _make_client(hass: HomeAssistant) -> SRATWebSocketClient:
+    """Create a plain WebSocket client for message-level tests."""
+    return SRATWebSocketClient(
+        hass=hass,
+        host="192.168.1.100",
+        port=8099,
+        integration_version="2026.03.1",
+    )
+
+
+async def test_parse_ws_message_dispatches_to_listener(
+    hass: HomeAssistant,
+) -> None:
+    """A valid SSE frame must reach the registered listener as parsed JSON."""
+    client = _make_client(hass)
+    received: list[Any] = []
+    client.register_listener("volumes", received.append)
+
+    client._parse_ws_message('id: 1\nevent: volumes\ndata: {"a": 1}')
+
+    assert received == [{"a": 1}]
+
+
+async def test_parse_ws_message_malformed_frame_ignored(
+    hass: HomeAssistant,
+) -> None:
+    """A malformed frame must be dropped without calling listeners."""
+    client = _make_client(hass)
+    received: list[Any] = []
+    client.register_listener("volumes", received.append)
+
+    client._parse_ws_message("not-an-sse-frame")
+
+    assert received == []
+
+
+async def test_parse_ws_message_bad_json_ignored(hass: HomeAssistant) -> None:
+    """A frame with non-JSON data must be dropped without calling listeners."""
+    client = _make_client(hass)
+    received: list[Any] = []
+    client.register_listener("volumes", received.append)
+
+    client._parse_ws_message("id: 1\nevent: volumes\ndata: {oops")
+
+    assert received == []
+
+
+async def test_parse_ws_message_listener_exception_isolated(
+    hass: HomeAssistant,
+) -> None:
+    """A raising listener must not prevent sibling listeners from running."""
+
+    def _boom(payload: Any) -> None:
+        raise RuntimeError("listener boom")
+
+    client = _make_client(hass)
+    received: list[Any] = []
+    client.register_listener("volumes", _boom)
+    client.register_listener("volumes", received.append)
+
+    client._parse_ws_message('id: 1\nevent: volumes\ndata: {"a": 1}')
+
+    assert received == [{"a": 1}]
+
+
+async def test_remove_listener_twice_is_safe(hass: HomeAssistant) -> None:
+    """Unregistering the same listener twice must not raise."""
+    client = _make_client(hass)
+    remove = client.register_listener("volumes", lambda payload: None)
+
+    remove()
+    remove()
+
+    assert "volumes" not in client._listeners
+
+
+async def test_on_listener_task_done_skipped_when_reconnect_disabled(
+    hass: HomeAssistant,
+    caplog: Any,
+) -> None:
+    """A finished task must be ignored silently when reconnect is disabled."""
+    client = _make_client(hass)
+    client._should_reconnect = False
+    task = MagicMock()
+    task.cancelled.return_value = False
+    task.exception.return_value = RuntimeError("boom")
+
+    client._on_listener_task_done(task)
+
+    task.cancelled.assert_not_called()
+    assert "watchdog will restart" not in caplog.text
+
+
+async def test_on_listener_task_done_ignores_cancelled_task(
+    hass: HomeAssistant,
+    caplog: Any,
+) -> None:
+    """A cancelled listener task must be ignored silently."""
+    client = _make_client(hass)
+    client._should_reconnect = True
+    task = MagicMock()
+    task.cancelled.return_value = True
+
+    client._on_listener_task_done(task)
+
+    task.exception.assert_not_called()
+    assert "watchdog will restart" not in caplog.text
+
+
+async def test_on_listener_task_done_warns_on_crash(
+    hass: HomeAssistant,
+    caplog: Any,
+) -> None:
+    """A crashed listener task must log that the watchdog will restart it."""
+    client = _make_client(hass)
+    client._should_reconnect = True
+    task = MagicMock()
+    task.cancelled.return_value = False
+    task.exception.return_value = RuntimeError("boom")
+
+    with caplog.at_level("WARNING", logger="custom_components.srat.websocket_client"):
+        client._on_listener_task_done(task)
+
+    assert "watchdog will restart" in caplog.text
+
+
+async def test_on_listener_task_done_warns_on_clean_stop(
+    hass: HomeAssistant,
+    caplog: Any,
+) -> None:
+    """A cleanly stopped listener task must log that the watchdog will restart it."""
+    client = _make_client(hass)
+    client._should_reconnect = True
+    task = MagicMock()
+    task.cancelled.return_value = False
+    task.exception.return_value = None
+
+    with caplog.at_level("WARNING", logger="custom_components.srat.websocket_client"):
+        client._on_listener_task_done(task)
+
+    assert "stopped unexpectedly" in caplog.text
+
+
+async def test_listen_loop_cancel_during_retry_sleep_stops(
+    hass: HomeAssistant,
+) -> None:
+    """Cancellation during the reconnect sleep must stop the loop."""
+    client = _make_client(hass)
+    client._reconnect_interval = 5
+    client._should_reconnect = True
+
+    session = MagicMock(spec=aiohttp.ClientSession)
+    session.ws_connect = MagicMock(
+        side_effect=aiohttp.ClientConnectionError("connection refused")
+    )
+
+    with (
+        patch(
+            "custom_components.srat.websocket_client.async_get_clientsession",
+            return_value=session,
+        ),
+        patch("asyncio.sleep", side_effect=asyncio.CancelledError()),
+    ):
+        await client._listen_loop()
+
+    assert client._should_reconnect is False
+
+
+async def test_listen_loop_cancel_during_flap_sleep_stops(
+    hass: HomeAssistant,
+) -> None:
+    """Cancellation during the flap backoff sleep must stop the loop."""
+    client = _make_client(hass)
+    client._reconnect_interval = 5
+    client._should_reconnect = True
+
+    ws = AsyncMock(spec=aiohttp.ClientWebSocketResponse)
+    error_msg = MagicMock()
+    error_msg.type = aiohttp.WSMsgType.ERROR
+    ws.__aiter__.return_value = [error_msg]
+    ws.exception = MagicMock(return_value="boom")
+
+    session = MagicMock(spec=aiohttp.ClientSession)
+    session.ws_connect = MagicMock(
+        return_value=_WebSocketContextManager(ws, lambda: None)
+    )
+
+    with (
+        patch(
+            "custom_components.srat.websocket_client.async_get_clientsession",
+            return_value=session,
+        ),
+        patch("asyncio.sleep", side_effect=asyncio.CancelledError()),
+    ):
+        await client._listen_loop()
+
+    assert client._should_reconnect is False
+    assert session.ws_connect.call_count == 1

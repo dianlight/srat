@@ -47,6 +47,16 @@ func (a *HfsplusAdapter) GetMountFlags() []dto.MountFlag {
 	}
 }
 
+// GetDefaultMountFlags returns the HFS+ mount defaults. HFS+ has no Linux
+// ACL support, so ownership and permissions are fixed at mount time (#1264).
+func (a *HfsplusAdapter) GetDefaultMountFlags() []dto.MountFlag {
+	return []dto.MountFlag{
+		{Name: "uid", NeedsValue: true, FlagValue: "0"},
+		{Name: "gid", NeedsValue: true, FlagValue: "0"},
+		{Name: "umask", NeedsValue: true, FlagValue: "000"},
+	}
+}
+
 // IsSupported checks if HFS+ is supported on the system
 func (a *HfsplusAdapter) IsSupported(ctx context.Context) (dto.FilesystemSupport, errors.E) {
 	support := a.checkCommandAvailability()

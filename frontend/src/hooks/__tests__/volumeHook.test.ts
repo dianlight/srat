@@ -216,4 +216,67 @@ describe("useVolume hook", () => {
     // The disks reference must be identical — no new array was created.
     expect(result.current.disks).toBe(disksRefBefore);
   });
+
+  it("updates disks when SSE delivers an unmount transition (is_mounted flips to false)", async () => {
+    const React = await import("react");
+    const { renderHook, waitFor, act } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { createTestStore, getMswServer } = await import("/test/testing");
+    const { useVolume } = await import("../../hooks/volumeHook");
+
+    // Seed the SSE mock with a mounted partition.
+    const mountedDisk = {
+      id: "ata-SSE-DISK",
+      device_path: "/dev/disk/by-id/ata-SSE-DISK",
+      partitions: {
+        sda1: {
+          id: "part-1",
+          device_path: "/dev/sda1",
+          mount_point_data: {
+            mnt1: { path: "/mnt/FMTUI01", is_mounted: true },
+          },
+        },
+      },
+    };
+    sseMock.data = { volumes: [mountedDisk] };
+    getMswServer().use(
+      http.get(/.*\/api\/volumes(?:\?.*)?$/, () => HttpResponse.json([mountedDisk])),
+    );
+
+    const store = await createTestStore();
+    const wrapper = ({ children }: React.PropsWithChildren) =>
+      React.createElement(Provider, { store, children });
+
+    const { result, rerender } = renderHook(() => useVolume(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.disks).toHaveLength(1);
+    });
+    // Confirm the partition is mounted.
+    const partBefore = result.current.disks[0]?.partitions?.["sda1"];
+    expect(partBefore?.mount_point_data?.["mnt1"]?.is_mounted).toBe(true);
+
+    // Simulate an SSE unmount transition: is_mounted flips to false.
+    const unmountedDisk = {
+      ...mountedDisk,
+      partitions: {
+        sda1: {
+          ...partBefore!,
+          mount_point_data: {
+            mnt1: { path: "/mnt/FMTUI01", is_mounted: false },
+          },
+        },
+      },
+    };
+    await act(async () => {
+      sseMock.data = { volumes: [unmountedDisk] };
+    });
+    rerender();
+
+    // The hook must reflect the unmount without a manual reload.
+    await waitFor(() => {
+      const part = result.current.disks[0]?.partitions?.["sda1"];
+      expect(part?.mount_point_data?.["mnt1"]?.is_mounted).toBe(false);
+    });
+  });
 });

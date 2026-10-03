@@ -4,8 +4,9 @@ name: SambaNAS2 orphan watch
 # in dianlight/srat issues or docs/tasks/*.md (same index the `sync-tasks`
 # skill builds for Mode A IMPORT).
 #
-# Read-only by design: publishes a job summary only, never comments on issues,
-# never opens issues or PRs.
+# Detect + triage are read-only (job summaries only). The final `mirror` job
+# creates one linked tracking issue per orphan in dianlight/srat when no
+# counterpart exists yet (idempotent: searches before creating).
 #
 # AI triage uses dianlight/opencode-modelselect-action with
 # task-type=issue-triage, tier=auto. If selection fails, the deterministic
@@ -277,3 +278,89 @@ jobs:
           else
             echo "Triage ran but produced no report file." >> "$GITHUB_STEP_SUMMARY"
           fi
+
+  mirror:
+    name: Mirror orphans to srat issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: detect
+    if: needs.detect.outputs.count != '0'
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Create linked srat issues
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          ORPHANS_JSON: ${{ needs.detect.outputs.orphans }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const orphans = JSON.parse(process.env.ORPHANS_JSON || '[]');
+            if (!orphans.length) {
+              core.info('No orphans — nothing to mirror.');
+              return;
+            }
+
+            // Ensure the `upstream` label exists (same pattern as ci-failure-manager).
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'upstream',
+              });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'upstream',
+                color: '0e8a16',
+                description: 'Mirrored from an upstream repository issue',
+              });
+              core.info('Created upstream label.');
+            }
+
+            let created = 0;
+            const summary = ['## Mirrored srat issues', ''];
+            for (const o of orphans) {
+              const marker = `hassio-addons#${o.number}`;
+              // Idempotency: skip if srat already references this upstream issue
+              // (mirror title marker or body reference), guarding against a
+              // race where a human linked it after the detect job ran.
+              const { data } = await github.rest.search.issuesAndPullRequests({
+                q: `repo:${context.repo.owner}/${context.repo.repo} "${marker}"`,
+                per_page: 5,
+              });
+              if (data.total_count > 0) {
+                core.info(`Skipping ${marker}: already referenced in srat (#${data.items[0].number}).`);
+                summary.push(`- ${marker}: already tracked in #${data.items[0].number} — skipped`);
+                continue;
+              }
+
+              const title = `[upstream] SambaNAS2: ${o.title} (${marker})`;
+              const labels = (o.labels || []).join(', ') || '—';
+              const body = [
+                `Upstream SambaNAS2 issue: dianlight/hassio-addons#${o.number} (${o.url})`,
+                '',
+                `**Author:** @${o.author} | **Created:** ${String(o.created_at).slice(0, 10)} | **Upstream labels:** ${labels}`,
+                '',
+                '> See the orphan-watch run summary and AI triage (if any) for classification and suggested task match.',
+                '',
+                'Close this issue once it is tracked via a `hassio-addons#NNN` reference in `docs/tasks/*.md` or a duplicate srat issue link.',
+                '',
+                '_Auto-created by `sambanas2-orphan-watch` mirror job._',
+              ].join('\n');
+
+              const created_issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['upstream'],
+              });
+              created += 1;
+              core.info(`Created #${created_issue.data.number} for ${marker}.`);
+              summary.push(`- ${marker}: created #${created_issue.data.number}`);
+            }
+            summary.push('', `Created ${created} of ${orphans.length} orphan(s).`);
+            await core.summary.addRaw(summary.join('\n')).write();
