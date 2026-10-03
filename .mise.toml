@@ -1,7 +1,7 @@
 monorepo_root = true
 
 [monorepo]
-config_roots = ["frontend", "backend", "custom_components"]
+config_roots = ["frontend", "backend", "custom_components", "oauth_broker"]
 
 [settings]
 npm.package_manager = "bun"
@@ -74,6 +74,7 @@ run = [
     "//backend:test",
     "//frontend:test",
     "//custom_components:test",
+    "//oauth_broker:test",
   ] },
 ]
 quiet = true

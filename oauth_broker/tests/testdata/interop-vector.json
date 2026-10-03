@@ -1,0 +1,7 @@
+{
+  "seed_b64url": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY",
+  "pub_b64url": "I7xUkSwebpLEqGglyGfif_3FVb_71CRPF6Jqv__ull0",
+  "client_id": "-3lwIZ4m0fQeZtOhVlEIWiB1kQPSFSiEgAQISDZU_e4",
+  "string_to_sign": "-3lwIZ4m0fQeZtOhVlEIWiB1kQPSFSiEgAQISDZU_e4\nPOST\n/v1/start\n1700000000\ntest-nonce-1234567890123456\n47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
+  "sig_b64url": "5KrU1gZse5Xsaal7AEDKfXTFIT5OZ4PHZ4G7k1OAnjj7yuZBkQt89UasjijfcWlk5YBXWzTINakGEWwbnXsSCw"
+}
