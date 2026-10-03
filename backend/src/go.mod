@@ -38,7 +38,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
-	github.com/shirou/gopsutil/v4 v4.26.8
+	github.com/shirou/gopsutil/v4 v4.26.9
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/stretchr/testify v1.12.1
 	github.com/teivah/broadcast v0.1.0
@@ -73,7 +73,7 @@ require (
 	github.com/danielgtaylor/shorthand/v2 v2.4.0 // indirect
 	github.com/dave/jennifer v1.6.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/ebitengine/purego v0.10.2 // indirect
+	github.com/ebitengine/purego v0.11.1 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.2 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
@@ -102,7 +102,7 @@ require (
 	github.com/oligot/go-mod-upgrade v0.12.0 // indirect
 	github.com/ovechkin-dm/go-dyno v0.5.3 // indirect
 	github.com/petermattis/goid v0.0.0-20260113132338-7c7de50cc741 // indirect
-	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
+	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/rakyll/gotest v0.0.7 // indirect
 	github.com/rekby/gpt v0.0.0-20200614112001-7da10aec5566 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -116,8 +116,8 @@ require (
 	github.com/spf13/cast v1.10.0 // indirect
 	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/tklauser/go-sysconf v0.3.16 // indirect
-	github.com/tklauser/numcpus v0.11.0 // indirect
+	github.com/tklauser/go-sysconf v0.4.0 // indirect
+	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/urfave/cli/v2 v2.27.7 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
