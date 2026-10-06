@@ -86,16 +86,18 @@ func NewHTTPServer(
 
 // newCORSHandler builds the CORS middleware. In SecureMode (addon) only
 // explicitly configured origins are trusted and wildcard is never combined
-// with AllowCredentials. Dev mode stays permissive.
+// with AllowCredentials, plus HA ingress proxy arrivals and same-host origins
+// so user-specific HA URLs keep working. Dev mode stays permissive.
 func newCORSHandler(state *dto.ContextState) *cors.Cors {
 	if state != nil && state.SecureMode {
-		// Use AllowOriginFunc (not empty AllowedOrigins, which rs/cors
+		// Use AllowOriginRequestFunc (not empty AllowedOrigins, which rs/cors
 		// treats as allow-all) so SecureMode with no configured origins
-		// fails closed via IsOriginAllowed.
+		// fails closed via IsOriginAllowedForRequest, with ingress and
+		// same-host fallbacks for HA proxy traffic.
 		return cors.New(
 			cors.Options{
-				AllowOriginFunc: func(origin string) bool {
-					return IsOriginAllowed(state, origin)
+				AllowOriginRequestFunc: func(r *http.Request, origin string) bool {
+					return IsOriginAllowedForRequest(state, r)
 				},
 				AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"},
 				AllowedHeaders:   []string{"*"},
