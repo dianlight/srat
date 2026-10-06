@@ -2,6 +2,18 @@
 
 # Changelog
 
+## [ 🚧 Unreleased ]
+
+### 🐛 Bug Fixes
+
+- **HA ingress WebSocket and CORS origins**: WebSocket and CORS requests arriving through the Home Assistant ingress proxy are now trusted via ingress proxy headers and same-host origins, so the UI no longer gets rejected behind ingress. ([srat#1330](https://github.com/dianlight/srat/pull/1330))
+
+### 🔧 Maintenance
+
+- **Release CHANGELOG reset rebase**: The release workflow now rebases the CHANGELOG reset onto the latest main before pushing, fixing release pushes that failed when main advanced during the build. ([srat#1317](https://github.com/dianlight/srat/pull/1317))
+- **go-github v92 migration**: Migrated the GitHub client library from v91 to v92, updating import paths and syncing vendored dependencies. ([srat#1294](https://github.com/dianlight/srat/pull/1294))
+- **Vitest 5.0.3**: Updated the frontend test toolchain (Vitest, browser-playwright, coverage) to v5.0.3.
+
 ## 2026.10.0-rc17
 
 ### ✨ Features
