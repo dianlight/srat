@@ -215,6 +215,83 @@ func TestInferMountPointType(t *testing.T) {
 	}
 }
 
+func TestShouldSkipAutomount(t *testing.T) {
+	native := "native"
+	nativeUpper := "NATIVE"
+	ext4 := "ext4"
+	cases := []struct {
+		name string
+		mp   *dto.MountPointData
+		want bool
+	}{
+		{"nil", nil, true},
+		{"system path with ext4", &dto.MountPointData{Path: "/addon_configs", FSType: &ext4}, true},
+		{"system path without fstype", &dto.MountPointData{Path: "/addon_configs"}, true},
+		{"native fstype on data path", &dto.MountPointData{Path: "/mnt/data", FSType: &native}, true},
+		{"native uppercase", &dto.MountPointData{Path: "/mnt/data", FSType: &nativeUpper}, true},
+		{"native via partition fstype", &dto.MountPointData{
+			Path:      "/mnt/data",
+			Partition: &dto.Partition{FsType: &native},
+		}, true},
+		{"ext4 data path mounts", &dto.MountPointData{Path: "/mnt/data", FSType: &ext4}, false},
+		{"empty fstype on data path mounts (auto-detect)", &dto.MountPointData{Path: "/mnt/data"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := volume.ShouldSkipAutomount(tc.mp); got != tc.want {
+				t.Errorf("ShouldSkipAutomount = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_SkipsNativeAndSystemPaths() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+
+	native := "native"
+	ext4 := "ext4"
+	cases := []struct {
+		name string
+		path string
+		fs   *string
+	}{
+		{"native on system path", "/addon_configs", &native},
+		{"ext4 on system path", "/addon_configs", &ext4},
+		{"native on data path", filepath.Join(tmpDir, "mnt", "data"), &native},
+	}
+	for _, tc := range cases {
+		callsBefore := s.mounter.mountCalls
+		safe := "skip-case"
+		switch tc.name {
+		case "native on system path":
+			safe = "skip-native-system"
+		case "ext4 on system path":
+			safe = "skip-ext4-system"
+		case "native on data path":
+			safe = "skip-native-data"
+		}
+		diskID, partID := "disk-"+safe, "part-"+safe
+		diskIDCopy, partIDCopy, devCopy := diskID, partID, deviceFile
+		fsCopy := tc.fs
+		parts := map[string]dto.Partition{partID: {
+			Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: fsCopy,
+		}}
+		disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+		s.Require().NoError(s.disks.AddOrUpdate(&disk))
+		md := &dto.MountPointData{
+			Path: tc.path, Root: "/", DeviceId: partID,
+			Flags: &dto.MountFlags{}, FSType: tc.fs,
+			Partition: &dto.Partition{Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: fsCopy},
+		}
+		err := s.orchestrator.MountVolume(md)
+		s.Require().Error(err, tc.name)
+		s.ErrorIs(err, dto.ErrorInvalidParameter, tc.name)
+		s.Equal(callsBefore, s.mounter.mountCalls, "skipped mount must not reach the mounter (%s)", tc.name)
+	}
+}
+
 type fakeNotifier struct {
 	created   []string
 	dismissed []string

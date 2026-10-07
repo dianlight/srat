@@ -605,6 +605,86 @@ func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_ExhaustedGuardSkipsMoun
 	s.Equal(0, mounter.mountCalls)
 }
 
+func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_SkipsNativeSystemMount() {
+	ha := &fakeNotifier{}
+	mounter := &fakeOrchestratorMounter{}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: mounter, HA: ha, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo, Orchestrator: orchestrator, Filesystem: &fakeOrchestratorFS{},
+		Refresh: func() errors.E { return nil },
+	})
+
+	// Device exists on purpose: the skip must happen before any mount(2),
+	// reproducing #1342 (nvme part8 -> /addon_configs, fstype native).
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	diskID, partID := "disk-h-1342", "part-h-1342"
+	diskIDCopy, partIDCopy, devCopy := diskID, partID, deviceFile
+	native := "native"
+	parts := map[string]dto.Partition{partID: {Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: &native}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	md := &dto.MountPointData{
+		Path: "/addon_configs", Root: "/", DeviceId: partID,
+		Type: "HOST", Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+		FSType:             &native,
+		IsToMountAtStartup: new(true), IsMounted: false,
+		Partition: &dto.Partition{Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: &native},
+	}
+	s.Require().NoError(handler.HandleMountPointEvent(s.ctx, events.MountPointEvent{
+		Type: events.EventTypes.UPDATE, MountPoint: md,
+	}))
+	s.Equal(0, mounter.mountCalls, "system/native mount must never reach the mounter")
+	s.Empty(ha.created, "skipped automount must not raise notifications")
+	allowed, _ := orchestrator.AllowAutomountAttempt(md.Path)
+	s.True(allowed, "skip must not consume the retry budget")
+}
+
+func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_SkipsNativeSystemMount() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+
+	devName := "sdz1342"
+	native := "native"
+	diskID, partID := "disk-h-1342b", "part-h-1342b"
+	diskIDCopy, partIDCopy := diskID, partID
+	devNameCopy, devFileCopy := devName, deviceFile
+	mps := map[string]dto.MountPointData{"/addon_configs": {
+		Path: "/addon_configs", Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, FSType: &native,
+		IsToMountAtStartup: new(true), IsMounted: false,
+	}}
+	parts := map[string]dto.Partition{partID: {
+		Id: &partIDCopy, DiskId: &diskIDCopy, FsType: &native,
+		LegacyDeviceName: &devNameCopy, DevicePath: &devFileCopy, MountPointData: &mps,
+	}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	mounter := &fakeOrchestratorMounter{}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo, Orchestrator: orchestrator,
+		Refresh: func() errors.E { return nil },
+	})
+
+	s.False(handler.HandlePartitionUdevAddEvent(devName))
+	s.Equal(0, mounter.mountCalls, "system/native mount must never reach the mounter")
+}
+
 func (s *UdevHandlerTestSuite) TestHandleFilesystemTaskEvent_FormatEmptyLabel_ReadsLiveLabel() {
 	diskID, partID := "disk-h-12", "part-h-12"
 	fsType := "ext4"
