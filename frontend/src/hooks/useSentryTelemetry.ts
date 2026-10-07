@@ -61,20 +61,21 @@ export const useSentryTelemetry = () => {
     extraData?: Record<string, unknown>,
   ) => {
     if ([Telemetry_mode.Errors, Telemetry_mode.All].includes(telemetryMode)) {
+      // #1344: bare captureMessage(string) yields minified withScope frames
+      // with no stack (SRAT-FRONTEND-2C). Promote strings to Errors so
+      // Sentry stores a stack + cause/context.
+      const asError = typeof error === "string" ? new Error(error) : error;
+      if (typeof error === "string") {
+        (asError as { cause?: unknown }).cause = extraData;
+      }
       const normalizedExtras = normalizeSentryExtras(extraData);
       if (extraData) {
         Sentry.withScope((scope) => {
           scope.setContext("extra", normalizedExtras);
-          if (typeof error === "string") {
-            Sentry.captureMessage(error, "error");
-          } else {
-            Sentry.captureException(error);
-          }
+          Sentry.captureException(asError);
         });
-      } else if (typeof error === "string") {
-        Sentry.captureMessage(error, "error");
       } else {
-        Sentry.captureException(error);
+        Sentry.captureException(asError);
       }
     }
   };

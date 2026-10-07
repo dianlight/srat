@@ -33,16 +33,25 @@ jobs:
     needs: set-environment
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND || vars.SENTRY_PROJECT }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Create Sentry release
+      - name: Create Sentry release (backend)
         if: env.SENTRY_AUTH_TOKEN != '' && env.SENTRY_ORG != '' && env.SENTRY_PROJECT != ''
         uses: getsentry/action-release@ff07929a6537bac57790c3451cf4d364aca38528 # v3
         id: sentry_release
         with:
           environment: ${{ needs.set-environment.outputs.environment }}
           release: ${{ github.event.release.tag_name || github.sha }}
+
+      - name: Create Sentry release (frontend)
+        if: env.SENTRY_AUTH_TOKEN != '' && env.SENTRY_ORG != '' && env.SENTRY_PROJECT_FRONTEND != ''
+        uses: getsentry/action-release@ff07929a6537bac57790c3451cf4d364aca38528 # v3
+        with:
+          environment: ${{ needs.set-environment.outputs.environment }}
+          release: ${{ github.event.release.tag_name || github.sha }}
+          project: ${{ env.SENTRY_PROJECT_FRONTEND }}

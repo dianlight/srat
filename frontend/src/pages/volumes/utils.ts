@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import type { useConfirm } from "material-ui-confirm";
 import type { NavigateFunction } from "react-router";
 import { toast } from "react-toastify";
@@ -157,6 +158,111 @@ export function getRealPartitions(disk: Disk): Partition[] {
   );
 }
 
+// Shared RTK/Huma API error parsing (#1344). Backend volume errors surface as
+// Huma problem payloads in `err.data` with the human message in `detail`
+// (mount 422/406 embeds service Details as "Key: value" lines, unmount 406
+// sends the Detail value). `message` is a fallback, then HTTP status.
+export interface ParsedVolumeApiError {
+  message: string;
+  code: string | number;
+  detail?: string;
+  status?: number;
+  errorData: Record<string, unknown>;
+}
+
+export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
+  const errorData =
+    typeof err === "object" && err !== null && "data" in err
+      ? ((err as { data?: unknown }).data ?? {})
+      : {};
+  const payload =
+    typeof errorData === "object" && errorData !== null
+      ? (errorData as Record<string, unknown>)
+      : {};
+  const nested = payload.errors;
+  let nestedMessage: string | undefined;
+  if (Array.isArray(nested)) {
+    for (const entry of nested) {
+      if (entry && typeof entry === "object") {
+        const message = (entry as Record<string, unknown>).message;
+        if (typeof message === "string" && message) {
+          nestedMessage = message;
+          break;
+        }
+      }
+    }
+  }
+  const rawStatus =
+    typeof err === "object" && err !== null && "status" in err
+      ? (err as { status?: unknown }).status
+      : payload.status;
+  const status = typeof rawStatus === "number" ? rawStatus : undefined;
+  const detail =
+    typeof payload.detail === "string" && payload.detail
+      ? payload.detail
+      : undefined;
+  const fallbackMessage =
+    typeof payload.message === "string" && payload.message
+      ? payload.message
+      : nestedMessage;
+  const message =
+    detail ??
+    fallbackMessage ??
+    (status !== undefined ? String(status) : "Unknown error");
+  const code =
+    status ?? (typeof payload.status === "string" ? payload.status : "Error");
+  return {
+    message: message || "Unknown error",
+    code,
+    detail,
+    status,
+    errorData: payload,
+  };
+}
+
+// Serialize an RTK error for Sentry context without producing "[Object]"
+// placeholders. JSON-safe, truncates long strings, preserves detail/message.
+export function serializeErrorForSentry(err: unknown): Record<string, unknown> {
+  const parsed = parseVolumeApiError(err);
+  const seen = new Set<unknown>();
+  const safe = (value: unknown, depth = 0): unknown => {
+    if (depth > 3) return "[truncated]";
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message, stack: value.stack };
+    }
+    if (
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean" ||
+      value == null
+    ) {
+      return typeof value === "string" && value.length > 2000
+        ? `${value.slice(0, 2000)}…[truncated]`
+        : value;
+    }
+    if (typeof value !== "object") return String(value);
+    if (seen.has(value)) return "[circular]";
+    seen.add(value);
+    if (Array.isArray(value)) return value.map((v) => safe(v, depth + 1));
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      try {
+        out[k] = safe(v, depth + 1);
+      } catch {
+        out[k] = String(v);
+      }
+    }
+    return out;
+  };
+  return {
+    message: parsed.message,
+    code: parsed.code,
+    detail: parsed.detail,
+    status: parsed.status,
+    error: safe(err),
+  };
+}
+
 // extractSuggestedMountPath parses a mount-failure payload for the backend's
 // SuggestedPath hint (#1091). The 406 detail embeds service Details as
 // "Key: value" lines, so scan detail plus any nested error messages.
@@ -276,10 +382,38 @@ export function requestUnmountVolume(args: {
         if (isSelected) onCleared();
       })
       .catch((err) => {
-        console.error("Unmount Error:", err);
-        const errorData = err?.data || {};
+        const parsed = parseVolumeApiError(err);
+        const sentryError = new Error(
+          `Unmount failed for ${displayName}: ${parsed.message}`,
+        );
+        (sentryError as { cause?: unknown }).cause = err;
+        Sentry.addBreadcrumb({
+          category: "volume.unmount",
+          message: `Unmount ${displayName}`,
+          data: {
+            mountPath,
+            force,
+            device: partition.id ?? partition.legacy_device_name,
+            code: parsed.code,
+          },
+          level: "error",
+        });
+        Sentry.captureException(sentryError, {
+          contexts: {
+            volume_unmount: {
+              mountPath,
+              force,
+              device: partition.id ?? partition.legacy_device_name,
+              ...serializeErrorForSentry(err),
+            },
+          },
+        });
+        console.error(
+          `Unmount Error for ${displayName} at ${mountPath}:`,
+          sentryError,
+        );
         toast.error(
-          `Error unmounting ${displayName}: ${errorData?.message || err?.status || "Unknown error"}`,
+          `Error unmounting ${displayName}: ${String(parsed.code)}: ${parsed.message}`,
           { data: { error: err } },
         );
       });

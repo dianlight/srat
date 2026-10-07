@@ -11,23 +11,63 @@ export const ConsoleErrorToSentry: React.FC = () => {
   useConsoleErrorCallback((...args: unknown[]) => {
     const [first, ...rest] = args;
 
+    const safeSerialize = (v: unknown): unknown => {
+      try {
+        if (v instanceof Error)
+          return { name: v.name, message: v.message, stack: v.stack };
+        if (
+          typeof v === "string" ||
+          typeof v === "number" ||
+          typeof v === "boolean" ||
+          v == null
+        )
+          return v;
+        // RTK Query errors ({status, data: {detail/message}}) lose their
+        // message under JSON round-trip when data holds non-serializable
+        // values; extract the human message explicitly first.
+        if (typeof v === "object") {
+          const maybe = v as {
+            data?: unknown;
+            status?: unknown;
+            message?: unknown;
+          };
+          const data =
+            maybe.data && typeof maybe.data === "object"
+              ? (maybe.data as Record<string, unknown>)
+              : undefined;
+          const detail =
+            data && typeof data.detail === "string" && data.detail
+              ? data.detail
+              : undefined;
+          const msg =
+            detail ??
+            (data && typeof data.message === "string" && data.message
+              ? data.message
+              : undefined) ??
+            (typeof maybe.message === "string" ? maybe.message : undefined);
+          if (
+            msg !== undefined ||
+            maybe.status !== undefined ||
+            data !== undefined
+          ) {
+            return {
+              status: maybe.status,
+              detail,
+              message:
+                typeof maybe.message === "string" ? maybe.message : undefined,
+              data,
+            };
+          }
+        }
+        return JSON.parse(JSON.stringify(v));
+      } catch {
+        return String(v);
+      }
+    };
+
     const extras: Record<string, unknown> = {};
     if (rest.length > 0) {
-      extras.console_args = rest.map((v) => {
-        try {
-          if (v instanceof Error)
-            return { name: v.name, message: v.message, stack: v.stack };
-          if (
-            typeof v === "string" ||
-            typeof v === "number" ||
-            typeof v === "boolean"
-          )
-            return v;
-          return JSON.parse(JSON.stringify(v));
-        } catch {
-          return String(v);
-        }
-      });
+      extras.console_args = rest.map(safeSerialize);
     }
 
     try {
@@ -57,7 +97,37 @@ export const ConsoleErrorToSentry: React.FC = () => {
     if (first instanceof Error) {
       reportError(first, extras);
     } else if (typeof first === "string") {
-      reportError(first, extras);
+      // console.error("Label:", rtkError) previously became a bare
+      // captureMessage("Label:") with console_args [Object] and no stack
+      // (#1344). Promote it to an Error carrying the backend detail so
+      // Sentry groups on message + stack instead of an empty string.
+      const candidate = rest[0] as
+        | { data?: unknown; status?: unknown }
+        | undefined;
+      const candidateData =
+        candidate &&
+        typeof candidate === "object" &&
+        candidate.data &&
+        typeof candidate.data === "object"
+          ? (candidate.data as Record<string, unknown>)
+          : undefined;
+      const candidateDetail =
+        candidateData &&
+        typeof candidateData.detail === "string" &&
+        candidateData.detail
+          ? candidateData.detail
+          : candidateData &&
+              typeof candidateData.message === "string" &&
+              candidateData.message
+            ? candidateData.message
+            : undefined;
+      if (candidateDetail) {
+        const err = new Error(`${first} ${candidateDetail}`);
+        (err as { cause?: unknown }).cause = rest[0];
+        reportError(err, extras);
+      } else {
+        reportError(first, extras);
+      }
     } else if (first) {
       let message = "console.error called";
       try {
