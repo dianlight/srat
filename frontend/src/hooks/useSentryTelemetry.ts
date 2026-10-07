@@ -10,6 +10,7 @@ import {
   useGetApiSettingsQuery,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
+import { normalizeSentryExtras } from "../utils/sentrySerialize";
 
 /**
  * Hook that provides Sentry functionality with telemetry mode checking.
@@ -60,9 +61,10 @@ export const useSentryTelemetry = () => {
     extraData?: Record<string, unknown>,
   ) => {
     if ([Telemetry_mode.Errors, Telemetry_mode.All].includes(telemetryMode)) {
+      const normalizedExtras = normalizeSentryExtras(extraData);
       if (extraData) {
         Sentry.withScope((scope) => {
-          scope.setContext("extra", extraData);
+          scope.setContext("extra", normalizedExtras);
           if (typeof error === "string") {
             Sentry.captureMessage(error, "error");
           } else {
@@ -80,7 +82,7 @@ export const useSentryTelemetry = () => {
   const reportEvent = (event: string, data?: Record<string, unknown>) => {
     if (telemetryMode === Telemetry_mode.All) {
       const eventData = {
-        ...data,
+        ...normalizeSentryExtras(data),
         event_type: event,
         timestamp: new Date().toISOString(),
       };
