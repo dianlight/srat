@@ -27,6 +27,46 @@ import (
 // skipSentryFlushForTest disables sentry.Flush() in tests to avoid blocking.
 var skipSentryFlushForTest bool
 
+// unauthorizedAccessMessage is the routine 401 log that must never reach Sentry.
+// It is high volume and low actionability (LAN/misconfigured reverse paths).
+const unauthorizedAccessMessage = "Unauthorized access from"
+
+// shouldDropSentryEvent reports whether a Sentry event is routine noise that
+// must be filtered before send.
+func shouldDropSentryEvent(event *sentry.Event) bool {
+	if event == nil {
+		return false
+	}
+	if strings.Contains(event.Message, unauthorizedAccessMessage) {
+		return true
+	}
+	for _, ex := range event.Exception {
+		if strings.Contains(ex.Value, unauthorizedAccessMessage) {
+			return true
+		}
+	}
+	return false
+}
+
+// sentryBeforeSend anonymises PII, enriches stack traces and drops routine
+// 401 noise so info-level auth rejections never become Sentry issues.
+func sentryBeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+	if shouldDropSentryEvent(event) {
+		return nil
+	}
+	// Anonymise IP address
+	event.User.IPAddress = ""
+	// Enhance stack traces for tozd/go/errors and pkg/errors when sentry-go
+	// hasn't already extracted one.
+	if hint != nil && hint.OriginalException != nil && len(event.Exception) > 0 {
+		ex := &event.Exception[0]
+		if ex.Stacktrace == nil {
+			ex.Stacktrace = extractSentryStacktrace(hint.OriginalException)
+		}
+	}
+	return event
+}
+
 // TelemetryServiceInterface defines the interface for telemetry services
 type TelemetryServiceInterface interface {
 	// Configure configures the telemetry service with the given mode
@@ -176,19 +216,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			Release:          ts.version,
 			ServerName:       "github.com/" + config.Repository,
 			AttachStacktrace: true,
-			BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
-				// Anonymise IP address
-				event.User.IPAddress = ""
-				// Enhance stack traces for tozd/go/errors and pkg/errors when sentry-go
-				// hasn't already extracted one.
-				if hint != nil && hint.OriginalException != nil && len(event.Exception) > 0 {
-					ex := &event.Exception[0]
-					if ex.Stacktrace == nil {
-						ex.Stacktrace = extractSentryStacktrace(hint.OriginalException)
-					}
-				}
-				return event
-			},
+			BeforeSend:       sentryBeforeSend,
 		}
 		if ts.testTransport != nil {
 			opts.Transport = ts.testTransport
@@ -428,6 +456,9 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 			return
 		}
 		if ts.mode != dto.TelemetryModes.TELEMETRYMODEALL && ts.mode != dto.TelemetryModes.TELEMETRYMODEERRORS {
+			return
+		}
+		if strings.Contains(event.Record.Message, unauthorizedAccessMessage) {
 			return
 		}
 
