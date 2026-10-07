@@ -193,6 +193,8 @@ function firstNestedMessage(
 /**
  * Parses an RTK Query rejection into a display-ready message plus the
  * backend `detail`, HTTP status, and raw payload for Sentry context.
+ * Falls back to `Error.message`, RTK fetch `error` strings, and string
+ * statuses (e.g. `FETCH_ERROR`) when no structured payload is present.
  */
 export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
   const errorData =
@@ -208,15 +210,27 @@ export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
       ? (err as { status?: unknown }).status
       : payload.status;
   const status = typeof rawStatus === "number" ? rawStatus : undefined;
+  const statusLabel =
+    typeof rawStatus === "string" && rawStatus.trim()
+      ? rawStatus.trim()
+      : undefined;
   const detail = nonBlank(payload.detail);
   const fallbackMessage =
-    nonBlank(payload.message) ?? firstNestedMessage(payload);
+    nonBlank(payload.message) ??
+    firstNestedMessage(payload) ??
+    (err instanceof Error ? nonBlank(err.message) : undefined) ??
+    (typeof err === "object" && err !== null
+      ? nonBlank((err as { error?: unknown }).error)
+      : undefined);
   const message =
     detail ??
     fallbackMessage ??
+    statusLabel ??
     (status !== undefined ? String(status) : "Unknown error");
   const code =
-    status ?? (typeof payload.status === "string" ? payload.status : "Error");
+    status ??
+    statusLabel ??
+    (typeof payload.status === "string" ? payload.status : "Error");
   return {
     message: message || "Unknown error",
     code,

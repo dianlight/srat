@@ -385,6 +385,20 @@ describe("volumes utils", () => {
 				}).message,
 			).toBe("500");
 		});
+
+		it("preserves plain Error and RTK fetch-error messages", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(parseVolumeApiError(new Error("device busy")).message).toBe(
+				"device busy",
+			);
+			const fetchError = parseVolumeApiError({
+				status: "FETCH_ERROR",
+				error: "Failed to fetch",
+			});
+			expect(fetchError.message).toBe("Failed to fetch");
+			expect(fetchError.code).toBe("FETCH_ERROR");
+		});
 	});
 
 	describe("requestUnmountVolume (#1344)", () => {
