@@ -1,0 +1,52 @@
+name: Update Security Policy
+
+on:
+  release:
+    types: [published]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-policy:
+    name: Update SECURITY.md supported versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.DEPLOY_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Recompute supported versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          TRIGGER_TAG: ${{ github.event.release.tag_name }}
+          TRIGGER_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/update-security-policy.py
+
+      - name: Commit and push if changed
+        run: |
+          set -euo pipefail
+          git add SECURITY.md
+          if git diff --cached --quiet; then
+            echo "SECURITY.md already up to date."
+            echo "### Security policy" >> "$GITHUB_STEP_SUMMARY"
+            echo "- No changes." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "chore(security): update supported versions"
+          git push origin HEAD:main
+          echo "### Security policy" >> "$GITHUB_STEP_SUMMARY"
+          echo "- SECURITY.md updated." >> "$GITHUB_STEP_SUMMARY"
