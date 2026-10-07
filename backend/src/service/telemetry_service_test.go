@@ -3,6 +3,8 @@ package service_test
 import (
 	"context"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sync"
 	"testing"
@@ -293,6 +295,30 @@ func (suite *TelemetryServiceSuite) TestTlogErrorCallbackCapturesEvent() {
 	hasException := len(ev.Exception) > 0
 	hasMessage := ev.Message != ""
 	suite.True(hasException || hasMessage, "Event should have exception or message")
+}
+
+func (suite *TelemetryServiceSuite) TestTlogUnauthorizedAccessFiltered() {
+	suite.stubSentryConnectivityOK()
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
+	suite.transport.reset()
+
+	tlog.Error("Unauthorized access from", "IP", "192.168.178.86")
+
+	ev := suite.transport.nextEvent(200 * time.Millisecond)
+	suite.Nil(ev, "Routine 401 must not reach Sentry")
+}
+
+func (suite *TelemetryServiceSuite) TestTlogCallback_RequestGenericErrorAndExtras() {
+	suite.stubSentryConnectivityOK()
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
+	suite.transport.reset()
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	tlog.Error("request failure", "error", oerrors.Errorf("downstream down"),
+		"request", req, "count", 42, "note", "plain")
+
+	ev := suite.transport.nextEvent(500 * time.Millisecond)
+	suite.Require().NotNil(ev, "Expected a Sentry event with request context")
 }
 
 type mockError struct{ msg string }

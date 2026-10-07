@@ -192,3 +192,41 @@ func (suite *HAMiddlewareSuite) TestCustomSupervisorNetwork() {
 	middleware(handler).ServeHTTP(rr, req)
 	suite.Equal(http.StatusUnauthorized, rr.Code)
 }
+
+func (suite *HAMiddlewareSuite) TestUnauthorizedRateLimit_BurstThenSuppress() {
+	resetUnauthorizedLimiters()
+	ip := "192.168.178.86"
+	for range unauthorizedLogBurst {
+		suite.True(shouldLogUnauthorized(ip), "burst logs should be allowed")
+	}
+	suite.False(shouldLogUnauthorized(ip), "repeated 401s must be suppressed")
+}
+
+func (suite *HAMiddlewareSuite) TestUnauthorizedRateLimit_IndependentPerIP() {
+	resetUnauthorizedLimiters()
+	ipA := "192.168.178.86"
+	ipB := "192.168.178.87"
+	for range unauthorizedLogBurst {
+		suite.True(shouldLogUnauthorized(ipA))
+	}
+	suite.False(shouldLogUnauthorized(ipA))
+	suite.True(shouldLogUnauthorized(ipB), "different IP must have its own budget")
+}
+
+func (suite *HAMiddlewareSuite) TestRepeatedUnauthorized_Always401() {
+	resetUnauthorizedLimiters()
+	handlerCalled := false
+	handler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		handlerCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	for range 10 {
+		handlerCalled = false
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.RemoteAddr = "192.168.178.86:12345"
+		rr := httptest.NewRecorder()
+		suite.middleware(handler).ServeHTTP(rr, req)
+		suite.Equal(http.StatusUnauthorized, rr.Code)
+		suite.False(handlerCalled)
+	}
+}
