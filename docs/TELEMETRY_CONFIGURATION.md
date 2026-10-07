@@ -55,7 +55,7 @@ backend `SENTRY_DSN`.
 | ------------------------- | ------------- | ---------------------------------------------------------- | ------------ |
 | `SENTRY_AUTH_TOKEN`       | No (secret)   | Uploads `*.js.map` after production frontend builds        | empty (skip) |
 | `SENTRY_ORG`              | No (variable) | Sentry org for source map upload                           | empty (skip) |
-| `SENTRY_PROJECT_FRONTEND` | No (variable) | Frontend project (falls back to `SENTRY_PROJECT`)          | empty (skip) |
+| `SENTRY_PROJECT_FRONTEND` | No (variable) | Frontend project slug, no fallback                         | empty (skip) |
 
 Production frontend builds emit external `*.js.map` files (watch/serve stay
 inline) and `mise run //frontend:build` uploads them via

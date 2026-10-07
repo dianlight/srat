@@ -2,6 +2,24 @@ import { useConsoleErrorCallback } from "../hooks/useConsoleErrorCallback";
 import { useSentryTelemetry } from "../hooks/useSentryTelemetry";
 
 /**
+ * Extracts the backend `detail` (or `message` fallback) from an RTK Query
+ * rejection shaped like `{ data: { detail, message }, status }`.
+ */
+function extractRtkDetail(value: unknown): string | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const candidate = value as { data?: unknown };
+  if (!candidate.data || typeof candidate.data !== "object") return undefined;
+  const data = candidate.data as Record<string, unknown>;
+  if (typeof data.detail === "string" && data.detail.trim()) {
+    return data.detail.trim();
+  }
+  if (typeof data.message === "string" && data.message.trim()) {
+    return data.message.trim();
+  }
+  return undefined;
+}
+
+/**
  * Mount this component once to forward console.error calls to Sentry.
  * It respects telemetry mode via useSentryTelemetry.
  */
@@ -95,32 +113,24 @@ export const ConsoleErrorToSentry: React.FC = () => {
     }
 
     if (first instanceof Error) {
-      reportError(first, extras);
+      // console.error(new Error("Mount failed"), rtkError): surface the
+      // backend detail at the top level (#1344) so it survives Sentry's
+      // normalization instead of hiding inside console_args.
+      const rtkDetail = extractRtkDetail(rest[0]);
+      if (rtkDetail && !first.message.includes(rtkDetail)) {
+        const enriched = new Error(`${first.message}: ${rtkDetail}`);
+        (enriched as { cause?: unknown }).cause = first;
+        extras.rtk_detail = rtkDetail;
+        reportError(enriched, extras);
+      } else {
+        reportError(first, extras);
+      }
     } else if (typeof first === "string") {
       // console.error("Label:", rtkError) previously became a bare
       // captureMessage("Label:") with console_args [Object] and no stack
       // (#1344). Promote it to an Error carrying the backend detail so
       // Sentry groups on message + stack instead of an empty string.
-      const candidate = rest[0] as
-        | { data?: unknown; status?: unknown }
-        | undefined;
-      const candidateData =
-        candidate &&
-        typeof candidate === "object" &&
-        candidate.data &&
-        typeof candidate.data === "object"
-          ? (candidate.data as Record<string, unknown>)
-          : undefined;
-      const candidateDetail =
-        candidateData &&
-        typeof candidateData.detail === "string" &&
-        candidateData.detail
-          ? candidateData.detail
-          : candidateData &&
-              typeof candidateData.message === "string" &&
-              candidateData.message
-            ? candidateData.message
-            : undefined;
+      const candidateDetail = extractRtkDetail(rest[0]);
       if (candidateDetail) {
         const err = new Error(`${first} ${candidateDetail}`);
         (err as { cause?: unknown }).cause = rest[0];

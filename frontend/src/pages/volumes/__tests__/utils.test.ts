@@ -316,6 +316,17 @@ describe("volumes utils", () => {
 			expect(parseVolumeApiError({ status: 500 }).message).toBe("500");
 			expect(parseVolumeApiError(undefined).message).toBe("Unknown error");
 		});
+
+		it("treats whitespace-only detail as empty", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			const parsed = parseVolumeApiError({
+				status: 406,
+				data: { detail: "   ", message: "device busy" },
+			});
+			expect(parsed.detail).toBeUndefined();
+			expect(parsed.message).toBe("device busy");
+		});
 	});
 
 	describe("serializeErrorForSentry (#1344)", () => {

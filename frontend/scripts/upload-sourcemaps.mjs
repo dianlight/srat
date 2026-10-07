@@ -27,11 +27,13 @@ const release =
 
 const authToken = process.env.SENTRY_AUTH_TOKEN || "";
 const org = process.env.SENTRY_ORG || "";
-const project = process.env.SENTRY_PROJECT_FRONTEND || process.env.SENTRY_PROJECT || "";
+// Fail closed: no backend-project fallback. Uploading frontend maps to the
+// backend project on a missing slug is exactly the misrouting in #1344.
+const project = process.env.SENTRY_PROJECT_FRONTEND || "";
 
 if (!authToken || !org || !project) {
   console.warn(
-    "[sentry-sourcemaps] Skipping upload: missing SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT_FRONTEND/SENTRY_PROJECT.",
+    "[sentry-sourcemaps] Skipping upload: missing SENTRY_AUTH_TOKEN, SENTRY_ORG, or SENTRY_PROJECT_FRONTEND.",
   );
   process.exit(0);
 }

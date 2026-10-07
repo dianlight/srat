@@ -170,6 +170,30 @@ export interface ParsedVolumeApiError {
   errorData: Record<string, unknown>;
 }
 
+/** Returns the trimmed string, or undefined when blank/non-string. */
+function nonBlank(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** First non-blank `message` inside a Huma `errors` array, if any. */
+function firstNestedMessage(
+  payload: Record<string, unknown>,
+): string | undefined {
+  const nested = payload.errors;
+  if (!Array.isArray(nested)) return undefined;
+  for (const entry of nested) {
+    if (entry && typeof entry === "object") {
+      const message = nonBlank((entry as Record<string, unknown>).message);
+      if (message) return message;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Parses an RTK Query rejection into a display-ready message plus the
+ * backend `detail`, HTTP status, and raw payload for Sentry context.
+ */
 export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
   const errorData =
     typeof err === "object" && err !== null && "data" in err
@@ -179,32 +203,14 @@ export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
     typeof errorData === "object" && errorData !== null
       ? (errorData as Record<string, unknown>)
       : {};
-  const nested = payload.errors;
-  let nestedMessage: string | undefined;
-  if (Array.isArray(nested)) {
-    for (const entry of nested) {
-      if (entry && typeof entry === "object") {
-        const message = (entry as Record<string, unknown>).message;
-        if (typeof message === "string" && message) {
-          nestedMessage = message;
-          break;
-        }
-      }
-    }
-  }
   const rawStatus =
     typeof err === "object" && err !== null && "status" in err
       ? (err as { status?: unknown }).status
       : payload.status;
   const status = typeof rawStatus === "number" ? rawStatus : undefined;
-  const detail =
-    typeof payload.detail === "string" && payload.detail
-      ? payload.detail
-      : undefined;
+  const detail = nonBlank(payload.detail);
   const fallbackMessage =
-    typeof payload.message === "string" && payload.message
-      ? payload.message
-      : nestedMessage;
+    nonBlank(payload.message) ?? firstNestedMessage(payload);
   const message =
     detail ??
     fallbackMessage ??
@@ -220,8 +226,10 @@ export function parseVolumeApiError(err: unknown): ParsedVolumeApiError {
   };
 }
 
-// Serialize an RTK error for Sentry context without producing "[Object]"
-// placeholders. JSON-safe, truncates long strings, preserves detail/message.
+/**
+ * Serializes an RTK error for Sentry context without producing "[Object]"
+ * placeholders. JSON-safe, truncates long strings, preserves detail/message.
+ */
 export function serializeErrorForSentry(err: unknown): Record<string, unknown> {
   const parsed = parseVolumeApiError(err);
   const seen = new Set<unknown>();

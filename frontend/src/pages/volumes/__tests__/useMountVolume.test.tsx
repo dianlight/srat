@@ -6,11 +6,23 @@ import { withTestHandlers } from "/test/testing";
 const { toastInfoMock, toastErrorMock, confirmMock } = vi.hoisted(() => {
   const toastInfoMock = vi.fn((..._args: unknown[]) => undefined);
   const toastErrorMock = vi.fn((..._args: unknown[]) => undefined);
-  const confirmMock = vi.fn(() =>
-    Promise.resolve({ reason: "cancel" as const }),
+  const confirmMock = vi.fn(
+    (): Promise<{ reason: "confirm" | "cancel" }> =>
+      Promise.resolve({ reason: "cancel" as const }),
   );
   return { toastInfoMock, toastErrorMock, confirmMock };
 });
+
+const { sentryBreadcrumbMock, sentryCaptureMock } = vi.hoisted(() => {
+  const sentryBreadcrumbMock = vi.fn((..._args: unknown[]) => undefined);
+  const sentryCaptureMock = vi.fn((..._args: unknown[]) => undefined);
+  return { sentryBreadcrumbMock, sentryCaptureMock };
+});
+
+vi.mock("@sentry/react", () => ({
+  addBreadcrumb: (...args: unknown[]) => sentryBreadcrumbMock(...args),
+  captureException: (...args: unknown[]) => sentryCaptureMock(...args),
+}));
 
 vi.mock("react-toastify", () => ({
   ToastContainer: () => null,
@@ -87,6 +99,8 @@ describe("useMountVolume", () => {
     toastInfoMock.mockClear();
     toastErrorMock.mockClear();
     confirmMock.mockClear();
+    sentryBreadcrumbMock.mockClear();
+    sentryCaptureMock.mockClear();
   });
 
   it("mounts successfully, toasts, and clears selection", async () => {
@@ -162,6 +176,57 @@ describe("useMountVolume", () => {
         });
         expect(toastErrorMock.mock.calls[0]?.[0]).toContain("mount failed");
         expect(confirmMock).not.toHaveBeenCalled();
+        await waitFor(() => {
+          expect(onCleared).toHaveBeenCalledTimes(1);
+        });
+      },
+    );
+  });
+
+  it("reports the retried suggested path when the suggestion retry fails", async () => {
+    const { screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+
+    const onCleared = vi.fn();
+    confirmMock.mockResolvedValueOnce({ reason: "confirm" as const });
+    const suggested = "/mnt/data_fixed";
+    let calls = 0;
+
+    await withTestHandlers(
+      [
+        http.post(mountUrl, () => {
+          calls += 1;
+          if (calls === 1) {
+            return HttpResponse.json(
+              { detail: `Message: bad chars\nSuggestedPath: ${suggested}` },
+              { status: 406 },
+            );
+          }
+          return HttpResponse.json(
+            { detail: "still failing", status: 500 },
+            { status: 500 },
+          );
+        }),
+      ],
+      async () => {
+        await renderMountHarness({ onCleared });
+
+        const user = userEvent.setup();
+        await user.click(
+          screen.getByRole("button", { name: /submit mount/i }),
+        );
+
+        await waitFor(() => {
+          expect(sentryBreadcrumbMock).toHaveBeenCalled();
+        });
+        const breadcrumb = sentryBreadcrumbMock.mock.calls[0]?.[0] as {
+          data?: { path?: string };
+        };
+        expect(breadcrumb?.data?.path).toBe(suggested);
+        await waitFor(() => {
+          expect(toastErrorMock).toHaveBeenCalledTimes(1);
+        });
+        expect(toastErrorMock.mock.calls[0]?.[0]).toContain("still failing");
         await waitFor(() => {
           expect(onCleared).toHaveBeenCalledTimes(1);
         });

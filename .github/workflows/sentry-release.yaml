@@ -35,7 +35,7 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-      SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND || vars.SENTRY_PROJECT }}
+      SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -54,4 +54,4 @@ jobs:
         with:
           environment: ${{ needs.set-environment.outputs.environment }}
           release: ${{ github.event.release.tag_name || github.sha }}
-          project: ${{ env.SENTRY_PROJECT_FRONTEND }}
+          projects: ${{ env.SENTRY_PROJECT_FRONTEND }}

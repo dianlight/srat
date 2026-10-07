@@ -65,7 +65,12 @@ export function useMountVolume({
         device_id: selectedPartition.id,
       };
 
-      const showMountError = (errorData: unknown, err: unknown) => {
+      const showMountError = (
+        errorData: unknown,
+        err: unknown,
+        attemptedPath?: string,
+      ) => {
+        const path = attemptedPath ?? submitData.path;
         const parsed =
           errorData && typeof errorData === "object"
             ? parseVolumeApiError({
@@ -77,9 +82,9 @@ export function useMountVolume({
         (mountError as { cause?: unknown }).cause = err;
         Sentry.addBreadcrumb({
           category: "volume.mount",
-          message: `Mount ${submitData.path ?? "unknown path"}`,
+          message: `Mount ${path ?? "unknown path"}`,
           data: {
-            path: submitData.path,
+            path,
             root: submitData.root,
             device: selectedPartition?.id,
             code: parsed.code,
@@ -89,7 +94,7 @@ export function useMountVolume({
         Sentry.captureException(mountError, {
           contexts: {
             volume_mount: {
-              path: submitData.path,
+              path,
               root: submitData.root,
               device: selectedPartition?.id,
               ...serializeErrorForSentry(err),
@@ -144,11 +149,12 @@ export function useMountVolume({
                     detail,
                   },
                   err,
+                  payload.path,
                 );
                 return Promise.resolve();
               });
             }
-            showMountError(errorData, err);
+            showMountError(errorData, err, payload.path);
             return Promise.resolve();
           });
 
