@@ -9,6 +9,7 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import * as Sentry from "@sentry/react";
 import {
   createContext,
   useCallback,
@@ -24,7 +25,6 @@ import { useHealth } from "../../hooks/healthHook";
 import {
   type DataDirtyTracker,
   type Disk,
-  type ErrorModel,
   type InterfaceStat,
   type MountPointData,
   type Settings,
@@ -43,6 +43,13 @@ import {
   usePutApiSettingsMutation,
   usePutApiUseradminMutation,
 } from "../../store/sratApi";
+import {
+  buildWizardFailureExtras,
+  buildWizardFailureMessage,
+  buildWizardFailureToast,
+  describeMutationError,
+  normalizeSentryExtras,
+} from "../../utils/sentrySerialize";
 import { SetupWizardActions } from "./SetupWizardActions";
 import { FirstShareStepContent } from "./steps/FirstShareStepContent";
 import { LabModeStepContent } from "./steps/LabModeStepContent";
@@ -65,6 +72,14 @@ import {
   isValidUsers,
   sanitizeWizardShareName,
 } from "./utils";
+
+type WizardCommitOp = "settings" | "admin-user" | "first-share";
+
+interface WizardCommit {
+  op: WizardCommitOp;
+  context: Record<string, unknown>;
+  promise: Promise<unknown>;
+}
 
 export { getWizardAvailablePartitions } from "./utils";
 
@@ -345,7 +360,7 @@ export function SetupWizard({
     setIsFinishing(true);
     setFinishError(null);
 
-    const allCommitted: Promise<unknown | ErrorModel>[] = [];
+    const allCommits: WizardCommit[] = [];
 
     try {
       const updatedSettings: Settings = {
@@ -375,17 +390,39 @@ export function SetupWizard({
           allData.labMode?.experimental_lab_mode ??
           (isValidSettings(settings) ? settings.experimental_lab_mode : false),
       };
-      allCommitted.push(updateSettings({ settings: updatedSettings }).unwrap());
+      const pendingShareName = allData.firstShare?.shareName?.trim() || "";
+      const pendingPartitionId = allData.firstShare?.partitionId || "";
+      const wizardContext = normalizeSentryExtras({
+        step: "summary",
+        hostname: allData.security?.hostname,
+        shareName: pendingShareName || undefined,
+        partitionId: pendingPartitionId || undefined,
+      });
+      Sentry.addBreadcrumb({
+        category: "wizard",
+        message: "wizard finish started",
+        data: wizardContext,
+      });
+      allCommits.push({
+        op: "settings",
+        context: {
+          hostname: updatedSettings.hostname,
+          workgroup: updatedSettings.workgroup,
+        },
+        promise: updateSettings({ settings: updatedSettings }).unwrap(),
+      });
 
       const newPassword = allData.security?.newPassword;
       if (newPassword && isValidUsers(users)) {
         const currentAdminUser = users.find((u) => u.is_admin);
         if (currentAdminUser) {
-          allCommitted.push(
-            updateAdminUser({
+          allCommits.push({
+            op: "admin-user",
+            context: { username: currentAdminUser.username },
+            promise: updateAdminUser({
               user: { ...currentAdminUser, password: newPassword },
             }).unwrap(),
-          );
+          });
         }
       }
 
@@ -404,8 +441,16 @@ export function SetupWizard({
             existingMountData?.path ||
             `/mnt/${sanitizeWizardShareName(selectedPartition.name || selectedPartition.id)}`;
 
-          allCommitted.push(
-            mountVolume({
+          allCommits.push({
+            op: "first-share",
+            context: {
+              partitionId: sharePartitionId,
+              deviceId: selectedPartition.id,
+              mountPath,
+              shareName: pendingShareName || undefined,
+              usage: allData.firstShare?.usage,
+            },
+            promise: mountVolume({
               mountPointData: {
                 device_id: selectedPartition.id,
                 is_mounted: false,
@@ -429,28 +474,80 @@ export function SetupWizard({
                 }
                 return resp;
               }),
-          );
+          });
         }
       }
 
-      await Promise.all(allCommitted)
-        .then(() => {
-          if (process.env.NODE_ENV !== "production")
-            console.debug(
-              "All settings applied successfully, waiting for clean state",
-            );
-        })
-        .catch((error) => {
-          console.error("Error applying settings in wizard:", error);
-          setFinishError(
-            "Failed to save some settings. You can configure them later in Settings.",
+      const settled = await Promise.allSettled(
+        allCommits.map((commit) => commit.promise),
+      );
+      const failures = settled.flatMap((result, index) => {
+        const commit = allCommits[index];
+        if (!commit || result.status !== "rejected") {
+          return [];
+        }
+        const described = describeMutationError(result.reason);
+        return [{ ...commit, described, reason: result.reason }];
+      });
+
+      if (failures.length === 0) {
+        if (process.env.NODE_ENV !== "production")
+          console.debug(
+            "All settings applied successfully, waiting for clean state",
           );
-          setIsFinishing(false);
-        });
-    } catch (error) {
-      console.error("Error applying settings in wizard:", error);
+        return;
+      }
+
+      const failedOps = failures.map((failure) => failure.op).join(", ");
+      const firstDetail = failures[0]?.described.detail ?? "Unknown error";
+      const message = buildWizardFailureMessage(
+        failures.map((failure) => ({
+          op: failure.op,
+          detail: failure.described.detail,
+        })),
+      );
+      const extras = buildWizardFailureExtras({
+        shareName: pendingShareName || undefined,
+        partitionId: pendingPartitionId || undefined,
+        failures: failures.map((failure) => ({
+          op: failure.op,
+          status: failure.described.status,
+          detail: failure.described.detail,
+          context: failure.context,
+          response: failure.described.data,
+        })),
+      });
+      console.error(message, extras);
+      Sentry.addBreadcrumb({
+        category: "wizard",
+        message: "wizard finish failed",
+        data: normalizeSentryExtras({
+          failedOps,
+          firstDetail,
+          shareName: pendingShareName || undefined,
+          partitionId: pendingPartitionId || undefined,
+        }),
+      });
       setFinishError(
-        `Failed to save some settings. You can configure them later in Settings. Error: ${(error as Error).message}`,
+        buildWizardFailureToast(
+          failures.map((failure) => ({
+            op: failure.op,
+            detail: failure.described.detail,
+          })),
+        ),
+      );
+      setIsFinishing(false);
+    } catch (error) {
+      const described = describeMutationError(error);
+      const message = `Error applying settings in wizard [build]: ${described.detail}`;
+      const extras = normalizeSentryExtras({
+        wizard: { step: "summary" },
+        status: described.status,
+        response: described.data,
+      });
+      console.error(message, extras);
+      setFinishError(
+        `Failed to save some settings. You can configure them later in Settings. Error: ${described.detail}`,
       );
       setIsFinishing(false);
     }
