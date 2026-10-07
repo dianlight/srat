@@ -1,3 +1,3 @@
-import { setupServer } from "msw/native";
+import { setupServer } from "msw/node";
 import { handlers } from "./handlers";
 export const server = setupServer(...handlers);

@@ -20,7 +20,7 @@ beforeAll(async () => {
 	clearFilesystemSupportOverrides = runtime.clearFilesystemSupportOverrides;
 	resetApiCounters = runtime.resetApiCounters;
 	server = setupServer(...defaultHandlers);
-	server.listen({ onUnhandledRequest: "warn" });
+	server.listen({ onUnhandledFrame: "warn" });
 
 	(globalThis as any).__SRAT_MSW_ADAPTER__ = {
 		getMswServer: () => getMswServer(),
