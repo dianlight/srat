@@ -340,6 +340,51 @@ describe("volumes utils", () => {
 			expect(serialized.message).toBe("device busy");
 			expect(JSON.stringify(serialized)).not.toContain("[Object]");
 		});
+
+		it("handles circular, Error, array, and deep payloads", async () => {
+			const { serializeErrorForSentry } = await import("../utils");
+
+			const circular: Record<string, unknown> = { detail: "busy" };
+			circular.self = circular;
+			expect(
+				(serializeErrorForSentry({ status: 500, data: circular }) as any)
+					.error.data.self,
+			).toBe("[circular]");
+
+			const withCause = new Error("wrapped");
+			(withCause as { cause?: unknown }).cause = { status: 500 };
+			const serialized = serializeErrorForSentry(withCause) as any;
+			expect(serialized.error.name).toBe("Error");
+
+			const nested = serializeErrorForSentry({
+				status: 500,
+				data: { errors: [{ message: "nested boom" }], tags: ["a", "b"] },
+			}) as any;
+			expect(nested.message).toBe("nested boom");
+			expect(nested.error.data.tags).toEqual(["a", "b"]);
+
+			const deep = { detail: "x" } as Record<string, unknown>;
+			let cursor = deep;
+			for (let i = 0; i < 6; i++) {
+				const next: Record<string, unknown> = {};
+				cursor.nested = next;
+				cursor = next;
+			}
+			expect(
+				JSON.stringify(serializeErrorForSentry({ data: deep })),
+			).toContain("[truncated]");
+		});
+
+		it("ignores nested entries without a usable message", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(
+				parseVolumeApiError({
+					status: 500,
+					data: { errors: [{ foo: 1 }, "nope", null] },
+				}).message,
+			).toBe("500");
+		});
 	});
 
 	describe("requestUnmountVolume (#1344)", () => {

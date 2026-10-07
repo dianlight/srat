@@ -183,8 +183,7 @@ describe("useMountVolume", () => {
     );
   });
 
-  it("reports the retried suggested path when the suggestion retry fails", async () => {
-    const { screen, waitFor } = await import("@testing-library/react");
+  it("reports the retried suggested path when the suggestion retry fails", async () => {    const { screen, waitFor } = await import("@testing-library/react");
     const userEvent = (await import("@testing-library/user-event")).default;
 
     const onCleared = vi.fn();
@@ -232,5 +231,97 @@ describe("useMountVolume", () => {
         });
       },
     );
+  });
+
+  it("surfaces the invalid-path detail when the suggested path is declined", async () => {
+    const { screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+
+    const onCleared = vi.fn();
+    confirmMock.mockResolvedValueOnce({ reason: "cancel" as const });
+    const suggested = "/mnt/data_fixed";
+
+    await withTestHandlers(
+      [
+        http.post(mountUrl, () =>
+          HttpResponse.json(
+            { detail: `Message: bad chars\nSuggestedPath: ${suggested}` },
+            { status: 406 },
+          ),
+        ),
+      ],
+      async () => {
+        await renderMountHarness({ onCleared });
+
+        const user = userEvent.setup();
+        await user.click(
+          screen.getByRole("button", { name: /submit mount/i }),
+        );
+
+        const alert = await screen.findByRole("alert");
+        expect(alert.textContent).toContain("is invalid");
+        expect(alert.textContent).toContain(suggested);
+        await waitFor(() => {
+          expect(sentryBreadcrumbMock).toHaveBeenCalled();
+        });
+        const breadcrumb = sentryBreadcrumbMock.mock.calls[0]?.[0] as {
+          data?: { path?: string };
+        };
+        expect(breadcrumb?.data?.path).toBe("/mnt/data");
+        await waitFor(() => {
+          expect(onCleared).toHaveBeenCalledTimes(1);
+        });
+      },
+    );
+  });
+
+  it("rejects invalid selection without calling the API", async () => {
+    const { screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+
+    const onCleared = vi.fn();
+
+    await withTestHandlers([], async () => {
+      const React = await import("react");
+      const { renderWithTestStore } = await import("/test/testing");
+      const { useMountVolume } = await import("../hooks/useMountVolume");
+
+      function InvalidHarness() {
+        const { onSubmitMountVolume } = useMountVolume({
+          selectedPartition: undefined,
+          onCleared: onCleared as () => void,
+        });
+        const [rootError, setRootError] = React.useState<string | null>(null);
+        return React.createElement(
+          "div",
+          null,
+          React.createElement(
+            "button",
+            {
+              type: "button",
+              onClick: () =>
+                void onSubmitMountVolume(undefined, (_name, error) =>
+                  setRootError(error.message),
+                ),
+            },
+            "Submit invalid",
+          ),
+          rootError
+            ? React.createElement("p", { role: "alert" }, rootError)
+            : null,
+        );
+      }
+
+      await renderWithTestStore(React.createElement(InvalidHarness));
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: /submit invalid/i }));
+
+      const alert = await screen.findByRole("alert");
+      expect(alert.textContent).toContain("Invalid selection");
+      await waitFor(() => {
+        expect(toastErrorMock).toHaveBeenCalledTimes(1);
+      });
+      expect(onCleared).not.toHaveBeenCalled();
+    });
   });
 });
