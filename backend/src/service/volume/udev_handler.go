@@ -403,6 +403,20 @@ func (h *UdevHandler) HandlePartitionUdevAddEvent(devName string) bool {
 			continue
 		}
 
+		// #1342: never automount HAOS system paths or the "native"
+		// pseudo-filesystem (no kernel module, mount always fails ENODEV).
+		// Skip quietly without consuming the retry budget.
+		probe := mountPoint
+		if probe.Partition == nil {
+			probe.Partition = partition
+		}
+		if ShouldSkipAutomount(&probe) {
+			slog.DebugContext(h.ctx, "Skipping automount for system/non-mountable filesystem",
+				"devname", devName, "path", mountPoint.Path)
+			h.orchestrator.ClearAutomountRetry(mountPoint.Path)
+			continue
+		}
+
 		if allowed, exhausted := h.orchestrator.AllowAutomountAttempt(mountPoint.Path); !allowed {
 			if exhausted {
 				slog.WarnContext(h.ctx, "Automount attempts exhausted for partition add event, giving up",
@@ -707,6 +721,17 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 		return err
 	}
 	if (e.Type == events.EventTypes.ADD || e.Type == events.EventTypes.UPDATE) && !e.MountPoint.IsMounted && e.MountPoint.IsToMountAtStartup != nil && *e.MountPoint.IsToMountAtStartup {
+		// #1342: HAOS system paths (/addon_configs, …) and the "native"
+		// pseudo-filesystem are not block devices. Persist above stays,
+		// but never attempt mount(2): skip quietly without retry
+		// accounting, notifications, or error-level logging (which would
+		// double-report to Sentry alongside the mount layer).
+		if ShouldSkipAutomount(e.MountPoint) {
+			slog.DebugContext(ctx, "Skipping automount for system/non-mountable filesystem",
+				"mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+			h.orchestrator.ClearAutomountRetry(e.MountPoint.Path)
+			return nil
+		}
 		if allowed, exhausted := h.orchestrator.AllowAutomountAttempt(e.MountPoint.Path); !allowed {
 			if exhausted {
 				slog.WarnContext(ctx, "Automount attempts exhausted for mount point, giving up",
@@ -725,7 +750,7 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 				h.orchestrator.ClearAutomountRetry(e.MountPoint.Path)
 				return nil
 			}
-			slog.ErrorContext(ctx, "Failed to mount volume on event", "mount_point", e.MountPoint, "err", err)
+			slog.WarnContext(ctx, "Failed to mount volume on event", "mount_point", e.MountPoint, "err", err)
 			if errors.Is(err, dto.ErrorDeviceNotFound) {
 				if h.hardware != nil {
 					h.hardware.InvalidateHardwareInfo()
