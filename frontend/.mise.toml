@@ -72,7 +72,17 @@ env = { NODE_ENV = "production", API_URL = "", VERSION = "" }
 run = [
   "bun tsc --project tsconfig.prod.json --noEmit ",
   "bun run bun.build.ts -o ${usage_dir?} -v ${usage_version?}",
+  "bun run scripts/upload-sourcemaps.mjs ${usage_dir?} --release ${usage_version?}",
 ]
+quiet = true
+
+[tasks."sourcemaps:upload"]
+description = "Upload frontend sourcemaps to Sentry (best-effort; skips without secrets)"
+usage = '''
+arg "<dir>" help="Static dir with *.js.map files" default="../backend/src/web/static"
+flag "--release <release>" help="Sentry release version" env="VERSION"
+'''
+run = "bun run scripts/upload-sourcemaps.mjs ${usage_dir?} --release {{usage.release | default(value=env.VERSION)}}"
 quiet = true
 
 [tasks.generate]

@@ -67,6 +67,9 @@
         "HOMEASSISTANT_IP": "${containerEnv:HOMEASSISTANT_IP}",
         "SENTRY_DSN": "${localEnv:SENTRY_DSN}",
         "VITE_SENTRY_DSN": "${localEnv:VITE_SENTRY_DSN}",
+        "SENTRY_AUTH_TOKEN": "${localEnv:SENTRY_AUTH_TOKEN}",
+        "SENTRY_ORG": "${localEnv:SENTRY_ORG}",
+        "SENTRY_PROJECT_FRONTEND": "${localEnv:SENTRY_PROJECT_FRONTEND}",
         "GIST_TOKEN": "${localEnv:GIST_TOKEN}",
         "HOST_PROJECT_PATH": "${localWorkspaceFolder}",
         "MISE_EXPERIMENTAL": "1"

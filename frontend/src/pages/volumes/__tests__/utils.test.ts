@@ -1,6 +1,21 @@
 /* eslint-disable */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("react-toastify", () => ({
+  ToastContainer: () => null,
+  Slide: () => null,
+  toast: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
+vi.mock("@sentry/react", () => ({
+  addBreadcrumb: vi.fn(),
+  captureException: vi.fn(),
+}));
+
 describe("volumes utils", () => {
 	it("decodeEscapeSequence decodes hex sequences", async () => {
 		const { decodeEscapeSequence } = await import("../utils");
@@ -273,6 +288,168 @@ describe("volumes utils", () => {
 		const idsByDisk = (list: typeof before) =>
 			Object.fromEntries(list.map((entry) => [entry.diskId, entry.partitionIds]));
 		expect(idsByDisk(after)).toEqual(idsByDisk(before));
+	});
+
+	describe("parseVolumeApiError (#1344)", () => {
+		it("prefers backend detail over message and status", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(
+				parseVolumeApiError({
+					status: 406,
+					data: { detail: "device busy", message: "other", status: 406 },
+				}),
+			).toMatchObject({ message: "device busy", code: 406, detail: "device busy" });
+		});
+
+		it("falls back to message, nested errors, then status", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(parseVolumeApiError({ status: 500, data: { message: "boom" } }).message).toBe("boom");
+			expect(
+				parseVolumeApiError({
+					status: 500,
+					data: { errors: [{ message: "nested boom" }] },
+				}).message,
+			).toBe("nested boom");
+			expect(parseVolumeApiError({ status: 500, data: {} }).message).toBe("500");
+			expect(parseVolumeApiError({ status: 500 }).message).toBe("500");
+			expect(parseVolumeApiError(undefined).message).toBe("Unknown error");
+		});
+
+		it("treats whitespace-only detail as empty", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			const parsed = parseVolumeApiError({
+				status: 406,
+				data: { detail: "   ", message: "device busy" },
+			});
+			expect(parsed.detail).toBeUndefined();
+			expect(parsed.message).toBe("device busy");
+		});
+	});
+
+	describe("serializeErrorForSentry (#1344)", () => {
+		it("keeps detail/message without [Object] placeholders", async () => {
+			const { serializeErrorForSentry } = await import("../utils");
+
+			const serialized = serializeErrorForSentry({
+				status: 406,
+				data: { detail: "device busy" },
+			});
+			expect(serialized.message).toBe("device busy");
+			expect(JSON.stringify(serialized)).not.toContain("[Object]");
+		});
+
+		it("handles circular, Error, array, and deep payloads", async () => {
+			const { serializeErrorForSentry } = await import("../utils");
+
+			const circular: Record<string, unknown> = { detail: "busy" };
+			circular.self = circular;
+			expect(
+				(serializeErrorForSentry({ status: 500, data: circular }) as any)
+					.error.data.self,
+			).toBe("[circular]");
+
+			const withCause = new Error("wrapped");
+			(withCause as { cause?: unknown }).cause = { status: 500 };
+			const serialized = serializeErrorForSentry(withCause) as any;
+			expect(serialized.error.name).toBe("Error");
+
+			const nested = serializeErrorForSentry({
+				status: 500,
+				data: { errors: [{ message: "nested boom" }], tags: ["a", "b"] },
+			}) as any;
+			expect(nested.message).toBe("nested boom");
+			expect(nested.error.data.tags).toEqual(["a", "b"]);
+
+			const deep = { detail: "x" } as Record<string, unknown>;
+			let cursor = deep;
+			for (let i = 0; i < 6; i++) {
+				const next: Record<string, unknown> = {};
+				cursor.nested = next;
+				cursor = next;
+			}
+			expect(
+				JSON.stringify(serializeErrorForSentry({ data: deep })),
+			).toContain("[truncated]");
+		});
+
+		it("ignores nested entries without a usable message", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(
+				parseVolumeApiError({
+					status: 500,
+					data: { errors: [{ foo: 1 }, "nope", null] },
+				}).message,
+			).toBe("500");
+		});
+
+		it("preserves plain Error and RTK fetch-error messages", async () => {
+			const { parseVolumeApiError } = await import("../utils");
+
+			expect(parseVolumeApiError(new Error("device busy")).message).toBe(
+				"device busy",
+			);
+			const fetchError = parseVolumeApiError({
+				status: "FETCH_ERROR",
+				error: "Failed to fetch",
+			});
+			expect(fetchError.message).toBe("Failed to fetch");
+			expect(fetchError.code).toBe("FETCH_ERROR");
+		});
+	});
+
+	describe("requestUnmountVolume (#1344)", () => {
+		it("toasts backend detail with code and reports to Sentry with context", async () => {
+			const { toast } = await import("react-toastify");
+			const Sentry = await import("@sentry/react");
+			const { requestUnmountVolume } = await import("../utils");
+
+			const toastError = toast.error as unknown as ReturnType<typeof vi.fn>;
+			const addBreadcrumb = Sentry.addBreadcrumb as unknown as ReturnType<typeof vi.fn>;
+			const captureException = Sentry.captureException as unknown as ReturnType<typeof vi.fn>;
+			vi.mocked(toastError).mockClear();
+			vi.mocked(addBreadcrumb).mockClear();
+			vi.mocked(captureException).mockClear();
+
+			const rtkError = { status: 406, data: { detail: "device busy" } };
+			const partition = {
+				id: "part-1",
+				name: "data",
+				legacy_device_name: "sdb1",
+				mount_point_data: { mp0: { path: "/mnt/data" } },
+			} as any;
+
+			requestUnmountVolume({
+				confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
+				unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
+				partition,
+				force: true,
+				isSelected: false,
+				onCleared: () => undefined,
+			});
+
+			await vi.waitFor(() => {
+				expect(toastError).toHaveBeenCalledTimes(1);
+			});
+			expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain("device busy");
+			expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain("406");
+			expect(addBreadcrumb).toHaveBeenCalledWith(
+				expect.objectContaining({
+					category: "volume.unmount",
+					level: "error",
+				}),
+			);
+			expect(vi.mocked(addBreadcrumb).mock.calls[0][0]).toMatchObject({
+				data: expect.objectContaining({ mountPath: "/mnt/data", force: true }),
+			});
+			expect(captureException).toHaveBeenCalledTimes(1);
+			const [sentryError, hint] = vi.mocked(captureException).mock.calls[0];
+			expect((sentryError as Error).message).toContain("device busy");
+			expect(JSON.stringify(hint)).toContain("/mnt/data");
+		});
 	});
 });
 
