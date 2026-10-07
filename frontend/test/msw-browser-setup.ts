@@ -20,7 +20,7 @@ beforeAll(async () => {
 	clearFilesystemSupportOverrides = runtime.clearFilesystemSupportOverrides;
 	resetApiCounters = runtime.resetApiCounters;
 	worker = setupWorker(...defaultHandlers);
-	await worker.start({ onUnhandledRequest: "warn" });
+	await worker.start({ onUnhandledFrame: "warn" });
 
 	(globalThis as any).__SRAT_MSW_ADAPTER__ = {
 		getMswServer: () => ({
@@ -46,7 +46,7 @@ afterEach(() => {
 
 afterAll(() => {
 	if (worker) {
-		worker.stop();
+		void worker.stop();
 	}
 });
 

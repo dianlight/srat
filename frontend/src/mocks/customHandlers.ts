@@ -7,7 +7,7 @@
  * @see https://www.npmjs.com/package/msw-auto-mock
  */
 
-import { http, type RequestHandler } from "msw";
+import { http, HttpResponse, type RequestHandler } from "msw";
 import { Status2, type LabFeature } from "../store/sratApi";
 
 const filesystemSupportOverrides = new Map<string, Record<string, unknown>>();
@@ -39,34 +39,21 @@ export const customHandlers: RequestHandler[] = [
 		const partitionId = url.searchParams.get("partition_id");
 
 		if (!partitionId) {
-			return new Response(
-				JSON.stringify({ message: "partition_id is required" }),
-				{
-					status: 400,
-					headers: {
-						"Content-Type": "application/json",
-					},
-				},
+			return HttpResponse.json(
+				{ message: "partition_id is required" },
+				{ status: 400 },
 			);
 		}
 
-		return new Response(
-			JSON.stringify({
-				isClean: true,
-				hasErrors: false,
-				isMounted: true,
-				stateDescription: "Filesystem is clean",
-				additionalInfo: {
-					"Last check": "2026-02-10",
-				},
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
+		return HttpResponse.json({
+			isClean: true,
+			hasErrors: false,
+			isMounted: true,
+			stateDescription: "Filesystem is clean",
+			additionalInfo: {
+				"Last check": "2026-02-10",
 			},
-		);
+		});
 	}),
 
 	// Deterministic filesystem support endpoint mock used by volume dialog tests.
@@ -76,12 +63,7 @@ export const customHandlers: RequestHandler[] = [
 		const override = filesystemSupportOverrides.get(fsType);
 
 		if (override) {
-			return new Response(JSON.stringify(override), {
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
+			return HttpResponse.json(override);
 		}
 
 		const supportByFsType: Record<string, Record<string, unknown>> = {
@@ -153,12 +135,7 @@ export const customHandlers: RequestHandler[] = [
 			missingTools: [],
 		};
 
-		return new Response(JSON.stringify(supportByFsType[fsType] ?? fallback), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json(supportByFsType[fsType] ?? fallback);
 	}),
 
 	// Deterministic filesystem label update endpoint used by volume relabel tests.
@@ -168,150 +145,108 @@ export const customHandlers: RequestHandler[] = [
 			label?: string;
 		};
 
-		return new Response(
-			JSON.stringify({
-				success: true,
-				partitionId: body.partitionId ?? "",
-				label: body.label ?? "",
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json({
+			success: true,
+			partitionId: body.partitionId ?? "",
+			label: body.label ?? "",
+		});
 	}),
 	// Deterministic GitHub discussions endpoint used by dashboard news widgets.
 	http.get("https://api.github.com/repos/:owner/:repo/discussions", ({ request, params }) => {
 		const url = new URL(request.url);
 		const category = url.searchParams.get("category");
 		if (category !== "announcements") {
-			return new Response(JSON.stringify([]), {
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
+			return HttpResponse.json([]);
 		}
 
-		return new Response(
-			JSON.stringify([
-				{
-					id: 1,
-					number: 1,
-					title: `${String(params.repo)} announcement`,
-					html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
-					created_at: "2026-09-01T12:00:00.000Z",
-					body: "Mock announcement abstract for dashboard news widget.",
-				},
-			]),
+		return HttpResponse.json([
 			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
+				id: 1,
+				number: 1,
+				title: `${String(params.repo)} announcement`,
+				html_url: `https://github.com/${String(params.owner)}/${String(params.repo)}/discussions/1`,
+				created_at: "2026-09-01T12:00:00.000Z",
+				body: "Mock announcement abstract for dashboard news widget.",
 			},
-		);
+		]);
 	}),
 
 	// Example: Health endpoint mock
 	http.get(/.*\/api\/health(?:\?.*)?$/, () => {
-		return new Response(
-			JSON.stringify({
-				alive: true,
-				aliveTime: Date.now(),
-				samba_process_status: {},
-				last_error: "",
-				dirty_tracking: {
-					shares: false,
-					users: false,
-					settings: false,
-				},
-				update_available: false,
-				addon_stats: {
-					cpu_percent: 5.2,
-					memory_percent: 12.5,
-					memory_usage: 104857600,
-					memory_limit: 1073741824,
-					network_rx: 1024,
-					network_tx: 2048,
-					blk_read: 512,
-					blk_write: 1024,
-				},
-				disk_health: {
-					global: {
-						total_iops: 150,
-						total_read_latency_ms: 5.2,
-						total_write_latency_ms: 3.8,
-					},
-					per_disk_io: [],
-					per_partition_info: {},
-					hdidle_running: false,
-				},
-				network_health: {
-					global: {
-						totalInboundTraffic: 1024,
-						totalOutboundTraffic: 2048,
-					},
-					perNicIO: [],
-				},
-				samba_status: {
-					timestamp: new Date().toISOString(),
-					version: "4.23.0",
-					smb_conf: "/etc/samba/smb.conf",
-					sessions: {},
-					tcons: {},
-				},
-				uptime: 3600,
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
+		return HttpResponse.json({
+			alive: true,
+			aliveTime: Date.now(),
+			samba_process_status: {},
+			last_error: "",
+			dirty_tracking: {
+				shares: false,
+				users: false,
+				settings: false,
 			},
-		);
+			update_available: false,
+			addon_stats: {
+				cpu_percent: 5.2,
+				memory_percent: 12.5,
+				memory_usage: 104857600,
+				memory_limit: 1073741824,
+				network_rx: 1024,
+				network_tx: 2048,
+				blk_read: 512,
+				blk_write: 1024,
+			},
+			disk_health: {
+				global: {
+					total_iops: 150,
+					total_read_latency_ms: 5.2,
+					total_write_latency_ms: 3.8,
+				},
+				per_disk_io: [],
+				per_partition_info: {},
+				hdidle_running: false,
+			},
+			network_health: {
+				global: {
+					totalInboundTraffic: 1024,
+					totalOutboundTraffic: 2048,
+				},
+				perNicIO: [],
+			},
+			samba_status: {
+				timestamp: new Date().toISOString(),
+				version: "4.23.0",
+				smb_conf: "/etc/samba/smb.conf",
+				sessions: {},
+				tcons: {},
+			},
+			uptime: 3600,
+		});
 	}),
 
 	// Example: Shares list endpoint mock
 	http.get(/.*\/api\/shares(?:\?.*)?$/, () => {
-		return new Response(
-			JSON.stringify([
-				{
-					name: "share1",
-					disabled: false,
-					guest_ok: false,
-					timemachine: false,
-					timemachine_max_size: "0",
-					usage: "share",
-					users: [],
-					ro_users: [],
-					veto_files: [],
-					recycle_bin_enabled: true,
-					status: {
-						is_valid: true,
-						is_ha_mounted: false,
-					},
-				},
-			]),
+		return HttpResponse.json([
 			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
+				name: "share1",
+				disabled: false,
+				guest_ok: false,
+				timemachine: false,
+				timemachine_max_size: "0",
+				usage: "share",
+				users: [],
+				ro_users: [],
+				veto_files: [],
+				recycle_bin_enabled: true,
+				status: {
+					is_valid: true,
+					is_ha_mounted: false,
 				},
 			},
-		);
+		]);
 	}),
 
 	// Example: Volumes list endpoint mock
 	http.get(/.*\/api\/volumes(?:\?.*)?$/, () => {
-		return new Response(JSON.stringify([]), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json([]);
 	}),
 
 	// Lab feature registry mock — mirrors the settings mock above
@@ -326,14 +261,7 @@ export const customHandlers: RequestHandler[] = [
 			{ key: "smb_over_quic", name: "SMB over QUIC", description: "Expose SMB shares over the QUIC transport.", status: Status2.Beta, available: true },
 			{ key: "addon_mdns", name: "Add-on side mDNS registration", description: "Zeroconf mDNS registration of the Samba service.", status: Status2.Beta, available: true },
 		];
-		return new Response(JSON.stringify(labFeatures),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json(labFeatures);
 	}),
 
 	// Deterministic volume mount endpoint used by mount dialog/hook tests.
@@ -343,131 +271,79 @@ export const customHandlers: RequestHandler[] = [
 			unknown
 		>;
 
-		return new Response(
-			JSON.stringify({
-				path:
-					(typeof body.path === "string" && body.path) || "/mnt/test-volume",
-				type: "HOST",
-				is_mounted: true,
-				is_write_supported: true,
-				fstype:
-					(typeof body.fstype === "string" && body.fstype) || "ext4",
-				is_to_mount_at_startup: false,
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json({
+			path:
+				(typeof body.path === "string" && body.path) || "/mnt/test-volume",
+			type: "HOST",
+			is_mounted: true,
+			is_write_supported: true,
+			fstype:
+				(typeof body.fstype === "string" && body.fstype) || "ext4",
+			is_to_mount_at_startup: false,
+		});
 	}),
 
 	// Deterministic SMART status endpoint used by SmartStatusPanel tests.
 	http.get(/.*\/api\/disk\/.+\/smart\/status(?:\?.*)?$/, () => {
-		return new Response(
-			JSON.stringify({
-				enabled: true,
-				in_standby: false,
-				is_in_danger: false,
-				is_in_warning: false,
-				is_test_passed: true,
-				is_test_running: false,
-				others: {},
-				power_cycle_count: { value: 500 },
-				power_on_hours: { value: 10000 },
-				temperature: { value: 35, min: 20, max: 45 },
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json({
+			enabled: true,
+			in_standby: false,
+			is_in_danger: false,
+			is_in_warning: false,
+			is_test_passed: true,
+			is_test_running: false,
+			others: {},
+			power_cycle_count: { value: 500 },
+			power_on_hours: { value: 10000 },
+			temperature: { value: 35, min: 20, max: 45 },
+		});
 	}),
 
 	// Deterministic SMART self-test status endpoint used by SmartStatusPanel tests.
 	http.get(/.*\/api\/disk\/.+\/smart\/test(?:\?.*)?$/, () => {
-		return new Response(
-			JSON.stringify({
-				disk_id: "mock-disk",
-				lba_of_first_error: "",
-				percent_complete: 0,
-				running: false,
-				status: "idle",
-				test_type: "none",
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json({
+			disk_id: "mock-disk",
+			lba_of_first_error: "",
+			percent_complete: 0,
+			running: false,
+			status: "idle",
+			test_type: "none",
+		});
 	}),
 
 	// Deterministic SMART operation endpoints (start/abort/enable/disable).
 	http.post(/.*\/api\/disk\/.+\/smart\/test\/start(?:\?.*)?$/, () => {
-		return new Response(JSON.stringify("started"), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json("started");
 	}),
 	http.post(/.*\/api\/disk\/.+\/smart\/test\/abort(?:\?.*)?$/, () => {
-		return new Response(JSON.stringify("aborted"), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json("aborted");
 	}),
 	http.post(/.*\/api\/disk\/.+\/smart\/enable(?:\?.*)?$/, () => {
-		return new Response(JSON.stringify("enabled"), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json("enabled");
 	}),
 	http.post(/.*\/api\/disk\/.+\/smart\/disable(?:\?.*)?$/, () => {
-		return new Response(JSON.stringify("disabled"), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json("disabled");
 	}),
 
 	// Example: Settings endpoint mock
 	http.get(/.*\/api\/settings(?:\?.*)?$/, () => {
-		return new Response(
-			JSON.stringify({
-				workgroup: "WORKGROUP",
-				hostname: "srat-mock",
-				allow_guest: false,
-				compatibility_mode: false,
-				log_level: "info",
-				interfaces: [],
-				allow_hosts: [],
-				bind_all_interfaces: true,
-				local_master: true,
-				multi_channel: false,
-				smb_over_quic: true,
-				export_stats_to_ha: true,
-				telemetry_mode: "Disabled",
-				experimental_lab_mode: true,
-				mountoptions: [],
-			}),
-			{
-				status: 200,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			},
-		);
+		return HttpResponse.json({
+			workgroup: "WORKGROUP",
+			hostname: "srat-mock",
+			allow_guest: false,
+			compatibility_mode: false,
+			log_level: "info",
+			interfaces: [],
+			allow_hosts: [],
+			bind_all_interfaces: true,
+			local_master: true,
+			multi_channel: false,
+			smb_over_quic: true,
+			export_stats_to_ha: true,
+			telemetry_mode: "Disabled",
+			experimental_lab_mode: true,
+			mountoptions: [],
+		});
 	}),
 
 	// Deterministic problem upsert endpoint used by dashboard ignore tests.
@@ -478,11 +354,6 @@ export const customHandlers: RequestHandler[] = [
 			string,
 			unknown
 		>;
-		return new Response(JSON.stringify(body), {
-			status: 200,
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
+		return HttpResponse.json(body);
 	}),
 ];
