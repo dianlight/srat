@@ -9,8 +9,10 @@ import {
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
 import IssueCard from "../../components/IssueCard";
 import { useLabFeatures } from "../../hooks/useLabFeatures";
+import { useSentryTelemetry } from "../../hooks/useSentryTelemetry";
 import { useVolume } from "../../hooks/volumeHook";
 import { TabIDs } from "../../store/locationState";
 import {
@@ -24,6 +26,11 @@ import {
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { ActionableItemsList } from "./components/ActionableItemsList";
+import {
+  describeProblemActionFailure,
+  type ProblemAction,
+  resolveReenableTarget,
+} from "./problemActionError";
 
 export function DashboardActions() {
   const { disks, isLoading, error } = useVolume();
@@ -35,6 +42,32 @@ export function DashboardActions() {
   const [upsertProblem] = usePutApiProblemsByProblemKeyMutation();
   const { isAvailable: labFeatureAvailable } = useLabFeatures();
   const customComponentLabActive = labFeatureAvailable("ha_custom_component");
+  const { reportError } = useSentryTelemetry();
+
+  // #1360: parse RTK rejections detail-first (detail, then message, then
+  // status) and report serialized { problemKey, status, detail } context so
+  // Sentry never sees a bare string with `[Object]` console_args. The toast
+  // carries the same detail plus a retry hint for 5xx / fetch failures.
+  function reportProblemActionFailure(
+    action: ProblemAction,
+    problemKey: string,
+    err: unknown,
+  ): void {
+    const failure = describeProblemActionFailure(action, problemKey, err);
+    const error = new Error(failure.message);
+    (error as { cause?: unknown }).cause = err;
+    const context = {
+      problemKey: failure.problemKey,
+      status: failure.status,
+      detail: failure.detail,
+      response: failure.response,
+    };
+    // Log the Error first so the console→Sentry forwarder titles on
+    // `Failed to <action> problem <key>: <detail>` (#1354 pattern).
+    console.error(error, context);
+    reportError(error, context);
+    toast.error(failure.toastMessage);
+  }
 
   const mergedProblems = useMemo(() => {
     const baseProblems = Array.isArray(problems) ? problems : [];
@@ -142,7 +175,7 @@ export function DashboardActions() {
       dismissProblem({ problemKey: id })
         .unwrap()
         .catch((err) => {
-          console.error("Failed to dismiss problem", id, err);
+          reportProblemActionFailure("dismiss", id, err);
         });
     }
   }
@@ -166,7 +199,7 @@ export function DashboardActions() {
     })
       .unwrap()
       .catch((err) => {
-        console.error("Failed to ignore problem", key, err);
+        reportProblemActionFailure("ignore", key, err);
       });
   }
 
@@ -176,21 +209,22 @@ export function DashboardActions() {
     if (typeof id !== "string") {
       return;
     }
-    const issue = mergedProblems.find((problem) => problem?.problem_key === id);
-    if (issue?.problem_key) {
+    const target = resolveReenableTarget(mergedProblems, id);
+    if (target.type === "upsert") {
+      const issue = target.issue;
       upsertProblem({
         problemKey: issue.problem_key,
         problem: { ...issue, ignored: false, status: Status.Created },
       })
         .unwrap()
         .catch((err) => {
-          console.error("Failed to re-enable problem", id, err);
+          reportProblemActionFailure("re-enable", id, err);
         });
     } else {
       dismissProblem({ problemKey: id })
         .unwrap()
         .catch((err) => {
-          console.error("Failed to dismiss problem", id, err);
+          reportProblemActionFailure("dismiss", id, err);
         });
     }
   }
