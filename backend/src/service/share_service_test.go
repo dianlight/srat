@@ -1275,6 +1275,60 @@ func (suite *ShareServiceSuite) TestEnableDisableToggle() {
 }
 
 // ============================================================================
+// SetShareFromPathEnabled Tests
+// ============================================================================
+
+func (suite *ShareServiceSuite) TestSetShareFromPathEnabled_Toggle() {
+	mock.When(suite.userService.GetAdmin()).ThenReturn(&dto.User{
+		Username: "homeassistant",
+	}, nil)
+
+	share := dto.SharedResource{
+		Name:     "path-toggle-share",
+		Disabled: new(false), // Start enabled
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/path-toggle",
+			DeviceId:  "pathtoggledev",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{
+			{Username: "homeassistant"},
+		},
+	}
+
+	created, err := suite.shareService.CreateShare(share)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+	suite.False(*created.Disabled)
+
+	// Execute: Disable by mount path
+	disabled, err := suite.shareService.SetShareFromPathEnabled("/mnt/path-toggle", false)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(disabled)
+	suite.True(*disabled.Disabled, "Share should be disabled")
+
+	// Execute: Disabling again is a no-op success
+	noop, err := suite.shareService.SetShareFromPathEnabled("/mnt/path-toggle", false)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(noop)
+	suite.True(*noop.Disabled)
+
+	// Execute: Re-enable by mount path
+	enabled, err := suite.shareService.SetShareFromPathEnabled("/mnt/path-toggle", true)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(enabled)
+	suite.False(*enabled.Disabled, "Share should be enabled")
+}
+
+func (suite *ShareServiceSuite) TestSetShareFromPathEnabled_NotFound() {
+	result, err := suite.shareService.SetShareFromPathEnabled("/mnt/path-nope", true)
+	suite.Error(err)
+	suite.Nil(result)
+	suite.True(errors.Is(err, dto.ErrorShareNotFound))
+}
+
+// ============================================================================
 // DeleteShare Tests
 // ============================================================================
 

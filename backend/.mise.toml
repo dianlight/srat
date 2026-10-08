@@ -366,15 +366,6 @@ run = """
 		fi;
     touch src/vendor/github.com/adelolmo/hd-idle/sgio/.pdone
 	fi
-	if [ -f "patches/gorm-generics.patch" ] && [ -d "src/vendor/gorm.io/gorm" ]; then
-		echo "Applying gorm-generics.patch...";
-		if patch -R -f -p1 --dry-run -d src/vendor/gorm.io/gorm < $(pwd)/patches/gorm-generics.patch >/dev/null 2>&1; then
-			echo "gorm-generics.patch already applied, skipping.";
-		else
-			patch -N --forward --batch -d src/vendor/gorm.io/gorm -p1 < $(pwd)/patches/gorm-generics.patch || (echo "ERROR: Failed to apply gorm-generics.patch"; exit 1);
-		fi;
-    touch src/vendor/gorm.io/gorm/.pdone
-	fi
   find $(pwd)/src/vendor -name "*.rej" -delete 2>/dev/null || echo "WARNING: Some patches could not be applied";
 	echo "Patches applied successfully"
 """

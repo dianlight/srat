@@ -204,16 +204,16 @@ func (self *settingService) UpdateSettings(setting *dto.Settings) errors.E {
 		}
 
 		for _, prop := range props {
-			existingProp, err := gorm.G[dbom.Property](tx).Updates(self.ctx, prop)
-			if err != nil {
+			propCopy := prop
+			res := tx.WithContext(self.ctx).Where("key = ?", propCopy.Key).Updates(&propCopy)
+			if res.Error != nil {
 				tx.Rollback()
-				return errors.WithStack(err)
+				return errors.WithStack(res.Error)
 			}
-			if existingProp == 0 {
-				err = gorm.G[dbom.Property](tx).Create(self.ctx, &prop)
-				if err != nil {
+			if res.RowsAffected == 0 {
+				if errC := gorm.G[dbom.Property](tx).Create(self.ctx, &propCopy); errC != nil {
 					tx.Rollback()
-					return errors.WithStack(err)
+					return errors.WithStack(errC)
 				}
 			}
 		}
