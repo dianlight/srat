@@ -308,3 +308,62 @@ func (suite *VolumeMountManagerTestSuite) TestUnmount_UpdatesCacheBeforeEventEmi
 	suite.False(*mountedAtEmission,
 		"DiskMap cache must be updated BEFORE MountPointEvent emission so WS broadcasts carry fresh data (#971)")
 }
+
+// TestMount_BusyInDetails verifies busy signals carried in error details
+// (rather than the message) are also downgraded to AlreadyMounted.
+func (suite *VolumeMountManagerTestSuite) TestMount_BusyInDetails() {
+	newBusyMD := func() *dto.MountPointData {
+		devicePath := "/dev/busy-details"
+		partID := "part-busy-d"
+		diskID := "disk-busy-d"
+		fsType := "ntfs3"
+		return &dto.MountPointData{
+			Path:     "/mnt/busy-details",
+			DeviceId: partID,
+			FSType:   &fsType,
+			Partition: &dto.Partition{
+				Id: &partID, DiskId: &diskID, DevicePath: &devicePath,
+			},
+		}
+	}
+	stubBusy := func(err errors.E) {
+		mock.When(suite.mockFsSvc.MountPartition(
+			mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](),
+			mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+		)).
+			ThenReturn((*mount.MountPoint)(nil), err)
+	}
+
+	stubBusy(errors.WithDetails(errors.New("mount failed"), "Error", "device or resource busy"))
+	errE := suite.mounter.Mount(newBusyMD(), 0, "", "ntfs3")
+	suite.Require().Error(errE)
+	suite.ErrorIs(errE, dto.ErrorAlreadyMounted)
+}
+
+// TestMount_BusyNestedInDetails verifies a busy error nested inside details
+// is also downgraded to AlreadyMounted.
+func (suite *VolumeMountManagerTestSuite) TestMount_BusyNestedInDetails() {
+	devicePath := "/dev/busy-nested"
+	partID := "part-busy-n"
+	diskID := "disk-busy-n"
+	fsType := "ntfs3"
+	md := &dto.MountPointData{
+		Path:     "/mnt/busy-nested",
+		DeviceId: partID,
+		FSType:   &fsType,
+		Partition: &dto.Partition{
+			Id: &partID, DiskId: &diskID, DevicePath: &devicePath,
+		},
+	}
+
+	mock.When(suite.mockFsSvc.MountPartition(
+		mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](),
+		mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+	)).
+		ThenReturn((*mount.MountPoint)(nil),
+			errors.WithDetails(errors.New("mount failed"), "Error", errors.New("device or resource busy")))
+
+	errE := suite.mounter.Mount(md, 0, "", "ntfs3")
+	suite.Require().Error(errE)
+	suite.ErrorIs(errE, dto.ErrorAlreadyMounted)
+}

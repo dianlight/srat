@@ -446,6 +446,17 @@ func (h *UdevHandler) HandlePartitionUdevAddEvent(devName string) bool {
 			continue
 		}
 
+		// Live mount-table recheck: the cached IsMounted flag can be stale
+		// when a concurrent udev add already mounted this target (or the OS
+		// mounted it outside SRAT). Skip quietly instead of issuing a
+		// duplicate mount that fails EBUSY.
+		if mounted, err := osutil.IsMounted(mountCopy.Path); err == nil && mounted {
+			slog.InfoContext(h.ctx, "Mount point already mounted during partition add automount retry (live check)", "devname", devName, "path", mountCopy.Path)
+			h.orchestrator.ClearAutomountRetry(mountCopy.Path)
+			handled = true
+			continue
+		}
+
 		err := h.orchestrator.MountVolume(&mountCopy)
 		if err != nil {
 			if errors.Is(err, dto.ErrorAlreadyMounted) {

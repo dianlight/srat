@@ -12,6 +12,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/volume"
 	"github.com/pilebones/go-udev/netlink"
 	"github.com/prometheus/procfs"
@@ -398,6 +399,48 @@ func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_AlreadyMountedCle
 	allowed, exhausted := orchestrator.AllowAutomountAttempt(mountPath)
 	s.True(allowed, "already-mounted must clear the retry state")
 	s.False(exhausted)
+}
+
+func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_SkipsLiveMounted() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+
+	devName := "sdzlive"
+	mountPath := filepath.Join(tmpDir, "mnt", "live")
+	startup := true
+
+	diskID, partID := "disk-h-live", "part-h-live"
+	diskIDCopy, partIDCopy := diskID, partID
+	devNameCopy, devFileCopy := devName, deviceFile
+	mps := map[string]dto.MountPointData{mountPath: {
+		Path: mountPath, Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, IsToMountAtStartup: &startup, IsMounted: false,
+	}}
+	parts := map[string]dto.Partition{partID: {
+		Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devFileCopy,
+		LegacyDeviceName: &devNameCopy, MountPointData: &mps,
+	}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	restore := osutil.MockMountInfo("1217 819 0:52 / " + mountPath + " rw,relatime - ntfs3 " + deviceFile + " rw\n")
+	s.T().Cleanup(restore)
+
+	mounter := &fakeOrchestratorMounter{}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo, Orchestrator: orchestrator,
+		Refresh: func() errors.E { return nil },
+	})
+
+	s.True(handler.HandlePartitionUdevAddEvent(devName))
+	s.Zero(mounter.mountCalls, "live-mounted target must not trigger an OS mount")
 }
 
 func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_GuardBoundsRetries() {

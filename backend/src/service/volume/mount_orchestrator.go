@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/dianlight/srat/repository"
 	"github.com/shomali11/util/xhashes"
 	"gitlab.com/tozd/go/errors"
+	"golang.org/x/sync/singleflight"
 )
 
 // FilesystemOps is the subset of FilesystemServiceInterface used by the
@@ -97,6 +99,10 @@ type MountOrchestrator struct {
 	automountResetAfter time.Duration
 	automountRetryMu    sync.Mutex
 	automountRetries    map[string]automountRetryState
+
+	// mountSf coalesces concurrent MountVolume calls for the same
+	// device+path (e.g. a udev add storm) into a single OS mount attempt.
+	mountSf singleflight.Group
 }
 
 // NewMountOrchestrator creates a MountOrchestrator, applying production
@@ -234,131 +240,150 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	ok, errS := osutil.IsMounted(md.Path)
-	if errS != nil {
-		// Note: IsMounted might fail if the path doesn't exist yet, which is fine before mounting.
-		// Consider if this check needs refinement based on expected state.
-		// For now, we proceed assuming an error here might be ignorable if ok is false.
-		if ok { // Only return error if it claims to be mounted but check failed
-			return errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", md.Path, "Error", errS)
-		}
-		slog.DebugContext(o.ctx, "osutil.IsMounted check failed, but path not mounted, proceeding", "path", md.Path, "err", errS)
-		ok = false // Ensure ok is false if IsMounted errored
-	}
-
-	if ok {
-		slog.WarnContext(o.ctx, "Volume already mounted according to OS check", "device", md.DeviceId, "path", md.Path)
-		return errors.WithDetails(dto.ErrorAlreadyMounted,
-			"Device", md.DeviceId,
-			"Path", md.Path,
-			"Message", "Volume is already mounted",
-		)
-	}
-
-	// Device-level pre-check (#1359): the path may be free while the device
-	// is already mounted elsewhere. Skip quietly instead of issuing a
-	// mount(2) that fails with EBUSY and becomes a Sentry issue.
-	if mounted, at, srcErr := osutil.IsSourceMounted(*md.Partition.DevicePath); srcErr != nil {
-		slog.DebugContext(o.ctx, "osutil.IsSourceMounted check failed, proceeding", "device", md.DeviceId, "source", *md.Partition.DevicePath, "err", srcErr)
-	} else if mounted {
-		slog.WarnContext(o.ctx, "Device already mounted elsewhere according to OS check, skipping", "device", md.DeviceId, "source", *md.Partition.DevicePath, "mounted_at", at, "path", md.Path)
-		return errors.WithDetails(dto.ErrorAlreadyMounted,
-			"Device", md.DeviceId,
-			"DevicePath", *md.Partition.DevicePath,
-			"Path", md.Path,
-			"MountedAt", at,
-			"Message", "Device is already mounted",
-		)
-	}
-
-	// Initialize flags if nil to avoid nil pointer dereference
-	if md.Flags == nil {
-		md.Flags = &dto.MountFlags{}
-		slog.DebugContext(o.ctx, "Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
-	}
-
-	// Merge adapter-declared default mount flags (e.g. NTFS fmask/dmask,
-	// exFAT/FAT uid/gid/umask) underneath user-provided flags.
-	// User-provided flags win on name collision so explicit configuration
-	// is never overridden by defaults.
-	effectiveFlags := *md.Flags
-	if md.FSType != nil && *md.FSType != "" {
-		if defaults, defaultsErr := o.fs.GetDefaultMountFlags(*md.FSType); defaultsErr == nil && len(defaults) > 0 {
-			present := make(map[string]struct{}, len(effectiveFlags))
-			for _, f := range effectiveFlags {
-				present[strings.ToLower(strings.TrimSpace(f.Name))] = struct{}{}
+	devicePath := *md.Partition.DevicePath
+	mountKey := mountSingleflightKey(devicePath, md.Path)
+	mountRes, mountErr, _ := o.mountSf.Do(mountKey, func() (any, error) {
+		ok, errS := osutil.IsMounted(md.Path)
+		if errS != nil {
+			// Note: IsMounted might fail if the path doesn't exist yet, which is fine before mounting.
+			// Consider if this check needs refinement based on expected state.
+			// For now, we proceed assuming an error here might be ignorable if ok is false.
+			if ok { // Only return error if it claims to be mounted but check failed
+				return nil, errors.WithDetails(dto.ErrorMountFail, "Detail", "Error checking mount status", "Path", md.Path, "Error", errS)
 			}
-			for _, d := range defaults {
-				if _, ok := present[strings.ToLower(strings.TrimSpace(d.Name))]; !ok {
-					effectiveFlags = append(effectiveFlags, d)
-				}
-			}
-			if len(effectiveFlags) != len(*md.Flags) {
-				slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "defaults", defaults)
-			}
-		} else if defaultsErr != nil {
-			slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "err", defaultsErr)
+			slog.DebugContext(o.ctx, "osutil.IsMounted check failed, but path not mounted, proceeding", "path", md.Path, "err", errS)
+			ok = false // Ensure ok is false if IsMounted errored
 		}
-	}
 
-	flags, data, err := o.fs.MountFlagsToSyscallFlagAndData(effectiveFlags)
-	if err != nil {
-		return errors.WithDetails(dto.ErrorInvalidParameter,
-			"Device", md.DeviceId,
-			"Path", md.Path,
-			"Message", "Invalid Flags",
-			"Error", err,
-		)
-	}
-
-	mountFsType := ""
-	if md.FSType != nil {
-		mountFsType = *md.FSType
-	}
-
-	// Final validation: ensure DevicePath exists on the OS before
-	// delegating to the mount manager. (The nil/empty check already
-	// returned above — this only verifies OS-level existence.)
-	if _, statErr := os.Stat(*md.Partition.DevicePath); statErr != nil {
-		if os.IsPermission(statErr) {
-			return errors.WithDetails(dto.ErrorOperationNotPermitted,
-				"DeviceId", md.DeviceId,
-				"Path", md.Path,
-				"DevicePath", *md.Partition.DevicePath,
-				"Message", "Permission denied to access device",
-				"Error", statErr.Error(),
-			)
-		}
-		return errors.WithDetails(dto.ErrorDeviceNotFound,
-			"DeviceId", md.DeviceId,
-			"Path", md.Path,
-			"DevicePath", *md.Partition.DevicePath,
-			"Message", "Device path does not exist",
-			"Error", statErr.Error(),
-		)
-	}
-
-	if err := o.mounter.Mount(md, flags, data, mountFsType); err != nil {
-		// EBUSY race (#1352, #1359): the device was mounted between the
-		// pre-check and the syscall. Treat as already-mounted so callers
-		// skip quietly instead of recording a failure or notifying.
-		if errors.Is(err, dto.ErrorAlreadyMounted) || osutil.IsMountBusyError(err) {
-			slog.WarnContext(o.ctx, "Mount raced with an existing mount, skipping quietly", "device", md.DeviceId, "path", md.Path, "err", err)
-			return errors.WithDetails(dto.ErrorAlreadyMounted,
+		if ok {
+			slog.WarnContext(o.ctx, "Volume already mounted according to OS check", "device", md.DeviceId, "path", md.Path)
+			return nil, errors.WithDetails(dto.ErrorAlreadyMounted,
 				"Device", md.DeviceId,
 				"Path", md.Path,
 				"Message", "Volume is already mounted",
-				"Error", err.Error(),
 			)
 		}
-		return err
+
+		// Device-level pre-check (#1359): the path may be free while the device
+		// is already mounted elsewhere. Skip quietly instead of issuing a
+		// mount(2) that fails with EBUSY and becomes a Sentry issue.
+		if mounted, at, srcErr := osutil.IsSourceMounted(*md.Partition.DevicePath); srcErr != nil {
+			slog.DebugContext(o.ctx, "osutil.IsSourceMounted check failed, proceeding", "device", md.DeviceId, "source", *md.Partition.DevicePath, "err", srcErr)
+		} else if mounted {
+			slog.WarnContext(o.ctx, "Device already mounted elsewhere according to OS check, skipping", "device", md.DeviceId, "source", *md.Partition.DevicePath, "mounted_at", at, "path", md.Path)
+			return nil, errors.WithDetails(dto.ErrorAlreadyMounted,
+				"Device", md.DeviceId,
+				"DevicePath", *md.Partition.DevicePath,
+				"Path", md.Path,
+				"MountedAt", at,
+				"Message", "Device is already mounted",
+			)
+		}
+
+		// Initialize flags if nil to avoid nil pointer dereference
+		if md.Flags == nil {
+			md.Flags = &dto.MountFlags{}
+			slog.DebugContext(o.ctx, "Initialized nil Flags to empty MountFlags", "device", md.DeviceId, "path", md.Path)
+		}
+
+		// Merge adapter-declared default mount flags (e.g. NTFS fmask/dmask,
+		// exFAT/FAT uid/gid/umask) underneath user-provided flags.
+		// User-provided flags win on name collision so explicit configuration
+		// is never overridden by defaults.
+		effectiveFlags := *md.Flags
+		if md.FSType != nil && *md.FSType != "" {
+			if defaults, defaultsErr := o.fs.GetDefaultMountFlags(*md.FSType); defaultsErr == nil && len(defaults) > 0 {
+				present := make(map[string]struct{}, len(effectiveFlags))
+				for _, f := range effectiveFlags {
+					present[strings.ToLower(strings.TrimSpace(f.Name))] = struct{}{}
+				}
+				for _, d := range defaults {
+					if _, ok := present[strings.ToLower(strings.TrimSpace(d.Name))]; !ok {
+						effectiveFlags = append(effectiveFlags, d)
+					}
+				}
+				if len(effectiveFlags) != len(*md.Flags) {
+					slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "defaults", defaults)
+				}
+			} else if defaultsErr != nil {
+				slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "err", defaultsErr)
+			}
+		}
+
+		flags, data, err := o.fs.MountFlagsToSyscallFlagAndData(effectiveFlags)
+		if err != nil {
+			return nil, errors.WithDetails(dto.ErrorInvalidParameter,
+				"Device", md.DeviceId,
+				"Path", md.Path,
+				"Message", "Invalid Flags",
+				"Error", err,
+			)
+		}
+
+		mountFsType := ""
+		if md.FSType != nil {
+			mountFsType = *md.FSType
+		}
+
+		// Final validation: ensure DevicePath exists on the OS before
+		// delegating to the mount manager. (The nil/empty check already
+		// returned above — this only verifies OS-level existence.)
+		if _, statErr := os.Stat(*md.Partition.DevicePath); statErr != nil {
+			if os.IsPermission(statErr) {
+				return nil, errors.WithDetails(dto.ErrorOperationNotPermitted,
+					"DeviceId", md.DeviceId,
+					"Path", md.Path,
+					"DevicePath", *md.Partition.DevicePath,
+					"Message", "Permission denied to access device",
+					"Error", statErr.Error(),
+				)
+			}
+			return nil, errors.WithDetails(dto.ErrorDeviceNotFound,
+				"DeviceId", md.DeviceId,
+				"Path", md.Path,
+				"DevicePath", *md.Partition.DevicePath,
+				"Message", "Device path does not exist",
+				"Error", statErr.Error(),
+			)
+		}
+
+		if err := o.mounter.Mount(md, flags, data, mountFsType); err != nil {
+			// EBUSY race (#1352, #1359): the device was mounted between the
+			// pre-check and the syscall. Treat as already-mounted so callers
+			// skip quietly instead of recording a failure or notifying.
+			if errors.Is(err, dto.ErrorAlreadyMounted) || osutil.IsMountBusyError(err) {
+				slog.WarnContext(o.ctx, "Mount raced with an existing mount, skipping quietly", "device", md.DeviceId, "path", md.Path, "err", err)
+				return nil, errors.WithDetails(dto.ErrorAlreadyMounted,
+					"Device", md.DeviceId,
+					"Path", md.Path,
+					"Message", "Volume is already mounted",
+					"Error", err.Error(),
+				)
+			}
+			return nil, err
+		}
+
+		// Dismiss any existing failure notifications since the mount was successful.
+		o.dismissAutomountNotification(md.DeviceId, "automount_failure")
+		o.dismissAutomountNotification(md.DeviceId, "unmounted_partition")
+
+		return nil, nil
+	})
+	_ = mountRes
+	if mountErr != nil {
+		if mountErrE, ok := errors.AsType[errors.E](mountErr); ok {
+			return mountErrE
+		}
+		return errors.WithStack(mountErr)
 	}
 
-	// Dismiss any existing failure notifications since the mount was successful.
-	o.dismissAutomountNotification(md.DeviceId, "automount_failure")
-	o.dismissAutomountNotification(md.DeviceId, "unmounted_partition")
-
 	return nil
+}
+
+// mountSingleflightKey normalizes a device+path pair into a singleflight key
+// so concurrent mounts for the same target coalesce to one OS attempt.
+func mountSingleflightKey(devicePath, mountPath string) string {
+	return strings.TrimSpace(devicePath) + "\x00" + filepath.Clean(strings.TrimSpace(mountPath))
 }
 
 // UnmountVolume resolves a mount point from the cache and unmounts it. A

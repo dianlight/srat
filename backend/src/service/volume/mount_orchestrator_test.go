@@ -6,7 +6,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -633,4 +636,64 @@ func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_VolumesError() 
 	got, err := s.orchestrator.PatchMountPointSettings("/", "/mnt/orch-ve", dto.MountPointData{IsToMountAtStartup: &startup})
 	s.Require().NoError(err, "volumes failure must degrade to the fallback path, not fail")
 	s.Require().NotNil(got)
+}
+
+type blockingCoalesceMounter struct {
+	calls atomic.Int32
+	delay time.Duration
+}
+
+func (f *blockingCoalesceMounter) Mount(md *dto.MountPointData, _ uintptr, _, _ string) errors.E {
+	f.calls.Add(1)
+	time.Sleep(f.delay)
+	md.IsMounted = true
+	return nil
+}
+
+func (f *blockingCoalesceMounter) Unmount(md *dto.MountPointData, _ bool) errors.E {
+	md.IsMounted = false
+	return nil
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_ConcurrentCoalesce() {
+	restore := osutil.MockMountInfo("")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-coal", "part-orch-coal", deviceFile)
+
+	blocking := &blockingCoalesceMounter{delay: 200 * time.Millisecond}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: blocking, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+
+	const callers = 8
+	mountPath := filepath.Join(tmpDir, "mnt", "coalesce")
+	var wg sync.WaitGroup
+	errs := make([]error, callers)
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			partID := "part-orch-coal"
+			md := &dto.MountPointData{
+				Path: mountPath, Root: "/", DeviceId: partID,
+				Flags:     &dto.MountFlags{},
+				Partition: &dto.Partition{Id: &partID, DevicePath: &deviceFile},
+			}
+			if err := orchestrator.MountVolume(md); err != nil {
+				errs[idx] = err
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		s.NoError(err)
+	}
+	s.Equal(int32(1), blocking.calls.Load(), "concurrent mounts for the same device+path must coalesce to one OS attempt")
 }
