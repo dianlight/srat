@@ -466,6 +466,9 @@ jobs:
     env:
       SENTRY_DSN: ${{ secrets.SENTRY_DSN || 'disabled' }}
       VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'disabled' }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || '' }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG || '' }}
+      SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND }}
       GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
     steps:
       - name: Checkout the repository

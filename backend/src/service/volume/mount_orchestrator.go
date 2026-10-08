@@ -127,12 +127,20 @@ func NewMountOrchestrator(in OrchestratorParams) *MountOrchestrator {
 	}
 }
 
+// IsProtectedMode reports whether mount/unmount operations are currently
+// blocked by Protected mode. Handlers consult it to skip automount attempts
+// early (#1340) instead of calling MountVolume and logging the expected
+// guard error.
+func (o *MountOrchestrator) IsProtectedMode() bool {
+	return o != nil && o.protectedMode != nil && o.protectedMode()
+}
+
 // MountVolume validates a mount request and delegates the OS work to the
 // mounter. Validation runs before any state mutation; the mounter updates
 // the cache and emits only after the mount completes (#971).
 func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	// Early validation of required fields
-	if o.protectedMode != nil && o.protectedMode() {
+	if o.IsProtectedMode() {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "MountVolume",
 			"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
@@ -208,6 +216,21 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 			"DeviceId", md.DeviceId,
 			"Path", md.Path,
 			"Message", "Source device does not exist on the system",
+		)
+	}
+
+	// Defensive guard (#1342): never attempt mount(2) for HAOS system paths
+	// or the "native" pseudo-filesystem. Callers (HandleMountPointEvent,
+	// HandlePartitionUdevAddEvent) skip quietly before this point; this
+	// covers direct MountVolume callers with a non-retryable error so the
+	// failure is not recorded as a mount failure nor reported to Sentry
+	// as one.
+	if ShouldSkipAutomount(md) {
+		return errors.WithDetails(dto.ErrorInvalidParameter,
+			"DeviceId", md.DeviceId,
+			"Path", md.Path,
+			"Message", "Mount skipped: HAOS system path or non-mountable filesystem",
+			"FSType", automountFSType(md),
 		)
 	}
 
@@ -315,7 +338,7 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 // Cache invalidation precedes every emit (#971).
 func (o *MountOrchestrator) UnmountVolume(path string, force bool) errors.E {
 	// Early validation of required fields
-	if o.protectedMode != nil && o.protectedMode() {
+	if o.IsProtectedMode() {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "UnmountVolume",
 			"Detail", "Unmount operation is not permitted when ProtectedMode is enabled.",
@@ -420,6 +443,57 @@ func InferMountPointType(mountPoint *dto.MountPointData) string {
 		return "ADDON"
 	}
 	return "HOST"
+}
+
+// haosSystemMountPaths are HAOS-provided internal shares (FS "native") that
+// must never be automounted as block devices (#1342). Mirrors internalShares
+// in service/share_service.go and the default shares in
+// config/addon_json_config.go.
+var haosSystemMountPaths = map[string]struct{}{
+	"/config":        {},
+	"/addons":        {},
+	"/ssl":           {},
+	"/share":         {},
+	"/backup":        {},
+	"/media":         {},
+	"/addon_configs": {},
+	"/local_apps":    {},
+	"/app_configs":   {},
+}
+
+// IsSystemMountPath reports whether path is a known HAOS internal share.
+func IsSystemMountPath(path string) bool {
+	_, ok := haosSystemMountPaths[strings.TrimSpace(path)]
+	return ok
+}
+
+// automountFSType returns the effective filesystem type for automount
+// decisions, preferring the mount point FSType then the partition FsType.
+func automountFSType(md *dto.MountPointData) string {
+	if md == nil {
+		return ""
+	}
+	if md.FSType != nil && strings.TrimSpace(*md.FSType) != "" {
+		return strings.TrimSpace(*md.FSType)
+	}
+	if md.Partition != nil && md.Partition.FsType != nil {
+		return strings.TrimSpace(*md.Partition.FsType)
+	}
+	return ""
+}
+
+// ShouldSkipAutomount reports whether an automount attempt must be skipped
+// quietly: HAOS system paths are never block devices, and the "native"
+// pseudo-filesystem has no kernel mount module so mount(2) always fails
+// with ENODEV ("no such device") (#1342).
+func ShouldSkipAutomount(md *dto.MountPointData) bool {
+	if md == nil {
+		return true
+	}
+	if IsSystemMountPath(md.Path) {
+		return true
+	}
+	return strings.EqualFold(automountFSType(md), "native")
 }
 
 // PatchMountPointSettings applies a partial mount configuration update. The

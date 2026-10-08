@@ -10,6 +10,7 @@ import {
   useGetApiSettingsQuery,
 } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
+import { normalizeSentryExtras } from "../utils/sentrySerialize";
 
 /**
  * Hook that provides Sentry functionality with telemetry mode checking.
@@ -60,19 +61,21 @@ export const useSentryTelemetry = () => {
     extraData?: Record<string, unknown>,
   ) => {
     if ([Telemetry_mode.Errors, Telemetry_mode.All].includes(telemetryMode)) {
+      // #1344: bare captureMessage(string) yields minified withScope frames
+      // with no stack (SRAT-FRONTEND-2C). Promote strings to Errors so
+      // Sentry stores a stack + cause/context.
+      const asError = typeof error === "string" ? new Error(error) : error;
+      if (typeof error === "string") {
+        (asError as { cause?: unknown }).cause = extraData;
+      }
+      const normalizedExtras = normalizeSentryExtras(extraData);
       if (extraData) {
         Sentry.withScope((scope) => {
-          scope.setContext("extra", extraData);
-          if (typeof error === "string") {
-            Sentry.captureMessage(error, "error");
-          } else {
-            Sentry.captureException(error);
-          }
+          scope.setContext("extra", normalizedExtras);
+          Sentry.captureException(asError);
         });
-      } else if (typeof error === "string") {
-        Sentry.captureMessage(error, "error");
       } else {
-        Sentry.captureException(error);
+        Sentry.captureException(asError);
       }
     }
   };
@@ -80,7 +83,7 @@ export const useSentryTelemetry = () => {
   const reportEvent = (event: string, data?: Record<string, unknown>) => {
     if (telemetryMode === Telemetry_mode.All) {
       const eventData = {
-        ...data,
+        ...normalizeSentryExtras(data),
         event_type: event,
         timestamp: new Date().toISOString(),
       };

@@ -7,9 +7,27 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
+	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/ctxkeys"
+)
+
+// unauthorizedLogThrottle allows a short burst then one log per minute per IP
+// so repeated 401s from misconfigured LAN clients do not flood logs/Sentry.
+const (
+	unauthorizedLogBurst    = 3
+	unauthorizedLogInterval = time.Minute
+	unauthorizedMaxTracked  = 1000
+)
+
+var (
+	unauthorizedMu       sync.Mutex
+	unauthorizedLimiters = make(map[string]*rate.Limiter)
+	unauthorizedLastSeen = make(map[string]time.Time)
 )
 
 // NewHAMiddleware creates a middleware function that ensures requests are coming from
@@ -56,7 +74,11 @@ func NewHAMiddleware(state *dto.ContextState) func(http.Handler) http.Handler {
 			}
 
 			if !allowed {
-				slog.ErrorContext(r.Context(), "Unauthorized access from", "IP", ip)
+				if shouldLogUnauthorized(ip) {
+					slog.WarnContext(r.Context(), "Unauthorized access from", "IP", ip)
+				} else {
+					slog.DebugContext(r.Context(), "Suppressed repeated unauthorized access", "IP", ip)
+				}
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
@@ -117,4 +139,35 @@ func clientIP(remoteAddr string) string {
 		return ip
 	}
 	return remoteAddr
+}
+
+// shouldLogUnauthorized rate-limits 401 log volume per IP: a short burst is
+// logged at Warn, further hits within the interval are suppressed to Debug.
+func shouldLogUnauthorized(ip string) bool {
+	now := time.Now()
+	unauthorizedMu.Lock()
+	defer unauthorizedMu.Unlock()
+	limiter, ok := unauthorizedLimiters[ip]
+	if !ok {
+		if len(unauthorizedLimiters) >= unauthorizedMaxTracked {
+			for k, last := range unauthorizedLastSeen {
+				if now.Sub(last) > 10*time.Minute {
+					delete(unauthorizedLimiters, k)
+					delete(unauthorizedLastSeen, k)
+				}
+			}
+		}
+		limiter = rate.NewLimiter(rate.Every(unauthorizedLogInterval), unauthorizedLogBurst)
+		unauthorizedLimiters[ip] = limiter
+	}
+	unauthorizedLastSeen[ip] = now
+	return limiter.AllowN(now, 1)
+}
+
+// resetUnauthorizedLimiters clears per-IP 401 throttle state. FOR TESTING ONLY.
+func resetUnauthorizedLimiters() {
+	unauthorizedMu.Lock()
+	defer unauthorizedMu.Unlock()
+	unauthorizedLimiters = make(map[string]*rate.Limiter)
+	unauthorizedLastSeen = make(map[string]time.Time)
 }

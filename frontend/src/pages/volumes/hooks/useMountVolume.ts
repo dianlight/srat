@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import { useConfirm } from "material-ui-confirm";
 import { useCallback } from "react";
 import { toast } from "react-toastify";
@@ -6,7 +7,11 @@ import {
   type Partition,
   usePostApiVolumeMountMutation,
 } from "../../../store/sratApi";
-import { extractSuggestedMountPath } from "../utils";
+import {
+  extractSuggestedMountPath,
+  parseVolumeApiError,
+  serializeErrorForSentry,
+} from "../utils";
 
 function isMountPointData(value: unknown): value is MountPointData {
   return (
@@ -60,17 +65,44 @@ export function useMountVolume({
         device_id: selectedPartition.id,
       };
 
-      const showMountError = (errorData: unknown, err: unknown) => {
-        console.error("Mount Error:", err);
-        const payload = (errorData ?? {}) as Record<string, unknown>;
-        const errorMsg =
-          (typeof payload.detail === "string" && payload.detail) ||
-          (typeof payload.message === "string" && payload.message) ||
-          (err as { status?: unknown })?.status ||
-          "Unknown mount error";
-        const errorCode =
-          (typeof payload.status === "number" && payload.status) || "Error";
-        const message = `${String(errorCode)}: ${String(errorMsg)}`;
+      const showMountError = (
+        errorData: unknown,
+        err: unknown,
+        attemptedPath?: string,
+      ) => {
+        const path = attemptedPath ?? submitData.path;
+        const parsed =
+          errorData && typeof errorData === "object"
+            ? parseVolumeApiError({
+                data: errorData,
+                status: (err as { status?: unknown })?.status,
+              })
+            : parseVolumeApiError(err);
+        const mountError = new Error(`Mount failed: ${parsed.message}`);
+        (mountError as { cause?: unknown }).cause = err;
+        Sentry.addBreadcrumb({
+          category: "volume.mount",
+          message: `Mount ${path ?? "unknown path"}`,
+          data: {
+            path,
+            root: submitData.root,
+            device: selectedPartition?.id,
+            code: parsed.code,
+          },
+          level: "error",
+        });
+        Sentry.captureException(mountError, {
+          contexts: {
+            volume_mount: {
+              path,
+              root: submitData.root,
+              device: selectedPartition?.id,
+              ...serializeErrorForSentry(err),
+            },
+          },
+        });
+        console.error("Mount Error:", mountError);
+        const message = `${String(parsed.code)}: ${parsed.message}`;
         toast.error(message, {
           data: { error: (errorData ?? err) as unknown },
         });
@@ -117,11 +149,12 @@ export function useMountVolume({
                     detail,
                   },
                   err,
+                  payload.path,
                 );
                 return Promise.resolve();
               });
             }
-            showMountError(errorData, err);
+            showMountError(errorData, err, payload.path);
             return Promise.resolve();
           });
 

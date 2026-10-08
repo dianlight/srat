@@ -27,6 +27,71 @@ import (
 // skipSentryFlushForTest disables sentry.Flush() in tests to avoid blocking.
 var skipSentryFlushForTest bool
 
+// unauthorizedAccessMessage is the routine 401 log that must never reach Sentry.
+// It is high volume and low actionability (LAN/misconfigured reverse paths).
+const unauthorizedAccessMessage = "Unauthorized access from"
+
+// protectedModeMessage is the expected Protected-mode mount guard (#1340).
+// Automount attempts while Protected mode is enabled are skipped by design;
+// they must never become Sentry issues.
+const protectedModeMessage = "Operation not permitted in Protected mode"
+
+// shouldDropSentryEvent reports whether a Sentry event is routine noise that
+// must be filtered before send.
+func shouldDropSentryEvent(event *sentry.Event) bool {
+	if event == nil {
+		return false
+	}
+	if strings.Contains(event.Message, unauthorizedAccessMessage) {
+		return true
+	}
+	for _, ex := range event.Exception {
+		if strings.Contains(ex.Value, unauthorizedAccessMessage) {
+			return true
+		}
+	}
+	return isProtectedModeGuardOnlyEvent(event)
+}
+
+// isProtectedModeGuardOnlyEvent reports whether a Sentry event carries only
+// the expected Protected-mode mount guard (#1340) and no unrelated error.
+// Mixed-error events are kept so an unrelated failure is never suppressed
+// alongside the guard.
+func isProtectedModeGuardOnlyEvent(event *sentry.Event) bool {
+	matched := strings.Contains(event.Message, protectedModeMessage)
+	for _, ex := range event.Exception {
+		if strings.TrimSpace(ex.Value) == "" {
+			continue
+		}
+		if strings.Contains(ex.Value, protectedModeMessage) {
+			matched = true
+			continue
+		}
+		return false
+	}
+	return matched
+}
+
+// sentryBeforeSend anonymises PII, enriches stack traces and drops routine
+// noise (401s, Protected-mode guard) so expected rejections never become
+// Sentry issues.
+func sentryBeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
+	if shouldDropSentryEvent(event) {
+		return nil
+	}
+	// Anonymise IP address
+	event.User.IPAddress = ""
+	// Enhance stack traces for tozd/go/errors and pkg/errors when sentry-go
+	// hasn't already extracted one.
+	if hint != nil && hint.OriginalException != nil && len(event.Exception) > 0 {
+		ex := &event.Exception[0]
+		if ex.Stacktrace == nil {
+			ex.Stacktrace = extractSentryStacktrace(hint.OriginalException)
+		}
+	}
+	return event
+}
+
 // TelemetryServiceInterface defines the interface for telemetry services
 type TelemetryServiceInterface interface {
 	// Configure configures the telemetry service with the given mode
@@ -176,19 +241,7 @@ func (ts *TelemetryService) Configure(mode dto.TelemetryMode) errors.E {
 			Release:          ts.version,
 			ServerName:       "github.com/" + config.Repository,
 			AttachStacktrace: true,
-			BeforeSend: func(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
-				// Anonymise IP address
-				event.User.IPAddress = ""
-				// Enhance stack traces for tozd/go/errors and pkg/errors when sentry-go
-				// hasn't already extracted one.
-				if hint != nil && hint.OriginalException != nil && len(event.Exception) > 0 {
-					ex := &event.Exception[0]
-					if ex.Stacktrace == nil {
-						ex.Stacktrace = extractSentryStacktrace(hint.OriginalException)
-					}
-				}
-				return event
-			},
+			BeforeSend:       sentryBeforeSend,
 		}
 		if ts.testTransport != nil {
 			opts.Transport = ts.testTransport
@@ -430,6 +483,12 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 		if ts.mode != dto.TelemetryModes.TELEMETRYMODEALL && ts.mode != dto.TelemetryModes.TELEMETRYMODEERRORS {
 			return
 		}
+		if strings.Contains(event.Record.Message, unauthorizedAccessMessage) {
+			return
+		}
+		if strings.Contains(event.Record.Message, protectedModeMessage) {
+			return
+		}
 
 		// Try to extract an error and request from log event attributes
 		var extractedErr error
@@ -510,7 +569,13 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 			return true
 		})
 
-		// Use existing telemetry path to report error
+		// Use existing telemetry path to report error.
+		// The Protected-mode guard is expected by design (#1340): never
+		// forward it even if an Error-level log carries it (BeforeSend is
+		// the second safety net).
+		if extractedErr != nil && strings.Contains(extractedErr.Error(), protectedModeMessage) {
+			return
+		}
 		if extractedErr == nil {
 			if request != nil {
 				_ = ts.ReportError(request, "§ "+event.Record.Message, extraData)
