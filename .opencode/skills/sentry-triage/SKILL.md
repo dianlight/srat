@@ -83,6 +83,16 @@ For every case (grouped by root cause), ask the user to choose exactly one: fix,
 
 When the user chooses report as GitHub issue, draft the issue with a detailed description and a proposed solution, and always link the Sentry issue URL(s). Required issue shape: title naming the symptom and scope, environment (release tags, arch/os from Sentry), Sentry link section, what happened vs expected, root cause with tag-pinned `file:line` evidence, proposed solution with concrete code pointers, and acceptance criteria. Search existing open issues first to avoid duplicates, then create in `dianlight/srat` with `bug` label for FIX-type cases and paste the new issue URL back into the triage report.
 
+## Step 7 — GitHub dedup + Sentry sync (explicit sync only)
+
+Run only when the user explicitly asks (`check github`, `update sentry`, `sync`) or right after creating a GitHub issue from Step 6. Never auto-sync during read-only triage.
+
+1. Per grouped case, search GitHub: `search_issues({owner: "dianlight", repo: "srat", query: "<Sentry title + error string + culprit>", perPage: 5})` plus `search_pull_requests` for fix keywords. Then `issue_read({owner: "dianlight", repo: "srat", issue_number: <N>, method: "get"})` to capture `state`, `closed_by_pull_requests` (PR number/title/state/url), and `updated_at`.
+2. Match rule: exact Sentry URL in the GitHub body, or same error string + same tag-pinned `file:line` + same path/device. Record the GitHub issue URL and the merged PR URL.
+3. Link: call `execute_sentry_tool({name: "link_issue", arguments: {organizationSlug: "lucio-tarantino", issueId: "<SHORT-ID>", externalIssueUrl: "<github-issue-url>"}})` and repeat for the PR URL. Native link fails with `No active issue integration` when the GitHub integration is missing — fallback is mandatory: `execute_sentry_tool({name: "add_issue_note", arguments: {organizationSlug: "lucio-tarantino", issueId: "<SHORT-ID>", text: "GitHub done: <issue-url> closed by <pr-url> ..."}})` so the link lives in the activity feed.
+4. Status (auto by dates): GitHub open → link/note only, leave Sentry `unresolved`. GitHub closed → compare GitHub `updated_at`/merge date against Sentry `last seen` and release tag. Fix released before last seen → `update_issue({organizationSlug: "lucio-tarantino", issueId: "<SHORT-ID>", status: "resolved", reason: "Fixed by #<PR>, GitHub #<N> closed <date>."})`. Fix merged after last seen → `status: "resolvedInNextRelease"`. Never resolve on open GitHub issues.
+5. Also `session.link` every Sentry shortId plus the matched GitHub issue URL so the user sees them with the session.
+
 Known SRAT fingerprints:
 
 - `Error performing hard restart of service smbd: context deadline exceeded` → timeout scope, make restart async with per-service timeout.
