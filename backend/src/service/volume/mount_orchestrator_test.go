@@ -401,6 +401,24 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_MounterError() {
 	s.ErrorIs(err, dto.ErrorMountFail)
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_NilFlagsInitializes() {
+	restore := osutil.MockMountInfo("")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-nilflags", "part-orch-nilflags", deviceFile)
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "nilflags"), Root: "/", DeviceId: "part-orch-nilflags",
+		Flags: nil,
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md))
+	s.Equal(1, s.mounter.mountCalls)
+	s.NotNil(md.Flags, "nil Flags must be initialized before the OS mount")
+}
+
 func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_Success() {
 	s.seedDiskWithPartition("disk-orch-patch", "part-orch-patch", "/dev/sdz9")
 	md := dto.MountPointData{
