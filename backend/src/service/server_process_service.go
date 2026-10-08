@@ -233,6 +233,12 @@ var (
 	defaultDirtyMask = dto.DataDirtyTracker{Shares: true, Users: true, Settings: true}
 )
 
+const (
+	hardRestartTimeout  = 120 * time.Second
+	softRestartTimeout  = 30 * time.Second
+	serviceStartTimeout = 30 * time.Second
+)
+
 func NewServerProcessesService(lc fx.Lifecycle, in ServerServiceParams) ServerServiceInterface {
 	p := &ServerService{}
 	p.ctx = in.Ctx
@@ -781,43 +787,18 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 	}
 	// Exec smbcontrol smbd reload-config
 	if process != nil {
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
-
 		for processName, processConfig := range serviceConfigMap {
 			if !processConfig.Managed {
 				slog.InfoContext(ctx, "Skipping unmanaged service", "service", processName)
 				continue
 			}
 			tlog.TraceContext(ctx, "Restarting service", "service", processName)
-			if procStatus, ok := (*process)[processName]; ok {
-				if procStatus.Pid <= 0 || dirty.AndMask(processConfig.HardResetServiceMask) {
-					slog.InfoContext(ctx, "Performing hard restart of service...", "service", processName)
-					outHardRestart, restartErr := self.runCommandWithRunner(ctx, "service-hard-restart-"+processName, "Hard restart "+processName, processConfig.HardResetCommand)
-					if restartErr != nil {
-						return errors.Errorf("Error performing hard restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outHardRestart})
-					}
-				} else if dirty.AndMask(processConfig.SoftResetServiceMask) {
-					slog.InfoContext(ctx, "Performing soft restart of service...", "service", processName)
-					outSoftRestart, restartErr := self.runCommandWithRunner(ctx, "service-soft-restart-"+processName, "Soft restart "+processName, processConfig.SoftResetCommand)
-					if restartErr != nil {
-						return errors.Errorf("Error performing soft restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outSoftRestart})
-					}
-				} else {
-					slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
-				}
-			} else {
-				slog.InfoContext(ctx, "Managed service not running yet; starting if configured", "service", processName)
-				if len(processConfig.StartCommand) > 0 && osutil.CommandExists(processConfig.StartCommand) {
-					slog.InfoContext(ctx, "Starting service...", "service", processName)
-					outStart, startErr := self.runCommandWithRunner(ctx, "service-start-"+processName, "Start "+processName, processConfig.StartCommand)
-					if startErr != nil {
-						return errors.Errorf("Error starting service %s: %w \n %#v", processName, startErr, map[string]any{"error": startErr, "output": outStart})
-					}
-				} else {
-					slog.InfoContext(ctx, "No start command defined for service or command does not exist, skipping.", "service", processName)
-				}
-				continue
+			procStatus, ok := (*process)[processName]
+			if !ok {
+				procStatus = nil
+			}
+			if restartErr := self.restartOneService(ctx, processName, processConfig, procStatus, dirty); restartErr != nil {
+				return restartErr
 			}
 		}
 
@@ -827,6 +808,46 @@ func (self *ServerService) restartServerServices(ctx context.Context, dirty dto.
 		})
 	} else {
 		slog.WarnContext(ctx, "Samba processes not found, skipping reload commands.")
+	}
+	return nil
+}
+
+func (self *ServerService) restartOneService(ctx context.Context, processName string, processConfig serviceConfig, procStatus *dto.ProcessStatus, dirty dto.DataDirtyTracker) errors.E {
+	if procStatus != nil {
+		if procStatus.Pid <= 0 || dirty.AndMask(processConfig.HardResetServiceMask) {
+			opCtx, cancel := context.WithTimeout(ctx, hardRestartTimeout)
+			defer cancel()
+			slog.InfoContext(opCtx, "Performing hard restart of service...", "service", processName, "timeout", hardRestartTimeout)
+			outHardRestart, restartErr := self.runCommandWithRunner(opCtx, "service-hard-restart-"+processName, "Hard restart "+processName, processConfig.HardResetCommand)
+			if restartErr != nil {
+				return errors.Errorf("Error performing hard restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outHardRestart})
+			}
+			return nil
+		}
+		if dirty.AndMask(processConfig.SoftResetServiceMask) {
+			opCtx, cancel := context.WithTimeout(ctx, softRestartTimeout)
+			defer cancel()
+			slog.InfoContext(opCtx, "Performing soft restart of service...", "service", processName, "timeout", softRestartTimeout)
+			outSoftRestart, restartErr := self.runCommandWithRunner(opCtx, "service-soft-restart-"+processName, "Soft restart "+processName, processConfig.SoftResetCommand)
+			if restartErr != nil {
+				return errors.Errorf("Error performing soft restart of service %s: %w \n %#v", processName, restartErr, map[string]any{"error": restartErr, "output": outSoftRestart})
+			}
+			return nil
+		}
+		slog.InfoContext(ctx, "No restart needed for service.", "service", processName)
+		return nil
+	}
+	slog.InfoContext(ctx, "Managed service not running yet; starting if configured", "service", processName)
+	if len(processConfig.StartCommand) > 0 && osutil.CommandExists(processConfig.StartCommand) {
+		opCtx, cancel := context.WithTimeout(ctx, serviceStartTimeout)
+		defer cancel()
+		slog.InfoContext(opCtx, "Starting service...", "service", processName, "timeout", serviceStartTimeout)
+		outStart, startErr := self.runCommandWithRunner(opCtx, "service-start-"+processName, "Start "+processName, processConfig.StartCommand)
+		if startErr != nil {
+			return errors.Errorf("Error starting service %s: %w \n %#v", processName, startErr, map[string]any{"error": startErr, "output": outStart})
+		}
+	} else {
+		slog.InfoContext(ctx, "No start command defined for service or command does not exist, skipping.", "service", processName)
 	}
 	return nil
 }
