@@ -518,6 +518,15 @@ export function SetupWizard({
         })),
       });
       console.error(message, extras);
+      // #1354: report wizard commit failures directly (which op failed +
+      // backend detail) instead of relying on console forwarding alone.
+      const wizardError = new Error(message);
+      (wizardError as { cause?: unknown }).cause = failures.map(
+        (failure) => failure.reason,
+      );
+      Sentry.captureException(wizardError, {
+        contexts: { wizard: extras },
+      });
       Sentry.addBreadcrumb({
         category: "wizard",
         message: "wizard finish failed",
@@ -546,6 +555,11 @@ export function SetupWizard({
         response: described.data,
       });
       console.error(message, extras);
+      const buildError = new Error(message);
+      (buildError as { cause?: unknown }).cause = error;
+      Sentry.captureException(buildError, {
+        contexts: { wizard: extras },
+      });
       setFinishError(
         `Failed to save some settings. You can configure them later in Settings. Error: ${described.detail}`,
       );

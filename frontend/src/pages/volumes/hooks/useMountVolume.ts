@@ -101,7 +101,13 @@ export function useMountVolume({
             },
           },
         });
-        console.error("Mount Error:", mountError);
+        // #1354: log the Error itself first so the console→Sentry
+        // forwarder titles on `Mount failed: <detail>` instead of a bare
+        // "Mount Error:" with empty suffix.
+        console.error(mountError, {
+          path,
+          device: selectedPartition?.id,
+        });
         const message = `${String(parsed.code)}: ${parsed.message}`;
         toast.error(message, {
           data: { error: (errorData ?? err) as unknown },

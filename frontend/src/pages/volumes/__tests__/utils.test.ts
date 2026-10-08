@@ -449,6 +449,27 @@ describe("volumes utils", () => {
 			const [sentryError, hint] = vi.mocked(captureException).mock.calls[0];
 			expect((sentryError as Error).message).toContain("device busy");
 			expect(JSON.stringify(hint)).toContain("/mnt/data");
+			// #1354: console must log the Error first so the console→Sentry
+			// forwarder titles on the backend detail, not a bare label.
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+			try {
+				requestUnmountVolume({
+					confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
+					unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
+					partition,
+					force: true,
+					isSelected: false,
+					onCleared: () => undefined,
+				});
+				await vi.waitFor(() => {
+					expect(consoleSpy).toHaveBeenCalled();
+				});
+				const firstArg = consoleSpy.mock.calls[0]?.[0];
+				expect(firstArg).toBeInstanceOf(Error);
+				expect((firstArg as Error).message).toContain("device busy");
+			} finally {
+				consoleSpy.mockRestore();
+			}
 		});
 	});
 });

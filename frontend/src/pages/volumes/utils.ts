@@ -430,10 +430,10 @@ export function requestUnmountVolume(args: {
             },
           },
         });
-        console.error(
-          `Unmount Error for ${displayName} at ${mountPath}:`,
-          sentryError,
-        );
+        // #1354: log the Error first so the console→Sentry forwarder
+        // titles on `Unmount failed for <name>: <detail>` instead of a
+        // bare label with empty suffix.
+        console.error(sentryError, { mountPath, force });
         toast.error(
           `Error unmounting ${displayName}: ${String(parsed.code)}: ${parsed.message}`,
           { data: { error: err } },

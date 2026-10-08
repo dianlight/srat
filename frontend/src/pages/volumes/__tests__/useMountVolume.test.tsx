@@ -175,6 +175,16 @@ describe("useMountVolume", () => {
           expect(toastErrorMock).toHaveBeenCalledTimes(1);
         });
         expect(toastErrorMock.mock.calls[0]?.[0]).toContain("mount failed");
+        // #1354: Sentry title must carry the backend detail with
+        // device/path context, never a bare "Mount Error:" suffix.
+        await waitFor(() => {
+          expect(sentryCaptureMock).toHaveBeenCalled();
+        });
+        const sentryErr = sentryCaptureMock.mock.calls[0]?.[0] as Error;
+        expect(sentryErr.message).toContain("mount failed");
+        expect(
+          JSON.stringify(sentryCaptureMock.mock.calls[0]?.[1]) ?? "",
+        ).toContain("part-mount-1");
         expect(confirmMock).not.toHaveBeenCalled();
         await waitFor(() => {
           expect(onCleared).toHaveBeenCalledTimes(1);
