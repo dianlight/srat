@@ -68,11 +68,12 @@ export const useSentryTelemetry = () => {
       if (typeof error === "string") {
         (asError as { cause?: unknown }).cause = extraData;
       }
-      const normalizedExtras = normalizeSentryExtras(extraData);
       if (extraData) {
-        Sentry.withScope((scope) => {
-          scope.setContext("extra", normalizedExtras);
-          Sentry.captureException(asError);
+        // #1354: capture with contexts directly — withScope adds a
+        // minified `withScope` frame that becomes the Sentry title.
+        const normalizedExtras = normalizeSentryExtras(extraData);
+        Sentry.captureException(asError, {
+          contexts: { extra: normalizedExtras },
         });
       } else {
         Sentry.captureException(asError);

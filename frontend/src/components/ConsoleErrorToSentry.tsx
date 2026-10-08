@@ -1,5 +1,9 @@
 import { useConsoleErrorCallback } from "../hooks/useConsoleErrorCallback";
 import { useSentryTelemetry } from "../hooks/useSentryTelemetry";
+import {
+  describeMutationError,
+  serializeSentryValue,
+} from "../utils/sentrySerialize";
 
 /**
  * Extracts the backend `detail` (or `message` fallback) from an RTK Query
@@ -31,56 +35,39 @@ export const ConsoleErrorToSentry: React.FC = () => {
 
     const safeSerialize = (v: unknown): unknown => {
       try {
-        if (v instanceof Error)
-          return { name: v.name, message: v.message, stack: v.stack };
-        if (
-          typeof v === "string" ||
-          typeof v === "number" ||
-          typeof v === "boolean" ||
-          v == null
-        )
-          return v;
-        // RTK Query errors ({status, data: {detail/message}}) lose their
-        // message under JSON round-trip when data holds non-serializable
-        // values; extract the human message explicitly first.
-        if (typeof v === "object") {
-          const maybe = v as {
-            data?: unknown;
-            status?: unknown;
-            message?: unknown;
-          };
-          const data =
-            maybe.data && typeof maybe.data === "object"
-              ? (maybe.data as Record<string, unknown>)
-              : undefined;
-          const detail =
-            data && typeof data.detail === "string" && data.detail
-              ? data.detail
-              : undefined;
-          const msg =
-            detail ??
-            (data && typeof data.message === "string" && data.message
-              ? data.message
-              : undefined) ??
-            (typeof maybe.message === "string" ? maybe.message : undefined);
-          if (
-            msg !== undefined ||
-            maybe.status !== undefined ||
-            data !== undefined
-          ) {
-            return {
-              status: maybe.status,
-              detail,
-              message:
-                typeof maybe.message === "string" ? maybe.message : undefined,
-              data,
-            };
-          }
-        }
-        return JSON.parse(JSON.stringify(v));
+        // #1354: reuse the Sentry serializer so Error.cause, backend
+        // detail/message, and circular refs survive (no "[Object]").
+        return serializeSentryValue(v);
       } catch {
         return String(v);
       }
+    };
+
+    // Finds backend detail inside console rest-args: Error messages first,
+    // then RTK `{ data: { detail/message } }`, then described mutations.
+    // Skips generic fallbacks so labels are never suffixed with emptiness.
+    const findDetailInArgs = (args: unknown[]): string | undefined => {
+      for (const arg of args) {
+        if (arg instanceof Error && arg.message.trim()) {
+          return arg.message.trim();
+        }
+        const rtkDetail = extractRtkDetail(arg);
+        if (rtkDetail) return rtkDetail;
+      }
+      for (const arg of args) {
+        if (arg instanceof Error) continue;
+        const described = describeMutationError(arg);
+        if (
+          described.detail &&
+          described.detail !== "Unknown error" &&
+          described.detail !== "Request failed" &&
+          !described.detail.startsWith("Request failed with status") &&
+          !described.detail.startsWith("console.error")
+        ) {
+          return described.detail;
+        }
+      }
+      return undefined;
     };
 
     const extras: Record<string, unknown> = {};
@@ -130,11 +117,17 @@ export const ConsoleErrorToSentry: React.FC = () => {
       // captureMessage("Label:") with console_args [Object] and no stack
       // (#1344). Promote it to an Error carrying the backend detail so
       // Sentry groups on message + stack instead of an empty string.
-      const candidateDetail = extractRtkDetail(rest[0]);
-      if (candidateDetail) {
+      // #1354: also look for Error objects in rest-args (mount/unmount
+      // log `console.error(label, errorObj)`), otherwise the title stays
+      // a bare "Mount Error:" / "Unmount Error:" with empty suffix.
+      const candidateDetail =
+        extractRtkDetail(rest[0]) ?? findDetailInArgs(rest);
+      if (candidateDetail && !first.includes(candidateDetail)) {
         const err = new Error(`${first} ${candidateDetail}`);
-        (err as { cause?: unknown }).cause = rest[0];
+        (err as { cause?: unknown }).cause = rest.length === 1 ? rest[0] : rest;
         reportError(err, extras);
+      } else if (candidateDetail) {
+        reportError(first, extras);
       } else {
         reportError(first, extras);
       }

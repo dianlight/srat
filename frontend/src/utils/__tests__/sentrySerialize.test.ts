@@ -36,6 +36,20 @@ describe("sentrySerialize", () => {
     expect(described.detail).toContain("mount path invalid");
   });
 
+  it("serializes Error cause chains without [Object] placeholders", () => {
+    const rtkError = { status: 406, data: { detail: "device busy" } };
+    const mountError = new Error("Mount failed: device busy") as Error & {
+      cause?: unknown;
+    };
+    mountError.cause = rtkError;
+    const normalized = normalizeSentryExtras({
+      console_args: [serializeSentryValue(mountError)],
+    });
+    const asString = JSON.stringify(normalized);
+    expect(asString).toContain("device busy");
+    expect(asString).toContain("Mount failed");
+    expect(asString).not.toContain("[Object]");
+  });
   it("handles circular structures", () => {
     const circular: Record<string, unknown> = {};
     circular["self"] = circular;
