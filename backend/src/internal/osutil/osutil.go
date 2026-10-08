@@ -299,6 +299,8 @@ func IsMounted(path string) (bool, error) {
 // IsSourceMounted checks whether the provided device source is present in the
 // mount table. It returns the mount directory of the first match so callers
 // can report where the device is already mounted (#1359).
+// By-id symlinks are resolved on both sides so a /dev/disk/by-id path matches
+// its resolved mount source and vice versa (#1352).
 func IsSourceMounted(source string) (bool, string, error) {
 	entries, err := LoadMountInfo()
 	if err != nil {
@@ -308,18 +310,40 @@ func IsSourceMounted(source string) (bool, string, error) {
 	if target == "" {
 		return false, "", nil
 	}
+	resolvedTarget, targetErr := filepath.EvalSymlinks(target)
 	for _, entry := range entries {
-		if strings.TrimSpace(entry.MountSource) == target {
+		mountSource := strings.TrimSpace(entry.MountSource)
+		if mountSource == target {
+			return true, entry.MountDir, nil
+		}
+		if targetErr == nil && mountSource == resolvedTarget {
+			return true, entry.MountDir, nil
+		}
+		resolvedSource, srcErr := filepath.EvalSymlinks(mountSource)
+		if srcErr != nil {
+			continue
+		}
+		if resolvedSource == target {
+			return true, entry.MountDir, nil
+		}
+		if targetErr == nil && resolvedSource == resolvedTarget {
 			return true, entry.MountDir, nil
 		}
 	}
 	return false, "", nil
 }
 
+// withErrorDetails is the structural shape of tozd/go/errors detail carriers.
+// Asserting to it avoids importing the errors package here.
+type withErrorDetails interface {
+	Details() map[string]interface{}
+}
+
 // IsMountBusyError reports whether err is the EBUSY mount failure raised when
 // the source device or the target path is already mounted (#1352, #1359).
 // Such failures are expected races and must skip quietly instead of
-// producing Sentry issues.
+// producing Sentry issues. Wrapped errors often keep the OS text in details
+// rather than in Error() itself, so details are scanned as well.
 func IsMountBusyError(err error) bool {
 	if err == nil {
 		return false
@@ -327,8 +351,24 @@ func IsMountBusyError(err error) bool {
 	if errors.Is(err, syscall.EBUSY) {
 		return true
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "device or resource busy")
+	if strings.Contains(strings.ToLower(err.Error()), "device or resource busy") {
+		return true
+	}
+	if detailed, ok := err.(withErrorDetails); ok {
+		for _, v := range detailed.Details() {
+			switch val := v.(type) {
+			case string:
+				if strings.Contains(strings.ToLower(val), "device or resource busy") {
+					return true
+				}
+			case error:
+				if IsMountBusyError(val) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // IsMountInvalidOptionError reports whether err is the EINVAL mount failure

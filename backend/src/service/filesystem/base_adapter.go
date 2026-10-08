@@ -436,6 +436,15 @@ func (b *baseAdapter) Mount(
 		mp, err = b.baseDoMountFunc(source, target, fsType, data, flags, opts...)
 	}
 	if err != nil {
+		if osutil.IsMountBusyError(err) {
+			return nil, errors.WithDetails(dto.ErrorAlreadyMounted,
+				"Source", source,
+				"Target", target,
+				"FSType", fsType,
+				"Message", "Device or mount target is busy: already mounted by a concurrent attempt",
+				"Error", err.Error(),
+			)
+		}
 		if osutil.IsMountInvalidOptionError(err) {
 			return nil, errors.WithDetails(err,
 				"Source", source,

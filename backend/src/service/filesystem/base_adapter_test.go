@@ -3,12 +3,14 @@ package filesystem
 import (
 	"context"
 	"errors"
+	"syscall"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/internal/osutil"
 	"github.com/stretchr/testify/suite"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 // BaseAdapterTestSuite tests the baseAdapter implementation
@@ -590,4 +592,54 @@ func (f *fakeCommandRunner) GetSnapshot(executionID string) (dto.CommandExecutio
 		return f.getSnapshot(executionID)
 	}
 	return dto.CommandExecutionSnapshot{}, false
+}
+
+func wrapErr(inner error) error {
+	return tozderrors.WithDetails(errors.New("outer"), "Error", inner)
+}
+
+func (suite *BaseAdapterTestSuite) TestIsMountBusyError() {
+	suite.False(osutil.IsMountBusyError(nil))
+	suite.False(osutil.IsMountBusyError(errors.New("no such device")))
+	suite.True(osutil.IsMountBusyError(errors.New("mount /mnt/Transcend: device or resource busy")))
+	suite.True(osutil.IsMountBusyError(errors.New("DEVICE OR RESOURCE BUSY")))
+	suite.True(osutil.IsMountBusyError(syscall.EBUSY))
+	suite.True(osutil.IsMountBusyError(wrapErr(errors.New("device or resource busy"))))
+	suite.False(osutil.IsMountBusyError(wrapErr(errors.New("no such device"))))
+}
+
+func (suite *BaseAdapterTestSuite) TestBaseAdapterMountBusyMapsToAlreadyMounted() {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"errno string", errors.New(`mount /mnt/Transcend: from device "/dev/disk/by-id/ata-test-part1" (fs type ntfs3): device or resource busy`)},
+		{"syscall EBUSY", syscall.EBUSY},
+	} {
+		suite.Run(tc.name, func() {
+			suite.cleanMount = suite.adapter.SetMountOpsForTesting(
+				nil,
+				func(_, _, _, _ string, _ uintptr, _ ...func() error) (*mount.MountPoint, error) {
+					return nil, tc.err
+				},
+				nil,
+			)
+			_, err := suite.adapter.Mount(suite.ctx, "/dev/disk/by-id/ata-test-part1", "/mnt/Transcend", "ntfs3", "", 0, nil)
+			suite.Require().Error(err)
+			suite.ErrorIs(err, dto.ErrorAlreadyMounted)
+		})
+	}
+}
+
+func (suite *BaseAdapterTestSuite) TestBaseAdapterMountGenuineFailureStaysError() {
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
+		nil,
+		func(_, _, _, _ string, _ uintptr, _ ...func() error) (*mount.MountPoint, error) {
+			return nil, errors.New("wrong fs type, bad option, bad superblock")
+		},
+		nil,
+	)
+	_, err := suite.adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs3", "", 0, nil)
+	suite.Require().Error(err)
+	suite.NotErrorIs(err, dto.ErrorAlreadyMounted)
 }

@@ -1,6 +1,8 @@
 package osutil
 
 import (
+	"os"
+	"path/filepath"
 	"syscall"
 	"testing"
 
@@ -9,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 const sampleMountInfo = `36 35 98:0 / /mnt/root rw,nosuid - ext4 /dev/root rw,relatime
@@ -84,6 +87,38 @@ func TestIsSourceMounted(t *testing.T) {
 	assert.False(t, empty)
 }
 
+func TestIsSourceMountedSymlinks(t *testing.T) {
+	tmpDir := t.TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	require.NoError(t, os.WriteFile(deviceFile, []byte("test"), 0o600))
+	linkPath := filepath.Join(tmpDir, "disk-by-id-link")
+	require.NoError(t, os.Symlink(deviceFile, linkPath))
+
+	restore := MockMountInfo("1217 819 0:52 / /mnt/other rw,relatime - ntfs3 " + deviceFile + " rw\n")
+	t.Cleanup(restore)
+
+	mounted, at, err := IsSourceMounted(linkPath)
+	require.NoError(t, err)
+	assert.True(t, mounted, "by-id symlink resolving to a mounted source must match")
+	assert.Equal(t, "/mnt/other", at)
+}
+
+func TestIsSourceMountedSymlinkedSource(t *testing.T) {
+	tmpDir := t.TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	require.NoError(t, os.WriteFile(deviceFile, []byte("test"), 0o600))
+	linkPath := filepath.Join(tmpDir, "disk-by-id-link")
+	require.NoError(t, os.Symlink(deviceFile, linkPath))
+
+	restore := MockMountInfo("1217 819 0:52 / /mnt/other rw,relatime - ntfs3 " + linkPath + " rw\n")
+	t.Cleanup(restore)
+
+	mounted, at, err := IsSourceMounted(deviceFile)
+	require.NoError(t, err)
+	assert.True(t, mounted, "mount source symlink resolving to the device must match")
+	assert.Equal(t, "/mnt/other", at)
+}
+
 func TestMountErrorClassifiers(t *testing.T) {
 	assert.False(t, IsMountBusyError(nil))
 	assert.True(t, IsMountBusyError(syscall.EBUSY))
@@ -94,6 +129,17 @@ func TestMountErrorClassifiers(t *testing.T) {
 	assert.True(t, IsMountInvalidOptionError(syscall.EINVAL))
 	assert.True(t, IsMountInvalidOptionError(apperrors.New("mount /mnt/x (fs type ntfs3): invalid argument")))
 	assert.False(t, IsMountInvalidOptionError(apperrors.New("mount /mnt/x: device or resource busy")))
+}
+
+func TestIsMountBusyErrorDetails(t *testing.T) {
+	assert.True(t, IsMountBusyError(tozderrors.WithDetails(
+		apperrors.New("mount failed"), "Error", "device or resource busy")))
+	assert.True(t, IsMountBusyError(tozderrors.WithDetails(
+		apperrors.New("mount failed"), "Error", apperrors.New("device or resource busy"))))
+	assert.False(t, IsMountBusyError(tozderrors.WithDetails(
+		apperrors.New("mount failed"), "Flags", uintptr(123))))
+	assert.False(t, IsMountBusyError(tozderrors.WithDetails(
+		apperrors.New("mount failed"), "Error", apperrors.New("no such device"))))
 }
 
 func (suite *OsutilSuite) TestParseHelpers() {
