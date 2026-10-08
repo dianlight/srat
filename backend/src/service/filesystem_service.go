@@ -965,6 +965,14 @@ func (s *FilesystemService) GetPartitionState(ctx context.Context, devicePath, f
 
 	state, stateErr := adapter.GetState(ctx, devicePath)
 	if stateErr != nil {
+		if filesystem.IsMissingFilesystemToolError(stateErr) {
+			slog.DebugContext(ctx, "Filesystem helper missing, returning unknown state", "device", devicePath, "fsType", fsType, "error", stateErr)
+			unknown := dto.FilesystemState{
+				StateDescription: "Unknown",
+				AdditionalInfo:   map[string]any{},
+			}
+			return &unknown, nil
+		}
 		return nil, errors.Wrapf(stateErr, "failed to get partition state for device: %s", devicePath)
 	}
 
@@ -980,6 +988,10 @@ func (s *FilesystemService) GetPartitionLabel(ctx context.Context, devicePath, f
 
 	label, labelErr := adapter.GetLabel(ctx, devicePath)
 	if labelErr != nil {
+		if filesystem.IsMissingFilesystemToolError(labelErr) {
+			slog.DebugContext(ctx, "Filesystem helper missing, returning unknown label", "device", devicePath, "fsType", fsType, "error", labelErr)
+			return "", nil
+		}
 		return "", errors.Wrapf(labelErr, "failed to get partition label for device: %s", devicePath)
 	}
 
