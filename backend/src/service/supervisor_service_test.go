@@ -878,6 +878,286 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_NonExporta
 	suite.Equal(mount.MountType("cifs"), *captured.Type, "useNfs=true with non-exportable fs should fall back to CIFS")
 }
 
+// newTargetNotEmptyTestApp recreates the supervisor service app with mocked
+// SettingServiceInterface and ProblemServiceInterface so mount-target-not-empty
+// handling (issue #1358) can be verified in isolation.
+// SupervisorURL "demo" makes NetworkGetAllMounted return an empty map.
+func (suite *SupervisorServiceSuite) newTargetNotEmptyTestApp() (service.SettingServiceInterface, service.ProblemServiceInterface) {
+	suite.app.RequireStop()
+	var settingService service.SettingServiceInterface
+	var problemService service.ProblemServiceInterface
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: true, SupervisorURL: "demo", AddonIpAddress: "172.30.32.1"}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
+			mock.Mock[service.ProblemServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&settingService),
+		fx.Populate(&problemService),
+	)
+	suite.app.RequireStart()
+	return settingService, problemService
+}
+
+// TestNetworkMountShare_Create400_TargetNotEmpty_WarnsAndNotifies verifies issue
+// #1358: a 400 with error_key mount_target_not_empty_error must NOT return an
+// error (no repeated Sentry reports), must NOT attempt RemoveMount (never touch
+// user data), and must raise a ProblemService notice naming the exact path.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400_TargetNotEmpty_WarnsAndNotifies() {
+	settingService, problemService := suite.newTargetNotEmptyTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	body := `{"result":"error","message":"Cannot mount nasshare because there is existing data at /data/share/nasshare. Move it away first, then retry","error_key":"mount_target_not_empty_error"}`
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"result":"error"}`)}, nil)
+
+	upsertCaptor := mock.Captor[*dto.Problem]()
+	mock.When(problemService.Get(mock.Any[string]())).ThenReturn(nil, context.DeadlineExceeded)
+	mock.When(problemService.Upsert(upsertCaptor.Capture())).
+		ThenReturn(&dto.Problem{}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err, "target-not-empty must not surface as an error (no Sentry spam)")
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(problemService, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
+	upserted := upsertCaptor.Last()
+	suite.Require().NotNil(upserted, "a Problem notice must be raised")
+	suite.Contains(upserted.Description, "/data/share/nasshare", "notice must name the exact path")
+	suite.Contains(upserted.ProblemKey, "nasshare", "problem key must be per-share")
+}
+
+// TestNetworkMountShare_Create400_OtherErrorKey_StillErrors verifies that genuine
+// supervisor 400s (other error keys) keep reporting with request context.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Create400_OtherErrorKey_StillErrors() {
+	settingService, _ := suite.newTargetNotEmptyTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	body := `{"result":"error","message":"boom","error_key":"some_other_error"}`
+	removeResp := &mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"result":"error"}`)}
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).ThenReturn(removeResp, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().Error(err, "genuine 400s must still report")
+	suite.Contains(err.Error(), "Error creating mount")
+}
+
+// TestNetworkMountShare_CreateSuccess_DismissesTargetNotEmptyProblem verifies the
+// notice is cleared best-effort once the mount succeeds.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_CreateSuccess_DismissesTargetNotEmptyProblem() {
+	settingService, problemService := suite.newTargetNotEmptyTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+	mock.When(problemService.Dismiss(mock.Any[string]())).ThenReturn(nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err)
+	_ = mock.Verify(problemService, matchers.Times(1)).Dismiss(mock.Any[string]())
+}
+
+// TestNetworkMountShare_Update400_TargetNotEmpty_WarnsAndNotifies verifies issue
+// #1358 on the update path: same warn-plus-notice, no error, no RemoveMount.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_TargetNotEmpty_WarnsAndNotifies() {
+	suite.app.RequireStop()
+	var settingService service.SettingServiceInterface
+	var problemService service.ProblemServiceInterface
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: true, SupervisorURL: "http://supervisor", AddonIpAddress: "172.30.32.1"}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
+			mock.Mock[service.ProblemServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&settingService),
+		fx.Populate(&problemService),
+	)
+	suite.app.RequireStart()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{
+						Name:   new("test_share"),
+						Server: new("172.30.32.1"),
+						Usage:  new(mount.MountUsage("media")),
+						State:  new("inactive"),
+					},
+				},
+			},
+		},
+	}
+	body := `{"result":"error","message":"Cannot mount test-share because there is existing data at /data/share/test_share. Move it away first, then retry","error_key":"mount_target_not_empty_error"}`
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.UpdateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+
+	upsertCaptor := mock.Captor[*dto.Problem]()
+	mock.When(problemService.Get(mock.Any[string]())).ThenReturn(nil, context.DeadlineExceeded)
+	mock.When(problemService.Upsert(upsertCaptor.Capture())).
+		ThenReturn(&dto.Problem{}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "test-share",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err, "target-not-empty on update must not surface as an error")
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
+	_, _ = mock.Verify(problemService, matchers.Times(1)).Upsert(mock.Any[*dto.Problem]())
+	upserted := upsertCaptor.Last()
+	suite.Require().NotNil(upserted)
+	suite.Contains(upserted.Description, "/data/share/test_share")
+}
+
+// TestNetworkMountShare_TargetNotEmpty_IgnoredHonored verifies a permanently
+// ignored notice is never re-raised while the condition persists.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_TargetNotEmpty_IgnoredHonored() {
+	settingService, problemService := suite.newTargetNotEmptyTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	body := `{"result":"error","message":"Cannot mount nasshare because there is existing data at /data/share/nasshare. Move it away first, then retry","error_key":"mount_target_not_empty_error"}`
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"result":"error"}`)}, nil)
+	mock.When(problemService.Get(mock.Any[string]())).
+		ThenReturn(&dto.Problem{ProblemKey: "supervisor_mount_target_not_empty_nasshare", Ignored: true}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err)
+	_, _ = mock.Verify(problemService, matchers.Times(0)).Upsert(mock.Any[*dto.Problem]())
+}
+
+// TestNetworkMountShare_TargetNotEmpty_FallbackPath verifies the notice names
+// the conventional target path when the supervisor message carries no path.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_TargetNotEmpty_FallbackPath() {
+	settingService, problemService := suite.newTargetNotEmptyTestApp()
+
+	useNfs := false
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	body := `{"result":"error","message":"target not empty","error_key":"mount_target_not_empty_error"}`
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"result":"error"}`)}, nil)
+
+	upsertCaptor := mock.Captor[*dto.Problem]()
+	mock.When(problemService.Get(mock.Any[string]())).ThenReturn(nil, context.DeadlineExceeded)
+	mock.When(problemService.Upsert(upsertCaptor.Capture())).
+		ThenReturn(&dto.Problem{}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err)
+	upserted := upsertCaptor.Last()
+	suite.Require().NotNil(upserted)
+	suite.Contains(upserted.Description, "/data/share/nasshare")
+}
+
+// TestNetworkMountShare_TargetNotEmpty_NilProblemService verifies the condition
+// degrades to a warning without a notice when no ProblemService is wired.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_TargetNotEmpty_NilProblemService() {
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{},
+			},
+		},
+	}
+	body := `{"result":"error","message":"Cannot mount nasshare because there is existing data at /data/share/nasshare. Move it away first, then retry","error_key":"mount_target_not_empty_error"}`
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mock.Any[mount.Mount]())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 400}, Body: []byte(body)}, nil)
+	mock.When(suite.mountClient.RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(&mount.RemoveMountResponse{HTTPResponse: &http.Response{StatusCode: 500}, Body: []byte(`{"result":"error"}`)}, nil)
+
+	err := suite.supervisorService.NetworkMountShare(context.Background(), dto.SharedResource{
+		Name:  "nasshare",
+		Usage: "media",
+	})
+
+	suite.Require().NoError(err, "nil ProblemService must degrade to warn-only")
+}
+
 // NetworkUnmountAllShares should unmount all eligible shares (media/share/backup) that are currently mounted
 func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_Success() {
 	// Shares configured in the system
