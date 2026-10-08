@@ -155,6 +155,28 @@ func (suite *XfsMissingToolTestSuite) TestGetState_MissingBinaryReturnsUnknown()
 	suite.Equal("Unknown", state.StateDescription)
 }
 
+func (suite *XfsMissingToolTestSuite) TestGetState_MissingBinaryRaceReturnsUnknown() {
+	adapter := NewXfsAdapter().(*XfsAdapter)
+	resetRunner := adapter.SetCommandRunner(&fakeCommandRunner{
+		lookPath: func(command string) (string, error) {
+			return command, nil
+		},
+		execute: func(_ context.Context, _ string, _ string, _ string, _ ...string) (dto.CommandExecutionSnapshot, error) {
+			return dto.CommandExecutionSnapshot{ExitCode: -1},
+				errors.New(`exec: "xfs_repair": executable file not found in $PATH`)
+		},
+	})
+	defer resetRunner()
+	adapter.invalidateCommandResultCache()
+	defer adapter.invalidateCommandResultCache()
+	resetMounted := adapter.SetIsDeviceMountedForTesting(func(device string) bool { return false })
+	defer resetMounted()
+
+	state, err := adapter.GetState(suite.ctx, "/dev/race-missing-xfs-state")
+	suite.NoError(err)
+	suite.Equal("Unknown", state.StateDescription)
+}
+
 func (suite *XfsMissingToolTestSuite) TestGetState_SuccessClean() {
 	adapter := NewXfsAdapter().(*XfsAdapter)
 	resetRunner := adapter.SetCommandRunner(&fakeCommandRunner{
