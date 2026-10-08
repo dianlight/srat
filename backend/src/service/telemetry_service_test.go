@@ -308,6 +308,18 @@ func (suite *TelemetryServiceSuite) TestTlogUnauthorizedAccessFiltered() {
 	suite.Nil(ev, "Routine 401 must not reach Sentry")
 }
 
+func (suite *TelemetryServiceSuite) TestTlogMissingBinaryFiltered() {
+	suite.stubSentryConnectivityOK()
+	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
+	suite.transport.reset()
+
+	tlog.Error(`exec: "xfs_admin": executable file not found in $PATH`)
+	tlog.Error("Error executing command", "error", oerrors.New(`exec: "xfs_admin": executable file not found in $PATH`))
+
+	ev := suite.transport.nextEvent(200 * time.Millisecond)
+	suite.Nil(ev, "Missing helper binary must not reach Sentry")
+}
+
 func (suite *TelemetryServiceSuite) TestTlogCallback_RequestGenericErrorAndExtras() {
 	suite.stubSentryConnectivityOK()
 	suite.Require().NoError(suite.telemetry.Configure(dto.TelemetryModes.TELEMETRYMODEERRORS))
