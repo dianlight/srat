@@ -3,6 +3,7 @@ import { normalizeSentryExtras } from "../../../utils/sentrySerialize";
 import {
   describeProblemActionFailure,
   isRetryableProblemStatus,
+  resolveReenableTarget,
 } from "../problemActionError";
 
 describe("describeProblemActionFailure (#1360)", () => {
@@ -39,9 +40,41 @@ describe("describeProblemActionFailure (#1360)", () => {
 
   it("marks fetch errors as retryable", () => {
     expect(isRetryableProblemStatus("FETCH_ERROR")).toBe(true);
+    expect(isRetryableProblemStatus("TIMEOUT_ERROR")).toBe(true);
+    expect(isRetryableProblemStatus("TIMEOUT")).toBe(true);
     expect(isRetryableProblemStatus(503)).toBe(true);
+    expect(isRetryableProblemStatus("503")).toBe(true);
     expect(isRetryableProblemStatus(400)).toBe(false);
+    expect(isRetryableProblemStatus("oops")).toBe(false);
     expect(isRetryableProblemStatus(undefined)).toBe(false);
+  });
+
+  it("handles Error-instance and string rejections", () => {
+    const fromError = describeProblemActionFailure(
+      "dismiss",
+      "addon_config_changed",
+      new Error("kaput"),
+    );
+    expect(fromError.detail).toContain("kaput");
+    expect(fromError.message).toContain("addon_config_changed");
+    expect(fromError.retryable).toBe(false);
+
+    const fromString = describeProblemActionFailure(
+      "dismiss",
+      "addon_config_changed",
+      "plain failure",
+    );
+    expect(fromString.detail).toContain("plain failure");
+    expect(fromString.retryable).toBe(false);
+  });
+
+  it("marks numeric-string statuses retryable with a toast hint", () => {
+    const failure = describeProblemActionFailure("dismiss", "addon_config_changed", {
+      status: "503",
+      data: { detail: "slow backend" },
+    });
+    expect(failure.retryable).toBe(true);
+    expect(failure.toastMessage).toContain("Retrying may help");
   });
 
   it("produces Sentry-safe extras without [Object] placeholders", () => {
@@ -59,5 +92,20 @@ describe("describeProblemActionFailure (#1360)", () => {
     expect(asString).toContain("addon_config_changed");
     expect(asString).toContain("dismiss boom");
     expect(asString).not.toContain("[Object]");
+  });
+
+  it("resolves re-enable targets for hit, miss, and blank keys", () => {
+    const issue = { problem_key: "addon_config_changed" } as never;
+    expect(resolveReenableTarget([issue], "addon_config_changed")).toEqual({
+      type: "upsert",
+      issue,
+    });
+    expect(resolveReenableTarget([issue], "gone")).toEqual({
+      type: "dismiss",
+    });
+    expect(resolveReenableTarget([], "gone")).toEqual({ type: "dismiss" });
+    expect(
+      resolveReenableTarget([{ problem_key: "" } as never], ""),
+    ).toEqual({ type: "dismiss" });
   });
 });

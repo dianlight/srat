@@ -1,3 +1,4 @@
+import type { Problem } from "../../store/sratApi";
 import { describeMutationError } from "../../utils/sentrySerialize";
 
 export type ProblemAction = "dismiss" | "ignore" | "re-enable";
@@ -63,4 +64,25 @@ export function describeProblemActionFailure(
     retryable,
     response: described.data,
   };
+}
+
+export type ReenableTarget =
+  | { type: "upsert"; issue: Problem }
+  | { type: "dismiss" };
+
+/**
+ * Resolves a re-enable action to either an upsert of the known problem or a
+ * fallback dismiss when the key is gone from the list (e.g. removed via SSE).
+ * Extracted for unit testing — the fallback is not reachable deterministically
+ * through the UI.
+ */
+export function resolveReenableTarget(
+  problems: readonly (Problem | null | undefined)[],
+  id: string,
+): ReenableTarget {
+  const issue = problems.find((problem) => problem?.problem_key === id);
+  if (issue?.problem_key) {
+    return { type: "upsert", issue };
+  }
+  return { type: "dismiss" };
 }

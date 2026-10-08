@@ -29,6 +29,7 @@ import { ActionableItemsList } from "./components/ActionableItemsList";
 import {
   describeProblemActionFailure,
   type ProblemAction,
+  resolveReenableTarget,
 } from "./problemActionError";
 
 export function DashboardActions() {
@@ -208,8 +209,9 @@ export function DashboardActions() {
     if (typeof id !== "string") {
       return;
     }
-    const issue = mergedProblems.find((problem) => problem?.problem_key === id);
-    if (issue?.problem_key) {
+    const target = resolveReenableTarget(mergedProblems, id);
+    if (target.type === "upsert") {
+      const issue = target.issue;
       upsertProblem({
         problemKey: issue.problem_key,
         problem: { ...issue, ignored: false, status: Status.Created },

@@ -186,4 +186,74 @@ describe("DashboardActions problem-action failures (#1360)", () => {
       consoleSpy.mockRestore();
     }
   });
+
+  it("reports re-enable failure with the same context", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const server = getMswServer();
+      server.use(
+        http.get(/\/api\/problems$/, () =>
+          HttpResponse.json([
+            makeProblem({ ignored: true, status: "ignored" }),
+          ]),
+        ),
+        http.put(/\/api\/problems\/.+$/, () =>
+          HttpResponse.json(
+            { detail: "re-enable boom", status: 500 },
+            { status: 500 },
+          ),
+        ),
+      );
+
+      const user = userEvent.setup();
+      await renderWithTestStore(
+        React.createElement(
+          MemoryRouter,
+          null,
+          React.createElement(DashboardActions as any),
+        ),
+      );
+
+      const showIgnored = screen.getByRole("switch", {
+        name: /show ignored/i,
+      });
+      await user.click(showIgnored);
+
+      const reenableButton = await screen.findByRole("button", {
+        name: /^re-enable$/i,
+      });
+      await user.click(reenableButton);
+
+      await waitFor(() => {
+        expect(reportErrorMock).toHaveBeenCalledTimes(1);
+      });
+      const [sentryError, extras] = reportErrorMock.mock.calls[0] as [
+        Error,
+        Record<string, unknown>,
+      ];
+      expect((sentryError as Error).message).toContain("re-enable");
+      expect((sentryError as Error).message).toContain(
+        "addon_config_changed",
+      );
+      expect((sentryError as Error).message).toContain("re-enable boom");
+      expect(extras["problemKey"]).toBe("addon_config_changed");
+      expect(extras["status"]).toBe(500);
+      expect(JSON.stringify(extras)).not.toContain("[Object]");
+
+      expect(consoleSpy).toHaveBeenCalled();
+      expect(consoleSpy.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+
+      await waitFor(() => {
+        expect(toastErrorMock).toHaveBeenCalledTimes(1);
+      });
+      expect(String(toastErrorMock.mock.calls[0]?.[0])).toContain(
+        "re-enable boom",
+      );
+      expect(String(toastErrorMock.mock.calls[0]?.[0])).toContain(
+        "Retrying may help",
+      );
+    } finally {
+      consoleSpy.mockRestore();
+    }
+  });
 });
