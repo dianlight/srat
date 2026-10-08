@@ -31,6 +31,11 @@ var skipSentryFlushForTest bool
 // It is high volume and low actionability (LAN/misconfigured reverse paths).
 const unauthorizedAccessMessage = "Unauthorized access from"
 
+// protectedModeMessage is the expected Protected-mode mount guard (#1340).
+// Automount attempts while Protected mode is enabled are skipped by design;
+// they must never become Sentry issues.
+const protectedModeMessage = "Operation not permitted in Protected mode"
+
 // shouldDropSentryEvent reports whether a Sentry event is routine noise that
 // must be filtered before send.
 func shouldDropSentryEvent(event *sentry.Event) bool {
@@ -40,8 +45,14 @@ func shouldDropSentryEvent(event *sentry.Event) bool {
 	if strings.Contains(event.Message, unauthorizedAccessMessage) {
 		return true
 	}
+	if strings.Contains(event.Message, protectedModeMessage) {
+		return true
+	}
 	for _, ex := range event.Exception {
 		if strings.Contains(ex.Value, unauthorizedAccessMessage) {
+			return true
+		}
+		if strings.Contains(ex.Value, protectedModeMessage) {
 			return true
 		}
 	}
@@ -49,7 +60,8 @@ func shouldDropSentryEvent(event *sentry.Event) bool {
 }
 
 // sentryBeforeSend anonymises PII, enriches stack traces and drops routine
-// 401 noise so info-level auth rejections never become Sentry issues.
+// noise (401s, Protected-mode guard) so expected rejections never become
+// Sentry issues.
 func sentryBeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	if shouldDropSentryEvent(event) {
 		return nil
@@ -461,6 +473,9 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 		if strings.Contains(event.Record.Message, unauthorizedAccessMessage) {
 			return
 		}
+		if strings.Contains(event.Record.Message, protectedModeMessage) {
+			return
+		}
 
 		// Try to extract an error and request from log event attributes
 		var extractedErr error
@@ -541,7 +556,13 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 			return true
 		})
 
-		// Use existing telemetry path to report error
+		// Use existing telemetry path to report error.
+		// The Protected-mode guard is expected by design (#1340): never
+		// forward it even if an Error-level log carries it (BeforeSend is
+		// the second safety net).
+		if extractedErr != nil && strings.Contains(extractedErr.Error(), protectedModeMessage) {
+			return
+		}
 		if extractedErr == nil {
 			if request != nil {
 				_ = ts.ReportError(request, "§ "+event.Record.Message, extraData)

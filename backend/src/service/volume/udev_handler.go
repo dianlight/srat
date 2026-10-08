@@ -417,6 +417,17 @@ func (h *UdevHandler) HandlePartitionUdevAddEvent(devName string) bool {
 			continue
 		}
 
+		// #1340: Protected mode blocks mount(2) by design. Skip automount
+		// quietly at info level without consuming the retry budget,
+		// notifications, or warn/error logging (which would report to
+		// Sentry as if it were a failure).
+		if h.orchestrator != nil && h.orchestrator.IsProtectedMode() {
+			slog.InfoContext(h.ctx, "Skipping automount in Protected mode",
+				"devname", devName, "path", mountPoint.Path)
+			h.orchestrator.ClearAutomountRetry(mountPoint.Path)
+			continue
+		}
+
 		if allowed, exhausted := h.orchestrator.AllowAutomountAttempt(mountPoint.Path); !allowed {
 			if exhausted {
 				slog.WarnContext(h.ctx, "Automount attempts exhausted for partition add event, giving up",
@@ -441,6 +452,15 @@ func (h *UdevHandler) HandlePartitionUdevAddEvent(devName string) bool {
 				slog.InfoContext(h.ctx, "Mount point already mounted during partition add automount retry", "devname", devName, "path", mountCopy.Path)
 				h.orchestrator.ClearAutomountRetry(mountCopy.Path)
 				handled = true
+				continue
+			}
+			// #1340: race where Protected mode enabled between the early
+			// check and the mount call. Expected by design: skip quietly
+			// without retry accounting or notifications.
+			if errors.Is(err, dto.ErrorOperationNotPermittedInProtectedMode) {
+				slog.InfoContext(h.ctx, "Skipping automount in Protected mode",
+					"devname", devName, "path", mountCopy.Path)
+				h.orchestrator.ClearAutomountRetry(mountCopy.Path)
 				continue
 			}
 			slog.WarnContext(h.ctx, "Failed automount retry for partition add event", "devname", devName, "path", mountCopy.Path, "err", err)
@@ -721,6 +741,16 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 		return err
 	}
 	if (e.Type == events.EventTypes.ADD || e.Type == events.EventTypes.UPDATE) && !e.MountPoint.IsMounted && e.MountPoint.IsToMountAtStartup != nil && *e.MountPoint.IsToMountAtStartup {
+		// #1340: Protected mode blocks mount(2) by design. Persist above
+		// stays so config is not lost, but never attempt the mount: skip
+		// quietly at info level without retry accounting, notifications,
+		// or warn/error logging (which would report to Sentry).
+		if h.orchestrator != nil && h.orchestrator.IsProtectedMode() {
+			slog.InfoContext(ctx, "Skipping automount in Protected mode",
+				"mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+			h.orchestrator.ClearAutomountRetry(e.MountPoint.Path)
+			return nil
+		}
 		// #1342: HAOS system paths (/addon_configs, …) and the "native"
 		// pseudo-filesystem are not block devices. Persist above stays,
 		// but never attempt mount(2): skip quietly without retry
@@ -747,6 +777,15 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 		if err != nil {
 			if errors.Is(err, dto.ErrorAlreadyMounted) {
 				slog.InfoContext(ctx, "Mount point already mounted during automount attempt", "mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
+				h.orchestrator.ClearAutomountRetry(e.MountPoint.Path)
+				return nil
+			}
+			// #1340: race where Protected mode enabled between the early
+			// check and the mount call. Expected by design: skip quietly
+			// without retry accounting or notifications.
+			if errors.Is(err, dto.ErrorOperationNotPermittedInProtectedMode) {
+				slog.InfoContext(ctx, "Skipping automount in Protected mode",
+					"mount_point", e.MountPoint.Path, "device_id", e.MountPoint.DeviceId)
 				h.orchestrator.ClearAutomountRetry(e.MountPoint.Path)
 				return nil
 			}

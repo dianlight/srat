@@ -26,3 +26,19 @@ func TestSentryBeforeSend_DropsUnauthorizedKeepsRest(t *testing.T) {
 	require.NotNil(t, kept)
 	assert.Empty(t, kept.User.IPAddress)
 }
+
+func TestShouldDropSentryEvent_ProtectedMode(t *testing.T) {
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{Message: "Operation not permitted in Protected mode"}))
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{
+		Exception: []sentry.Exception{{Value: "Operation not permitted in Protected mode"}},
+	}))
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{
+		Exception: []sentry.Exception{{Value: "Failed to mount volume on event: Operation not permitted in Protected mode"}},
+	}))
+	assert.False(t, shouldDropSentryEvent(&sentry.Event{Message: "real boom"}))
+}
+
+func TestSentryBeforeSend_DropsProtectedMode(t *testing.T) {
+	dropped := sentryBeforeSend(&sentry.Event{Message: "Operation not permitted in Protected mode"}, nil)
+	assert.Nil(t, dropped)
+}
