@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/ctxkeys"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -106,6 +107,102 @@ func (suite *VolumeMountManagerTestSuite) seedMountPoint() *dto.MountPointData {
 	}
 	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, *md))
 	return md
+}
+
+// TestMount_SuccessUpdatesCacheAndEmits verifies the happy path still works:
+// the converter result is cached as mounted and a MountPointEvent is
+// emitted after the cache update.
+func (suite *VolumeMountManagerTestSuite) TestMount_SuccessUpdatesCacheAndEmits() {
+	diskID := "disk-mount-ok"
+	partID := "part-mount-ok"
+	devicePath := "/dev/mount-ok"
+	fsType := "ext4"
+
+	suite.Require().NoError(suite.disks.AddOrUpdate(&dto.Disk{
+		Id: &diskID,
+		Partitions: &map[string]dto.Partition{
+			partID: {Id: &partID, DiskId: &diskID, DevicePath: &devicePath},
+		},
+	}))
+	md := &dto.MountPointData{
+		Path:      "/mnt/mount-ok",
+		DeviceId:  partID,
+		Root:      "/",
+		FSType:    &fsType,
+		Flags:     &dto.MountFlags{},
+		Partition: &dto.Partition{Id: &partID, DiskId: &diskID, DevicePath: &devicePath},
+	}
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, *md))
+
+	mock.When(suite.mockFsSvc.MountPartition(
+		mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+	)).ThenReturn(&mount.MountPoint{Path: "/mnt/mount-ok", Device: devicePath, FSType: "ext4"}, nil)
+
+	var emitted int
+	unregister := suite.eventBus.OnMountPoint(func(_ context.Context, _ events.MountPointEvent) errors.E {
+		emitted++
+		return nil
+	})
+	defer unregister()
+
+	errE := suite.mounter.Mount(md, 0, "", "ext4")
+	suite.Require().NoError(errE)
+	suite.True(md.IsMounted)
+	suite.Equal(1, emitted)
+
+	cached, ok := suite.disks.GetMountPointByPath("/mnt/mount-ok")
+	suite.Require().True(ok)
+	suite.True(cached.IsMounted)
+}
+
+// TestMount_GenericFailureWrappedAsMountFail verifies an unexpected mount
+// error keeps the ErrorMountFail contract with device/path/fstype context.
+func (suite *VolumeMountManagerTestSuite) TestMount_GenericFailureWrappedAsMountFail() {
+	md := suite.seedMountPoint()
+	md.Partition.DevicePath = new("/dev/h6")
+
+	mock.When(suite.mockFsSvc.MountPartition(
+		mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+	)).ThenReturn(nil, errors.New("mount /mnt/h6: no such device"))
+
+	errE := suite.mounter.Mount(md, 0, "", "ext4")
+	suite.Require().Error(errE)
+	suite.ErrorIs(errE, dto.ErrorMountFail)
+}
+
+// TestMount_BusyDowngradedToAlreadyMounted verifies an EBUSY mount failure
+// is returned as ErrorAlreadyMounted (#1359) so callers skip quietly instead
+// of reporting a Mount Fail to Sentry.
+func (suite *VolumeMountManagerTestSuite) TestMount_BusyDowngradedToAlreadyMounted() {
+	md := suite.seedMountPoint()
+	md.Partition.DevicePath = new("/dev/h6")
+
+	mock.When(suite.mockFsSvc.MountPartition(
+		mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+	)).ThenReturn(nil, errors.New("mount /mnt/h6: device or resource busy"))
+
+	errE := suite.mounter.Mount(md, 0, "", "ext4")
+	suite.Require().Error(errE)
+	suite.ErrorIs(errE, dto.ErrorAlreadyMounted)
+}
+
+// TestMount_InvalidOptionNamedAsInvalidParameter verifies an EINVAL mount
+// failure names the offending option set as ErrorInvalidParameter (#1359)
+// instead of a generic Mount Fail.
+func (suite *VolumeMountManagerTestSuite) TestMount_InvalidOptionNamedAsInvalidParameter() {
+	md := suite.seedMountPoint()
+	md.Partition.DevicePath = new("/dev/h6")
+
+	mock.When(suite.mockFsSvc.MountPartition(
+		mock.AnyContext(), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[string](), mock.Any[uintptr](), mock.Any[func() error](),
+	)).ThenReturn(nil, errors.New("mount /mnt/h6 (fs type ntfs3): invalid argument"))
+
+	errE := suite.mounter.Mount(md, 0, "fmask=000,dmask=000", "ntfs3")
+	suite.Require().Error(errE)
+	suite.ErrorIs(errE, dto.ErrorInvalidParameter)
+	details := errors.Details(errE)
+	suite.Require().NotNil(details)
+	suite.Contains(details["Message"], "fmask")
 }
 
 // TestUnmount_NormalPassesNoFlags verifies a normal (non-force) unmount calls

@@ -36,6 +36,16 @@ const unauthorizedAccessMessage = "Unauthorized access from"
 // they must never become Sentry issues.
 const protectedModeMessage = "Operation not permitted in Protected mode"
 
+// alreadyMountedMessage marks the expected already-mounted/busy skip (#1352,
+// #1359). Mounting an already-mounted device or a busy target is handled
+// quietly by design and must never become a Sentry issue.
+const alreadyMountedMessage = "Already mounted"
+
+func isAlreadyMountedNoise(s string) bool {
+	return strings.Contains(s, alreadyMountedMessage) ||
+		strings.Contains(strings.ToLower(s), "device or resource busy")
+}
+
 // isMissingBinaryNoise reports whether s describes a benign missing optional
 // helper binary (e.g. xfs_admin absent from the image, #1353). Such capability
 // gaps degrade gracefully and must never become Sentry issues.
@@ -58,11 +68,17 @@ func shouldDropSentryEvent(event *sentry.Event) bool {
 	if isMissingBinaryNoise(event.Message) {
 		return true
 	}
+	if isAlreadyMountedNoise(event.Message) {
+		return true
+	}
 	for _, ex := range event.Exception {
 		if strings.Contains(ex.Value, unauthorizedAccessMessage) {
 			return true
 		}
 		if isMissingBinaryNoise(ex.Value) {
+			return true
+		}
+		if isAlreadyMountedNoise(ex.Value) {
 			return true
 		}
 	}
@@ -591,12 +607,19 @@ func (ts *TelemetryService) registerTlogCallbacks() {
 		// Use existing telemetry path to report error.
 		// The Protected-mode guard is expected by design (#1340): never
 		// forward it even if an Error-level log carries it (BeforeSend is
-		// the second safety net). Missing helper binaries (#1353) are the
-		// same class of benign noise.
+		// the second safety net). Missing helper binaries (#1353) and
+		// already-mounted/busy skips (#1359) are the same class of benign
+		// noise.
 		if extractedErr != nil && strings.Contains(extractedErr.Error(), protectedModeMessage) {
 			return
 		}
 		if extractedErr != nil && isMissingBinaryNoise(extractedErr.Error()) {
+			return
+		}
+		if extractedErr != nil && isAlreadyMountedNoise(extractedErr.Error()) {
+			return
+		}
+		if extractedErr == nil && isAlreadyMountedNoise(event.Record.Message) {
 			return
 		}
 		if extractedErr == nil {

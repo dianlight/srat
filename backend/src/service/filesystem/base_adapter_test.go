@@ -332,6 +332,24 @@ func (suite *BaseAdapterTestSuite) TestBaseAdapterMountUsesMountWhenFsTypeProvid
 	suite.Equal("ntfs3", mp.FSType)
 }
 
+// TestBaseAdapterMountInvalidOptionNamesData tests that an EINVAL mount
+// failure carries the rejected option set as a hint (#1359).
+func (suite *BaseAdapterTestSuite) TestBaseAdapterMountInvalidOptionNamesData() {
+	suite.cleanMount = suite.adapter.SetMountOpsForTesting(
+		nil,
+		func(source, target, fstype, data string, flags uintptr, opts ...func() error) (*mount.MountPoint, error) {
+			return nil, errors.New("mount /mnt/mock (fs type ntfs3): invalid argument")
+		},
+		nil,
+	)
+
+	mp, err := suite.adapter.Mount(suite.ctx, "/dev/mock", "/mnt/mock", "ntfs3", "fmask=000,dmask=000", 0, nil)
+
+	suite.Error(err)
+	suite.Nil(mp)
+	suite.Contains(err.Error(), "invalid argument")
+}
+
 // TestBaseAdapterUnmountDelegatesToHook tests unmount behavior
 func (suite *BaseAdapterTestSuite) TestBaseAdapterUnmountDelegatesToHook() {
 

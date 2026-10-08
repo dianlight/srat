@@ -1,7 +1,10 @@
 package osutil
 
 import (
+	"syscall"
 	"testing"
+
+	apperrors "errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,6 +63,37 @@ func TestIsMounted(t *testing.T) {
 	missing, err := IsMounted("/mnt/missing")
 	require.NoError(t, err)
 	assert.False(t, missing)
+}
+
+func TestIsSourceMounted(t *testing.T) {
+	restore := MockMountInfo(sampleMountInfo)
+	t.Cleanup(restore)
+
+	mounted, at, err := IsSourceMounted("/dev/root")
+	require.NoError(t, err)
+	assert.True(t, mounted)
+	assert.Equal(t, "/mnt/root", at)
+
+	missing, at, err := IsSourceMounted("/dev/sdz9")
+	require.NoError(t, err)
+	assert.False(t, missing)
+	assert.Empty(t, at)
+
+	empty, _, err := IsSourceMounted("  ")
+	require.NoError(t, err)
+	assert.False(t, empty)
+}
+
+func TestMountErrorClassifiers(t *testing.T) {
+	assert.False(t, IsMountBusyError(nil))
+	assert.True(t, IsMountBusyError(syscall.EBUSY))
+	assert.True(t, IsMountBusyError(apperrors.New("mount /mnt/x: device or resource busy")))
+	assert.False(t, IsMountBusyError(apperrors.New("mount /mnt/x: invalid argument")))
+
+	assert.False(t, IsMountInvalidOptionError(nil))
+	assert.True(t, IsMountInvalidOptionError(syscall.EINVAL))
+	assert.True(t, IsMountInvalidOptionError(apperrors.New("mount /mnt/x (fs type ntfs3): invalid argument")))
+	assert.False(t, IsMountInvalidOptionError(apperrors.New("mount /mnt/x: device or resource busy")))
 }
 
 func (suite *OsutilSuite) TestParseHelpers() {

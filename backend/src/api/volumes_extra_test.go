@@ -137,6 +137,15 @@ func (suite *VolumeHandlerSuite) TestMountVolumeErrorBranches() {
 	h4.RegisterVolumeHandlers(apiInst4)
 	resp4 := apiInst4.Post("/volume/mount", mount)
 	suite.Require().Equal(http.StatusInternalServerError, resp4.Code)
+
+	// Already mounted -> 409 without a Sentry error
+	vmock5 := mock.Mock[service.VolumeServiceInterface](ctrl)
+	mock.When(vmock5.MountVolume(mock.Any[*dto.MountPointData]())).ThenReturn(errors.WithStack(dto.ErrorAlreadyMounted))
+	h5 := api.NewVolumeHandler(vmock5, suite.mockShareSvc, &dto.ContextState{})
+	_, apiInst5 := humatest.New(suite.T())
+	h5.RegisterVolumeHandlers(apiInst5)
+	resp5 := apiInst5.Post("/volume/mount", mount)
+	suite.Require().Equal(http.StatusConflict, resp5.Code)
 }
 
 // TestMountVolumeInvalidPathExposesSuggestedPath verifies that a mount path

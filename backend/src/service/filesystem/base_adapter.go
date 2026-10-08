@@ -436,6 +436,16 @@ func (b *baseAdapter) Mount(
 		mp, err = b.baseDoMountFunc(source, target, fsType, data, flags, opts...)
 	}
 	if err != nil {
+		if osutil.IsMountInvalidOptionError(err) {
+			return nil, errors.WithDetails(err,
+				"Source", source,
+				"Target", target,
+				"FSType", fsType,
+				"Flags", flags,
+				"Data", data,
+				"Hint", "mount rejected option set (invalid argument); check fmask/dmask/uid/gid for fstype",
+			)
+		}
 		return nil, errors.WithDetails(err,
 			"Source", source,
 			"Target", target,
