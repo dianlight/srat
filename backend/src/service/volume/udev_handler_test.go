@@ -731,6 +731,92 @@ func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_ProtectedModeSkip
 	s.True(allowed, "protected-mode skip must not consume the retry budget")
 }
 
+func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_ProtectedModeRaceSkipsQuietly() {
+	ha := &fakeNotifier{}
+	mounter := &fakeOrchestratorMounter{}
+	calls := 0
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: mounter, HA: ha, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		ProtectedMode: func() bool {
+			calls++
+			return calls > 1
+		},
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo, Orchestrator: orchestrator, Filesystem: &fakeOrchestratorFS{},
+		Refresh: func() errors.E { return nil },
+	})
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	diskID, partID := "disk-h-1340c", "part-h-1340c"
+	diskIDCopy, partIDCopy, devCopy := diskID, partID, deviceFile
+	parts := map[string]dto.Partition{partID: {Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "share"), Root: "/", DeviceId: partID,
+		Type: "ADDON", Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+		IsToMountAtStartup: new(true), IsMounted: false,
+		Partition: &dto.Partition{Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy},
+	}
+	s.Require().NoError(handler.HandleMountPointEvent(s.ctx, events.MountPointEvent{
+		Type: events.EventTypes.ADD, MountPoint: md,
+	}))
+	s.Equal(0, mounter.mountCalls, "protected-mode race must never reach the mounter")
+	s.Empty(ha.created, "protected-mode race must not raise notifications")
+	allowed, _ := orchestrator.AllowAutomountAttempt(md.Path)
+	s.True(allowed, "protected-mode race must not consume the retry budget")
+}
+
+func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_ProtectedModeRaceSkipsQuietly() {
+	calls := 0
+	mounter := &fakeOrchestratorMounter{}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		ProtectedMode: func() bool {
+			calls++
+			return calls > 1
+		},
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+	handler := volume.NewUdevHandler(volume.HandlerParams{
+		Ctx: s.ctx, Disks: s.disks, EventBus: s.eventBus,
+		Repo: s.repo, Orchestrator: orchestrator,
+		Refresh: func() errors.E { return nil },
+	})
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	devName := "sdz1340c"
+	diskID, partID := "disk-h-1340d", "part-h-1340d"
+	diskIDCopy, partIDCopy := diskID, partID
+	devNameCopy, devFileCopy := devName, deviceFile
+	mountPath := filepath.Join(tmpDir, "mnt", "share")
+	mps := map[string]dto.MountPointData{mountPath: {
+		Path: mountPath, Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, IsToMountAtStartup: new(true), IsMounted: false,
+	}}
+	parts := map[string]dto.Partition{partID: {
+		Id: &partIDCopy, DiskId: &diskIDCopy,
+		LegacyDeviceName: &devNameCopy, DevicePath: &devFileCopy, MountPointData: &mps,
+	}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+
+	s.False(handler.HandlePartitionUdevAddEvent(devName))
+	s.Equal(0, mounter.mountCalls, "protected-mode race must never reach the mounter")
+	allowed, _ := orchestrator.AllowAutomountAttempt(mountPath)
+	s.True(allowed, "protected-mode race must not consume the retry budget")
+}
+
 func (s *UdevHandlerTestSuite) TestHandlePartitionUdevAddEvent_SkipsNativeSystemMount() {
 	tmpDir := s.T().TempDir()
 	deviceFile := filepath.Join(tmpDir, "device.img")

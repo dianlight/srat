@@ -45,18 +45,31 @@ func shouldDropSentryEvent(event *sentry.Event) bool {
 	if strings.Contains(event.Message, unauthorizedAccessMessage) {
 		return true
 	}
-	if strings.Contains(event.Message, protectedModeMessage) {
-		return true
-	}
 	for _, ex := range event.Exception {
 		if strings.Contains(ex.Value, unauthorizedAccessMessage) {
 			return true
 		}
-		if strings.Contains(ex.Value, protectedModeMessage) {
-			return true
-		}
 	}
-	return false
+	return isProtectedModeGuardOnlyEvent(event)
+}
+
+// isProtectedModeGuardOnlyEvent reports whether a Sentry event carries only
+// the expected Protected-mode mount guard (#1340) and no unrelated error.
+// Mixed-error events are kept so an unrelated failure is never suppressed
+// alongside the guard.
+func isProtectedModeGuardOnlyEvent(event *sentry.Event) bool {
+	matched := strings.Contains(event.Message, protectedModeMessage)
+	for _, ex := range event.Exception {
+		if strings.TrimSpace(ex.Value) == "" {
+			continue
+		}
+		if strings.Contains(ex.Value, protectedModeMessage) {
+			matched = true
+			continue
+		}
+		return false
+	}
+	return matched
 }
 
 // sentryBeforeSend anonymises PII, enriches stack traces and drops routine
