@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"crypto/rand"
 	"encoding/base64"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 
 	"github.com/prometheus/procfs"
 	"golang.org/x/sys/unix"
@@ -292,6 +294,55 @@ func IsMounted(path string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// IsSourceMounted checks whether the provided device source is present in the
+// mount table. It returns the mount directory of the first match so callers
+// can report where the device is already mounted (#1359).
+func IsSourceMounted(source string) (bool, string, error) {
+	entries, err := LoadMountInfo()
+	if err != nil {
+		return false, "", err
+	}
+	target := strings.TrimSpace(source)
+	if target == "" {
+		return false, "", nil
+	}
+	for _, entry := range entries {
+		if strings.TrimSpace(entry.MountSource) == target {
+			return true, entry.MountDir, nil
+		}
+	}
+	return false, "", nil
+}
+
+// IsMountBusyError reports whether err is the EBUSY mount failure raised when
+// the source device or the target path is already mounted (#1352, #1359).
+// Such failures are expected races and must skip quietly instead of
+// producing Sentry issues.
+func IsMountBusyError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.EBUSY) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "device or resource busy")
+}
+
+// IsMountInvalidOptionError reports whether err is the EINVAL mount failure
+// raised when the kernel rejects the option set (#1359). The caller must
+// name the offending data string so the failure is actionable.
+func IsMountInvalidOptionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.EINVAL) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "invalid argument")
 }
 
 // IsWritable returns true when the current user has write access to the path.

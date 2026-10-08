@@ -64,9 +64,13 @@ func (a *NtfsAdapter) GetMountFlags() []dto.MountFlag {
 // the "You need permission from Unix User\root" lockout reported in
 // hassio-addons#769 / srat#1264. fmask/dmask are valid on both the ntfs3
 // kernel driver and the ntfs-3g FUSE driver (unlike the ntfs-3g-only
-// "permissions" option, which ntfs3 rejects).
+// "permissions" option, which ntfs3 rejects). uid/gid 0 accompany the masks
+// because ntfs3 rejects a bare fmask/dmask set without ownership mapping
+// with EINVAL on some kernels (#1359).
 func (a *NtfsAdapter) GetDefaultMountFlags() []dto.MountFlag {
 	return []dto.MountFlag{
+		{Name: "uid", NeedsValue: true, FlagValue: "0"},
+		{Name: "gid", NeedsValue: true, FlagValue: "0"},
 		{Name: "fmask", NeedsValue: true, FlagValue: "000"},
 		{Name: "dmask", NeedsValue: true, FlagValue: "000"},
 	}

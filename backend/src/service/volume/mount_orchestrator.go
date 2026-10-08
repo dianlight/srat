@@ -255,6 +255,22 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// Device-level pre-check (#1359): the path may be free while the device
+	// is already mounted elsewhere. Skip quietly instead of issuing a
+	// mount(2) that fails with EBUSY and becomes a Sentry issue.
+	if mounted, at, srcErr := osutil.IsSourceMounted(*md.Partition.DevicePath); srcErr != nil {
+		slog.DebugContext(o.ctx, "osutil.IsSourceMounted check failed, proceeding", "device", md.DeviceId, "source", *md.Partition.DevicePath, "err", srcErr)
+	} else if mounted {
+		slog.WarnContext(o.ctx, "Device already mounted elsewhere according to OS check, skipping", "device", md.DeviceId, "source", *md.Partition.DevicePath, "mounted_at", at, "path", md.Path)
+		return errors.WithDetails(dto.ErrorAlreadyMounted,
+			"Device", md.DeviceId,
+			"DevicePath", *md.Partition.DevicePath,
+			"Path", md.Path,
+			"MountedAt", at,
+			"Message", "Device is already mounted",
+		)
+	}
+
 	// Initialize flags if nil to avoid nil pointer dereference
 	if md.Flags == nil {
 		md.Flags = &dto.MountFlags{}
@@ -323,6 +339,18 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	if err := o.mounter.Mount(md, flags, data, mountFsType); err != nil {
+		// EBUSY race (#1352, #1359): the device was mounted between the
+		// pre-check and the syscall. Treat as already-mounted so callers
+		// skip quietly instead of recording a failure or notifying.
+		if errors.Is(err, dto.ErrorAlreadyMounted) || osutil.IsMountBusyError(err) {
+			slog.WarnContext(o.ctx, "Mount raced with an existing mount, skipping quietly", "device", md.DeviceId, "path", md.Path, "err", err)
+			return errors.WithDetails(dto.ErrorAlreadyMounted,
+				"Device", md.DeviceId,
+				"Path", md.Path,
+				"Message", "Volume is already mounted",
+				"Error", err.Error(),
+			)
+		}
 		return err
 	}
 

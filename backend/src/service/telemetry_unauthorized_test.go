@@ -56,3 +56,17 @@ func TestSentryBeforeSend_DropsProtectedMode(t *testing.T) {
 	dropped := sentryBeforeSend(&sentry.Event{Message: "Operation not permitted in Protected mode"}, nil)
 	assert.Nil(t, dropped)
 }
+
+func TestShouldDropSentryEvent_AlreadyMounted(t *testing.T) {
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{Message: "Already mounted"}))
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{Message: "mount /mnt/x: device or resource busy"}))
+	assert.True(t, shouldDropSentryEvent(&sentry.Event{
+		Exception: []sentry.Exception{{Value: "Mount Fail: mount /mnt/x: device or resource busy"}},
+	}))
+	assert.False(t, shouldDropSentryEvent(&sentry.Event{Message: "real boom"}))
+}
+
+func TestSentryBeforeSend_DropsAlreadyMounted(t *testing.T) {
+	dropped := sentryBeforeSend(&sentry.Event{Message: "Already mounted"}, nil)
+	assert.Nil(t, dropped)
+}

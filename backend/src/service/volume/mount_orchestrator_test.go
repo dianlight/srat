@@ -145,6 +145,45 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_AlreadyMounted() {
 	s.Zero(s.mounter.mountCalls, "OS-level mount must not run when already mounted")
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_DeviceAlreadyMountedElsewhere() {
+	tmpDir := s.T().TempDir()
+	devFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(devFile, []byte("test"), 0o600))
+	restore := osutil.MockMountInfo("1217 819 0:52 / /mnt/other rw,relatime - ext4 " + devFile + " rw\n")
+	s.T().Cleanup(restore)
+
+	partID := "part-orch-devmounted"
+	partition := dto.Partition{Id: &partID, DevicePath: &devFile}
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "fresh"), Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, Partition: &partition,
+	}
+
+	err := s.orchestrator.MountVolume(md)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorAlreadyMounted)
+	s.Zero(s.mounter.mountCalls, "OS-level mount must not run when the device is mounted elsewhere")
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_MounterBusyRacedToAlreadyMounted() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-busy", "part-orch-busy", deviceFile)
+	s.mounter.mountErr = errors.WithDetails(errors.New("mount: device or resource busy"), "Source", deviceFile)
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "share"), Root: "/", DeviceId: "part-orch-busy",
+		Flags: &dto.MountFlags{},
+		Partition: &dto.Partition{
+			Id: new("part-orch-busy"), DevicePath: &deviceFile,
+		},
+	}
+	err := s.orchestrator.MountVolume(md)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorAlreadyMounted)
+}
+
 func (s *MountOrchestratorTestSuite) TestUnmountVolume_NotFound_DelegatesToMounter() {
 	err := s.orchestrator.UnmountVolume("/mnt/orch-missing", false)
 	s.Require().NoError(err)

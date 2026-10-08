@@ -86,16 +86,23 @@ func (suite *NtfsAdapterTestSuite) TestGetMountFlags() {
 }
 
 // TestGetDefaultMountFlags verifies the NTFS adapter declares open
-// fmask/dmask defaults (valid on both ntfs3 and ntfs-3g) so that
+// uid/gid/fmask/dmask defaults (valid on both ntfs3 and ntfs-3g) so that
 // Samba-mapped users can read/write instead of hitting the root-ownership
-// lockout (hassio-addons#769 / srat#1264).
+// lockout (hassio-addons#769 / srat#1264). uid/gid accompany the masks
+// because ntfs3 rejects a bare fmask/dmask set with EINVAL (#1359).
 func (suite *NtfsAdapterTestSuite) TestGetDefaultMountFlags() {
 	defaults := suite.adapter.GetDefaultMountFlags()
-	suite.Require().Len(defaults, 2)
+	suite.Require().Len(defaults, 4)
 
 	byName := make(map[string]dto.MountFlag, len(defaults))
 	for _, flag := range defaults {
 		byName[flag.Name] = flag
+	}
+	for _, name := range []string{"uid", "gid"} {
+		flag, ok := byName[name]
+		suite.Require().True(ok, "missing default flag %s", name)
+		suite.True(flag.NeedsValue)
+		suite.Equal("0", flag.FlagValue)
 	}
 	for _, name := range []string{"fmask", "dmask"} {
 		flag, ok := byName[name]
