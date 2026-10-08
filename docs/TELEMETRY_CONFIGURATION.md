@@ -1,5 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
 **Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
 
 - [Telemetry Configuration Guide](#telemetry-configuration-guide)
@@ -42,20 +43,20 @@ Environment (`development`, `prerelease`, `production`) is detected at runtime f
 
 ### Frontend (TypeScript)
 
-| Variable          | Required | Description                                | Default    |
-| ----------------- | -------- | ------------------------------------------ | ---------- |
-| `VITE_SENTRY_DSN` | No       | Frontend Sentry DSN                        | `disabled` |
+| Variable          | Required | Description         | Default    |
+| ----------------- | -------- | ------------------- | ---------- |
+| `VITE_SENTRY_DSN` | No       | Frontend Sentry DSN | `disabled` |
 
 It must point at a dedicated frontend Sentry project, distinct from the
 backend `SENTRY_DSN`.
 
 ### Source map upload (frontend)
 
-| Variable                  | Required      | Description                                                | Default      |
-| ------------------------- | ------------- | ---------------------------------------------------------- | ------------ |
-| `SENTRY_AUTH_TOKEN`       | No (secret)   | Uploads `*.js.map` after production frontend builds        | empty (skip) |
-| `SENTRY_ORG`              | No (variable) | Sentry org for source map upload                           | empty (skip) |
-| `SENTRY_PROJECT_FRONTEND` | No (variable) | Frontend project slug, no fallback                         | empty (skip) |
+| Variable                  | Required      | Description                                         | Default      |
+| ------------------------- | ------------- | --------------------------------------------------- | ------------ |
+| `SENTRY_AUTH_TOKEN`       | No (secret)   | Uploads `*.js.map` after production frontend builds | empty (skip) |
+| `SENTRY_ORG`              | No (variable) | Sentry org for source map upload                    | empty (skip) |
+| `SENTRY_PROJECT_FRONTEND` | No (variable) | Frontend project slug, no fallback                  | empty (skip) |
 
 Production frontend builds emit external `*.js.map` files (watch/serve stay
 inline) and `mise run //frontend:build` uploads them via
