@@ -127,12 +127,20 @@ func NewMountOrchestrator(in OrchestratorParams) *MountOrchestrator {
 	}
 }
 
+// IsProtectedMode reports whether mount/unmount operations are currently
+// blocked by Protected mode. Handlers consult it to skip automount attempts
+// early (#1340) instead of calling MountVolume and logging the expected
+// guard error.
+func (o *MountOrchestrator) IsProtectedMode() bool {
+	return o != nil && o.protectedMode != nil && o.protectedMode()
+}
+
 // MountVolume validates a mount request and delegates the OS work to the
 // mounter. Validation runs before any state mutation; the mounter updates
 // the cache and emits only after the mount completes (#971).
 func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	// Early validation of required fields
-	if o.protectedMode != nil && o.protectedMode() {
+	if o.IsProtectedMode() {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "MountVolume",
 			"Detail", "Mount operation is not permitted when ProtectedMode is enabled.",
@@ -330,7 +338,7 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 // Cache invalidation precedes every emit (#971).
 func (o *MountOrchestrator) UnmountVolume(path string, force bool) errors.E {
 	// Early validation of required fields
-	if o.protectedMode != nil && o.protectedMode() {
+	if o.IsProtectedMode() {
 		return errors.WithDetails(dto.ErrorOperationNotPermittedInProtectedMode,
 			"Operation", "UnmountVolume",
 			"Detail", "Unmount operation is not permitted when ProtectedMode is enabled.",
