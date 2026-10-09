@@ -330,7 +330,7 @@ run = '''
 quiet = true
 
 [tasks.patch]
-description = "Apply necessary patches to vendored dependencies. This task ensures that any required fixes or modifications are applied to the vendored dependencies before building or testing the project. It checks for the presence of the 'patch' utility and applies patches defined in the 'patches' directory to the corresponding vendored dependencies. If any patch fails to apply, it will output an error message and exit. After applying patches, it cleans up any leftover .rej files and confirms that patches were applied successfully."
+description = "Ensure vendored dependencies are pristine. Re-runs 'go mod vendor' so src/vendor always matches go.mod/go.sum. Per-patch blocks for future upstream fixes go here (see git history for the retired hd-idle/goenums examples); keep patches out of vendor whenever an in-tree alternative exists."
 depends = [
     { task = "vendor:check" },
 ]
@@ -339,38 +339,12 @@ depends_post = [
 ]
 run = """
 	set +x -e;
-	echo "Applying patches to vendored dependencies...";
-	if ! command -v patch >/dev/null 2>&1; then
-		echo "ERROR: 'patch' command not found. Please install patch utility.";
-		exit 1;
-	fi;
+	echo "Vendoring dependencies...";
 	go -C src mod vendor;
-	# Regenerate Darwin vendor stubs deleted by `go mod vendor`.
-	sh patches/create_darwin_stubs.sh src;
-	find src/vendor -name "*.rej" -delete 2>/dev/null || true
-	#if [ -f "patches/goenums.patch" ] && [ -d "src/vendor/github.com/zarldev/goenums" ]; then
-	#	echo "Applying goenums.patch...";
-	#	if patch -R -f -p1 --dry-run -d src/vendor/github.com/zarldev/goenums < $(pwd)/patches/goenums.patch >/dev/null 2>&1; then
-	#		echo "goenums.patch already applied, skipping.";
-	#	else
-	#		patch -N --forward --batch -d src/vendor/github.com/zarldev/goenums -p1 < $(pwd)/patches/goenums.patch || (echo "ERROR: Failed to apply goenums.patch"; exit 1);
-	#	fi;
-    #touch src/vendor/github.com/zarldev/goenums/.pdone
-	#fi
-	if [ -f "patches/hd-idle-check-power-mode.patch" ] && [ -d "src/vendor/github.com/adelolmo/hd-idle/sgio" ]; then
-		echo "Applying hd-idle-check-power-mode.patch...";
-		if patch -R -f -p1 --dry-run -d src/vendor/github.com/adelolmo/hd-idle/sgio < $(pwd)/patches/hd-idle-check-power-mode.patch >/dev/null 2>&1; then
-			echo "hd-idle-check-power-mode.patch already applied, skipping.";
-		else
-			patch -N --forward --batch -d src/vendor/github.com/adelolmo/hd-idle/sgio -p1 < $(pwd)/patches/hd-idle-check-power-mode.patch || (echo "ERROR: Failed to apply hd-idle-check-power-mode.patch"; exit 1);
-		fi;
-    touch src/vendor/github.com/adelolmo/hd-idle/sgio/.pdone
-	fi
-  find $(pwd)/src/vendor -name "*.rej" -delete 2>/dev/null || echo "WARNING: Some patches could not be applied";
-	echo "Patches applied successfully"
+	echo "Vendor directory is up to date"
 """
-sources = ["patches/*.patch"]
-outputs = ["src/vendor/**/*.pdone"]
+sources = ["src/go.mod", "src/go.sum"]
+outputs = ["src/vendor/modules.txt"]
 quiet = true
 
 [tasks."format:tidy"]
