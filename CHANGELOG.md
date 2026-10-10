@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- Load the Apple stream module on ordinary non-FAT shares and preserve the separator before the recycle module
+
 ### 🏗 Chore
 
 ## 2026.10.0-rc18
