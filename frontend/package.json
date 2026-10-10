@@ -15,10 +15,10 @@
     "url": "https://github.com/dianlight/srat"
   },
   "devDependencies": {
-    "@babel/core": "8.0.6",
-    "@babel/eslint-parser": "8.0.6",
+    "@babel/core": "8.0.7",
+    "@babel/eslint-parser": "8.0.7",
     "@babel/preset-react": "8.0.1",
-    "@babel/preset-typescript": "8.0.1",
+    "@babel/preset-typescript": "8.0.7",
     "@biomejs/biome": "2.5.15",
     "@code-inspector/core": "2.0.9",
     "@happy-dom/global-registrator": "20.14.5",
