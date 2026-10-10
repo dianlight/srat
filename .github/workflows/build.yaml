@@ -297,7 +297,7 @@ jobs:
           echo "Backend Coverage: $COVERAGE%"
 
       - name: Save Backend Coverage Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: backend-coverage-report
           path: ./backend/src/coverage.out
@@ -349,7 +349,7 @@ jobs:
 
       - name: Save Frontend Coverage Report
         if: ${{ github.actor != 'nektos/act' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: frontend-coverage-report
           path: ./frontend/coverage/lcov.info
@@ -399,7 +399,7 @@ jobs:
         run: mise run //custom_components:test:ci
 
       - name: Upload Custom Component Coverage Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: custom-component-coverage-report
           path: custom_components/coverage.xml
@@ -418,7 +418,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore Backend Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: backend-coverage-report
 
@@ -432,7 +432,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Frontend Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: frontend-coverage-report
 
@@ -446,7 +446,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Custom Component Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: custom-component-coverage-report
 
@@ -718,7 +718,7 @@ jobs:
 
       - name: Upload binaries as artifact
         if: steps.built_all.conclusion == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: binary-builds
           path: /tmp/build_artifacts/*.zip
@@ -732,7 +732,7 @@ jobs:
 
       - name: Upload HACS component as artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: hacs-component
           path: /tmp/build_artifacts/srat.zip
@@ -806,13 +806,13 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         id: download_art
         with:
           name: binary-builds
           path: /tmp/downloaded_builds
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         id: download_hacs
         with:
           name: hacs-component
