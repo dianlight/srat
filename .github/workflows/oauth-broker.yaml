@@ -1,0 +1,312 @@
+name: oauth-broker
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "oauth_broker/**"
+      - ".github/workflows/oauth-broker.yaml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "oauth_broker/**"
+      - ".github/workflows/oauth-broker.yaml"
+  release:
+    types: ["published"]
+
+permissions:
+  contents: read
+
+jobs:
+  setversion:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.calculate_version.outputs.version }}
+    name: Set version
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Calculate version
+        id: calculate_version
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            COMMIT_MSG=$(git log -1 --format=%s HEAD)
+            if [[ "$COMMIT_MSG" =~ ^chore\(release\):\ (.+)$ ]]; then
+              CANDIDATE="${BASH_REMATCH[1]}"
+              if [[ "$CANDIDATE" =~ ^[0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?$ ]]; then
+                VERSION="$CANDIDATE"
+                echo "Release commit detected. Using version from commit: $VERSION"
+                echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "Commit subject matched chore(release) but is not a valid version: $CANDIDATE. Falling back to dev build versioning."
+            fi
+          fi
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Manual trigger detected. Reading latest draft release..."
+            LATEST_DRAFT_TITLE=$(gh api --paginate /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""' || echo "")
+            LATEST_DRAFT_TAG=$(gh api --paginate /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""' || echo "")
+            if [[ -z "$LATEST_DRAFT_TITLE" && -z "$LATEST_DRAFT_TAG" ]]; then
+              echo "No draft release found. Manual runs require an existing draft release title/tag to derive the version."
+              exit 1
+            fi
+            if [[ "$LATEST_DRAFT_TITLE" =~ ([0-9]{4}\.[0-9]{1,2}\.[0-9]+([-][A-Za-z0-9.]+)?) ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Using version from latest draft release title: $VERSION"
+            elif [[ -n "$LATEST_DRAFT_TAG" ]]; then
+              VERSION="$LATEST_DRAFT_TAG"
+              echo "Draft title did not contain a parseable version. Falling back to draft tag: $VERSION"
+            else
+              echo "Latest draft release title does not contain a parseable version and draft tag is empty."
+              exit 1
+            fi
+          elif [[ "${{ github.event_name }}" == "release" && "${{ github.event.action }}" == "published" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+            echo "Using release tag as version: $VERSION"
+          else
+            CURRENT_YEAR=$(date -u +'%Y')
+            CURRENT_MONTH=$(date -u +'%-m')
+            CURRENT_PERIOD_PREFIX="${CURRENT_YEAR}.${CURRENT_MONTH}"
+            echo "Fetching non-draft release tags for period ${CURRENT_PERIOD_PREFIX}..."
+            ALL_NON_DRAFT_RELEASE_TAGS_STRING=$(gh api --paginate /repos/${{ github.repository }}/releases -q '.[] | select(.draft == false) | .tag_name' || echo "")
+            FILTERED_TAGS_LIST=()
+            if [[ -n "$ALL_NON_DRAFT_RELEASE_TAGS_STRING" ]]; then
+              while IFS= read -r tag; do
+                if [[ -n "$tag" && "$tag" =~ ^${CURRENT_PERIOD_PREFIX}\.([0-9]+)(-dev\.([0-9]+))?$ ]]; then
+                  FILTERED_TAGS_LIST+=("$tag")
+                fi
+              done <<< "$ALL_NON_DRAFT_RELEASE_TAGS_STRING"
+            fi
+            TAGS_SORTED_STRING=""
+            if [ ${#FILTERED_TAGS_LIST[@]} -gt 0 ]; then
+              TAGS_SORTED_STRING=$(printf "%s\n" "${FILTERED_TAGS_LIST[@]}" | sed '/-/!{s/$/_/}' | sort -V | sed 's/_$//')
+              echo "Found and sorted relevant tags from non-draft releases:"
+              echo "${TAGS_SORTED_STRING}"
+            else
+              echo "No relevant non-draft release tags found for ${CURRENT_PERIOD_PREFIX} matching the versioning pattern."
+            fi
+            MAX_INC=-1
+            MAX_DEV_FOR_MAX_INC=-1
+            MAX_INC_IS_FULL_RELEASE=false
+            for TAG in $TAGS_SORTED_STRING; do
+              if [[ "$TAG" =~ ^${CURRENT_PERIOD_PREFIX}\.([0-9]+)$ ]]; then
+                INC=${BASH_REMATCH[1]}
+                if (( INC > MAX_INC )); then
+                  MAX_INC=$INC
+                  MAX_DEV_FOR_MAX_INC=-1
+                  MAX_INC_IS_FULL_RELEASE=true
+                elif (( INC == MAX_INC )); then
+                  MAX_INC_IS_FULL_RELEASE=true
+                  MAX_DEV_FOR_MAX_INC=-1
+                fi
+              elif [[ "$TAG" =~ ^${CURRENT_PERIOD_PREFIX}\.([0-9]+)-dev\.([0-9]+)$ ]]; then
+                INC=${BASH_REMATCH[1]}
+                DEV=${BASH_REMATCH[2]}
+                if (( INC > MAX_INC )); then
+                  MAX_INC=$INC
+                  MAX_DEV_FOR_MAX_INC=$DEV
+                  MAX_INC_IS_FULL_RELEASE=false
+                elif (( INC == MAX_INC )); then
+                  if $MAX_INC_IS_FULL_RELEASE; then
+                    MAX_INC_IS_FULL_RELEASE=false
+                    MAX_DEV_FOR_MAX_INC=$DEV
+                  elif (( DEV > MAX_DEV_FOR_MAX_INC )); then
+                    MAX_DEV_FOR_MAX_INC=$DEV
+                  fi
+                fi
+              fi
+            done
+            if (( MAX_INC == -1 )); then
+              VERSION="${CURRENT_PERIOD_PREFIX}.0-dev.0"
+            else
+              if $MAX_INC_IS_FULL_RELEASE; then
+                VERSION="${CURRENT_PERIOD_PREFIX}.$((MAX_INC + 1))-dev.0"
+              else
+                VERSION="${CURRENT_PERIOD_PREFIX}.${MAX_INC}-dev.$((MAX_DEV_FOR_MAX_INC + 1))"
+              fi
+            fi
+            echo "Calculated dev version: $VERSION"
+          fi
+          echo "Calculated version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-oauth-broker:
+    name: Test OAuth Broker
+    runs-on: ubuntu-latest
+    needs: setversion
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: "2026.8.10"
+          install: true
+          experimental: true
+
+      - name: Prepare oauth_broker for ${{ needs.setversion.outputs.version }}
+        run: mise run //oauth_broker:prepare
+
+      - name: Test OAuth Broker ${{ needs.setversion.outputs.version }}
+        run: mise run //oauth_broker:test:ci
+
+      - name: Upload OAuth Broker Coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: oauth-broker-coverage-report
+          path: oauth_broker/coverage/lcov.info
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./oauth_broker/coverage/lcov.info
+          flags: oauth-broker
+          name: oauth-broker-coverage
+          fail_ci_if_error: false
+
+  test-e2e-broker-smoke:
+    name: Broker E2E Smoke (staging healthz)
+    runs-on: ubuntu-latest
+    needs: [setversion, test-oauth-broker]
+    if: github.event_name != 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Smoke against staging broker
+        env:
+          BROKER_STAGING_URL: ${{ secrets.BROKER_STAGING_URL }}
+          BROKER_STAGING_TOKEN: ${{ secrets.BROKER_STAGING_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BROKER_STAGING_URL:-}" ]; then
+            echo "No BROKER_STAGING_URL — skipping live smoke (expected on forks)"
+            exit 0
+          fi
+          echo "Hitting $BROKER_STAGING_URL/v1/healthz"
+          curl -fsSL "$BROKER_STAGING_URL/v1/healthz" | tee /tmp/healthz.json
+          jq -e '.status == "ok"' /tmp/healthz.json
+          echo "Testing bearer auth on staging..."
+          CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer wrong" -H "Content-Type: application/json" \
+            -d '{"provider":"dropbox","srat_callback_url":"https://srat.example/cb"}' \
+            "$BROKER_STAGING_URL/v1/start" || true)
+          if [ "$CODE" != "401" ]; then echo "Expected 401 got $CODE"; exit 1; fi
+          echo "✓ staging smoke passed"
+
+  deploy-oauth-broker:
+    name: Deploy OAuth Broker (Workers + Render)
+    runs-on: ubuntu-latest
+    needs: [setversion, test-oauth-broker]
+    if: github.event_name != 'pull_request'
+    environment: ${{ contains(needs.setversion.outputs.version, '-dev') && 'broker-staging' || contains(needs.setversion.outputs.version, '-rc') && 'broker-staging' || 'broker-production' }}
+    permissions:
+      contents: read
+    env:
+      BROKER_VERSION: ${{ needs.setversion.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup mise
+        uses: jdx/mise-action@3c2e0cf82a5b2e5249f0d3635a4d83d0ae861518 # v4.2.5
+        with:
+          version: "2026.8.10"
+          install: true
+          experimental: true
+
+      - name: Select deploy env (staging vs production)
+        id: envselect
+        run: |
+          VER="${{ needs.setversion.outputs.version }}"
+          if [[ "$VER" == *"-dev."* ]]; then
+            echo "deploy_env=staging" >> "$GITHUB_OUTPUT"
+            echo "sentry_env=development" >> "$GITHUB_OUTPUT"
+          elif [[ "$VER" == *"-rc."* ]]; then
+            echo "deploy_env=staging" >> "$GITHUB_OUTPUT"
+            echo "sentry_env=prerelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy_env=production" >> "$GITHUB_OUTPUT"
+            echo "sentry_env=production" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Version $VER → deploy_env=$(cat $GITHUB_OUTPUT | grep deploy_env)"
+
+      - name: Prepare oauth_broker for deploy
+        run: mise run //oauth_broker:prepare
+
+      - name: Deploy to Cloudflare Workers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          BROKER_PUBLIC_URL: ${{ secrets.BROKER_PUBLIC_URL }}
+          BROKER_API_TOKEN: ${{ secrets.BROKER_API_TOKEN }}
+          DROPBOX_CLIENT_ID: ${{ secrets.DROPBOX_CLIENT_ID }}
+          DROPBOX_CLIENT_SECRET: ${{ secrets.DROPBOX_CLIENT_SECRET }}
+          BROKER_PROVIDERS_JSON: ${{ secrets.BROKER_PROVIDERS_JSON }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] || [ -z "${CLOUDFLARE_ACCOUNT_ID:-}" ]; then
+            echo "⚠️ CLOUDFLARE_* secrets not set — skipping Workers deploy (expected on forks / local)"
+            exit 0
+          fi
+          ENV="${{ steps.envselect.outputs.deploy_env }}"
+          echo "Deploying broker $BROKER_VERSION to Workers env=$ENV"
+          if [ -n "${BROKER_API_TOKEN:-}" ]; then
+            echo "$BROKER_API_TOKEN" | npx wrangler secret put BROKER_API_TOKEN --env "$ENV" --cwd oauth_broker
+          fi
+          if [ -n "${DROPBOX_CLIENT_ID:-}" ] && [ -n "${DROPBOX_CLIENT_SECRET:-}" ]; then
+            echo "$DROPBOX_CLIENT_ID" | npx wrangler secret put DROPBOX_CLIENT_ID --env "$ENV" --cwd oauth_broker
+            echo "$DROPBOX_CLIENT_SECRET" | npx wrangler secret put DROPBOX_CLIENT_SECRET --env "$ENV" --cwd oauth_broker
+          elif [ -n "${DROPBOX_CLIENT_ID:-}" ] || [ -n "${DROPBOX_CLIENT_SECRET:-}" ]; then
+            echo "❌ DROPBOX_CLIENT_ID and DROPBOX_CLIENT_SECRET must both be set"
+            exit 1
+          fi
+          if [ -n "${BROKER_PROVIDERS_JSON:-}" ]; then
+            echo "$BROKER_PROVIDERS_JSON" | npx wrangler secret put BROKER_PROVIDERS_JSON --env "$ENV" --cwd oauth_broker
+          fi
+          npx wrangler deploy --env "$ENV" --cwd oauth_broker
+
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_STAGING: ${{ secrets.RENDER_DEPLOY_HOOK_STAGING }}
+          RENDER_DEPLOY_HOOK_PRODUCTION: ${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION }}
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.envselect.outputs.deploy_env }}"
+          if [ "$ENV" = "staging" ]; then HOOK="${RENDER_DEPLOY_HOOK_STAGING:-}"; else HOOK="${RENDER_DEPLOY_HOOK_PRODUCTION:-}"; fi
+          if [ -z "${HOOK:-}" ]; then
+            echo "⚠️ Render deploy hook not set for $ENV — skipping Render deploy"
+            exit 0
+          fi
+          echo "Triggering Render deploy for $ENV"
+          curl -fsSL -X POST "$HOOK" && echo "✓ Render deploy triggered"
+
+      - name: Smoke deployed Workers healthz
+        env:
+          BROKER_STAGING_URL: ${{ secrets.BROKER_STAGING_URL }}
+          BROKER_PRODUCTION_URL: ${{ secrets.BROKER_PRODUCTION_URL }}
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.envselect.outputs.deploy_env }}"
+          if [ "$ENV" = "staging" ]; then URL="${BROKER_STAGING_URL:-}"; else URL="${BROKER_PRODUCTION_URL:-}"; fi
+          if [ -z "${URL:-}" ]; then echo "No BROKER_${ENV^^}_URL — skipping post-deploy smoke"; exit 0; fi
+          echo "Waiting 20s for Workers propagation..."
+          sleep 20
+          curl -fsSL "$URL/v1/healthz" | tee /tmp/healthz.json
+          jq -e '.status == "ok"' /tmp/healthz.json
+          echo "✓ post-deploy healthz ok on $URL"

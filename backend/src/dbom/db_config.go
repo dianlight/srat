@@ -175,7 +175,7 @@ func NewDB(lc fx.Lifecycle, v struct {
 
 	// Migrate the schema
 	tlog.Trace("=== DB INIT: Starting AutoMigrate ===", "elapsed", time.Since(dbInitStart))
-	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &Problem{}, &HDIdleDevice{})
+	err = db.AutoMigrate(&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{}, &Issue{}, &Problem{}, &HDIdleDevice{}, &OAuthKeyPair{})
 	if errE = errors.WithStack(err); errE != nil {
 		tlog.Error("Failed to migrate database", "error", errE, "path", v.ApiCtx.DatabasePath)
 		return replaceDatabase(lc, v)
