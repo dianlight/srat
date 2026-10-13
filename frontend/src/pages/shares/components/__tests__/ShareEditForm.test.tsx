@@ -295,4 +295,52 @@ describe("ShareEditForm component", () => {
         await waitFor(() => expect(screen.getByText(/not mounted/i)).toBeTruthy());
         expect(handleSubmit).not.toHaveBeenCalled();
     }, 60000);
+
+    it("allows hyphens in share names (issue #1400)", async () => {
+        const { overrides } = setupCommonOverrides();
+
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Usage } = await import("../../../../store/sratApi");
+        // @ts-expect-error - Query param fetches isolated module instance
+        const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-hyphen");
+
+        const handleSubmit = vi.fn(() => { });
+
+        render(
+            React.createElement(ShareEditForm as any, {
+                shareData: {
+                    name: "parity-check-1",
+                    usage: Usage.None,
+                    mount_point_data: {
+                        path: "/mnt/free",
+                        path_hash: "free-hash",
+                        is_mounted: true,
+                        is_write_supported: true,
+                    },
+                },
+                shares: {},
+                onSubmit: handleSubmit,
+                testOverrides: overrides,
+            })
+        );
+
+        const [nameInput] = await screen.findAllByLabelText(/Share Name/i);
+        expect((nameInput as HTMLInputElement).value).toBe("parity-check-1");
+
+        const addDefaults = (await screen.findAllByLabelText(/add suggested default veto files/i))[0];
+        if (addDefaults) {
+            const user = userEvent.setup();
+            await user.click(addDefaults);
+        }
+
+        const user = userEvent.setup();
+        const submitButton = await screen.findByRole("button", { name: /create/i });
+        await user.click(submitButton);
+
+        await waitFor(() => expect(handleSubmit).toHaveBeenCalled());
+        const submission = (handleSubmit.mock.calls as any[])[0]?.[0];
+        expect(submission?.name).toBe("parity-check-1");
+    }, 60000);
 });
