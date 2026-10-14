@@ -311,7 +311,7 @@ describe("ShareEditForm component", () => {
         render(
             React.createElement(ShareEditForm as any, {
                 shareData: {
-                    name: "parity-check-1",
+                    name: "paritycheck1",
                     usage: Usage.None,
                     mount_point_data: {
                         path: "/mnt/free",
@@ -326,21 +326,22 @@ describe("ShareEditForm component", () => {
             })
         );
 
-        const [nameInput] = await screen.findAllByLabelText(/Share Name/i);
-        expect((nameInput as HTMLInputElement).value).toBe("parity-check-1");
-
-        const addDefaults = (await screen.findAllByLabelText(/add suggested default veto files/i))[0];
-        if (addDefaults) {
-            const user = userEvent.setup();
-            await user.click(addDefaults);
-        }
-
         const user = userEvent.setup();
+        const [nameInput] = await screen.findAllByLabelText(/Share Name/i);
+        expect((nameInput as HTMLInputElement).value).toBe("paritycheck1");
+        // Type hyphens through the real input so the charset validation runs on them
+        await user.click(nameInput);
+        await user.keyboard("{End}-2");
+        expect((nameInput as HTMLInputElement).value).toBe("paritycheck1-2");
+
         const submitButton = await screen.findByRole("button", { name: /create/i });
         await user.click(submitButton);
 
+        // No charset validation error for the hyphenated name
+        expect(screen.queryByText(/can only contain/i)).toBeNull();
+
         await waitFor(() => expect(handleSubmit).toHaveBeenCalled());
         const submission = (handleSubmit.mock.calls as any[])[0]?.[0];
-        expect(submission?.name).toBe("parity-check-1");
+        expect(submission?.name).toBe("paritycheck1-2");
     }, 60000);
 });
