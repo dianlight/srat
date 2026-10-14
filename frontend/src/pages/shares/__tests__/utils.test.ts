@@ -19,6 +19,9 @@ describe("shares utils", () => {
 		expect(sanitizeAndUppercaseShareName("500G")).toBe("500G");
 		expect(sanitizeAndUppercaseShareName("1TB_Backup")).toBe("1TB_BACKUP");
 		expect(sanitizeAndUppercaseShareName("")).toBe("");
+		// Hyphens are valid in share names (issue #1400) and must be preserved
+		expect(sanitizeAndUppercaseShareName("parity-check-1")).toBe("PARITY-CHECK-1");
+		expect(sanitizeAndUppercaseShareName("my-disk")).toBe("MY-DISK");
 	});
 
 	it("validates veto file entries", async () => {
