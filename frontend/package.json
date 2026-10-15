@@ -70,7 +70,7 @@
     "@types/js-yaml": "^4.0.9",
     "@uiw/react-md-editor": "^4.1.1",
     "emittery": "^2.0.0",
-    "filesize": "^11.0.22",
+    "filesize": "^11.0.26",
     "humanize-duration": "^3.34.0",
     "js-yaml": "^5.3.0",
     "material-ui-confirm": "^4.0.0",
