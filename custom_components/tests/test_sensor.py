@@ -464,7 +464,7 @@ async def test_partition_sensor_shared(
     hass: HomeAssistant,
     mock_disks_data: list[dict[str, Any]],
 ) -> None:
-    """Test partition sensor reports 'shared' when shares exist."""
+    """Test partition sensor reports 'shared' when an enabled share exists."""
     coordinator = _make_coordinator(
         hass,
         {
@@ -480,6 +480,63 @@ async def test_partition_sensor_shared(
     sensor = SRATPartitionSensor(coordinator, entry, part_data, disk_data)
 
     assert sensor.native_value == "shared"
+    attrs = sensor.extra_state_attributes
+    assert attrs["device"] == "/dev/sda1"
+    assert attrs["mount_count"] == 1
+    assert attrs["share_count"] == 1
+
+
+async def test_partition_sensor_mounted_only(
+    hass: HomeAssistant,
+    mock_disks_data: list[dict[str, Any]],
+) -> None:
+    """Test partition sensor reports 'mounted' when no share but is_mounted."""
+    coordinator = _make_coordinator(
+        hass,
+        {
+            "disks": mock_disks_data,
+            "samba_status": None,
+            "process_status": None,
+            "disk_health": None,
+        },
+    )
+    entry = _make_entry()
+    disk_data = mock_disks_data[0]
+    part_data = disk_data["partitions"][0]
+    # Remove the share but keep the mount
+    part_data["mount_point_data"]["/mnt/data"]["share"] = None
+    sensor = SRATPartitionSensor(coordinator, entry, part_data, disk_data)
+
+    assert sensor.native_value == "mounted"
+    attrs = sensor.extra_state_attributes
+    assert attrs["mount_count"] == 1
+    assert attrs["share_count"] == 0
+
+
+async def test_partition_sensor_unmounted(
+    hass: HomeAssistant,
+    mock_disks_data: list[dict[str, Any]],
+) -> None:
+    """Test partition sensor reports 'unmounted' when no mounts."""
+    coordinator = _make_coordinator(
+        hass,
+        {
+            "disks": mock_disks_data,
+            "samba_status": None,
+            "process_status": None,
+            "disk_health": None,
+        },
+    )
+    entry = _make_entry()
+    disk_data = mock_disks_data[0]
+    part_data = disk_data["partitions"][0]
+    part_data["mount_point_data"] = {}
+    sensor = SRATPartitionSensor(coordinator, entry, part_data, disk_data)
+
+    assert sensor.native_value == "unmounted"
+    attrs = sensor.extra_state_attributes
+    assert attrs["mount_count"] == 0
+    assert attrs["share_count"] == 0
 
 
 # -- SRATGlobalDiskHealthSensor --
@@ -571,27 +628,27 @@ async def test_partition_health_sensor(
 
 def test_find_partition_in_list_payload() -> None:
     """Partitions serialized as a list are found by id."""
-    disks = [{"id": "d1", "partitions": [{"id": "p1", "device": "sda1"}]}]
+    disks = [{"id": "d1", "partitions": [{"id": "p1", "device_path": "sda1"}]}]
     found = VolumeRepository.find_partition(disks, "p1")
     assert found is not None
-    assert found["device"] == "sda1"
+    assert found["device_path"] == "sda1"
 
 
 def test_find_partition_in_dict_payload() -> None:
     """Partitions serialized as a keyed map (live backend shape) are found."""
-    disks = [{"id": "d1", "partitions": {"p1": {"id": "p1", "device": "sda1"}}}]
+    disks = [{"id": "d1", "partitions": {"p1": {"id": "p1", "device_path": "sda1"}}}]
     found = VolumeRepository.find_partition(disks, "p1")
     assert found is not None
-    assert found["device"] == "sda1"
+    assert found["device_path"] == "sda1"
 
 
 def test_find_partition_uses_map_key_when_id_omitted() -> None:
     """A map value without ``id`` falls back to its key (the partition id)."""
-    disks = [{"id": "d1", "partitions": {"p1": {"device": "sda1"}}}]
+    disks = [{"id": "d1", "partitions": {"p1": {"device_path": "sda1"}}}]
     found = VolumeRepository.find_partition(disks, "p1")
     assert found is not None
     assert found["id"] == "p1"
-    assert found["device"] == "sda1"
+    assert found["device_path"] == "sda1"
 
 
 def test_find_partition_tolerates_invalid_containers() -> None:
@@ -658,3 +715,128 @@ def test_iter_partitions_non_dict_disk() -> None:
     assert VolumeRepository.iter_partitions(None) == []
     assert VolumeRepository.iter_partitions("nope") == []
     assert VolumeRepository.iter_partitions([{"id": "d1"}]) == []
+
+
+# -- VolumeRepository live-payload helpers (issue #1394) --
+
+
+def test_display_device_prefers_device_path() -> None:
+    """display_device resolves device_path first."""
+    entry = {
+        "device_path": "/dev/sda1",
+        "legacy_device_path": "/dev/disk/by-id/ata-X-part1",
+        "legacy_device_name": "sda1",
+    }
+    assert VolumeRepository.display_device(entry) == "/dev/sda1"
+
+
+def test_display_device_falls_back_to_legacy_path() -> None:
+    """display_device falls back to legacy_device_path when device_path missing."""
+    entry = {
+        "legacy_device_path": "/dev/disk/by-id/ata-X-part1",
+        "legacy_device_name": "sda1",
+    }
+    assert VolumeRepository.display_device(entry) == "/dev/disk/by-id/ata-X-part1"
+
+
+def test_display_device_falls_back_to_legacy_name() -> None:
+    """display_device falls back to legacy_device_name when paths missing."""
+    entry = {"legacy_device_name": "sda1"}
+    assert VolumeRepository.display_device(entry) == "sda1"
+
+
+def test_display_device_falls_back_to_legacy_device_key() -> None:
+    """display_device accepts the legacy ``device`` key for backward compat."""
+    entry = {"device": "/dev/sda"}
+    assert VolumeRepository.display_device(entry) == "/dev/sda"
+
+
+def test_display_device_falls_back_to_id() -> None:
+    """display_device falls back to the supplied id when no device key exists."""
+    entry = {"id": "disk-001"}
+    assert VolumeRepository.display_device(entry, "disk-001") == "disk-001"
+    assert VolumeRepository.display_device(None, "fallback") == "fallback"
+
+
+def test_partition_mounts_from_mount_point_data() -> None:
+    """partition_mounts extracts entries from the mount_point_data map."""
+    partition = {
+        "mount_point_data": {
+            "/mnt/data": {"path": "/mnt/data", "is_mounted": True},
+            "/mnt/backup": {"path": "/mnt/backup", "is_mounted": False},
+        }
+    }
+    mounts = VolumeRepository.partition_mounts(partition)
+    assert len(mounts) == 2
+
+
+def test_partition_mounts_falls_back_to_legacy_list() -> None:
+    """partition_mounts accepts the legacy ``mounts`` list."""
+    partition = {"mounts": ["/mnt/data"]}
+    assert VolumeRepository.partition_mounts(partition) == ["/mnt/data"]
+
+
+def test_partition_mounts_empty_when_no_data() -> None:
+    """partition_mounts returns empty list when no mount data exists."""
+    assert VolumeRepository.partition_mounts({}) == []
+    assert VolumeRepository.partition_mounts(None) == []
+
+
+def test_partition_shares_from_mount_point_data() -> None:
+    """partition_shares extracts enabled shares from mount_point_data entries."""
+    partition = {
+        "mount_point_data": {
+            "/mnt/data": {
+                "path": "/mnt/data",
+                "share": {"name": "share1", "disabled": False},
+            },
+            "/mnt/backup": {
+                "path": "/mnt/backup",
+                "share": {"name": "share2", "disabled": True},
+            },
+        }
+    }
+    shares = VolumeRepository.partition_shares(partition)
+    assert len(shares) == 1
+    assert shares[0]["name"] == "share1"
+
+
+def test_partition_shares_falls_back_to_legacy_list() -> None:
+    """partition_shares accepts the legacy ``shares`` list."""
+    partition = {"shares": ["share1"]}
+    assert VolumeRepository.partition_shares(partition) == ["share1"]
+
+
+def test_partition_shares_empty_when_no_data() -> None:
+    """partition_shares returns empty list when no share data exists."""
+    assert VolumeRepository.partition_shares({}) == []
+    assert VolumeRepository.partition_shares(None) == []
+
+
+def test_is_partition_mounted_true_when_any_mounted() -> None:
+    """is_partition_mounted returns True when any mount entry is mounted."""
+    partition = {
+        "mount_point_data": {
+            "/mnt/data": {"is_mounted": False},
+            "/mnt/backup": {"is_mounted": True},
+        }
+    }
+    assert VolumeRepository.is_partition_mounted(partition) is True
+
+
+def test_is_partition_mounted_false_when_none_mounted() -> None:
+    """is_partition_mounted returns False when no mount entry is mounted."""
+    partition = {
+        "mount_point_data": {
+            "/mnt/data": {"is_mounted": False},
+        }
+    }
+    assert VolumeRepository.is_partition_mounted(partition) is False
+
+
+def test_is_partition_mounted_falls_back_to_legacy_list() -> None:
+    """is_partition_mounted accepts the legacy ``mounts`` list."""
+    assert VolumeRepository.is_partition_mounted({"mounts": ["/mnt/data"]}) is True
+    assert VolumeRepository.is_partition_mounted({"mounts": []}) is False
+    assert VolumeRepository.is_partition_mounted({}) is False
+    assert VolumeRepository.is_partition_mounted(None) is False

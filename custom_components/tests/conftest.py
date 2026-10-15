@@ -34,11 +34,17 @@ def mock_health_response() -> dict[str, Any]:
 
 @pytest.fixture
 def mock_disks_data() -> list[dict[str, Any]]:
-    """Return mock disk data (from ``volumes`` WS event)."""
+    """Return mock disk data (from ``volumes`` WS event).
+
+    Uses the live ``dto.Disk`` / ``dto.Partition`` shape: ``device_path`` for
+    device identity and ``mount_point_data`` map for mount/share state.
+    """
     return [
         {
             "id": "disk-001",
-            "device": "/dev/sda",
+            "device_path": "/dev/sda",
+            "legacy_device_path": "/dev/disk/by-id/ata-WD_PC_SN740_SDD",
+            "legacy_device_name": "sda",
             "model": "Samsung SSD 870",
             "vendor": "Samsung",
             "serial": "S1234567890",
@@ -48,12 +54,25 @@ def mock_disks_data() -> list[dict[str, Any]]:
             "partitions": [
                 {
                     "id": "part-001",
-                    "device": "/dev/sda1",
+                    "device_path": "/dev/sda1",
+                    "legacy_device_path": "/dev/disk/by-id/ata-WD_PC_SN740_SDD-part1",
+                    "legacy_device_name": "sda1",
                     "name": "data",
                     "size": 499999997952,
                     "system": False,
-                    "mounts": ["/mnt/data"],
-                    "shares": ["share1"],
+                    "mount_point_data": {
+                        "/mnt/data": {
+                            "path": "/mnt/data",
+                            "is_mounted": True,
+                            "type": "ADDON",
+                            "device_id": "part-001",
+                            "share": {
+                                "name": "share1",
+                                "disabled": False,
+                            },
+                        },
+                    },
+                    "host_mount_point_data": {},
                 },
             ],
         },
