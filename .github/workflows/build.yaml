@@ -213,13 +213,15 @@ jobs:
       - name: Verify SDK release tarball ships the ABI-checked wrapper
         env:
           VENDORED_REF: ${{ steps.vendored.outputs.ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # The SambaNAS2 addon runs Alpine (musl), so the musl tarball is the
           # contract we must validate. The SDK release tag must match the vendored
           # bindings ref exactly — the wrapper was built from that same source, so
           # any drift means a symbol/ABI mismatch (formerly smartmontools-go#38).
-          RELEASE=$(curl -fsSL https://api.github.com/repos/dianlight/smartmontools-sdk/releases/tags/${VENDORED_REF})
+          # Use authenticated gh api (not unauthenticated curl) to avoid 403 rate limits.
+          RELEASE=$(gh api repos/dianlight/smartmontools-sdk/releases/tags/${VENDORED_REF})
           TAG=$(echo "$RELEASE" | jq -r '.tag_name')
           if [ "$TAG" != "$VENDORED_REF" ]; then
             echo "❌ SDK release tag ${TAG} does not match vendored bindings ref ${VENDORED_REF}"
