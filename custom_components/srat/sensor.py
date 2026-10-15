@@ -28,22 +28,41 @@ _NON_ALNUM = re.compile(r"[^a-zA-Z0-9]+")
 
 
 class PartitionData(TypedDict, total=False):
-    """Typed view of a partition dict from coordinator data."""
+    """Typed view of a partition dict from coordinator data.
+
+    Mirrors the live ``volumes`` WS payload (``dto.Partition``): device
+    identity is ``device_path`` / ``legacy_device_path`` / ``legacy_device_name``
+    and mount/share state lives in the ``mount_point_data`` map keyed by path.
+    The legacy ``device`` / ``mounts`` / ``shares`` keys are still accepted as
+    fallbacks for backward compatibility.
+    """
 
     id: str
     device: str
+    device_path: str
+    legacy_device_path: str
+    legacy_device_name: str
     name: str
     size: int
     system: str
     shares: list[Any]
     mounts: list[Any]
+    mount_point_data: dict[str, Any]
+    host_mount_point_data: dict[str, Any]
 
 
 class DiskData(TypedDict, total=False):
-    """Typed view of a disk dict from coordinator data."""
+    """Typed view of a disk dict from coordinator data.
+
+    Mirrors the live ``volumes`` WS payload (``dto.Disk``): device identity is
+    ``device_path`` / ``legacy_device_path`` / ``legacy_device_name``.
+    """
 
     id: str
     device: str
+    device_path: str
+    legacy_device_path: str
+    legacy_device_name: str
     model: str
     vendor: str
     serial: str
@@ -124,6 +143,83 @@ class VolumeRepository:
             return None
         result = partition_health.get(device)
         return result if isinstance(result, dict) else None
+
+    @staticmethod
+    def display_device(entry: Any, fallback_id: str = "unknown") -> str:
+        """Resolve a human-readable device string from a disk or partition dict.
+
+        The live ``volumes`` payload uses ``device_path`` (e.g. ``/dev/sda1``),
+        falling back to ``legacy_device_path`` and ``legacy_device_name`` when
+        the resolved path is unavailable.  The legacy ``device`` key is still
+        accepted for backward compatibility.
+        """
+        if not isinstance(entry, dict):
+            return fallback_id
+        for key in (
+            "device_path",
+            "legacy_device_path",
+            "legacy_device_name",
+            "device",
+        ):
+            value = entry.get(key)
+            if isinstance(value, str) and value:
+                return value
+        return fallback_id
+
+    @staticmethod
+    def partition_mounts(partition: Any) -> list[Any]:
+        """Return mount-point entries for a partition.
+
+        The live payload stores mounts in the ``mount_point_data`` map keyed by
+        path; the legacy ``mounts`` list is still accepted as a fallback.
+        """
+        if not isinstance(partition, dict):
+            return []
+        mpd = partition.get("mount_point_data")
+        if isinstance(mpd, dict):
+            return list(mpd.values())
+        mounts = partition.get("mounts")
+        if isinstance(mounts, list):
+            return mounts
+        return []
+
+    @staticmethod
+    def partition_shares(partition: Any) -> list[Any]:
+        """Return enabled shares for a partition.
+
+        Shares are nested inside ``mount_point_data`` entries as ``share`` with
+        a ``disabled`` flag; the legacy ``shares`` list is still accepted as a
+        fallback.
+        """
+        if not isinstance(partition, dict):
+            return []
+        mpd = partition.get("mount_point_data")
+        if isinstance(mpd, dict):
+            return [
+                mpd[key].get("share")
+                for key in sorted(mpd)
+                if isinstance(mpd[key], dict)
+                and mpd[key].get("share") is not None
+                and mpd[key].get("share", {}).get("disabled") is not True
+            ]
+        shares = partition.get("shares")
+        if isinstance(shares, list):
+            return shares
+        return []
+
+    @staticmethod
+    def is_partition_mounted(partition: Any) -> bool:
+        """Return True when any mount-point entry is mounted."""
+        if not isinstance(partition, dict):
+            return False
+        mpd = partition.get("mount_point_data")
+        if isinstance(mpd, dict):
+            return any(
+                isinstance(mpd[key], dict) and mpd[key].get("is_mounted") is True
+                for key in mpd
+            )
+        mounts = partition.get("mounts")
+        return bool(isinstance(mounts, list) and mounts)
 
 
 def _sanitize_id(value: str) -> str:
@@ -367,7 +463,9 @@ class SRATVolumeStatusSensor(SRATSensorBase):
         if not isinstance(disks, list):
             return {}
         partition_count = sum(
-            len(d.get("partitions", [])) for d in disks if isinstance(d, dict)
+            len(VolumeRepository.iter_partitions(d))
+            for d in disks
+            if isinstance(d, dict)
         )
         return {
             "disk_count": len(disks),
@@ -391,7 +489,7 @@ class SRATDiskSensor(SRATSensorBase):
         disk_id = _sanitize_id(disk.get("id", "unknown"))
         self._disk_id = disk.get("id", "unknown")
         self._attr_unique_id = f"{entry.entry_id}_disk_{disk_id}"
-        self._attr_name = f"Disk {disk.get('device', disk_id)}"
+        self._attr_name = f"Disk {VolumeRepository.display_device(disk, disk_id)}"
 
     @property
     def native_value(self) -> str:
@@ -406,7 +504,7 @@ class SRATDiskSensor(SRATSensorBase):
             return {}
         size_bytes = disk.get("size", 0)
         return {
-            "device": disk.get("device"),
+            "device": VolumeRepository.display_device(disk),
             "model": disk.get("model"),
             "vendor": disk.get("vendor"),
             "serial": disk.get("serial"),
@@ -414,7 +512,7 @@ class SRATDiskSensor(SRATSensorBase):
             "size_gb": round(size_bytes / (1024**3), 2) if size_bytes else 0,
             "connection_bus": disk.get("connectionBus"),
             "removable": disk.get("removable"),
-            "partition_count": len(disk.get("partitions", [])),
+            "partition_count": len(VolumeRepository.iter_partitions(disk)),
         }
 
     def _find_disk(self) -> dict[str, Any] | None:
@@ -442,7 +540,9 @@ class SRATPartitionSensor(SRATSensorBase):
         self._partition_id = partition.get("id", "unknown")
         self._disk_id = disk.get("id", "unknown")
         self._attr_unique_id = f"{entry.entry_id}_partition_{part_id}"
-        self._attr_name = f"Partition {partition.get('device', part_id)}"
+        self._attr_name = (
+            f"Partition {VolumeRepository.display_device(partition, part_id)}"
+        )
 
     @property
     def native_value(self) -> str | None:
@@ -450,11 +550,9 @@ class SRATPartitionSensor(SRATSensorBase):
         partition = self._find_partition()
         if not isinstance(partition, dict):
             return None
-        shares = partition.get("shares", [])
-        mounts = partition.get("mounts", [])
-        if shares:
+        if VolumeRepository.partition_shares(partition):
             return "shared"
-        if mounts:
+        if VolumeRepository.is_partition_mounted(partition):
             return "mounted"
         return "unmounted"
 
@@ -467,13 +565,13 @@ class SRATPartitionSensor(SRATSensorBase):
         size_bytes = partition.get("size", 0)
         return {
             "disk_id": self._disk_id,
-            "device": partition.get("device"),
+            "device": VolumeRepository.display_device(partition),
             "name": partition.get("name"),
             "size_bytes": size_bytes,
             "size_gb": round(size_bytes / (1024**3), 2) if size_bytes else 0,
             "system": partition.get("system"),
-            "mount_count": len(partition.get("mounts", [])),
-            "share_count": len(partition.get("shares", [])),
+            "mount_count": len(VolumeRepository.partition_mounts(partition)),
+            "share_count": len(VolumeRepository.partition_shares(partition)),
         }
 
     def _find_partition(self) -> dict[str, Any] | None:
