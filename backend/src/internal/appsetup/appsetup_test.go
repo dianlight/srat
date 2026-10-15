@@ -151,6 +151,34 @@ func (suite *AppSetupSuite) TestProvideCoreDependencies_StartsGraph() {
 	suite.T().Cleanup(func() { app.RequireStop() })
 }
 
+func (suite *AppSetupSuite) TestProvideCoreDependencies_ProvidesMountFlagProber() {
+	origToken := config.GistToken
+	config.GistToken = "test-token"
+	suite.T().Cleanup(func() { config.GistToken = origToken })
+
+	var prober service.MountFlagProber
+	app := fxtest.New(
+		suite.T(),
+		ProvideCoreDependencies(suite.params),
+		ProvideHAClientDependencies(suite.params),
+		ProvideCyclicDependencyWorkaroundOption(),
+		fx.Populate(&prober),
+	)
+	app.RequireStart()
+	suite.T().Cleanup(func() { app.RequireStop() })
+
+	suite.Require().NotNil(prober, "MountFlagProber must be wired or ServerService falls back to root (srat#1391)")
+	user, group := prober.GetSambaForceUserGroup("ntfs3")
+	suite.Equal("", user)
+	suite.Equal("", group)
+	user, group = prober.GetSambaForceUserGroup("ntfs")
+	suite.Equal("", user)
+	suite.Equal("", group)
+	user, group = prober.GetSambaForceUserGroup("ext4")
+	suite.Equal("root", user)
+	suite.Equal("root", group)
+}
+
 func (suite *AppSetupSuite) TestProvideCyclicDependencyWorkaroundOption() {
 	var shareService service.ShareServiceInterface
 	var supervisorService service.SupervisorServiceInterface

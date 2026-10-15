@@ -104,6 +104,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewSupervisorService,
 			service.NewHaRootService,
 			service.NewFilesystemService,
+			func(fs service.FilesystemServiceInterface) service.MountFlagProber { return fs },
 			service.NewShareService,
 			service.NewUserService,
 			service.NewHostService,

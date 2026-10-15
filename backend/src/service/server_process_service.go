@@ -153,7 +153,7 @@ type ServerServiceParams struct {
 	CommandRunner     commandexec.Executor
 	InternalProcesses []ServerProcessStatus `group:"internal_services"`
 	Disks             *dto.DiskMap          `optional:"true"`
-	Fs_service        MountFlagProber       `optional:"true"`
+	Fs_service        MountFlagProber
 }
 
 // MountFlagProber is the narrow capability ServerService needs from the
