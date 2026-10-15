@@ -175,6 +175,8 @@ func (suite *ServerProcessServiceSuite) SetupTest() {
 			*/
 			dbom.NewDB,
 			service.NewServerProcessesService,
+			service.NewFilesystemService,
+			func(fs service.FilesystemServiceInterface) service.MountFlagProber { return fs },
 			mock.Mock[service.ShareServiceInterface],
 			mock.Mock[service.UserServiceInterface],
 			mock.Mock[service.BroadcasterServiceInterface],
@@ -1002,6 +1004,49 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_Samba421_QUICEnab
 }
 
 // TestGetSambaProcess_ReturnsProcessStatus tests that GetSambaProcess returns process status
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_NtfsOmitsForceUser() {
+	defer unixsamba.MockSambaVersion("4.23.0")()
+	suite.setupSettingsMocks()
+
+	ntfsFs := "ntfs3"
+	ext4Fs := "ext4"
+	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
+		{
+			Name:           "NTFSTEST",
+			MountPointData: &dto.MountPointData{Path: "/mnt/ntfsvol", FSType: &ntfsFs},
+			Users:          []dto.User{{Username: "dianlight"}},
+		},
+		{
+			Name:           "EXT4TEST",
+			MountPointData: &dto.MountPointData{Path: "/mnt/ext4vol", FSType: &ext4Fs},
+			Users:          []dto.User{{Username: "dianlight"}},
+		},
+	}, nil)
+
+	stream, errE := suite.serverService.CreateSambaConfigStream()
+	suite.Require().NoError(errE)
+	suite.Require().NotNil(stream)
+	configStr := string(*stream)
+
+	ntfsStart := strings.Index(configStr, "[NTFSTEST]")
+	suite.NotEqual(-1, ntfsStart, "NTFS section missing")
+	ntfsRest := configStr[ntfsStart:]
+	if next := strings.Index(ntfsRest[1:], "\n["); next != -1 {
+		ntfsRest = ntfsRest[:next+1]
+	}
+	suite.NotContains(ntfsRest, "force user", "NTFS share must omit force user (srat#1391)")
+	suite.NotContains(ntfsRest, "force group", "NTFS share must omit force group (srat#1391)")
+
+	ext4Start := strings.Index(configStr, "[EXT4TEST]")
+	suite.NotEqual(-1, ext4Start, "ext4 section missing")
+	ext4Rest := configStr[ext4Start:]
+	if next := strings.Index(ext4Rest[1:], "\n["); next != -1 {
+		ext4Rest = ext4Rest[:next+1]
+	}
+	suite.Contains(ext4Rest, "force user = root")
+	suite.Contains(ext4Rest, "force group = root")
+}
+
 func (suite *ServerProcessServiceSuite) TestGetSambaProcess_ReturnsProcessStatus() {
 	// GetSambaProcess should return a non-nil SambaProcessStatus
 	status, err := suite.serverService.GetServerProcesses()
