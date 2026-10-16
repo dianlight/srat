@@ -81,7 +81,7 @@ jobs:
               # NOTE: `sambanas2?` also matches plain `sambanas` (v1), which
               # caused hassio-addons#786 ([SambaNAS], `sambanas/rootfs/...`,
               # `devrelease/sambanas`) to be mirrored as srat#1421.
-              v2_pat = r"sambanas\s*2|samba[\s_\-]*nas[\s_\-]*2"
+              v2_pat = r"sambanas\s*2\b|samba[\s_\-]*nas[\s_\-]*2\b"
               if not re.search(v2_pat, haystack, re.IGNORECASE):
                   continue
               addon_field = re.search(r"^### Addon\s*\n+(.+)$",
