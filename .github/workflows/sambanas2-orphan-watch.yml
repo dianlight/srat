@@ -77,12 +77,16 @@ jobs:
                   continue
 
               haystack = "\n".join([issue["title"], issue["body"]] + issue["labels"])
-              # SambaNAS2-related: name/label match or the issue-form "### Addon" field.
-              if not re.search(r"sambanas2?", haystack, re.IGNORECASE):
+              # SambaNAS2-related only: require an explicit v2 marker.
+              # NOTE: `sambanas2?` also matches plain `sambanas` (v1), which
+              # caused hassio-addons#786 ([SambaNAS], `sambanas/rootfs/...`,
+              # `devrelease/sambanas`) to be mirrored as srat#1421.
+              v2_pat = r"sambanas\s*2\b|samba[\s_\-]*nas[\s_\-]*2\b"
+              if not re.search(v2_pat, haystack, re.IGNORECASE):
                   continue
               addon_field = re.search(r"^### Addon\s*\n+(.+)$",
                                       issue["body"], re.IGNORECASE | re.MULTILINE)
-              if addon_field and not re.search(r"sambanas2?",
+              if addon_field and not re.search(v2_pat,
                                                addon_field.group(1).strip(),
                                                re.IGNORECASE):
                   continue
