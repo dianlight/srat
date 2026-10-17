@@ -45,7 +45,7 @@
    #   fruit:nfs_aces       - Controls NFS ACEs for UNIX mode (default: yes, set no for Mac clients)
    #   fruit:copyfile       - Enables Mac copyfile ioctl (default: no, set yes for full compatibility)
    # These are GLOBAL ONLY: setting them per-share has no effect.
-   vfs objects = acl_xattr catia fruit 
+   vfs objects = acl_xattr catia fruit streams_xattr
    fruit:aapl = yes
    fruit:model = MacSamba
    fruit:nfs_aces = no
@@ -126,6 +126,7 @@
 
 {{ define "SHT" }}
 {{- $unsupported := list "vfat"	"msdos"	"f2fs"	"fuseblk" "exfat" -}}
+{{- $noXattrFS := list "vfat" "msdos" "exfat" -}}
 {{- $rosupported := list "apfs"}}
 {{- $name := regexReplaceAll "[^A-Za-z0-9_/ ]" .data.name "_" | regexFind "[A-Za-z0-9_ ]+$" | upper -}}
 [{{- $name -}}]
@@ -185,7 +186,11 @@
    fruit:time machine max size = {{ .data.timemachine_max_size }}
    {{- end }}
 {{ else }}
-   vfs objects = acl_xattr catia fruit{{- if .data.recycle_bin_enabled }} recycle{{- end }}
+   {{- if has .data.fs $noXattrFS }}
+   # Known FAT filesystems cannot store streams_xattr data; retain their existing stack.
+   # This is not full Apple metadata support on these filesystems.
+   {{- end }}
+   vfs objects = acl_xattr catia fruit{{ if not (has .data.fs $noXattrFS) }} streams_xattr{{ end }}{{ if .data.recycle_bin_enabled }} recycle{{ end }}
 
 {{ end }}
 
