@@ -85,7 +85,7 @@
     "react-intersection-observer": "^11.0.0",
     "react-redux": "^9.3.0",
     "react-router": "^8.3.0",
-    "react-syntax-highlighter": "^16.1.1",
+    "react-syntax-highlighter": "^16.1.2",
     "react-toastify": "^11.1.0",
     "refractor": "^5.0.0",
     "semver": "^7.8.5",
