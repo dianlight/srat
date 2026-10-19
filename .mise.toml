@@ -24,7 +24,7 @@ jq = "1.8.2"
 pkl = "0.32.1"
 biome = "2.4.15"
 taplo = "0.10.0"
-golangci-lint = "2.14.0"
+golangci-lint = "2.15.0"
 ruff = "0.17.1"
 python = "3.15.0"
 "conda:mypy" = { version = "1.19.1" }
