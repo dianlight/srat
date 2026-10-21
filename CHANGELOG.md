@@ -2,7 +2,7 @@
 
 # Changelog
 
-## [ 🚧 Unreleased ]
+## 2026.10.1
 
 ### ✨ Features
 
@@ -568,4 +568,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-10-16T09:12:50Z -->
+<!-- release-timestamp: 2026-10-21T15:13:38Z -->
