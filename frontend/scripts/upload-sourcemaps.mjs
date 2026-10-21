@@ -60,6 +60,20 @@ console.log(
   `[sentry-sourcemaps] Uploading ${maps.length} sourcemap(s) for release ${release} to ${org}/${project}...`,
 );
 
+// Best-effort: if the sentry-cli platform binary isn't available (e.g. under
+// bun where its install script may not have downloaded it), skip with a
+// warning rather than failing the whole release build.
+const cliCheck = Bun.spawnSync(["bunx", "sentry-cli", "--version"], {
+  env: { ...process.env, SENTRY_AUTH_TOKEN: authToken, SENTRY_ORG: org },
+  stdio: ["ignore", "pipe", "pipe"],
+});
+if (cliCheck.exitCode !== 0) {
+  console.warn(
+    "[sentry-sourcemaps] Skipping upload: sentry-cli binary not available.",
+  );
+  process.exit(0);
+}
+
 const proc = Bun.spawnSync(
   [
     "bunx",
