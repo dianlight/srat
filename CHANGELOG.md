@@ -8,6 +8,11 @@
 
 ### 🐛 Bug Fixes
 
+### 🔧 Maintenance
+
+- **First stable release**: 2026.10.1 is the first stable release of the 2026.10 line, closing the `-rc` series.
+- **Dependency and toolchain refresh**: Go, Bun, Python 3.15, Sentry, ESLint, go-github v93, mise, ruff, and golangci-lint updated to their latest supported versions.
+
 ### 🏗 Chore
 
 ## 2026.10.0-rc19
