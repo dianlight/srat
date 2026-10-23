@@ -21,7 +21,7 @@
     "@babel/preset-typescript": "8.0.7",
     "@biomejs/biome": "2.5.15",
     "@code-inspector/core": "2.0.9",
-    "@happy-dom/global-registrator": "21.0.3",
+    "@happy-dom/global-registrator": "21.0.4",
     "@hookform/devtools": "4.4.0",
     "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
     "@testing-library/dom": "10.4.2",
