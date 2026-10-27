@@ -27,7 +27,7 @@ require (
 	github.com/jarcoal/httpmock v1.4.2
 	github.com/lonegunmanb/go-defaults v1.4.0
 	github.com/maniartech/signals v1.3.1
-	github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
+	github.com/oapi-codegen/oapi-codegen/v2 v2.8.1
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/ovechkin-dm/mockio/v2 v2.0.5
 	github.com/patrickmn/go-cache v2.1.0+incompatible
