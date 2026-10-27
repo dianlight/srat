@@ -312,7 +312,7 @@ github.com/muesli/cancelreader
 # github.com/ncruces/go-strftime v1.1.0
 ## explicit; go 1.24
 github.com/ncruces/go-strftime
-# github.com/oapi-codegen/oapi-codegen/v2 v2.8.0
+# github.com/oapi-codegen/oapi-codegen/v2 v2.8.1
 ## explicit; go 1.25.0
 github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider
 # github.com/oapi-codegen/runtime v1.8.0
