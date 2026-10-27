@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 )
 
@@ -195,9 +196,17 @@ func (a *XfsAdapter) Check(ctx context.Context, device string, options dto.Check
 
 // GetLabel retrieves the xfs filesystem label
 func (a *XfsAdapter) GetLabel(ctx context.Context, device string) (string, errors.E) {
+	if !a.commandExists(a.labelCommand) {
+		tlog.DebugContext(ctx, "XFS label helper missing, returning unknown label", "command", a.labelCommand, "device", device)
+		return "", nil
+	}
 	// Use xfs_admin -l to get the label
 	output, exitCode, err := a.runCommandCached(ctx, a.labelCommand, "-l", device)
 	if err != nil {
+		if IsMissingFilesystemToolError(err) {
+			tlog.DebugContext(ctx, "XFS label helper missing, returning unknown label", "command", a.labelCommand, "device", device, "error", err)
+			return "", nil
+		}
 		return "", errors.WithDetails(err, "Device", device)
 	}
 
@@ -246,9 +255,20 @@ func (a *XfsAdapter) GetState(ctx context.Context, device string) (dto.Filesyste
 		AdditionalInfo: make(map[string]any),
 	}
 
+	if !a.commandExists(a.stateCommand) {
+		tlog.DebugContext(ctx, "XFS state helper missing, returning unknown state", "command", a.stateCommand, "device", device)
+		state.StateDescription = "Unknown"
+		return state, nil
+	}
+
 	// Run state command in no-modify mode to check state
 	output, exitCode, err := a.runCommandCachedQuiet(ctx, a.stateCommand, "-n", device)
 	if err != nil {
+		if IsMissingFilesystemToolError(err) {
+			tlog.DebugContext(ctx, "XFS state helper missing, returning unknown state", "command", a.stateCommand, "device", device, "error", err)
+			state.StateDescription = "Unknown"
+			return state, nil
+		}
 		return state, errors.WithDetails(err, "Device", device)
 	}
 

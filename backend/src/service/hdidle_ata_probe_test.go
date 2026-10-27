@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/adelolmo/hd-idle/sgio"
+	"github.com/dianlight/srat/internal/ataprobe"
 )
 
 // TestAtaProbeFn_IsReadOnlyCheckPowerMode verifies that the ATA support probe
@@ -24,7 +25,7 @@ func TestAtaProbeFn_IsReadOnlyCheckPowerMode(t *testing.T) {
 		t.Fatal("ataProbeFn must be initialized")
 	}
 	probeAddr := reflect.ValueOf(ataProbeFn).Pointer()
-	checkAddr := reflect.ValueOf(sgio.CheckAtaDevice).Pointer()
+	checkAddr := reflect.ValueOf(ataprobe.CheckAtaDevice).Pointer()
 	stopAddr := reflect.ValueOf(sgio.StopAtaDevice).Pointer()
 
 	if probeAddr != checkAddr {

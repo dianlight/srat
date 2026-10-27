@@ -29,7 +29,7 @@ import (
 	"github.com/dianlight/srat/unixsamba"
 	"github.com/dianlight/tlog"
 	"github.com/gofri/go-github-ratelimit/v2/github_ratelimit"
-	"github.com/google/go-github/v92/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/oapi-codegen/oapi-codegen/v2/pkg/securityprovider"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxevent"
@@ -104,6 +104,7 @@ func ProvideCoreDependencies(params BaseAppParams) fx.Option {
 			service.NewSupervisorService,
 			service.NewHaRootService,
 			service.NewFilesystemService,
+			func(fs service.FilesystemServiceInterface) service.MountFlagProber { return fs },
 			service.NewShareService,
 			service.NewUserService,
 			service.NewHostService,

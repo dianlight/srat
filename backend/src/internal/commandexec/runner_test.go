@@ -258,3 +258,19 @@ func (suite *CommandExecutorTestSuite) TestExecuteWithInput_PassesStdinToCommand
 	suite.Require().NotEmpty(snapshot.Lines)
 	suite.Require().Equal("stdin:copilot-input", snapshot.Lines[len(snapshot.Lines)-1].Line)
 }
+
+func (suite *CommandExecutorTestSuite) TestExecute_ReturnsPartialSnapshotOnContextTimeout() {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	snapshot, err := suite.executor.Execute(
+		ctx,
+		"execute-timeout",
+		"Execute Timeout",
+		"sh",
+		"-c",
+		"echo early-line; sleep 5",
+	)
+	suite.Require().Error(err)
+	suite.Require().NotEmpty(snapshot.Lines, "timeout should preserve partial output instead of empty snapshot")
+	suite.Require().Contains(snapshot.Lines[0].Line, "early-line")
+}

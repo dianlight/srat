@@ -348,17 +348,17 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return nil, err
 	}
 
-	check, err := gorm.G[dbom.ExportedShare](s.db).Scopes(dbom.IncludeSoftDeleted).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update(s.ctx, "deleted_at", nil)
-	if err != nil {
-		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", err)
-		return nil, errors.Wrapf(err, "failed to check for existing share: %s", err.Error())
-	} else if check > 0 {
+	checkRes := s.db.WithContext(s.ctx).Unscoped().Model(&dbom.ExportedShare{}).Where("name = ? and deleted_at IS NOT NULL", share.Name).Update("deleted_at", nil)
+	if checkRes.Error != nil {
+		slog.Error("Failed to check for existing share", "share_name", share.Name, "error", checkRes.Error)
+		return nil, errors.Wrapf(checkRes.Error, "failed to check for existing share: %s", checkRes.Error.Error())
+	} else if checkRes.RowsAffected > 0 {
 		return s.UpdateShare(share.Name, share)
 	}
 
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
-	err = conv.SharedResourceToExportedShare(share, &dbShare)
+	err := conv.SharedResourceToExportedShare(share, &dbShare)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert share")
 	}
@@ -376,9 +376,8 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		dbShare.Users = []dbom.SambaUser{dbomAdmin}
 	}
 
-	err = gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare)
-	if err != nil {
-		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, err)
+	if errC := gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare); errC != nil {
+		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, errC)
 	}
 
 	var convOut converter.DtoToDbomConverterImpl
@@ -617,9 +616,8 @@ func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.
 
 	disabled := !enabled
 	share.Disabled = &disabled
-	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to save share")
+	if res := s.db.WithContext(s.ctx).Where("name = ?", share.Name).Updates(&share); res.Error != nil {
+		return nil, errors.Wrap(res.Error, "failed to save share")
 	}
 
 	if *share.Disabled && (share.Usage == dto.UsageAsMedia || share.Usage == dto.UsageAsBackup || share.Usage == dto.UsageAsShare) {
@@ -657,9 +655,8 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	}
 	disabled := !enabled
 	share.Disabled = &disabled
-	_, err = gorm.G[dbom.ExportedShare](s.db).Updates(s.ctx, share)
-	if err != nil {
-		return nil, errors.Errorf("failed to save share %w", err)
+	if res := s.db.WithContext(s.ctx).Where("name = ?", share.Name).Updates(&share); res.Error != nil {
+		return nil, errors.Errorf("failed to save share %w", res.Error)
 	}
 	var conv converter.DtoToDbomConverterImpl
 	dtoShare, errS := conv.ExportedShareToSharedResource(share)

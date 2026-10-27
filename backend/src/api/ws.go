@@ -75,16 +75,14 @@ func NewWebSocketBroker(p WebSocketHandlerParams) *WebSocketHandler {
 	}
 }
 
-// checkWebSocketOrigin enforces the shared dto.IsOriginAllowed policy (same
-// normalization as CORS). Dev mode stays permissive; SecureMode allows empty
-// Origin (non-browser HA component) and exact matches against IngressOrigin
-// plus AllowedOrigins.
+// checkWebSocketOrigin enforces the shared dto.IsOriginAllowedForRequest policy
+// (same normalization as CORS). Dev mode stays permissive; SecureMode allows
+// empty Origin (non-browser HA component), exact matches against IngressOrigin
+// plus AllowedOrigins, HA ingress proxy arrivals (X-Ingress-Path /
+// X-Hass-Source), and same-host origins (Origin host == Host or
+// X-Forwarded-Host) so user-specific HA URLs keep working without static config.
 func checkWebSocketOrigin(state *dto.ContextState, r *http.Request) bool {
-	origin := ""
-	if r != nil {
-		origin = r.Header.Get("Origin")
-	}
-	return dto.IsOriginAllowed(state, origin)
+	return dto.IsOriginAllowedForRequest(state, r)
 }
 
 func reverseMap(m map[string]any) map[string]string {

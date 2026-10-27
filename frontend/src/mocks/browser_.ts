@@ -50,7 +50,7 @@ export async function startMockWorker() {
 	}
 
 	await worker.start({
-		onUnhandledRequest: "warn", // Warn about unhandled requests
+		onUnhandledFrame: "warn", // Warn about unhandled requests
 		serviceWorker: {
 			// Customize the Service Worker URL if needed
 			url: "/mockServiceWorker.js",
@@ -63,8 +63,8 @@ export async function startMockWorker() {
 /**
  * Stop the MSW worker in the browser
  */
-export function stopMockWorker() {
-	worker.stop();
+export async function stopMockWorker() {
+	await worker.stop();
 	console.log("[MSW] Mock Service Worker stopped");
 }
 

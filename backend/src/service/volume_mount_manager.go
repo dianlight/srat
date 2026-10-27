@@ -9,6 +9,7 @@ import (
 	"github.com/dianlight/srat/converter"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/osutil"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
 )
@@ -70,6 +71,66 @@ func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, 
 		fsTypeStr := "auto"
 		if md.FSType != nil {
 			fsTypeStr = *md.FSType
+		}
+		if osutil.IsMountBusyError(errMount) {
+			slog.WarnContext(m.ctx, "Mount target busy or already mounted, skipping quietly",
+				"device_id", md.DeviceId,
+				"device_path", *md.Partition.DevicePath,
+				"fstype", fsTypeStr,
+				"mount_fstype", mountFsType,
+				"mount_path", md.Path,
+				"flags", flags,
+				"data", data,
+				"mount_error", errMount)
+
+			// Attempt to clean up the directory we created on failure.
+			if _, statErr := os.Stat(md.Path); statErr == nil {
+				if removeErr := os.Remove(md.Path); removeErr != nil {
+					slog.WarnContext(m.ctx, "Failed to cleanup mount directory after mount failure",
+						"path", md.Path, "cleanup_error", removeErr)
+				}
+			}
+
+			return errors.WithDetails(dto.ErrorAlreadyMounted,
+				"Device", md.DeviceId,
+				"DevicePath", *md.Partition.DevicePath,
+				"MountPath", md.Path,
+				"FSType", fsTypeStr,
+				"MountFSType", mountFsType,
+				"Message", "device or resource busy: already mounted",
+				"Error", errMount.Error(),
+			)
+		}
+		if osutil.IsMountInvalidOptionError(errMount) {
+			slog.WarnContext(m.ctx, "Mount rejected option set",
+				"device_id", md.DeviceId,
+				"device_path", *md.Partition.DevicePath,
+				"fstype", fsTypeStr,
+				"mount_fstype", mountFsType,
+				"mount_path", md.Path,
+				"flags", flags,
+				"data", data,
+				"mount_error", errMount)
+
+			// Attempt to clean up the directory we created on failure.
+			if _, statErr := os.Stat(md.Path); statErr == nil {
+				if removeErr := os.Remove(md.Path); removeErr != nil {
+					slog.WarnContext(m.ctx, "Failed to cleanup mount directory after mount failure",
+						"path", md.Path, "cleanup_error", removeErr)
+				}
+			}
+
+			return errors.WithDetails(dto.ErrorInvalidParameter,
+				"Device", md.DeviceId,
+				"DevicePath", *md.Partition.DevicePath,
+				"MountPath", md.Path,
+				"FSType", fsTypeStr,
+				"MountFSType", mountFsType,
+				"Flags", flags,
+				"Data", data,
+				"Message", fmt.Sprintf("mount rejected option set (invalid argument): data=%q; check fmask/dmask/uid/gid for fstype %s", data, mountFsType),
+				"Error", errMount.Error(),
+			)
 		}
 		slog.ErrorContext(m.ctx, "Failed to mount volume",
 			"device_id", md.DeviceId,

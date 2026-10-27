@@ -2,6 +2,65 @@
 
 # Changelog
 
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+## 2026.10.1
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🔧 Maintenance
+
+- **First stable release**: 2026.10.1 is the first stable release of the 2026.10 line, closing the `-rc` series.
+- **Dependency and toolchain refresh**: Go, Bun, Python 3.15, Sentry, ESLint, go-github v93, mise, ruff, and golangci-lint updated to their latest supported versions.
+
+### 🏗 Chore
+
+## 2026.10.0-rc19
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+- **Share names with hyphens**: Share names containing hyphens are now accepted, and suggested names preserve hyphens instead of being rejected or mangled. ([srat#1401](https://github.com/dianlight/srat/pull/1401), [srat#1407](https://github.com/dianlight/srat/pull/1407))
+- **Automount gating**: Automount now skips native/system mounts and protected-mode environments, avoiding failed mount attempts and log noise. ([srat#1348](https://github.com/dianlight/srat/pull/1348), [srat#1350](https://github.com/dianlight/srat/pull/1350))
+- **Mounted device handling**: Already-mounted devices are skipped quietly, with corrected NTFS defaults that prevent remount loops. ([srat#1364](https://github.com/dianlight/srat/pull/1364))
+- **Concurrent mount coalescing**: Concurrent udev mount events are coalesced and transient EBUSY races are suppressed. ([srat#1367](https://github.com/dianlight/srat/pull/1367))
+- **Supervisor mount warnings**: A supervisor "target not empty" response is downgraded to a warning instead of surfacing as an error. ([srat#1365](https://github.com/dianlight/srat/pull/1365))
+- **NTFS force user**: NTFS shares omit force user when MountFlagProber is wired into ServerService. ([srat#1420](https://github.com/dianlight/srat/pull/1420))
+- **Live volume state**: Device, mount, and share state are read from the live volumes schema. ([srat#1415](https://github.com/dianlight/srat/pull/1415))
+- **SMBd restart timeout**: smbd hard restart now uses a dedicated 120-second timeout instead of an inherited short deadline. ([srat#1351](https://github.com/dianlight/srat/pull/1351))
+- **Wizard commit context**: Wizard commit failures now surface backend error context in the UI. ([srat#1346](https://github.com/dianlight/srat/pull/1346))
+- **Error detail propagation**: Mount, unmount, wizard, and problem-dismiss errors now preserve backend detail end-to-end. ([srat#1345](https://github.com/dianlight/srat/pull/1345), [srat#1357](https://github.com/dianlight/srat/pull/1357), [srat#1363](https://github.com/dianlight/srat/pull/1363))
+- **Sentry noise reduction**: Routine 401 logs and missing filesystem helpers no longer generate Sentry errors. ([srat#1347](https://github.com/dianlight/srat/pull/1347), [srat#1355](https://github.com/dianlight/srat/pull/1355))
+
+### 🔧 Maintenance
+
+- **ATA probe**: Uses an in-tree ATA probe without double-closing the device handle. ([srat#1372](https://github.com/dianlight/srat/pull/1372))
+- **Dependency and toolchain updates**: Updated Bun, Go, Python, MUI, Sentry, mise, and other dependencies to their latest supported versions.
+- **Documentation and CI upkeep**: Automated documentation formatting/TOC fixes and authenticated GitHub API checks in CI.
+
+### 🏗 Chore
+
+## 2026.10.0-rc18
+
+### 🐛 Bug Fixes
+
+- **HA ingress WebSocket and CORS origins**: WebSocket and CORS requests arriving through the Home Assistant ingress proxy are now trusted via ingress proxy headers and same-host origins, so the UI no longer gets rejected behind ingress. ([srat#1330](https://github.com/dianlight/srat/pull/1330))
+
+### 🔧 Maintenance
+
+- **Release CHANGELOG reset rebase**: The release workflow now rebases the CHANGELOG reset onto the latest main before pushing, fixing release pushes that failed when main advanced during the build. ([srat#1317](https://github.com/dianlight/srat/pull/1317))
+- **go-github v92 migration**: Migrated the GitHub client library from v91 to v92, updating import paths and syncing vendored dependencies. ([srat#1294](https://github.com/dianlight/srat/pull/1294))
+- **Vitest 5.0.3**: Updated the frontend test toolchain (Vitest, browser-playwright, coverage) to v5.0.3.
+
 ## 2026.10.0-rc17
 
 ### ✨ Features
@@ -517,4 +576,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-10-02T19:54:50Z -->
+<!-- release-timestamp: 2026-10-21T15:29:08Z -->

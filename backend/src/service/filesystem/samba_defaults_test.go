@@ -43,6 +43,8 @@ func (suite *SambaDefaultsTestSuite) TestNtfsDefaults() {
 	}
 	suite.Equal("000", byName["fmask"])
 	suite.Equal("000", byName["dmask"])
+	suite.Equal("0", byName["uid"])
+	suite.Equal("0", byName["gid"])
 
 	suite.Equal("", adapter.GetSambaForceUser())
 	suite.Equal("", adapter.GetSambaForceGroup())

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -9,7 +10,7 @@ import (
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
-	"github.com/urfave/cli/v2"
+	"github.com/urfave/cli/v3"
 
 	"github.com/oligot/go-mod-upgrade/internal/app"
 )
@@ -22,8 +23,8 @@ var (
 	builtBy = ""
 )
 
-func versionPrinter(c *cli.Context) {
-	version := c.App.Version
+func versionPrinter(cmd *cli.Command) {
+	version := cmd.Version
 	if commit != "" {
 		version = fmt.Sprintf("%s\ncommit: %s", version, commit)
 	}
@@ -38,7 +39,7 @@ func versionPrinter(c *cli.Context) {
 	}
 	fmt.Printf(
 		"%s version %s\n",
-		c.App.Name,
+		cmd.Name,
 		version,
 	)
 }
@@ -56,7 +57,7 @@ func main() {
 	}
 	cli.VersionPrinter = versionPrinter
 
-	cliapp := &cli.App{
+	cliapp := &cli.Command{
 		Name:    "go-mod-upgrade",
 		Usage:   "Update outdated Go dependencies interactively",
 		Version: version,
@@ -89,9 +90,10 @@ func main() {
 				Usage:       "Verbose mode",
 				Destination: &app.Verbose,
 			},
-			&cli.PathFlag{
+			&cli.StringFlag{
 				Name:        "hook",
 				Usage:       "Hook to execute for each updated module",
+				TakesFile:   true,
 				Destination: &app.Hook,
 			},
 			&cli.StringSliceFlag{
@@ -100,15 +102,33 @@ func main() {
 				Usage:       "Ignore modules matching the given regular expression",
 				Destination: &app.Ignore,
 			},
+			&cli.BoolFlag{
+				Name:        "no-major",
+				Value:       false,
+				Usage:       "Disable checking for major version updates",
+				Destination: &app.NoMajor,
+			},
+			&cli.BoolFlag{
+				Name:        "no-cache",
+				Value:       false,
+				Usage:       "Skip the disk cache when checking for major version updates",
+				Destination: &app.NoCache,
+			},
+			&cli.StringFlag{
+				Name:        "cooldown",
+				Aliases:     []string{"c"},
+				Usage:       "Only consider versions published at least this long ago (e.g. 7, 7d, 12h, 30m)",
+				Destination: &app.Cooldown,
+			},
 		},
-		Action: func(c *cli.Context) error {
+		Action: func(ctx context.Context, cmd *cli.Command) error {
 			return app.Run()
 		},
 		UseShortOptionHandling: true,
-		EnableBashCompletion:   true,
+		EnableShellCompletion:  true,
 	}
 
-	err := cliapp.Run(os.Args)
+	err := cliapp.Run(context.Background(), os.Args)
 	if err != nil {
 		logger := log.WithError(err)
 		var e *exec.ExitError

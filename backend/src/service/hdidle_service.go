@@ -14,6 +14,7 @@ import (
 	"github.com/adelolmo/hd-idle/io"
 	"github.com/adelolmo/hd-idle/sgio"
 	sg "github.com/benmcclelland/sgio"
+	"github.com/dianlight/srat/internal/ataprobe"
 	"github.com/patrickmn/go-cache"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -37,12 +38,12 @@ const (
 )
 
 // ataProbeFn is used by CheckATASupport to probe whether a device supports
-// ATA PASS-THROUGH. It defaults to sgio.CheckAtaDevice which issues a
+// ATA PASS-THROUGH. It defaults to ataprobe.CheckAtaDevice which issues a
 // read-only CHECK POWER MODE command (0xE5) instead of sgio.StopAtaDevice
 // which issues STANDBY IMMEDIATE (0xE0) and physically spins down the disk.
 // The spindownDisk path (spindownDisk) still uses sgio.StopAtaDevice directly
 // because an intentional spindown is required there.
-var ataProbeFn = sgio.CheckAtaDevice
+var ataProbeFn = ataprobe.CheckAtaDevice
 
 // sgOpenFn is used by CheckSGSupport to open a device as an SG (SCSI Generic)
 // device. It defaults to sg.OpenScsiDevice and exists as a package-level

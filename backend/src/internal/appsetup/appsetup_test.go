@@ -21,7 +21,7 @@ import (
 	"github.com/dianlight/srat/homeassistant/websocket"
 	"github.com/dianlight/srat/internal"
 	"github.com/dianlight/srat/service"
-	"github.com/google/go-github/v92/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -149,6 +149,34 @@ func (suite *AppSetupSuite) TestProvideCoreDependencies_StartsGraph() {
 	)
 	app.RequireStart()
 	suite.T().Cleanup(func() { app.RequireStop() })
+}
+
+func (suite *AppSetupSuite) TestProvideCoreDependencies_ProvidesMountFlagProber() {
+	origToken := config.GistToken
+	config.GistToken = "test-token"
+	suite.T().Cleanup(func() { config.GistToken = origToken })
+
+	var prober service.MountFlagProber
+	app := fxtest.New(
+		suite.T(),
+		ProvideCoreDependencies(suite.params),
+		ProvideHAClientDependencies(suite.params),
+		ProvideCyclicDependencyWorkaroundOption(),
+		fx.Populate(&prober),
+	)
+	app.RequireStart()
+	suite.T().Cleanup(func() { app.RequireStop() })
+
+	suite.Require().NotNil(prober, "MountFlagProber must be wired or ServerService falls back to root (srat#1391)")
+	user, group := prober.GetSambaForceUserGroup("ntfs3")
+	suite.Equal("", user)
+	suite.Equal("", group)
+	user, group = prober.GetSambaForceUserGroup("ntfs")
+	suite.Equal("", user)
+	suite.Equal("", group)
+	user, group = prober.GetSambaForceUserGroup("ext4")
+	suite.Equal("root", user)
+	suite.Equal("root", group)
 }
 
 func (suite *AppSetupSuite) TestProvideCyclicDependencyWorkaroundOption() {

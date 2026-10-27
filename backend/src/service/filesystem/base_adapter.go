@@ -142,12 +142,26 @@ func (b *baseAdapter) SetCommandRunner(runner commandexec.Executor) (reset func(
 	}
 }
 
+// IsMissingFilesystemToolError reports whether err indicates an optional
+// filesystem helper binary is absent from PATH. It is intentionally narrow:
+// device path errors like "no such file or directory" are genuine failures
+// and must keep their error path.
+func IsMissingFilesystemToolError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "executable file not found") ||
+		strings.Contains(msg, "command not found") ||
+		strings.Contains(msg, "not found in $path")
+}
+
 // commandExists checks if a command is available in the system PATH
 func (b *baseAdapter) commandExists(command string) bool {
 	executor := b.resolveCommandExecutor()
 	_, err := executor.LookPath(command)
 	if err != nil {
-		if strings.Contains(err.Error(), "command not found") {
+		if IsMissingFilesystemToolError(err) {
 			return false
 		}
 		tlog.Warn("Error checking command existence", "command", command, "error", err)
@@ -179,13 +193,15 @@ func (b *baseAdapter) runCommandMode(ctx context.Context, quiet bool, name strin
 		if exitCode == 0 {
 			exitCode = -1
 		}
+		if IsMissingFilesystemToolError(err) {
+			tlog.WarnContext(ctx, "Filesystem helper not in PATH, capability unavailable", "command", name, "args", args, "exitCode", exitCode, "Output", output, "error", err)
+			return output, exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
+		}
 		if errors.Is(err, context.Canceled) ||
 			errors.Is(err, context.DeadlineExceeded) ||
 			strings.Contains(err.Error(), "permission denied") ||
-			strings.Contains(err.Error(), "executable file not found") ||
 			strings.Contains(err.Error(), "no such file or directory") ||
 			strings.Contains(err.Error(), "cannot find the file") ||
-			strings.Contains(err.Error(), "command not found") ||
 			strings.Contains(err.Error(), "not configured") {
 			tlog.ErrorContext(ctx, "Error executing command", "command", name, "args", args, "exitCode", exitCode, "Output", output, "error", err)
 			return output, exitCode, errors.WithDetails(err, "Command", name, "Args", strings.Join(args, " "), "error", "command not found")
@@ -420,6 +436,25 @@ func (b *baseAdapter) Mount(
 		mp, err = b.baseDoMountFunc(source, target, fsType, data, flags, opts...)
 	}
 	if err != nil {
+		if osutil.IsMountBusyError(err) {
+			return nil, errors.WithDetails(dto.ErrorAlreadyMounted,
+				"Source", source,
+				"Target", target,
+				"FSType", fsType,
+				"Message", "Device or mount target is busy: already mounted by a concurrent attempt",
+				"Error", err.Error(),
+			)
+		}
+		if osutil.IsMountInvalidOptionError(err) {
+			return nil, errors.WithDetails(err,
+				"Source", source,
+				"Target", target,
+				"FSType", fsType,
+				"Flags", flags,
+				"Data", data,
+				"Hint", "mount rejected option set (invalid argument); check fmask/dmask/uid/gid for fstype",
+			)
+		}
 		return nil, errors.WithDetails(err,
 			"Source", source,
 			"Target", target,

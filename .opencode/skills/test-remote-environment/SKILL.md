@@ -319,6 +319,10 @@ Then use Playwright tools as needed to interact with the UI:
 - `browser_snapshot` may return only `RootWebArea` for MUI components that use virtual trees or custom rendering (e.g., `SimpleTreeView`, `ToggleButtonGroup`)
 - Use `browser_eval` with JavaScript DOM queries as a fallback: `document.querySelector(...)` or React fiber access via `__reactFiber$<hash>`
 - For `ToggleButtonGroup` clicks, React fiber handler invocation is often the only reliable method (MUI resists synthetic `PointerEvent`/`MouseEvent` dispatch)
+- **Synthetic JS `.click()` never drives MUI TreeView/combobox selection** (proven 2026-10-13: `element.click()` via evaluate leaves `localStorage` untouched and selection unchanged). Always use the Playwright click tool with a snapshot `ref`, and **take a fresh snapshot before every click** — refs renumber on each render, stale refs silently miss or hit blockers (modal backdrops, notification popovers). If a click times out on an intercepting overlay, dismiss it first (`Escape`) and re-snapshot.
+
+**Settings restore rule (proven 2026-10-13, twice):**
+- `PUT /api/settings` REPLACES the whole object — any restore from a mid-run `GET` snapshot re-applies that run's mutations. Always save a pristine `ORIG` JSON at case start and restore exclusively from it. Never chain restores (`GET` → tweak → `PUT`) across cases; re-fetch ORIG per case.
 
 ### Step 7 — Read logs again after UI interaction (core first, then addon) — per test case
 
@@ -335,6 +339,8 @@ mcp_home-assistant_ha_addon_logs  →  slug: "local_sambanas2"
 ```
 
 Look for new `ERROR` or `WARN` lines correlating with the case's actions. Append findings to that case's evidence. If a case fails, keep its logs for the summary.
+
+**Console-error triage rule (proven 2026-10-13):** `browser_console_messages` accumulates across navigations — never judge by totals. Attribute errors to time windows: transient `ERR_CONNECTION_RESET`/WS-handshake errors during an addon restart are expected noise; React duplicate-key warnings from mount-flag chips are a pre-existing UI issue (see #1394-adjacent notes), not case failures. Only errors appearing *after* the case's actions with no prior occurrence count as new evidence.
 
 ### Step 7a — Verify cache-sensitive data freshness (recommended, per case when applicable)
 

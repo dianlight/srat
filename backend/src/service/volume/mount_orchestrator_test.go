@@ -6,7 +6,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
@@ -145,6 +148,45 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_AlreadyMounted() {
 	s.Zero(s.mounter.mountCalls, "OS-level mount must not run when already mounted")
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_DeviceAlreadyMountedElsewhere() {
+	tmpDir := s.T().TempDir()
+	devFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(devFile, []byte("test"), 0o600))
+	restore := osutil.MockMountInfo("1217 819 0:52 / /mnt/other rw,relatime - ext4 " + devFile + " rw\n")
+	s.T().Cleanup(restore)
+
+	partID := "part-orch-devmounted"
+	partition := dto.Partition{Id: &partID, DevicePath: &devFile}
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "fresh"), Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, Partition: &partition,
+	}
+
+	err := s.orchestrator.MountVolume(md)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorAlreadyMounted)
+	s.Zero(s.mounter.mountCalls, "OS-level mount must not run when the device is mounted elsewhere")
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_MounterBusyRacedToAlreadyMounted() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-busy", "part-orch-busy", deviceFile)
+	s.mounter.mountErr = errors.WithDetails(errors.New("mount: device or resource busy"), "Source", deviceFile)
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "share"), Root: "/", DeviceId: "part-orch-busy",
+		Flags: &dto.MountFlags{},
+		Partition: &dto.Partition{
+			Id: new("part-orch-busy"), DevicePath: &deviceFile,
+		},
+	}
+	err := s.orchestrator.MountVolume(md)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorAlreadyMounted)
+}
+
 func (s *MountOrchestratorTestSuite) TestUnmountVolume_NotFound_DelegatesToMounter() {
 	err := s.orchestrator.UnmountVolume("/mnt/orch-missing", false)
 	s.Require().NoError(err)
@@ -215,6 +257,83 @@ func TestInferMountPointType(t *testing.T) {
 	}
 }
 
+func TestShouldSkipAutomount(t *testing.T) {
+	native := "native"
+	nativeUpper := "NATIVE"
+	ext4 := "ext4"
+	cases := []struct {
+		name string
+		mp   *dto.MountPointData
+		want bool
+	}{
+		{"nil", nil, true},
+		{"system path with ext4", &dto.MountPointData{Path: "/addon_configs", FSType: &ext4}, true},
+		{"system path without fstype", &dto.MountPointData{Path: "/addon_configs"}, true},
+		{"native fstype on data path", &dto.MountPointData{Path: "/mnt/data", FSType: &native}, true},
+		{"native uppercase", &dto.MountPointData{Path: "/mnt/data", FSType: &nativeUpper}, true},
+		{"native via partition fstype", &dto.MountPointData{
+			Path:      "/mnt/data",
+			Partition: &dto.Partition{FsType: &native},
+		}, true},
+		{"ext4 data path mounts", &dto.MountPointData{Path: "/mnt/data", FSType: &ext4}, false},
+		{"empty fstype on data path mounts (auto-detect)", &dto.MountPointData{Path: "/mnt/data"}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := volume.ShouldSkipAutomount(tc.mp); got != tc.want {
+				t.Errorf("ShouldSkipAutomount = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_SkipsNativeAndSystemPaths() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+
+	native := "native"
+	ext4 := "ext4"
+	cases := []struct {
+		name string
+		path string
+		fs   *string
+	}{
+		{"native on system path", "/addon_configs", &native},
+		{"ext4 on system path", "/addon_configs", &ext4},
+		{"native on data path", filepath.Join(tmpDir, "mnt", "data"), &native},
+	}
+	for _, tc := range cases {
+		callsBefore := s.mounter.mountCalls
+		safe := "skip-case"
+		switch tc.name {
+		case "native on system path":
+			safe = "skip-native-system"
+		case "ext4 on system path":
+			safe = "skip-ext4-system"
+		case "native on data path":
+			safe = "skip-native-data"
+		}
+		diskID, partID := "disk-"+safe, "part-"+safe
+		diskIDCopy, partIDCopy, devCopy := diskID, partID, deviceFile
+		fsCopy := tc.fs
+		parts := map[string]dto.Partition{partID: {
+			Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: fsCopy,
+		}}
+		disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+		s.Require().NoError(s.disks.AddOrUpdate(&disk))
+		md := &dto.MountPointData{
+			Path: tc.path, Root: "/", DeviceId: partID,
+			Flags: &dto.MountFlags{}, FSType: tc.fs,
+			Partition: &dto.Partition{Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy, FsType: fsCopy},
+		}
+		err := s.orchestrator.MountVolume(md)
+		s.Require().Error(err, tc.name)
+		s.ErrorIs(err, dto.ErrorInvalidParameter, tc.name)
+		s.Equal(callsBefore, s.mounter.mountCalls, "skipped mount must not reach the mounter (%s)", tc.name)
+	}
+}
+
 type fakeNotifier struct {
 	created   []string
 	dismissed []string
@@ -280,6 +399,24 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_MounterError() {
 	err := s.orchestrator.MountVolume(md)
 	s.Require().Error(err)
 	s.ErrorIs(err, dto.ErrorMountFail)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_NilFlagsInitializes() {
+	restore := osutil.MockMountInfo("")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-nilflags", "part-orch-nilflags", deviceFile)
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "nilflags"), Root: "/", DeviceId: "part-orch-nilflags",
+		Flags: nil,
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md))
+	s.Equal(1, s.mounter.mountCalls)
+	s.NotNil(md.Flags, "nil Flags must be initialized before the OS mount")
 }
 
 func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_Success() {
@@ -517,4 +654,64 @@ func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_VolumesError() 
 	got, err := s.orchestrator.PatchMountPointSettings("/", "/mnt/orch-ve", dto.MountPointData{IsToMountAtStartup: &startup})
 	s.Require().NoError(err, "volumes failure must degrade to the fallback path, not fail")
 	s.Require().NotNil(got)
+}
+
+type blockingCoalesceMounter struct {
+	calls atomic.Int32
+	delay time.Duration
+}
+
+func (f *blockingCoalesceMounter) Mount(md *dto.MountPointData, _ uintptr, _, _ string) errors.E {
+	f.calls.Add(1)
+	time.Sleep(f.delay)
+	md.IsMounted = true
+	return nil
+}
+
+func (f *blockingCoalesceMounter) Unmount(md *dto.MountPointData, _ bool) errors.E {
+	md.IsMounted = false
+	return nil
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_ConcurrentCoalesce() {
+	restore := osutil.MockMountInfo("")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-orch-coal", "part-orch-coal", deviceFile)
+
+	blocking := &blockingCoalesceMounter{delay: 200 * time.Millisecond}
+	orchestrator := volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx: s.ctx, Disks: s.disks, Filesystem: &fakeOrchestratorFS{},
+		Mounter: blocking, EventBus: s.eventBus, Repo: s.mountRepoIf,
+		Volumes: func() ([]*dto.Disk, errors.E) { return s.disks.All(), nil },
+	})
+
+	const callers = 8
+	mountPath := filepath.Join(tmpDir, "mnt", "coalesce")
+	var wg sync.WaitGroup
+	errs := make([]error, callers)
+	for i := 0; i < callers; i++ {
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			partID := "part-orch-coal"
+			md := &dto.MountPointData{
+				Path: mountPath, Root: "/", DeviceId: partID,
+				Flags:     &dto.MountFlags{},
+				Partition: &dto.Partition{Id: &partID, DevicePath: &deviceFile},
+			}
+			if err := orchestrator.MountVolume(md); err != nil {
+				errs[idx] = err
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		s.NoError(err)
+	}
+	s.Equal(int32(1), blocking.calls.Load(), "concurrent mounts for the same device+path must coalesce to one OS attempt")
 }

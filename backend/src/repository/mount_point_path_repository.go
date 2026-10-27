@@ -111,15 +111,15 @@ func (r *mountPointPathRepository) Patch(ctx context.Context, root, path string,
 		return dbom.MountPointPath{}, errors.WithStack(err)
 	}
 
-	affected, err := gorm.G[*dbom.MountPointPath](r.db).
-		Where(g.MountPointPath.Root.Eq(root), g.MountPointPath.Path.Eq(path)).
-		Updates(ctx, &dbMountData)
-	if err != nil {
+	affectedRes := r.db.WithContext(ctx).
+		Where("root = ? AND path = ?", root, path).
+		Updates(&dbMountData)
+	if affectedRes.Error != nil {
 		// First above already proved the row exists; a concurrent delete
 		// surfaces below as NotFound on the re-read instead.
-		return dbom.MountPointPath{}, errors.WithStack(err)
+		return dbom.MountPointPath{}, errors.WithStack(affectedRes.Error)
 	}
-	if affected == 0 {
+	if affectedRes.RowsAffected == 0 {
 		slog.DebugContext(ctx, "PatchMountPointSettings: no fields changed (no-op)", "root", root, "path", path)
 	}
 

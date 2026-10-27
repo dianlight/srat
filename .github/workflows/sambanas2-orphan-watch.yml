@@ -77,12 +77,16 @@ jobs:
                   continue
 
               haystack = "\n".join([issue["title"], issue["body"]] + issue["labels"])
-              # SambaNAS2-related: name/label match or the issue-form "### Addon" field.
-              if not re.search(r"sambanas2?", haystack, re.IGNORECASE):
+              # SambaNAS2-related only: require an explicit v2 marker.
+              # NOTE: `sambanas2?` also matches plain `sambanas` (v1), which
+              # caused hassio-addons#786 ([SambaNAS], `sambanas/rootfs/...`,
+              # `devrelease/sambanas`) to be mirrored as srat#1421.
+              v2_pat = r"sambanas\s*2\b|samba[\s_\-]*nas[\s_\-]*2\b"
+              if not re.search(v2_pat, haystack, re.IGNORECASE):
                   continue
               addon_field = re.search(r"^### Addon\s*\n+(.+)$",
                                       issue["body"], re.IGNORECASE | re.MULTILINE)
-              if addon_field and not re.search(r"sambanas2?",
+              if addon_field and not re.search(v2_pat,
                                                addon_field.group(1).strip(),
                                                re.IGNORECASE):
                   continue
@@ -151,7 +155,7 @@ jobs:
 
       - name: Upload orphans artifact
         if: steps.detect.outputs.count != '0'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: sambanas2-orphans
           path: /tmp/orphans.json
@@ -181,7 +185,7 @@ jobs:
       - name: Select model
         id: resolve
         continue-on-error: true
-        uses: dianlight/opencode-modelselect-action@97f7f5c377aae0f922a08222d433b1eb0475bddf # v1
+        uses: dianlight/opencode-modelselect-action@3ec36a41d90fad0d56e0670699f960ae8d4e3eef # v1
         with:
           task-type: issue-triage
           tier: auto

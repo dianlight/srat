@@ -747,9 +747,9 @@ export function ShareEditForm({
           rules={{
             required: "Share name is required",
             pattern: {
-              value: /^[a-zA-Z0-9_]+$/,
+              value: /^[a-zA-Z0-9_-]+$/,
               message:
-                "Share name can only contain letters, numbers, and underscores (_)",
+                "Share name can only contain letters, numbers, underscores (_), and hyphens (-)",
             },
             maxLength: {
               value: 80,

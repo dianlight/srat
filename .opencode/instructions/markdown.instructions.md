@@ -50,3 +50,4 @@ Use GitHub Flavored Markdown (GFM) and follow SRAT documentation standards. Keep
 - Breaking heading hierarchy (for example, jumping from `##` to `####`).
 - Leaving stale examples or mismatched behavior descriptions.
 - Using inconsistent list markers or missing blank lines between sections.
+- Generating Markdown tables from scripts/workflows in compact style: emit prettier-padded output instead (cells padded to max column width, verify with `bunx prettier --check <file>`), otherwise the Documentation Maintenance workflow opens a follow-up auto-fix PR.

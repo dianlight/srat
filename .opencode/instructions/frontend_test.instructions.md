@@ -17,6 +17,7 @@ applyTo: **/frontend/**/*.test.{js,jsx,ts,tsx}
 
 - **Test Runner:** Use Vitest (import { test, expect, describe, it, beforeEach, afterEach, vi } from "vitest"). Since Bun 1.4, Vitest runs on the Bun runtime: always invoke it as `bunx --bun vitest` (~35-50% faster than the Node runtime; module import phase drops from ~60s to ~13s). The mise tasks (`//frontend:test`, `//frontend:test:new`) already do this.
 - **Coverage caveat:** Do NOT combine `--bun` with `--coverage`: `@vitest/coverage-v8` report merging crashes under Bun (tests still run). Run coverage on the Node runtime (`bunx vitest run --coverage`) — this is what `mise run //frontend:test:ci` does.
+- **MSW caveat:** MSW HTTP interception does NOT work on the Bun runtime — happy-dom's `fetch` opens real sockets there (look for `Failed to replace a global value at "_wrapHandle"` plus `ECONNREFUSED 127.0.0.1:3000`), so any test using `withTestHandlers`/`getMswServer` fails with `FETCH_ERROR`. Run MSW-backed test files on the Node runtime instead (`bunx vitest run path/to/file.test.tsx` with no `--bun`, or `mise run //frontend:test:ci`). Do not "fix" these failures by changing handlers or assertions — verify on Node first.
 - **Library:** Use @testing-library/react.
 - **Language:** TypeScript (ensure strict typing for props and mocks).
 - **Matchings:** Use @testing-library/jest-dom matchers (manually imported or configured via setup file).

@@ -30,7 +30,7 @@ export const server = setupServer(...handlers);
  */
 export function startMockServer() {
 	server.listen({
-		onUnhandledRequest: "warn", // Warn about unhandled requests
+		onUnhandledFrame: "warn", // Warn about unhandled requests
 	});
 }
 

@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/dianlight/srat/dto"
 )
 
@@ -17,4 +19,10 @@ func AllowedOrigins(state *dto.ContextState) []string {
 // traffic is not broken; browsers always send Origin for CORS/WS.
 func IsOriginAllowed(state *dto.ContextState, origin string) bool {
 	return dto.IsOriginAllowed(state, origin)
+}
+
+// IsOriginAllowedForRequest extends IsOriginAllowed with HA ingress and
+// same-host fallbacks for proxy traffic (see dto.IsOriginAllowedForRequest).
+func IsOriginAllowedForRequest(state *dto.ContextState, r *http.Request) bool {
+	return dto.IsOriginAllowedForRequest(state, r)
 }

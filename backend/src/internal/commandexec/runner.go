@@ -237,6 +237,9 @@ func (s *Service) executeWithInput(ctx context.Context, quiet bool, commandID, l
 	for {
 		select {
 		case <-ctx.Done():
+			if snapshot, ok := s.GetSnapshot(executionID); ok {
+				return snapshot, ctx.Err()
+			}
 			return dto.CommandExecutionSnapshot{}, ctx.Err()
 		case <-ticker.C:
 			snapshot, ok := s.GetSnapshot(executionID)

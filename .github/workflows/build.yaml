@@ -214,13 +214,15 @@ jobs:
       - name: Verify SDK release tarball ships the ABI-checked wrapper
         env:
           VENDORED_REF: ${{ steps.vendored.outputs.ref }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # The SambaNAS2 addon runs Alpine (musl), so the musl tarball is the
           # contract we must validate. The SDK release tag must match the vendored
           # bindings ref exactly — the wrapper was built from that same source, so
           # any drift means a symbol/ABI mismatch (formerly smartmontools-go#38).
-          RELEASE=$(curl -fsSL https://api.github.com/repos/dianlight/smartmontools-sdk/releases/tags/${VENDORED_REF})
+          # Use authenticated gh api (not unauthenticated curl) to avoid 403 rate limits.
+          RELEASE=$(gh api repos/dianlight/smartmontools-sdk/releases/tags/${VENDORED_REF})
           TAG=$(echo "$RELEASE" | jq -r '.tag_name')
           if [ "$TAG" != "$VENDORED_REF" ]; then
             echo "❌ SDK release tag ${TAG} does not match vendored bindings ref ${VENDORED_REF}"
@@ -266,9 +268,9 @@ jobs:
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          version: "2026.9.17"
+          version: "2026.10.18"
           install: true
           experimental: true
 
@@ -298,7 +300,7 @@ jobs:
           echo "Backend Coverage: $COVERAGE%"
 
       - name: Save Backend Coverage Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: backend-coverage-report
           path: ./backend/src/coverage.out
@@ -320,9 +322,9 @@ jobs:
       #          bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          version: "2026.9.17"
+          version: "2026.10.18"
           install: true
           experimental: true
 
@@ -350,7 +352,7 @@ jobs:
 
       - name: Save Frontend Coverage Report
         if: ${{ github.actor != 'nektos/act' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: frontend-coverage-report
           path: ./frontend/coverage/lcov.info
@@ -370,17 +372,17 @@ jobs:
           ignore: brands
 
       - name: hassfest Validation
-        uses: home-assistant/actions/hassfest@06749dd8c0b54f350bc69c8752456cee498808a3 # master
+        uses: home-assistant/actions/hassfest@cd6f3635a740c84d8a14f6121a90068b8ece6bf6 # master
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
-          python-version: "3.14"
+          python-version: "3.15"
 
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          version: "2026.9.17"
+          version: "2026.10.18"
           install: true
           experimental: true
 
@@ -400,7 +402,7 @@ jobs:
         run: mise run //custom_components:test:ci
 
       - name: Upload Custom Component Coverage Report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: custom-component-coverage-report
           path: custom_components/coverage.xml
@@ -419,7 +421,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore Backend Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: backend-coverage-report
 
@@ -433,7 +435,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Frontend Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: frontend-coverage-report
 
@@ -447,7 +449,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Restore Custom Component Coverage Report
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: custom-component-coverage-report
 
@@ -467,6 +469,9 @@ jobs:
     env:
       SENTRY_DSN: ${{ secrets.SENTRY_DSN || 'disabled' }}
       VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN || 'disabled' }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN || '' }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG || '' }}
+      SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND }}
       GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
     steps:
       - name: Checkout the repository
@@ -485,9 +490,9 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@8418fedb1110381a0d3ba51a7a415d7c1b884550 # v5.2.2
         with:
-          version: "2026.9.17"
+          version: "2026.10.18"
           install: true
           experimental: true
 
@@ -716,7 +721,7 @@ jobs:
 
       - name: Upload binaries as artifact
         if: steps.built_all.conclusion == 'success'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: binary-builds
           path: /tmp/build_artifacts/*.zip
@@ -730,7 +735,7 @@ jobs:
 
       - name: Upload HACS component as artifact
         if: github.event_name != 'pull_request'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: hacs-component
           path: /tmp/build_artifacts/srat.zip
@@ -804,13 +809,13 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         id: download_art
         with:
           name: binary-builds
           path: /tmp/downloaded_builds
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         id: download_hacs
         with:
           name: hacs-component

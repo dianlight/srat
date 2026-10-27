@@ -295,4 +295,53 @@ describe("ShareEditForm component", () => {
         await waitFor(() => expect(screen.getByText(/not mounted/i)).toBeTruthy());
         expect(handleSubmit).not.toHaveBeenCalled();
     }, 60000);
+
+    it("allows hyphens in share names (issue #1400)", async () => {
+        const { overrides } = setupCommonOverrides();
+
+        const React = await import("react");
+        const { render, screen, waitFor } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        const { Usage } = await import("../../../../store/sratApi");
+        // @ts-expect-error - Query param fetches isolated module instance
+        const { ShareEditForm } = await import("../ShareEditForm?share-edit-form-hyphen");
+
+        const handleSubmit = vi.fn(() => { });
+
+        render(
+            React.createElement(ShareEditForm as any, {
+                shareData: {
+                    name: "paritycheck1",
+                    usage: Usage.None,
+                    mount_point_data: {
+                        path: "/mnt/free",
+                        path_hash: "free-hash",
+                        is_mounted: true,
+                        is_write_supported: true,
+                    },
+                },
+                shares: {},
+                onSubmit: handleSubmit,
+                testOverrides: overrides,
+            })
+        );
+
+        const user = userEvent.setup();
+        const [nameInput] = await screen.findAllByLabelText(/Share Name/i);
+        expect((nameInput as HTMLInputElement).value).toBe("paritycheck1");
+        // Type hyphens through the real input so the charset validation runs on them
+        await user.click(nameInput);
+        await user.keyboard("{End}-2");
+        expect((nameInput as HTMLInputElement).value).toBe("paritycheck1-2");
+
+        const submitButton = await screen.findByRole("button", { name: /create/i });
+        await user.click(submitButton);
+
+        // No charset validation error for the hyphenated name
+        expect(screen.queryByText(/can only contain/i)).toBeNull();
+
+        await waitFor(() => expect(handleSubmit).toHaveBeenCalled());
+        const submission = (handleSubmit.mock.calls as any[])[0]?.[0];
+        expect(submission?.name).toBe("paritycheck1-2");
+    }, 60000);
 });
