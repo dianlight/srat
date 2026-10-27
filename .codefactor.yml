@@ -12,6 +12,7 @@ exclude:
   - "**/*.test.ts"
   - "**/*.test.tsx"
   - "**/test/**"
+  - "**/tests/**"
   - "**/mocks/**"
   - frontend/src/store/sratApi.ts
   - backend/src/vendor/**
@@ -19,3 +20,4 @@ exclude:
   - "frontend/src/**/__tests__/**"
   - "frontend/test/**"
   - "frontend/src/mocks/**"
+  - oauth_broker/tests/**

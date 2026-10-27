@@ -356,4 +356,48 @@ export const customHandlers: RequestHandler[] = [
 		>;
 		return HttpResponse.json(body);
 	}),
+
+	// OAuth broker mocks – validate SRAT-Signature (Ed25519) instead of Bearer
+	// Client registration is public (self-certifying), other endpoints require SRAT-Signature
+	http.post(/.*\/v1\/clients(?:\/.*)?$/, async ({ request }) => {
+		const body = (await request.json().catch(() => ({}))) as { client_id?: string; public_key?: string };
+		if (!body.client_id || !body.public_key) {
+			return HttpResponse.json({ error: "client_id and public_key required" }, { status: 400 });
+		}
+		// In mock we accept any client_id/public_key that matches 43-char/32B format – real broker recomputes SHA256
+		return HttpResponse.json(
+			{ client_id: body.client_id, public_key: body.public_key, created_at: new Date().toISOString() },
+			{ status: 201, headers: { "Cache-Control": "no-store" } },
+		);
+	}),
+	http.post(/.*\/v1\/instances\/register(?:\?.*)?$/, ({ request }) => {
+		const auth = request.headers.get("authorization") || "";
+		if (!auth.startsWith("SRAT-Signature ")) {
+			return HttpResponse.json({ error: "missing or malformed SRAT-Signature" }, { status: 401 });
+		}
+		return HttpResponse.json(
+			{ instance_id: "mock-instance", redirect_url: "https://srat.example/cb", client_id: "mock-client", expires_at: new Date(Date.now() + 3600000).toISOString(), ttl_seconds: 3600 },
+			{ status: 200, headers: { "Cache-Control": "no-store" } },
+		);
+	}),
+	http.post(/.*\/v1\/start(?:\?.*)?$/, ({ request }) => {
+		const auth = request.headers.get("authorization") || "";
+		if (!auth.startsWith("SRAT-Signature ")) {
+			return HttpResponse.json({ error: "missing SRAT-Signature" }, { status: 401 });
+		}
+		return HttpResponse.json(
+			{ auth_url: "https://example.com/auth?code_challenge=mock", session_id: "mock-session-id" },
+			{ status: 200, headers: { "Cache-Control": "no-store" } },
+		);
+	}),
+	http.get(/.*\/v1\/session\/.*/, ({ request }) => {
+		const auth = request.headers.get("authorization") || "";
+		if (!auth.startsWith("SRAT-Signature ")) {
+			return HttpResponse.json({ error: "missing SRAT-Signature" }, { status: 401 });
+		}
+		return HttpResponse.json(
+			{ token_json: `{"access_token":"mock-at"}`, account_label: "mock", client_id: "dropbox-id", client_secret: "dropbox-secret" },
+			{ status: 200, headers: { "Cache-Control": "no-store" } },
+		);
+	}),
 ];
