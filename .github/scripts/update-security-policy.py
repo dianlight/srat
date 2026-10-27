@@ -22,7 +22,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 STABLE_RE = re.compile(r"^(\d{4})\.(\d{1,2})\.(\d+)$")
 # Matches -rc18, -rc.1, -dev.0, -dev0 (case-insensitive). Real tags in this
@@ -31,7 +31,6 @@ SUFFIX_RE = re.compile(r"-(rc|dev)", re.IGNORECASE)
 TABLE_HEADER_RE = re.compile(r"^\|\s*Version\s*\|\s*Supported\s*\|")
 
 SECURITY_MD = "SECURITY.md"
-TABLE_HEADER = "| Version | Supported |"
 
 
 def run(cmd: list[str], env: dict[str, str] | None = None) -> str:
@@ -83,11 +82,11 @@ def parse_stable(rel: dict) -> tuple[int, int, int, datetime] | None:
     if not m:
         return None
     try:
-        pub = datetime.fromisoformat(str(rel["pub"]).replace("Z", "+00:00"))
+        pub = datetime.fromisoformat(str(rel["pub"]))
     except (KeyError, ValueError):
         return None
     if pub.tzinfo is None:
-        pub = pub.replace(tzinfo=timezone.utc)
+        pub = pub.replace(tzinfo=UTC)
     return (int(m.group(1)), int(m.group(2)), int(m.group(3)), pub)
 
 
@@ -132,15 +131,22 @@ def compute_supported(releases: list[dict]) -> list[str]:
 
 
 def render_table(supported: list[str]) -> list[str]:
-    lines = [
-        TABLE_HEADER,
-        "| ------- | --------- |",
-    ]
-    for series in supported:
-        lines.append(f"| {series} | :white_check_mark: |")
+    # Emit a prettier-compliant table (cells padded to max column width) so
+    # the Documentation Maintenance workflow finds no diff and does not open
+    # a follow-up auto-fix PR (e.g. #1409) after every security-policy push.
+    header = ["Version", "Supported"]
+    body = [[s, ":white_check_mark:"] for s in supported]
     oldest = supported[-1]  # ascending tail; list is newest-first
-    base = oldest.replace(".x", ".0")
-    lines.append(f"| < {base} | :x: |")
+    body.append([f"< {oldest.replace('.x', '.0')}", ":x:"])
+    widths = [max(len(row[i]) for row in [header, *body]) for i in range(len(header))]
+    lines = [
+        "| " + " | ".join(cell.ljust(w) for cell, w in zip(header, widths)) + " |",
+        "| " + " | ".join("-" * max(w, 3) for w in widths) + " |",
+    ]
+    for row in body:
+        lines.append(
+            "| " + " | ".join(cell.ljust(w) for cell, w in zip(row, widths)) + " |"
+        )
     return lines
 
 

@@ -47,10 +47,10 @@ export function ShareActions({
   };
 
   const handleMenuClose = (
-    e?: React.MouseEvent<HTMLElement> | Record<string, never>,
-    _reason?: "backdropClick" | "escapeKeyDown",
+    e?: { stopPropagation?: () => void },
+    _reason?: "backdropClick" | "escapeKeyDown" | "tabKeyDown",
   ) => {
-    (e as React.MouseEvent<HTMLElement>)?.stopPropagation();
+    e?.stopPropagation?.();
     setAnchorEl(null);
   };
 

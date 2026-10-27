@@ -95,7 +95,7 @@
         "ghcr.io/rchaganti/vsc-devcontainer-features/cosign:1": {},
         "ghcr.io/shyim/devcontainers-features/bun:0": {},
         "ghcr.io/devcontainers/features/python:1": {
-            "version": "3.14"
+            "version": "3.15"
         },
         "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev:1": {},
         "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
