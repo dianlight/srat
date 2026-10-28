@@ -126,6 +126,7 @@ export function PartitionInformationCard({
             {(typeof value === "string" ? value : JSON.stringify(value))
               .split("\n")
               .map((line, index) => (
+                // eslint-disable-next-line react/no-array-index-key -- text lines have no unique id
                 <span key={index}>
                   {line}
                   <br />
