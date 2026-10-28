@@ -12,9 +12,9 @@ import fs from "fs";
 import path from "path";
 
 // Regex patterns to detect macro imports
-const macroImportPattern = /import\s+(?:{[^}]*?}|[a-zA-Z_$][a-zA-Z0-9_$]*)\s+from\s+["']([^"']*(?:\.\/)?macro[^"']*)["'](?!\s*with\s*{\s*type\s*:\s*["']macro["']\s*})/g;
+const _macroImportPattern = /import\s+(?:{[^}]*?}|[a-zA-Z_$][a-zA-Z0-9_$]*)\s+from\s+["']([^"']*(?:\.\/)?macro[^"']*)["'](?!\s*with\s*{\s*type\s*:\s*["']macro["']\s*})/g;
 
-const macroImportWithoutAssertion = /import\s+(?:{[^}]*?}|[a-zA-Z_$][a-zA-Z0-9_$]*(?:\s*,\s*\*\s*as\s+[a-zA-Z_$][a-zA-Z0-9_$]*)?)\s+from\s+["']([^"']*\/macro\/[^"']*)["'](?!\s*with)/g;
+const _macroImportWithoutAssertion = /import\s+(?:{[^}]*?}|[a-zA-Z_$][a-zA-Z0-9_$]*(?:\s*,\s*\*\s*as\s+[a-zA-Z_$][a-zA-Z0-9_$]*)?)\s+from\s+["']([^"']*\/macro\/[^"']*)["'](?!\s*with)/g;
 
 // Recursive function to get all TypeScript files
 function getAllTypeScriptFiles(dir, fileList = []) {
@@ -38,7 +38,7 @@ function getAllTypeScriptFiles(dir, fileList = []) {
 }
 
 // Check if import is from macro directory
-function isMacroImport(source) {
+function _isMacroImport(source) {
 	return source.includes("/macro/") || source === "./macro" || source === "../macro";
 }
 

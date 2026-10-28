@@ -1,0 +1,30 @@
+[fmt]
+# Replaces Biome's formatter and Prettier (see https://bun.com/blog/bun-v1.4.4).
+# Bun fmt is Prettier-compatible and reads .prettierignore.
+#
+# Adopted incrementally: pre-commit formats only staged files
+# (hk.pkl "bun-fmt" step -> `bun fmt --staged`), so legacy files are
+# normalised as they are touched. Do not add a repo-wide
+# `bun fmt --check` gate until the remaining files are swept in one commit.
+#
+# sortImports replaces Biome's assist `organizeImports` (disabled in
+# .biome.json). sortPackageJson replaces prettier-plugin-packagejson.
+sortImports = true
+sortPackageJson = true
+
+[lint]
+# Replaces Biome as the linter. `bun lint` is canary-only as of Bun 1.4.4
+# (see https://github.com/oven-sh/bun/blob/main/docs/lint/index.mdx); install
+# with `bun upgrade --canary` until the next stable release ships it.
+# Rules below mirror Biome's recommended set; `react/no-array-index-key`
+# is intentionally omitted (not enforceable without eslint-plugin-react).
+categories = { suspicious = "warn", perf = "warn" }
+
+[lint.rules]
+"@typescript-eslint/no-unsafe-type-assertion" = "off"
+"@typescript-eslint/no-unnecessary-type-assertion" = "off"
+"@typescript-eslint/no-unnecessary-type-parameters" = "off"
+"@typescript-eslint/consistent-return" = "off"
+"unicorn/consistent-function-scoping" = "off"
+"no-underscore-dangle" = "off"
+"no-await-in-loop" = "off"

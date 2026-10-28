@@ -83,9 +83,8 @@ export function parseSratSignature(header: string | null | undefined): ParsedSig
   // parse key="value" pairs
   const params: Record<string, string> = {};
   const re = /(\w+)\s*=\s*"([^"]*)"/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(rest)) !== null) {
-    params[m[1]] = m[2];
+  for (const match of rest.matchAll(re)) {
+    params[match[1]] = match[2];
   }
   const clientId = params.client_id || params.clientId || "";
   const t = params.t || "";

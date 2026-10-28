@@ -465,7 +465,7 @@ export function createBrokerApp(opts?: {
     return c.json({ instance_id: instanceId, redirect_url: redirectUrl, client_id: auth.clientId, expires_at: new Date(expiresAt).toISOString(), ttl_seconds: ttl });
   });
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: start validates auth/instance/allowlist/provider and creates PKCE session
+  // eslint-disable-next-line complexity -- start validates auth/instance/allowlist/provider and creates PKCE session
   app.post("/v1/start", async (c) => {
     const rawBody = await c.req.text();
     const auth = await verifySratSignature(c, rawBody);
@@ -539,7 +539,7 @@ export function createBrokerApp(opts?: {
     return c.json({ error: jsonError }, status);
   }
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: OAuth callback orchestrates session/instance/token states with HTML/JSON branching
+  // eslint-disable-next-line complexity -- OAuth callback orchestrates session/instance/token states with HTML/JSON branching
   app.get("/v1/callback", async (c) => {
     setNoStore(c);
     const locale = pickLocale(c.req.header("accept-language"));

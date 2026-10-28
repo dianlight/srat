@@ -33,7 +33,7 @@ describe("config.ts – patch 69% → 85% (17 miss +14 partials)", () => {
     const cfg = loadProvidersConfig({ BROKER_PROVIDERS_FILE: tmp, BROKER_PROVIDERS_JSON: "{bad-json", DROPBOX_CLIENT_ID: "id", DROPBOX_CLIENT_SECRET: "sec" });
     expect(cfg.dropbox?.client_id).toBe("id");
     expect(warn).toHaveBeenCalled();
-    try { unlinkSync(tmp); } catch {}
+    try { unlinkSync(tmp); } catch { /* ignore cleanup failure */ }
     // Also test inline JSON malformed
     const cfg2 = loadProvidersConfig({ BROKER_PROVIDERS_JSON: "{not-json" });
     expect(cfg2).toEqual({});

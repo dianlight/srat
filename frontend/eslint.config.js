@@ -7,6 +7,7 @@
  * rules, so the surface is intentionally tiny.
  */
 import babelParser from "@babel/eslint-parser";
+import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import testingLibrary from "eslint-plugin-testing-library";
 import srat from "./eslint/srat-plugin.js";
@@ -35,6 +36,7 @@ export default [
     // flag those directives as unused.
     linterOptions: { reportUnusedDisableDirectives: "off" },
     plugins: {
+      react,
       "react-hooks": reactHooks,
       srat,
       "testing-library": testingLibrary,
@@ -43,6 +45,7 @@ export default [
       // Rule registered only so existing eslint-disable-next-line
       // react-hooks/exhaustive-deps directives in components stay valid.
       "react-hooks/exhaustive-deps": "off",
+      "react/no-array-index-key": "error",
       // Custom: every data-testid / *ByTestId literal must be in src/testIds.ts
       "srat/registered-test-id": "error",
       // Project rule (see .opencode/instructions/frontend_test.instructions.md):

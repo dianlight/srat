@@ -187,7 +187,7 @@ describe("wsApi reconnect behavior", () => {
         });
 
         const updated = await waitForCondition(() => {
-            // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import incompatible with static RootState
             const state = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
             return (
                 state?.data?.[Supported_events.Problem]?.problem_key === payload.problem_key
@@ -195,7 +195,7 @@ describe("wsApi reconnect behavior", () => {
         });
 
         expect(updated).toBe(true);
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import incompatible with static RootState
         const finalState = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
         expect(finalState?.data?.[Supported_events.Problem]?.status).toBe(Status.Created);
 
@@ -364,7 +364,7 @@ describe("wsApi dirty-tracking auto-invalidation", () => {
 
         // The live payload must also land in the WS cache.
         const updated = await waitForCondition(() => {
-            // biome-ignore lint/suspicious/noExplicitAny: dynamic import incompatible with static RootState
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import incompatible with static RootState
             const state = wsApi.endpoints.getServerEvents.select()(store.getState() as any);
             return (
                 state?.data?.[Supported_events.Volumes]?.[0]?.partitions?.sda1

@@ -65,9 +65,7 @@ usage = '''
 arg "<dir>" help="Target Directory to build"
 flag "--version <version>" help="Build version" env="VERSION"
 '''
-depends = [
-  { task = "lint" },
-]
+depends = [{ task = "lint" }]
 env = { NODE_ENV = "production", API_URL = "", VERSION = "" }
 run = [
   "bun tsc --project tsconfig.prod.json --noEmit ",
@@ -88,23 +86,15 @@ quiet = true
 [tasks.generate]
 alias = ["gen", "gen:openapi", "gen:types"]
 run = ["rtk-query-codegen-openapi api.config.js", "bun tsc --noEmit"]
-sources = [
-  "api.config.js",
-  "../backend/docs/openapi.json",
-]
-outputs = [
-  "./src/store/sratApi.ts",
-]
+sources = ["api.config.js", "../backend/docs/openapi.json"]
+outputs = ["./src/store/sratApi.ts"]
 
 [tasks."dev:remote"]
 usage = '''
 arg "<url>" help="API URL" env="API_URL"
 '''
 env = { NODE_ENV = "remote" }
-depends = [
-  { task = "ensure-dev-port" },
-  { task = "generate" },
-]
+depends = [{ task = "ensure-dev-port" }, { task = "generate" }]
 run = [
   "bun tsc --noEmit",
   "bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
@@ -116,10 +106,7 @@ usage = '''
 arg "<url>" help="API URL" env="API_URL"
 '''
 env = { NODE_ENV = "remote" }
-depends = [
-  { task = "ensure-dev-port" },
-  { task = "generate" },
-]
+depends = [{ task = "ensure-dev-port" }, { task = "generate" }]
 run = [
   "bun tsc --noEmit",
   "copilot-debug bun --hot run bun.build.ts -w -s ./out -a ${usage_url?}",
@@ -127,22 +114,11 @@ run = [
 quiet = true
 
 [tasks.update]
-run = [
-  "bun upgrade --latest",
-  "bun update -i",
-  { task = "test" },
-]
+run = ["bun upgrade --latest", "bun update -i", { task = "test" }]
 
- [tasks.lint]
-depends = [
-  { task = "validate-macros" },
-  { task = "lint-eslint" },
-]
-run = ["biome check --no-errors-on-unmatched --write"]
-quiet = true
-
- [tasks."lint-eslint"]
-run = ["bunx eslint src --config eslint.config.js"]
+[tasks.lint]
+depends = [{ task = "validate-macros" }]
+run = ["bun lint --no-script"]
 quiet = true
 
 [tasks.test]
@@ -197,5 +173,5 @@ hide = true
 
 [tasks.format]
 alias = ["fmt"]
-run = "biome check --write"
+run = "bun fmt"
 quiet = true

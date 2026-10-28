@@ -43,14 +43,14 @@ See the full spec in GitHub issue #1002.
 The broker implements **Proof Key for Code Exchange (PKCE)** with `S256` for
 every OAuth flow. No configuration is required — it is always on.
 
-| Step | Function | Detail |
-| --- | --- | --- |
-| **Generate verifier** | `generateCodeVerifier()` in `src/app.ts` | 32 random bytes via `crypto.getRandomValues()` → 43-char `base64url` string (RFC 7636 §4.1, 43–128 chars, charset `A-Z a-z 0-9 - _ . ~`) |
-| **Derive challenge** | `pkceChallengeFromVerifier(verifier)` | `BASE64URL(SHA256(ASCII(verifier)))` using `node:crypto` `createHash("sha256")` |
-| **Authorize** | `buildAuthUrl(prov, publicUrl, sessionId, codeVerifier)` | Sets `code_challenge=<S256>` + `code_challenge_method=S256` on the provider `authorize_url` alongside `client_id`, `response_type=code`, `redirect_uri`, `state` |
-| **Store** | `POST /v1/start` handler | Persists `codeVerifier` in `SessionRecord.codeVerifier` (memory / KV / D1) for the TTL window |
-| **Exchange** | `exchangeCodeForToken(prov, code, redirectUri, fetchImpl, codeVerifier)` | Sends `code_verifier` in the `application/x-www-form-urlencoded` token request (`grant_type=authorization_code`); omitted only for legacy sessions without a verifier |
-| **Verify** | Provider | Validates `code_verifier` against the earlier `code_challenge` (S256) before issuing tokens |
+| Step                  | Function                                                                 | Detail                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Generate verifier** | `generateCodeVerifier()` in `src/app.ts`                                 | 32 random bytes via `crypto.getRandomValues()` → 43-char `base64url` string (RFC 7636 §4.1, 43–128 chars, charset `A-Z a-z 0-9 - _ . ~`)                              |
+| **Derive challenge**  | `pkceChallengeFromVerifier(verifier)`                                    | `BASE64URL(SHA256(ASCII(verifier)))` using `node:crypto` `createHash("sha256")`                                                                                       |
+| **Authorize**         | `buildAuthUrl(prov, publicUrl, sessionId, codeVerifier)`                 | Sets `code_challenge=<S256>` + `code_challenge_method=S256` on the provider `authorize_url` alongside `client_id`, `response_type=code`, `redirect_uri`, `state`      |
+| **Store**             | `POST /v1/start` handler                                                 | Persists `codeVerifier` in `SessionRecord.codeVerifier` (memory / KV / D1) for the TTL window                                                                         |
+| **Exchange**          | `exchangeCodeForToken(prov, code, redirectUri, fetchImpl, codeVerifier)` | Sends `code_verifier` in the `application/x-www-form-urlencoded` token request (`grant_type=authorization_code`); omitted only for legacy sessions without a verifier |
+| **Verify**            | Provider                                                                 | Validates `code_verifier` against the earlier `code_challenge` (S256) before issuing tokens                                                                           |
 
 - **Why S256 only:** `plain` is not offered — SHA-256 prevents challenge reversal even if the authorize URL leaks in logs. Verified against the RFC 7636 test vector (`dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk` → `E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`).
 - **Compatibility:** Providers that do not support PKCE ignore the extra params; the flow still succeeds. Providers that require PKCE (e.g., Dropbox with PKCE-enforced clients, Google) now succeed where plain `authorization_code` would be rejected. No SRAT client changes are needed — the broker handles PKCE transparently.
@@ -58,17 +58,17 @@ every OAuth flow. No configuration is required — it is always on.
 
 ## Configuration
 
-| Variable | Required | Default | Notes |
-| --- | --- | --- | --- |
-| `BROKER_PUBLIC_URL` | yes | – | Externally reachable https base; used as `redirect_uri={BROKER_PUBLIC_URL}/v1/callback` |
-| `BROKER_DISABLE_AUTH` | no | `false` | Set `true` only for local dev to bypass SRAT-Signature (refuses to start in production) |
-| `BROKER_PROVIDERS_FILE` | no | – | Path to JSON providers file (Node/Render) |
-| `BROKER_PROVIDERS_JSON` | no | – | Inline JSON providers (Workers secret/KV). Merged with file if both set; env shorthand wins |
-| `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` | no | – | Shorthand for built-in `dropbox`. Either these or an entry in providers JSON/file is required for `dropbox` |
-| `PORT` | no | `8080` | Listen port for Node/Render (Workers ignores) |
-| `SESSION_TTL` | no | `10m` | Completed-session fetch window. Workers KV `expirationTtl`, memory store TTL |
-| `BROKER_ALLOWED_CALLBACK_PATTERNS` | no | – | Comma CSV glob allowlist for `srat_callback_url` (e.g. `https://*.srat.example/*,https://srat.example.com/*`). Empty = allow any `https:` (default, see Security notes) |
-| `BROKER_DISABLE_AUTH` | no | `false` | Set `true` only for local dev; **refuses to start in production** (when `BROKER_PUBLIC_URL` looks like production) |
+| Variable                                      | Required | Default | Notes                                                                                                                                                                   |
+| --------------------------------------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BROKER_PUBLIC_URL`                           | yes      | –       | Externally reachable https base; used as `redirect_uri={BROKER_PUBLIC_URL}/v1/callback`                                                                                 |
+| `BROKER_DISABLE_AUTH`                         | no       | `false` | Set `true` only for local dev to bypass SRAT-Signature (refuses to start in production)                                                                                 |
+| `BROKER_PROVIDERS_FILE`                       | no       | –       | Path to JSON providers file (Node/Render)                                                                                                                               |
+| `BROKER_PROVIDERS_JSON`                       | no       | –       | Inline JSON providers (Workers secret/KV). Merged with file if both set; env shorthand wins                                                                             |
+| `DROPBOX_CLIENT_ID` / `DROPBOX_CLIENT_SECRET` | no       | –       | Shorthand for built-in `dropbox`. Either these or an entry in providers JSON/file is required for `dropbox`                                                             |
+| `PORT`                                        | no       | `8080`  | Listen port for Node/Render (Workers ignores)                                                                                                                           |
+| `SESSION_TTL`                                 | no       | `10m`   | Completed-session fetch window. Workers KV `expirationTtl`, memory store TTL                                                                                            |
+| `BROKER_ALLOWED_CALLBACK_PATTERNS`            | no       | –       | Comma CSV glob allowlist for `srat_callback_url` (e.g. `https://*.srat.example/*,https://srat.example.com/*`). Empty = allow any `https:` (default, see Security notes) |
+| `BROKER_DISABLE_AUTH`                         | no       | `false` | Set `true` only for local dev; **refuses to start in production** (when `BROKER_PUBLIC_URL` looks like production)                                                      |
 
 ### Providers JSON schema
 
@@ -76,7 +76,8 @@ every OAuth flow. No configuration is required — it is always on.
 {
   "dropbox": { "client_id": "…", "client_secret": "…" },
   "gdrive": {
-    "client_id": "…", "client_secret": "…",
+    "client_id": "…",
+    "client_secret": "…",
     "authorize_url": "https://accounts.google.com/o/oauth2/v2/auth",
     "token_url": "https://oauth2.googleapis.com/token",
     "scopes": ["https://www.googleapis.com/auth/drive"],
@@ -146,11 +147,11 @@ job `deploy-oauth-broker` to **both** platforms.
 
 ### GitHub Environments + Sentry mapping
 
-| SRAT version suffix | Broker GitHub env | Sentry env | Workers env | Render service |
-| --- | --- | --- | --- | --- |
-| `-dev.*` | `broker-staging` | `development` | `staging` | staging |
-| `-rc.*` | `broker-staging` | `prerelease` | `staging` | staging |
-| final | `broker-production` | `production` | `production` | production |
+| SRAT version suffix | Broker GitHub env   | Sentry env    | Workers env  | Render service |
+| ------------------- | ------------------- | ------------- | ------------ | -------------- |
+| `-dev.*`            | `broker-staging`    | `development` | `staging`    | staging        |
+| `-rc.*`             | `broker-staging`    | `prerelease`  | `staging`    | staging        |
+| final               | `broker-production` | `production`  | `production` | production     |
 
 Workflow: `.github/workflows/oauth-broker.yaml`
 
@@ -238,11 +239,13 @@ Both use Google Cloud OAuth 2.0. Register a project at <https://console.cloud.go
 6. Copy **Client ID** and **Client Secret**
 
 **Google Photos specifics:**
+
 - Uses the same OAuth credentials as Google Drive (same project)
 - Requires additional scope: `https://www.googleapis.com/auth/photoslibrary.readonly` (or `.appendonly`, `.sharing`, `.edit`)
 - The Photos Library API has stricter quota (10k requests/day default) — request increase if needed
 - `photoslibrary.readonly` scope allows listing albums/media but **not** downloading original files; use `photoslibrary` (full) for download access
 - Add scopes in providers JSON under `gdrive` entry:
+
 ```json
 "gdrive": {
   "client_id": "...",
@@ -315,7 +318,7 @@ wizard option becomes available when `broker_available` is true (`GET /rclone/pr
   destroy an in-flight flow. `MemorySessionStore` caps at 10 000 entries with TTL eviction and returns `429` when full (DoS guard).
 - `srat_callback_url` validated as absolute `https` (loopback `http` allowed for dev) and capped at 2048 chars. By default any `https:` is accepted (SRAT instances have arbitrary domains), but **optional allowlist** `BROKER_ALLOWED_CALLBACK_PATTERNS` (comma CSV globs, e.g. `https://*.srat.example/*`) enforces `403` when set. Per-install Ed25519: no shared secret to leak. Attacker without private key cannot sign `POST /v1/instances/register` or `POST /v1/start` even with knowledge of `client_id`.
 - `BROKER_PUBLIC_URL` validated as absolute `https` (loopback `http` allowed for dev); misconfigured `http://` outside loopback now returns `500 BROKER_PUBLIC_URL must be an absolute https URL` instead of a later opaque `502 redirect_uri_mismatch` from the provider. Startup also fails fast if `BROKER_PUBLIC_URL` is invalid.
- - SRAT-Signature uses Ed25519 over `client_id\nMETHOD\nPATH\n t\n nonce\n bodyHash` with 5-min skew + 10-min nonce replay window. Missing/invalid sig u2192 401. `BROKER_DISABLE_AUTH=true` is still refused in production.
+- SRAT-Signature uses Ed25519 over `client_id\nMETHOD\nPATH\n t\n nonce\n bodyHash` with 5-min skew + 10-min nonce replay window. Missing/invalid sig u2192 401. `BROKER_DISABLE_AUTH=true` is still refused in production.
 - **Rate limiting (Both mode):** in-app sliding window per IP (`20/min POST /v1/start`, `30/min GET /v1/callback`, `60/min GET /v1/session`) always active, plus optional Cloudflare `RATE_LIMITER` binding (`wrangler ratelimit create broker-ratelimit --period 60 --limit 20` + `[[ratelimits]]` in `wrangler.toml`) when configured. Exceeded returns `429 + Retry-After:60`.
 - **Security headers on every response:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`, `X-Robots-Tag: noindex, nofollow`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`. `GET /v1/callback` 302 and all `/v1/session` responses also include `Cache-Control: no-store` triple.
 - **CORS deny by default:** no `Access-Control-Allow-Origin` is ever set; `OPTIONS` preflight returns `204` with `Allow-Methods/Headers` only. Broker is server-to-server (SRAT Go backend) + browser 302, not a browser `fetch` API.

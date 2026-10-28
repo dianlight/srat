@@ -41,13 +41,13 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Format SECURITY.md (prettier + doctoc guard)
+      - name: Format SECURITY.md (bun fmt + doctoc guard)
         run: |
           set -euo pipefail
-          # The generator emits prettier-compliant tables, but re-run the
+          # The generator emits padded tables, but re-run the
           # canonical formatters so pushes to main never leave a diff for the
           # Documentation Maintenance workflow to turn into a follow-up PR.
-          bunx prettier --write SECURITY.md
+          bun fmt SECURITY.md
           bunx doctoc --github SECURITY.md
           # doctoc rewrites the TOC in place only when headings change; a
           # table-only update leaves no diff here.

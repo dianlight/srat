@@ -26,7 +26,7 @@ index 52ffc087ee1195094c9bc0d7afc625f8fff614a3..28c5a192200af0d7616de2efc18e4b8f
 +		i++;
  	} else if (args[i] === "--help" || args[i] === "-h") {
  		console.log(`
- ╔════════════════════════════════════════════════════════════╗
+ ╔══════════════════════════════════════════════════════════╗
 @@ -885,6 +896,8 @@ Options:
    --port <number>   Port to run the server on (default: 6137)
    --host <string>   Host to bind to (default: localhost)
@@ -34,10 +34,10 @@ index 52ffc087ee1195094c9bc0d7afc625f8fff614a3..28c5a192200af0d7616de2efc18e4b8f
 +  --default-agent <name>  Set default agent name
 +  --visible-agents <list> Comma-separated list of visible agents
    --help, -h        Show this help message
-
+ 
  Example:
 @@ -912,7 +925,7 @@ Example:
- 		console.log(`[ev-inspector] 📡 MCP (Standalone): ${baseUrl}\nj);
+ 		console.log(`[dev-inspector] 📡 MCP (Standalone): ${baseUrl}\n`);
  		setupMcpMiddleware(server, serverContext);
  		setupAcpMiddleware(server, serverContext, {});
 -		setupInspectorMiddleware(server, {});

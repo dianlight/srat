@@ -54,7 +54,7 @@ class GlobalEventTracker {
   isInitialized: boolean = false;
 
   constructor(maxSize: number = 200) {
-    // biome-ignore lint/correctness/noConstructorReturn: singleton pattern
+    // eslint-disable-next-line no-constructor-return -- singleton pattern
     if (GlobalEventTracker.instance) return GlobalEventTracker.instance;
     this.maxSize = maxSize;
     GlobalEventTracker.instance = this;

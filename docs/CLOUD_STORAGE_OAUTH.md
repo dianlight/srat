@@ -8,13 +8,13 @@ This document explains why OAuth app registration is required for each cloud sto
 
 OAuth providers (Dropbox, Google, Microsoft) require each integration to have its own **client ID** and **client secret** for several reasons:
 
-| Reason | Explanation |
-| -------- | ------------- |
-| **Identity & Audit** | Providers track which app requests access for security auditing |
-| **Rate Limiting** | Quotas are enforced per client ID (shared defaults get throttled) |
-| **User Consent** | Users grant/revoke access per-app in their account settings |
-| **Security Policy** | Providers can revoke a single compromised app without affecting others |
-| **Branding** | Consent screen shows your app name/logo, not "rclone" or "SRAT" |
+| Reason               | Explanation                                                            |
+| -------------------- | ---------------------------------------------------------------------- |
+| **Identity & Audit** | Providers track which app requests access for security auditing        |
+| **Rate Limiting**    | Quotas are enforced per client ID (shared defaults get throttled)      |
+| **User Consent**     | Users grant/revoke access per-app in their account settings            |
+| **Security Policy**  | Providers can revoke a single compromised app without affecting others |
+| **Branding**         | Consent screen shows your app name/logo, not "rclone" or "SRAT"        |
 
 **Bottom line**: You cannot use a generic "rclone" or "SRAT" client ID in production—each deployment needs its own credentials.
 
@@ -22,22 +22,24 @@ OAuth providers (Dropbox, Google, Microsoft) require each integration to have it
 
 ## Provider Comparison
 
-| Provider | Auth Protocol | App Registration Required? | Built-in Fallback? | Notes |
-| ---------- | --------------- | --------------------------- | ------------------- | ------- |
-| **Dropbox** | OAuth 2.0 | **Yes** (mandatory) | No | Must register at dropbox.com/developers/apps |
-| **Google Drive** | OAuth 2.0 | **Yes** (recommended) | Yes (shared, rate-limited) | Google Cloud Console |
-| **Google Photos** | OAuth 2.0 | **Yes** (recommended) | Yes (same as Drive) | Same project as Drive, extra scopes |
-| **OneDrive** | OAuth 2.0 (Microsoft Graph) | **Yes** (recommended) | Yes (shared, rate-limited) | Azure AD App Registration |
-| **iCloud** | CloudKit + App-Specific Passwords | **No (different model)** | N/A | Requires Apple Developer account ($99/yr) |
+| Provider          | Auth Protocol                     | App Registration Required? | Built-in Fallback?         | Notes                                        |
+| ----------------- | --------------------------------- | -------------------------- | -------------------------- | -------------------------------------------- |
+| **Dropbox**       | OAuth 2.0                         | **Yes** (mandatory)        | No                         | Must register at dropbox.com/developers/apps |
+| **Google Drive**  | OAuth 2.0                         | **Yes** (recommended)      | Yes (shared, rate-limited) | Google Cloud Console                         |
+| **Google Photos** | OAuth 2.0                         | **Yes** (recommended)      | Yes (same as Drive)        | Same project as Drive, extra scopes          |
+| **OneDrive**      | OAuth 2.0 (Microsoft Graph)       | **Yes** (recommended)      | Yes (shared, rate-limited) | Azure AD App Registration                    |
+| **iCloud**        | CloudKit + App-Specific Passwords | **No (different model)**   | N/A                        | Requires Apple Developer account ($99/yr)    |
 
 ---
 
 ## Dropbox
 
 ### Why Required
+
 Dropbox **does not provide** a shared client ID. Every integration must register its own app at <https://www.dropbox.com/developers/apps>.
 
 ### Setup
+
 1. Go to <https://www.dropbox.com/developers/apps>
 2. Select **Create app** → **Scoped access** → **Full Dropbox** (or App folder)
 3. Name your app (e.g., "SRAT Staging", "SRAT Production")
@@ -48,6 +50,7 @@ Dropbox **does not provide** a shared client ID. Every integration must register
 6. Copy **App secret** → `DROPBOX_CLIENT_SECRET`
 
 ### OAuth Broker Config
+
 ```bash
 # Environment variables or providers JSON
 DROPBOX_CLIENT_ID=your_app_key
@@ -59,7 +62,9 @@ DROPBOX_CLIENT_SECRET=your_app_secret
 ## Google Drive & Google Photos
 
 ### Why Required (Recommended)
+
 Google provides a **shared default client ID** that rclone uses, but it's:
+
 - Rate-limited (shared across all users)
 - Not configurable (can't add custom scopes)
 - Subject to Google's unpublished quotas
@@ -67,6 +72,7 @@ Google provides a **shared default client ID** that rclone uses, but it's:
 For production SRAT deployments, register your own Google Cloud project.
 
 ### Setup (Single Project for Both)
+
 1. Go to <https://console.cloud.google.com>
 2. Create or select a project
 3. **Enable APIs**:
@@ -77,21 +83,22 @@ For production SRAT deployments, register your own Google Cloud project.
    - Application type: **Web application**
    - Name: "SRAT OAuth Broker"
    - **Authorized redirect URIs**:
-      - `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
-      - `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
+     - `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`
+     - `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback`
 6. Copy **Client ID** and **Client Secret**
 
 ### Scopes
 
-| Service | Scope | Access Level |
-| --------- | ------- | -------------- |
-| Google Drive | `https://www.googleapis.com/auth/drive` | Full Drive access |
+| Service              | Scope                                                    | Access Level                    |
+| -------------------- | -------------------------------------------------------- | ------------------------------- |
+| Google Drive         | `https://www.googleapis.com/auth/drive`                  | Full Drive access               |
 | Google Photos (read) | `https://www.googleapis.com/auth/photoslibrary.readonly` | List albums/media, no downloads |
-| Google Photos (full) | `https://www.googleapis.com/auth/photoslibrary` | Full access including downloads |
+| Google Photos (full) | `https://www.googleapis.com/auth/photoslibrary`          | Full access including downloads |
 
 **Note**: `photoslibrary.readonly` does **not** allow downloading original media files. Use the full `photoslibrary` scope for backup/sync use cases.
 
 ### OAuth Broker Config (providers JSON)
+
 ```json
 {
   "gdrive": {
@@ -112,6 +119,7 @@ For production SRAT deployments, register your own Google Cloud project.
 ```
 
 ### Quotas
+
 - **Google Drive**: Generous daily quotas (billions of requests)
 - **Google Photos Library API**: 10,000 requests/day default — [request increase](https://developers.google.com/photos/library/guides/quota) if needed
 
@@ -120,12 +128,15 @@ For production SRAT deployments, register your own Google Cloud project.
 ## OneDrive (Microsoft Graph)
 
 ### Why Required (Recommended)
+
 Microsoft provides a shared default client ID in rclone, but it's:
+
 - Rate-limited
 - Not configurable for tenant-specific permissions
 - Intended for testing only
 
 ### Setup
+
 1. Go to <https://portal.azure.com> → **App registrations** → **New registration**
 2. Name: "SRAT OAuth Broker"
 3. Supported account types: **Accounts in any organizational directory and personal Microsoft accounts**
@@ -139,6 +150,7 @@ Microsoft provides a shared default client ID in rclone, but it's:
 7. **Grant admin consent** (if required by your tenant)
 
 ### OAuth Broker Config (providers JSON)
+
 ```json
 {
   "onedrive": {
@@ -146,7 +158,10 @@ Microsoft provides a shared default client ID in rclone, but it's:
     "client_secret": "your-client-secret",
     "authorize_url": "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     "token_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-    "scopes": ["https://graph.microsoft.com/Files.ReadWrite.All", "offline_access"]
+    "scopes": [
+      "https://graph.microsoft.com/Files.ReadWrite.All",
+      "offline_access"
+    ]
   }
 }
 ```
@@ -156,24 +171,28 @@ Microsoft provides a shared default client ID in rclone, but it's:
 ## iCloud (CloudKit)
 
 ### Different Auth Model
+
 iCloud **does not use OAuth**. It uses Apple's **CloudKit** framework with **app-specific passwords**.
 
 ### Requirements
 
-| Requirement | Details |
-| ------------- | --------- |
-| Apple Developer Account | $99/year (required for CloudKit container) |
-| CloudKit Container | Created in Certificates, Identifiers & Profiles |
-| App-Specific Password | Generated by user at appleid.apple.com |
+| Requirement             | Details                                         |
+| ----------------------- | ----------------------------------------------- |
+| Apple Developer Account | $99/year (required for CloudKit container)      |
+| CloudKit Container      | Created in Certificates, Identifiers & Profiles |
+| App-Specific Password   | Generated by user at appleid.apple.com          |
 
 ### Flow
+
 1. User provides their **Apple ID** (email)
 2. User generates an **app-specific password** (one-time, labeled "SRAT")
 3. rclone uses: `Apple ID` + `app-specific password` for auth
 4. No client_id/client_secret, no redirect URI, no consent screen
 
 ### SRAT Integration Status
+
 **Not currently supported** by oauth_broker. Would require a separate auth implementation:
+
 - No OAuth flow → broker's `/v1/start` + `/v1/callback` pattern doesn't apply
 - Could add a "direct credentials" endpoint in broker
 - Requires Apple Developer account for SRAT project
@@ -202,14 +221,14 @@ SRAT's broker implements PKCE per [RFC 7636](https://datatracker.ietf.org/doc/ht
 
 ## Quick Reference: Redirect URIs by Environment
 
-| Environment | Redirect URI |
-| ------------- | -------------- |
-| Local Dev (Node) | `http://localhost:8080/v1/callback` |
-| Local Dev (Workers) | `http://localhost:8787/v1/callback` (wrangler dev) |
-| Staging (Workers) | `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback` |
-| Staging (Render) | `https://srat-oauth-broker-staging.onrender.com/v1/callback` |
+| Environment          | Redirect URI                                                                   |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Local Dev (Node)     | `http://localhost:8080/v1/callback`                                            |
+| Local Dev (Workers)  | `http://localhost:8787/v1/callback` (wrangler dev)                             |
+| Staging (Workers)    | `https://srat-oauth-broker-staging.lucio-tarantino.workers.dev/v1/callback`    |
+| Staging (Render)     | `https://srat-oauth-broker-staging.onrender.com/v1/callback`                   |
 | Production (Workers) | `https://srat-oauth-broker-production.lucio-tarantino.workers.dev/v1/callback` |
-| Production (Render) | `https://srat-oauth-broker.onrender.com/v1/callback` |
+| Production (Render)  | `https://srat-oauth-broker.onrender.com/v1/callback`                           |
 
 **Add all applicable URIs** to each provider's app registration.
 

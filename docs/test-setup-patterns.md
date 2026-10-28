@@ -119,9 +119,9 @@ describe("MyComponent", () => {
 Lifecycle hooks live in `frontend/test/bun-setup.ts` and are loaded by `frontend/test/happy-dom-setup.ts`:
 
 ```typescript
-import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { cleanup } from "@testing-library/react";
+import { afterEach } from "vitest";
 
 // Register DOM globals when the runner has not already done so
 GlobalRegistrator.register();

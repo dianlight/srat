@@ -197,7 +197,7 @@ function ObjectTreeNode(props: {
       >
         {value.map((item, index) => (
           <ObjectTreeNode
-            // biome-ignore lint/suspicious/noArrayIndexKey: array items have no unique id
+            // eslint-disable-next-line react/no-array-index-key -- array items have no unique id
             key={`${nodeId}.${index}`}
             value={item}
             nodeId={`${nodeId}.${index}`}
