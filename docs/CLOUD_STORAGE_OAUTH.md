@@ -1,3 +1,37 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [Cloud Storage OAuth Requirements for SRAT](#cloud-storage-oauth-requirements-for-srat)
+  - [Why App Registration Is Required](#why-app-registration-is-required)
+  - [Provider Comparison](#provider-comparison)
+  - [Dropbox](#dropbox)
+    - [Why Required](#why-required)
+    - [Setup](#setup)
+    - [OAuth Broker Config](#oauth-broker-config)
+  - [Google Drive & Google Photos](#google-drive--google-photos)
+    - [Why Required (Recommended)](#why-required-recommended)
+    - [Setup (Single Project for Both)](#setup-single-project-for-both)
+    - [Scopes](#scopes)
+    - [OAuth Broker Config (providers JSON)](#oauth-broker-config-providers-json)
+    - [Quotas](#quotas)
+  - [OneDrive (Microsoft Graph)](#onedrive-microsoft-graph)
+    - [Why Required (Recommended)](#why-required-recommended-1)
+    - [Setup](#setup-1)
+    - [OAuth Broker Config (providers JSON)](#oauth-broker-config-providers-json-1)
+  - [iCloud (CloudKit)](#icloud-cloudkit)
+    - [Different Auth Model](#different-auth-model)
+    - [Requirements](#requirements)
+    - [Flow](#flow)
+    - [SRAT Integration Status](#srat-integration-status)
+  - [PKCE (Proof Key for Code Exchange) — S256](#pkce-proof-key-for-code-exchange--s256)
+  - [Quick Reference: Redirect URIs by Environment](#quick-reference-redirect-uris-by-environment)
+  - [Testing Checklist](#testing-checklist)
+  - [Related Files](#related-files)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Cloud Storage OAuth Requirements for SRAT
 
 This document explains why OAuth app registration is required for each cloud storage provider and how to set it up for use with SRAT's OAuth broker.
