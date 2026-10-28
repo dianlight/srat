@@ -68,10 +68,16 @@ func TestSmbTemplateForceUserOmission(t *testing.T) {
 	ntfsSection := sectionOf(t, out, "NTFSTEST")
 	require.NotContains(t, ntfsSection, "force user", "NTFS section must omit force user")
 	require.NotContains(t, ntfsSection, "force group", "NTFS section must omit force group")
+	require.Contains(t, ntfsSection, "create mask = 0666", "NTFS section must use open create mask (hassio-addons#802)")
+	require.Contains(t, ntfsSection, "force create mode = 0666", "NTFS section must use open force create mode")
+	require.Contains(t, ntfsSection, "directory mask = 0777", "NTFS section must use open directory mask")
+	require.Contains(t, ntfsSection, "force directory mode = 0777", "NTFS section must use open force directory mode")
 
 	ext4Section := sectionOf(t, out, "EXT4TEST")
 	require.Contains(t, ext4Section, "force user = root", "ext4 section keeps legacy force user")
 	require.Contains(t, ext4Section, "force group = root", "ext4 section keeps legacy force group")
+	require.Contains(t, ext4Section, "create mask = 0664", "ext4 section keeps restrictive create mask")
+	require.Contains(t, ext4Section, "directory mask = 0775", "ext4 section keeps restrictive directory mask")
 }
 
 func sectionOf(t *testing.T, rendered, name string) string {

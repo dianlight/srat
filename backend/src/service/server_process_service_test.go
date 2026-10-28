@@ -1036,6 +1036,8 @@ func (suite *ServerProcessServiceSuite) TestCreateConfigStream_NtfsOmitsForceUse
 	}
 	suite.NotContains(ntfsRest, "force user", "NTFS share must omit force user (srat#1391)")
 	suite.NotContains(ntfsRest, "force group", "NTFS share must omit force group (srat#1391)")
+	suite.Contains(ntfsRest, "create mask = 0666", "NTFS share must use open create mask (hassio-addons#802)")
+	suite.Contains(ntfsRest, "directory mask = 0777", "NTFS share must use open directory mask")
 
 	ext4Start := strings.Index(configStr, "[EXT4TEST]")
 	suite.NotEqual(-1, ext4Start, "ext4 section missing")

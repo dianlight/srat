@@ -132,10 +132,17 @@
    browseable = yes
    writeable = {{ has .data.fs $rosupported | ternary "no" "yes" }}
 
+   {{ if and (not .data.force_user) (not .data.force_group) -}}
+   create mask = 0666
+   force create mode = 0666
+   directory mask = 0777
+   force directory mode = 0777
+   {{- else -}}
    create mask = 0664
    force create mode = 0664
    directory mask = 0775
    force directory mode = 0775
+   {{- end }}
 
    path = {{- if eq .data.name "config" }} /homeassistant{{- else }} {{ .data.path }}{{- end }}
    {{- if or (eq .data.name "addons") (eq .data.name "addon_configs") }}
