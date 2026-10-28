@@ -2,54 +2,29 @@
   "name": "srat-frontend",
   "version": "2026.9.3",
   "description": "Samba Rest Adminitration Tool",
-  "module": "index.ts",
-  "type": "module",
+  "homepage": "https://github.com/dianlight/srat#readme",
+  "bugs": {
+    "url": "https://github.com/dianlight/srat/issues"
+  },
+  "license": "MIT",
   "author": {
     "name": "Lucio Tarantino",
     "url": "https://github.com/dianlight"
   },
   "repository": {
-    "name": "srat",
     "type": "github",
-    "owner": "dianlight",
-    "url": "https://github.com/dianlight/srat"
+    "url": "https://github.com/dianlight/srat",
+    "name": "srat",
+    "owner": "dianlight"
   },
-  "devDependencies": {
-    "@babel/core": "8.0.9",
-    "@babel/eslint-parser": "8.0.7",
-    "@babel/preset-react": "8.0.1",
-    "@babel/preset-typescript": "8.0.7",
-    "@biomejs/biome": "2.6.3",
-    "@code-inspector/core": "2.0.9",
-    "@happy-dom/global-registrator": "21.0.4",
-    "@hookform/devtools": "4.4.0",
-    "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
-    "@testing-library/dom": "10.4.2",
-    "@testing-library/jest-dom": "7.0.1",
-    "@testing-library/react": "16.3.3",
-    "@testing-library/user-event": "14.6.8",
-    "@types/bun": "1.4.4",
-    "@types/humanize-duration": "3.27.4",
-    "@types/js-sha1": "0.6.3",
-    "@types/react": "19.3.0",
-    "@types/react-dom": "19.3.0",
-    "@types/react-syntax-highlighter": "15.5.13",
-    "@types/semver": "7.8.0",
-    "@vitejs/plugin-react": "6.1.2",
-    "@vitest/browser-playwright": "5.0.5",
-    "@vitest/coverage-v8": "5.0.5",
-    "eslint": "10.13.0",
-    "eslint-plugin-react-hooks": "7.1.1",
-    "eslint-plugin-testing-library": "7.16.2",
-    "fastify-plugin": "6.0.1",
-    "msw": "3.0.3",
-    "msw-auto-mock": "0.32.1",
-    "typescript": "7.0.2",
-    "vitest": "5.0.5",
-    "vitest-browser-react": "2.3.0"
-  },
-  "peerDependencies": {
-    "typescript": "^7.0.2"
+  "type": "module",
+  "module": "index.ts",
+  "scripts": {
+    "watch": "bun tsc --noEmit && NODE_ENV=development bun run bun.build.ts -w",
+    "gowatch": "bun tsc --noEmit && NODE_ENV=development API_URL=http://localhost:3000/ bun run bun.build.ts -w -o ../backend/src/web/static",
+    "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
+    "lint": "bun lint --no-script",
+    "test:browser": "vitest --config=vitest.browser.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -92,19 +67,54 @@
     "toposort": "^2.0.2",
     "uuid": "^14.0.1"
   },
-  "scripts": {
-    "watch": "bun tsc --noEmit && NODE_ENV=development bun run bun.build.ts -w",
-    "gowatch": "bun tsc --noEmit && NODE_ENV=development API_URL=http://localhost:3000/ bun run bun.build.ts -w -o ../backend/src/web/static",
-    "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks",
-    "test:browser": "vitest --config=vitest.browser.config.ts"
+  "devDependencies": {
+    "@babel/core": "8.0.9",
+    "@babel/eslint-parser": "8.0.7",
+    "eslint": "10.13.0",
+    "@babel/preset-react": "8.0.1",
+    "@babel/preset-typescript": "8.0.7",
+    "@code-inspector/core": "2.0.9",
+    "@happy-dom/global-registrator": "21.0.4",
+    "@hookform/devtools": "4.4.0",
+    "@mcpc-tech/unplugin-dev-inspector-mcp": "0.1.49",
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@testing-library/user-event": "14.6.8",
+    "@types/bun": "1.4.4",
+    "@types/humanize-duration": "3.27.4",
+    "@types/js-sha1": "0.6.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@types/react-syntax-highlighter": "15.5.13",
+    "@types/semver": "7.8.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "@vitest/browser-playwright": "5.0.5",
+    "@vitest/coverage-v8": "5.0.5",
+    "eslint": "10.13.0",
+    "eslint-plugin-react": "7.37.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-testing-library": "7.16.2",
+    "fastify-plugin": "6.0.1",
+    "msw": "3.0.3",
+    "msw-auto-mock": "0.32.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5",
+    "vitest-browser-react": "2.3.0"
+  },
+  "peerDependencies": {
+    "typescript": "^7.0.2"
   },
   "overrides": {
     "react": "$react",
     "react-dom": "$react-dom"
   },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "packageManager": "bun@1.4.4",
   "patchedDependencies": {
-    "@mcpc-tech/unplugin-dev-inspector-mcp@0.1.49": "patches/@mcpc-tech%2Funplugin-dev-inspector-mcp@0.1.49.patch",
-    "@mui/x-internals@9.7.0": "patches/@mui-x-internals.patch"
+    "@mcpc-tech/unplugin-dev-inspector-mcp@0.1.49": "patches/@mcpc-tech%2Funplugin-dev-inspector-mcp@0.1.49.patch"
   },
   "scarfSettings": {
     "enabled": false
@@ -118,14 +128,5 @@
     "protobufjs",
     "tree-sitter",
     "tree-sitter-json"
-  ],
-  "packageManager": "bun@1.4.4",
-  "engines": {
-    "bun": ">=1.4.0"
-  },
-  "bugs": {
-    "url": "https://github.com/dianlight/srat/issues"
-  },
-  "homepage": "https://github.com/dianlight/srat#readme",
-  "license": "MIT"
+  ]
 }
