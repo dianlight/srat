@@ -1,3 +1,28 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+**Table of Contents** _generated with [DocToc](https://github.com/thlorenz/doctoc)_
+
+- [SRAT OAuth Broker](#srat-oauth-broker)
+  - [Protocol (SRAT contract) — SRAT-Signature (Ed25519, 2026-09)](#protocol-srat-contract--srat-signature-ed25519-2026-09)
+  - [PKCE (RFC 7636) — S256](#pkce-rfc-7636--s256)
+  - [Configuration](#configuration)
+    - [Providers JSON schema](#providers-json-schema)
+  - [Monorepo wiring](#monorepo-wiring)
+  - [Local dev](#local-dev)
+  - [Deploy](#deploy)
+    - [GitHub Environments + Sentry mapping](#github-environments--sentry-mapping)
+    - [Cloudflare Workers](#cloudflare-workers)
+    - [Render](#render)
+  - [Dropbox app registration](#dropbox-app-registration)
+  - [Google Drive & Google Photos app registration](#google-drive--google-photos-app-registration)
+  - [OneDrive (Microsoft Graph) app registration](#onedrive-microsoft-graph-app-registration)
+  - [iCloud (CloudKit) — different auth model](#icloud-cloudkit--different-auth-model)
+  - [Testing](#testing)
+  - [Security notes (hardened 2026-08 – Z-Audit fixes; PKCE added 2026-08)](#security-notes-hardened-2026-08--z-audit-fixes-pkce-added-2026-08)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # SRAT OAuth Broker
 
 Hosted, serverless OAuth broker for SRAT cloud-sync (issue #1002). One
