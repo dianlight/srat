@@ -1,10 +1,5 @@
 {
   "features": {
-    "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev:1": {
-      "version": "1.0.3",
-      "resolved": "ghcr.io/devcontainer-community/devcontainer-features/biomejs.dev@sha256:67ed3e01d6c37259dbfa590f6e12f8169025d5ecef44b505b800f6d89827e88b",
-      "integrity": "sha256:67ed3e01d6c37259dbfa590f6e12f8169025d5ecef44b505b800f6d89827e88b"
-    },
     "ghcr.io/devcontainer-community/devcontainer-features/opencode.ai:1": {
       "version": "1.0.7",
       "resolved": "ghcr.io/devcontainer-community/devcontainer-features/opencode.ai@sha256:312520e651f8438c67d6823464fffaf42449e1e05e7020ef721748a4a95fa1fb",

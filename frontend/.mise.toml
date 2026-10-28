@@ -136,13 +136,8 @@ run = [
  [tasks.lint]
 depends = [
   { task = "validate-macros" },
-  { task = "lint-eslint" },
 ]
-run = ["biome check --no-errors-on-unmatched --write"]
-quiet = true
-
- [tasks."lint-eslint"]
-run = ["bunx eslint src --config eslint.config.js"]
+run = ["bun lint --no-script"]
 quiet = true
 
 [tasks.test]
@@ -197,5 +192,5 @@ hide = true
 
 [tasks.format]
 alias = ["fmt"]
-run = "biome check --write"
+run = "bun fmt"
 quiet = true

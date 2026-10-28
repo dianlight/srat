@@ -18,8 +18,7 @@
 		}
 	],
 	"editor.codeActionsOnSave": {
-		"source.organizeImports.biome": "explicit",
-		"source.sortImports": "explicit",
+		"source.organizeImports": "explicit",
 		"source.action.useSortedKeys.biome": "explicit",
 		"source.fixAll.biome": "explicit"
 	},
@@ -166,7 +165,6 @@
 		"**/vendor/*/**"
 	],
 	"todo-tree.tree.showCountsInTree": true,
-	"biome.lsp.bin": "/root/.local/share/mise/shims/biome",
 	"todo-tree.highlights.useColourScheme": true,
 	"chat.planAgent.defaultModel": "",
 	"chat.editing.explainChanges.enabled": true,

@@ -204,8 +204,9 @@ case "${1:-}" in
 	mapfile -t md_files < <(get_markdown_files markdownlint)
 
 	if [ ${#md_files[@]} -gt 0 ]; then
-		# Fix markdown formatting on the centralized file set
-		$RUNNER prettier --write "${md_files[@]}"
+		# Format markdown with the repo formatter, then fix markdownlint
+		# issues on the same file set.
+		bun fmt "${md_files[@]}"
 
 		# Fix markdownlint issues on the same file set
 		$RUNNER markdownlint-cli2 "${md_files[@]}" --fix

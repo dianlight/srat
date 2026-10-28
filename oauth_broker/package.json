@@ -4,18 +4,14 @@
   "description": "SRAT hosted OAuth broker — serverless TypeScript (Cloudflare Workers + Render) for shared Dropbox OAuth (issue #1002)",
   "type": "module",
   "module": "src/index.ts",
-  "packageManager": "bun@1.4.4",
-  "engines": {
-    "bun": ">=1.4.0"
-  },
   "scripts": {
     "dev": "bun run src/index.ts",
     "dev:worker": "wrangler dev",
     "build": "bun tsc --noEmit",
     "test": "bunx --bun vitest run",
     "test:ci": "bunx vitest run --coverage --reporter=verbose",
-    "lint": "biome check .",
-    "format": "biome check --write .",
+    "lint": "bun lint --no-script",
+    "format": "bun fmt .",
     "deploy:worker": "wrangler deploy",
     "deploy:render": "bun run build",
     "typecheck": "bun tsc --noEmit"
@@ -24,11 +20,14 @@
     "hono": "^4.9.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.3",
     "@types/bun": "1.4.4",
+    "@vitest/coverage-v8": "4.1.12",
     "typescript": "7.0.2",
     "vitest": "4.1.12",
-    "@vitest/coverage-v8": "4.1.12",
     "wrangler": "4.153.0"
-  }
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "packageManager": "bun@1.4.4"
 }

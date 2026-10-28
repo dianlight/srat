@@ -38,7 +38,6 @@ All imports from the macro directory **MUST** use the proper import assertion:
 ```typescript
 // ✅ CORRECT
 import { getApiUrl } from "../macro/Environment" with { type: "macro" };
-
 // ❌ INCORRECT
 import { getApiUrl } from "../macro/Environment";
 ```

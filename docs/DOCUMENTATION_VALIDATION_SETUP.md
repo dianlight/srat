@@ -62,7 +62,7 @@ This document summarizes the comprehensive documentation validation system imple
   - **Markdownlint**: Markdown syntax and formatting (GFM-compatible)
   - **cspell**: Spell checking with project vocabulary
   - **Vale**: Prose linting and style checking (GFM-aware)
-  - Format checking (prettier)
+  - Format checking (bun fmt)
   - Content validation (custom checks)
   - Autofix capabilities
 
@@ -73,7 +73,7 @@ This document summarizes the comprehensive documentation validation system imple
   - Trailing whitespace removal for Markdown
   - End-of-file fixing for Markdown
   - Markdownlint validation (GFM)
-  - Prettier formatting
+  - bun fmt formatting
   - Custom documentation structure checks
   - Link format validation
   - CHANGELOG.md format checking
@@ -88,7 +88,7 @@ This document summarizes the comprehensive documentation validation system imple
   - Supports GFM tables, task lists, strikethrough
   - Allows HTML elements commonly used in GFM
   - Flexible heading and list formatting
-  - Extends prettier style for consistency
+  - Extends markdownlint's prettier style preset for consistency
   - GFM-specific rule adjustments
   - Ignores vendor and node_modules directories
 
@@ -120,7 +120,7 @@ This document summarizes the comprehensive documentation validation system imple
 - **`mise run docs-check`**: Check if all dependencies are installed (includes Vale checks)
 - **`mise run docs-validate`**: Run documentation validation with all tools (GFM-aware)
 - **`mise run docs-fix`**: Autofix documentation formatting
-- **`mise run docs-install`**: Install JS-based documentation tools (markdownlint, cspell, prettier)
+- **`mise run docs-install`**: Install JS-based documentation tools (markdownlint, cspell)
 - **`mise run docs-toc`**: Generate table of contents for markdown files selected via `.docsignore`
 - **`mise run docs-help`**: Show all available documentation commands with tool status
 

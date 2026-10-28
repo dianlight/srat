@@ -126,7 +126,6 @@ export function PartitionInformationCard({
             {(typeof value === "string" ? value : JSON.stringify(value))
               .split("\n")
               .map((line, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: text lines have no unique id
                 <span key={index}>
                   {line}
                   <br />

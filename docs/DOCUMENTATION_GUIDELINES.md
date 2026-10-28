@@ -99,7 +99,7 @@ The project uses several tools to validate documentation with full **GitHub Flav
   - Microsoft Writing Style Guide
   - write-good rules for clear writing
   - Non-blocking warnings
-- **prettier** - Consistent formatting
+- **bun fmt** - Consistent formatting (Prettier-compatible, built into Bun)
 - **doctoc** - Automatic table of contents generation
 - **Custom validators** - Project-specific checks
 
@@ -156,7 +156,7 @@ pre-commit run --all-files
 
 # Run only documentation hooks
 pre-commit run --all-files markdownlint
-pre-commit run --all-files prettier
+pre-commit run --all-files bun-fmt
 ```shell
 
 ## GitHub Workflows
@@ -276,7 +276,7 @@ When making breaking changes:
 
 **Format check failures:**
 
-- Run `prettier --write "**/*.md"` to autofix
+- Run `mise run docs-fix` (bun fmt) to autofix
 - Check for consistent indentation
 - Ensure proper line endings
 
@@ -296,7 +296,7 @@ When making breaking changes:
 - **`.vale.ini`** - Vale prose linting configuration
 - **`.vale/styles/Vocab/SRAT/`** - Project-specific vocabulary (accept.txt, reject.txt)
 - **`.cspell.json`** - Spell check dictionary and rules
-- **`.prettierrc`** - Code formatting configuration (if present)
+- **`bunfig.toml` (`[fmt]`)** - Code formatting configuration
 - **`.pre-commit-config.yaml`** - Pre-commit hook configuration
 
 ### GitHub Configuration

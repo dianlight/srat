@@ -361,7 +361,6 @@ export function NotificationCenter() {
                           .join(" ");
 
                         return (
-                          // biome-ignore lint/suspicious/noArrayIndexKey: no unique id available on error items
                           <Typography key={index} variant="body2" gutterBottom>
                             {line}
                           </Typography>

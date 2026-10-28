@@ -193,6 +193,7 @@ fatih
 fe
 fi
 filterNote
+fmt
 fsck
 fsnotify
 fsprogs

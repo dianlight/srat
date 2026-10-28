@@ -222,7 +222,6 @@ export class KVInstanceStore implements InstanceStore {
     await this.kv.delete(this.key(id));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- KV has no list operation; param kept for interface parity
   async deleteByClientId(_clientId: string): Promise<number> {
     // KV has no list operation; best-effort: instances will expire via TTL.
     // In production D1 is preferred, so this is rarely used.

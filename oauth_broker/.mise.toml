@@ -13,11 +13,11 @@ run = "bun tsc --noEmit"
 quiet = true
 
 [tasks.lint]
-run = "bunx biome check ."
+run = "bun lint --no-script"
 quiet = true
 
 [tasks.format]
-run = "bunx biome check --write ."
+run = "bun fmt ."
 quiet = true
 
 [tasks.test]
