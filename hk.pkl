@@ -80,7 +80,6 @@ local linters = new Mapping<String, Step> {
     ["shfmt"] = Builtins.shfmt
 
     ["taplo"] = Builtins.taplo
-    ["taplo-format"] = Builtins.taplo_format
 
     ["yamllint"] {
         glob = "**/*.{yaml,yml}"
