@@ -247,6 +247,10 @@ type EventBusInterface interface {
 	EmitFilesystemTask(event FilesystemTaskEvent)
 	OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func()
 
+	// Rclone task events (cloud sync, issue #954 lab feature)
+	EmitRcloneTask(event RcloneTaskEvent)
+	OnRcloneTask(handler func(context.Context, RcloneTaskEvent) errors.E) func()
+
 	// Command execution lifecycle events
 	EmitCommandExecution(event CommandExecutionEvent)
 	OnCommandExecution(handler func(context.Context, CommandExecutionEvent) errors.E) func()
@@ -275,6 +279,7 @@ type EventBus struct {
 	smart            signals.SyncSignal[SmartEvent]
 	power            signals.SyncSignal[PowerEvent]
 	filesystemTask   signals.SyncSignal[FilesystemTaskEvent]
+	rcloneTask       signals.SyncSignal[RcloneTaskEvent]
 	commandExecution signals.SyncSignal[CommandExecutionEvent]
 	problem          signals.SyncSignal[ProblemEvent]
 }
@@ -297,6 +302,7 @@ func NewEventBus(ctx context.Context) EventBusInterface {
 		smart:            *signals.NewSync[SmartEvent](),
 		power:            *signals.NewSync[PowerEvent](),
 		filesystemTask:   *signals.NewSync[FilesystemTaskEvent](),
+		rcloneTask:       *signals.NewSync[RcloneTaskEvent](),
 		commandExecution: *signals.NewSync[CommandExecutionEvent](),
 		problem:          *signals.NewSync[ProblemEvent](),
 	}
@@ -476,6 +482,15 @@ func (eb *EventBus) EmitFilesystemTask(event FilesystemTaskEvent) {
 
 func (eb *EventBus) OnFilesystemTask(handler func(context.Context, FilesystemTaskEvent) errors.E) func() {
 	return onEvent(eb.filesystemTask, "FilesystemTask", handler)
+}
+
+// Rclone task event methods (cloud sync)
+func (eb *EventBus) EmitRcloneTask(event RcloneTaskEvent) {
+	_ = emitEvent(eb.rcloneTask, eb.ctx, event)
+}
+
+func (eb *EventBus) OnRcloneTask(handler func(context.Context, RcloneTaskEvent) errors.E) func() {
+	return onEvent(eb.rcloneTask, "RcloneTask", handler)
 }
 
 // Command execution lifecycle event methods

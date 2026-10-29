@@ -96,7 +96,7 @@ func NewBroadcasterService(
 }
 
 func (broker *BroadcasterService) setupEventListeners() []func() {
-	ret := make([]func(), 10)
+	ret := make([]func(), 11)
 	// Listen for disk events
 	ret[0] = broker.eventBus.OnDisk(func(ctx context.Context, event events.DiskEvent) errors.E {
 		diskID := "unknown"
@@ -199,6 +199,14 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 			return nil
 		}
 		broker.BroadcastMessage(cmd)
+		return nil
+	})
+	ret[10] = broker.eventBus.OnRcloneTask(func(ctx context.Context, event events.RcloneTaskEvent) errors.E {
+		if event.Task == nil {
+			return nil
+		}
+		tlog.TraceContext(ctx, "BroadcasterService received RcloneTask event", "operation", event.Task.Operation, "status", event.Task.Status, "target_id", event.Task.TargetID)
+		broker.BroadcastMessage(*event.Task)
 		return nil
 	})
 

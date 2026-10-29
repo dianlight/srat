@@ -438,3 +438,15 @@ Hono
 rclone
 KV
 iCloud
+combobox
+guest_ok
+rsynced
+Carola
+OAuth
+oauth
+HTTP
+http
+HTTPS
+https
+librclone
+SRAT_OAUTH_BROKER_URL

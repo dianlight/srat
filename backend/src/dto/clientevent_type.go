@@ -7,4 +7,5 @@ const (
 	clientEventTypeHelo             clientEventType = iota // "helo"
 	clientEventTypeRepairLifecycle                         // "repair_lifecycle"
 	clientEventTypeProblemLifecycle                        // "problem_lifecycle"
+	clientEventTypeHaDropboxToken                          // "ha_dropbox_token"
 )

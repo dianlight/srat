@@ -171,6 +171,8 @@ describe("DiskHealthMetrics", () => {
                         last_io_at: "2025-12-15T10:00:00Z",
                         spin_down_at: "2025-12-15T09:00:00Z",
                         spin_up_at: "2025-12-15T10:30:00Z",
+                        spin_down_at: "2025-12-14T02:00:00Z",
+                        last_io_at: "2025-12-15T10:29:00Z",
                     },
                 },
             },
