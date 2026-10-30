@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"context"
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -272,6 +273,19 @@ func findParams(registry Registry, op *Operation, t reflect.Type) *findResult[*p
 
 		pfi := pl.pfi
 		pfi.Schema = SchemaFromField(registry, f, "")
+
+		if pfi.Default != "" && pfi.Schema != nil && pfi.Schema.Type == TypeArray {
+			// parseInto splits defaults on commas, so rebuild them from the parsed schema default.
+			d := reflect.ValueOf(pfi.Schema.Default)
+			parts := make([]string, d.Len())
+			for i := range parts {
+				b, _ := json.Marshal(d.Index(i).Interface())
+				if json.Unmarshal(b, &parts[i]) != nil {
+					parts[i] = string(b)
+				}
+			}
+			pfi.Default = strings.Join(parts, ",")
+		}
 
 		// While discouraged, make it possible to override `required` for non-path
 		// params via the struct tag. Path params are always required per the
@@ -626,7 +640,7 @@ type validateDeps struct {
 var validatePool = sync.Pool{
 	New: func() any {
 		return &validateDeps{
-			pb:  &PathBuffer{buf: make([]byte, 0, 128)},
+			pb:  &PathBuffer{buf: make([]byte, 0, 128), offs: make([]int, 0, 16)},
 			res: &ValidateResult{},
 		}
 	},
@@ -777,6 +791,22 @@ func writeHeader(write func(string, string), info *headerInfo, f reflect.Value) 
 //		return resp, nil
 //	})
 func Register[I, O any](api API, op Operation, handler func(context.Context, *I) (*O, error)) {
+	// Keep this wrapper minimal: Go compiles a separate copy of the body for
+	// each type pair, so all reflection-based work lives in register.
+	register(api, op, reflect.TypeFor[I](), reflect.TypeFor[O](),
+		func() any { return new(I) },
+		func(ctx context.Context, input any) (any, error) {
+			output, err := handler(ctx, input.(*I))
+			if output == nil {
+				// A nil *O in an interface is not nil, which would bypass
+				// register's "no output" path.
+				return nil, err
+			}
+			return output, err
+		})
+}
+
+func register(api API, op Operation, inputType, outputType reflect.Type, newInput func() any, callHandler func(context.Context, any) (any, error)) {
 	oapi := api.OpenAPI()
 	registry := oapi.Components.Schemas
 
@@ -790,13 +820,11 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 	}
 	initResponses(&op)
 
-	inputType := reflect.TypeFor[I]()
 	if inputType.Kind() != reflect.Struct {
 		panic("input must be a struct")
 	}
 	inputParams, inputBodyIndex, hasInputBody, rawBodyIndex, rbt, rawBodyDataT, inSchema := processInputType(inputType, &op, registry)
 
-	outputType := reflect.TypeFor[O]()
 	if outputType.Kind() != reflect.Struct {
 		panic("output must be a struct")
 	}
@@ -879,7 +907,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 		}
 	}
 	a.Handle(&op, api.Middlewares().Handler(op.Middlewares.Handler(func(ctx Context) {
-		var input I
+		input := newInput()
 
 		// Get the validation dependencies from the shared pool.
 		deps := validatePool.Get().(*validateDeps)
@@ -900,7 +928,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 
 		var cookies map[string]*http.Cookie
 
-		v := reflect.ValueOf(&input).Elem()
+		v := reflect.ValueOf(input).Elem()
 
 		// Reject unknown query parameters if config is set.
 		cfg := getConfig[Config](api)
@@ -1020,7 +1048,11 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 
 			if rbt.isMultipart() {
 				// Read form
-				form, err := readForm(ctx)
+				form, cErr, err := readForm(ctx)
+				if cErr != nil {
+					writeErr(api, ctx, cErr, *res)
+					return
+				}
 				jsonUnmarshaler := func(data []byte, v any) error { return api.Unmarshal("application/json", data, v) }
 
 				if err != nil {
@@ -1051,12 +1083,20 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 								pb.Push(p.Name)
 
 								value, ok := form.Value[p.Name]
+								preSplit := value
+								jf := jsonFormFields[p]
 								if !ok || (len(value) > 0 && value[0] == "") {
 									_, isFile := form.File[p.Name]
 									if !op.SkipValidateParams && p.Required && !isFile {
 										res.Add(pb, "", "required "+p.Loc+" parameter is missing")
+										return
 									}
-									return
+									// #1125 stores array defaults comma-joined, which isn't valid JSON.
+									if p.Default == "" || isFile || jf != nil {
+										return
+									}
+									// Like other params, a slice default is split on commas.
+									value, preSplit = []string{p.Default}, nil
 								}
 
 								// Validation should fail if multiple values are
@@ -1067,7 +1107,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 								}
 
 								// JSON fields
-								if jf := jsonFormFields[p]; jf != nil {
+								if jf != nil {
 									errorsBeforeValidation := len(res.Errors)
 
 									var parsed any
@@ -1089,7 +1129,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 								}
 
 								// Regular fields
-								pv, err := parseInto(ctx, f, value[0], value, *p)
+								pv, err := parseInto(ctx, f, value[0], preSplit, *p)
 								if err != nil {
 									res.Add(pb, value, err.Error())
 								}
@@ -1227,7 +1267,7 @@ func Register[I, O any](api API, op Operation, handler func(context.Context, *I)
 			return
 		}
 
-		output, err := handler(ctx.Context(), &input)
+		output, err := callHandler(ctx.Context(), input)
 		if err != nil {
 			appendErrorHeaders(ctx, err)
 
@@ -1377,19 +1417,19 @@ func setFieldValue(f reflect.Value, value string) error {
 	case reflect.Interface:
 		f.Set(reflect.ValueOf(value))
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := strconv.ParseInt(value, 10, 64)
+		v, err := strconv.ParseInt(value, 10, f.Type().Bits())
 		if err != nil {
 			return errors.New("invalid integer")
 		}
 		f.SetInt(v)
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v, err := strconv.ParseUint(value, 10, 64)
+		v, err := strconv.ParseUint(value, 10, f.Type().Bits())
 		if err != nil {
 			return errors.New("invalid integer")
 		}
 		f.SetUint(v)
 	case reflect.Float32, reflect.Float64:
-		v, err := strconv.ParseFloat(value, 64)
+		v, err := strconv.ParseFloat(value, f.Type().Bits())
 		if err != nil {
 			return errors.New("invalid float")
 		}
@@ -1456,8 +1496,6 @@ func processInputType(inputType reflect.Type, op *Operation, registry Registry) 
 		inputBodyIndex = f.Index
 		initRequestBody(op)
 		setRequestBodyFromBody(op, registry, f, inputType)
-		ensureBodyReadTimeout(op)
-		ensureMaxBodyBytes(op)
 	}
 
 	var rawBodyDataT reflect.Type
@@ -1467,7 +1505,7 @@ func processInputType(inputType reflect.Type, op *Operation, registry Registry) 
 	if f, ok := inputType.FieldByName("RawBody"); ok {
 		rawBodyIndex = f.Index
 		initRequestBody(op, setRequestBodyRequired)
-		rbt = setRequestBodyFromRawBody(op, registry, f)
+		rbt = setRequestBodyFromRawBody(op, registry, f, hasInputBody)
 
 		if rbt == rbtMultipartDecoded {
 			dataField, ok := f.Type.FieldByName("data")
@@ -1476,6 +1514,13 @@ func processInputType(inputType reflect.Type, op *Operation, registry Registry) 
 			}
 			rawBodyDataT = dataField.Type.Elem()
 		}
+	}
+
+	// Multipart is exempt so existing large or slow uploads keep working; set
+	// limits explicitly.
+	if hasInputBody || (len(rawBodyIndex) > 0 && !rbt.isMultipart()) {
+		ensureBodyReadTimeout(op)
+		ensureMaxBodyBytes(op)
 	}
 
 	if op.RequestBody != nil {
@@ -1544,6 +1589,16 @@ func setRequestBodyFromBody(op *Operation, registry Registry, fBody reflect.Stru
 		}
 		s := SchemaFromField(registry, fBody, hint)
 		op.RequestBody.Content[contentType].Schema = s
+		setExampleFromRef(op.RequestBody.Content[contentType], s)
+	}
+}
+
+// setExampleFromRef copies the Body field's `example` tag onto the media type,
+// as many tools ignore examples beside a `$ref`. A `$ref` wrapper's examples
+// can only come from that tag.
+func setExampleFromRef(mt *MediaType, s *Schema) {
+	if s != nil && s.Ref != "" && len(s.Examples) > 0 && mt.Example == nil && len(mt.Examples) == 0 {
+		mt.Example = s.Examples[0]
 	}
 }
 
@@ -1560,7 +1615,7 @@ func (r rawBodyType) isMultipart() bool {
 }
 
 // setRequestBodyFromRawBody configures op.RequestBody from the RawBody field.
-func setRequestBodyFromRawBody(op *Operation, r Registry, fRawBody reflect.StructField) rawBodyType {
+func setRequestBodyFromRawBody(op *Operation, r Registry, fRawBody reflect.StructField, hasBody bool) rawBodyType {
 	rbt := rbtOther
 	contentType := "application/octet-stream"
 	if fRawBody.Type.String() == "multipart.Form" {
@@ -1576,6 +1631,10 @@ func setRequestBodyFromRawBody(op *Operation, r Registry, fRawBody reflect.Struc
 	}
 
 	if contentType != "multipart/form-data" {
+		// RawBody next to Body is just Body's bytes, which Body already documents.
+		if hasBody && fRawBody.Tag.Get("contentType") == "" {
+			return rbt
+		}
 		op.RequestBody.Content[contentType] = &MediaType{
 			Schema: &Schema{
 				Type:   "string",
@@ -1695,6 +1754,7 @@ func processOutputType(outputType reflect.Type, op *Operation, registry Registry
 			}
 			if op.Responses[statusStr].Content[contentType] != nil && op.Responses[statusStr].Content[contentType].Schema == nil {
 				op.Responses[statusStr].Content[contentType].Schema = outSchema
+				setExampleFromRef(op.Responses[statusStr].Content[contentType], outSchema)
 			}
 		}
 	}
@@ -1824,7 +1884,7 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 		f.SetString(value)
 		return value, nil
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		v, err := strconv.ParseInt(value, 10, 64)
+		v, err := strconv.ParseInt(value, 10, p.Type.Bits())
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
@@ -1833,7 +1893,7 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 
 		return v, nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		v, err := strconv.ParseUint(value, 10, 64)
+		v, err := strconv.ParseUint(value, 10, p.Type.Bits())
 		if err != nil {
 			return nil, errors.New("invalid integer")
 		}
@@ -1842,7 +1902,7 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 
 		return v, nil
 	case reflect.Float32, reflect.Float64:
-		v, err := strconv.ParseFloat(value, 64)
+		v, err := strconv.ParseFloat(value, p.Type.Bits())
 		if err != nil {
 			return nil, errors.New("invalid float")
 		}
@@ -1867,6 +1927,10 @@ func parseInto(ctx Context, f reflect.Value, value string, preSplit []string, p 
 			if p.Explode {
 				u := ctx.URL()
 				values = (&u).Query()[p.Name]
+				if values == nil {
+					// Absent, so value holds the comma-separated default.
+					values = strings.Split(value, ",")
+				}
 			} else {
 				values = strings.Split(value, ",")
 			}
@@ -2043,15 +2107,19 @@ func processMultipartMsgBody(form *multipart.Form, op Operation, v reflect.Value
 	return nil
 }
 
-func readForm(ctx Context) (*multipart.Form, *ErrorDetail) {
+func readForm(ctx Context) (*multipart.Form, *contextError, *ErrorDetail) {
 	form, err := ctx.GetMultipartForm()
 	if err != nil {
-		return form, &ErrorDetail{
+		var mbErr *http.MaxBytesError
+		if errors.As(err, &mbErr) {
+			return nil, bodyTooLarge(mbErr), nil
+		}
+		return form, nil, &ErrorDetail{
 			Location: "body",
 			Message:  "cannot read multipart form: " + err.Error(),
 		}
 	}
-	return form, nil
+	return form, nil, nil
 }
 
 type intoUnmarshaler = func(data []byte, v any) error
@@ -2160,7 +2228,8 @@ func setDefaults(v reflect.Value, defaults *findResult[any]) {
 	})
 }
 
-// readBody reads the message body from ctx into buf, respecting the
+// readBody reads the request body into buf, returning 413 if it exceeds
+// maxBytes (<= 0 means unlimited).
 func readBody(buf io.Writer, ctx Context, maxBytes int64) *contextError {
 	reader := ctx.BodyReader()
 	if reader == nil {
@@ -2170,15 +2239,15 @@ func readBody(buf io.Writer, ctx Context, maxBytes int64) *contextError {
 		defer closer.Close()
 	}
 	if maxBytes > 0 {
-		reader = io.LimitReader(reader, maxBytes)
+		// NopCloser only adapts the type; the defer above closes the real body.
+		reader = http.MaxBytesReader(nil, io.NopCloser(reader), maxBytes)
 	}
-	count, err := io.Copy(buf, reader)
-	if maxBytes > 0 {
-		if count == maxBytes {
-			return &contextError{Code: http.StatusRequestEntityTooLarge, Msg: fmt.Sprintf("request body is too large limit=%d bytes", maxBytes)}
+	if _, err := io.Copy(buf, reader); err != nil {
+		var mbErr *http.MaxBytesError
+		if errors.As(err, &mbErr) {
+			// Report the limit that fired, which may come from an upstream MaxBytesReader.
+			return bodyTooLarge(mbErr)
 		}
-	}
-	if err != nil {
 		var nErr net.Error
 		if errors.As(err, &nErr) && nErr.Timeout() {
 			return &contextError{Code: http.StatusRequestTimeout, Msg: "request body read timeout"}
@@ -2187,6 +2256,10 @@ func readBody(buf io.Writer, ctx Context, maxBytes int64) *contextError {
 		return &contextError{Code: http.StatusInternalServerError, Msg: "cannot read request body", Errs: []error{err}}
 	}
 	return nil
+}
+
+func bodyTooLarge(err *http.MaxBytesError) *contextError {
+	return &contextError{Code: http.StatusRequestEntityTooLarge, Msg: fmt.Sprintf("request body is too large limit=%d bytes", err.Limit)}
 }
 
 // AutoRegister auto-detects operation registration methods and registers them
@@ -2288,7 +2361,12 @@ func OperationTags(tags ...string) func(o *Operation) {
 }
 
 func convenience[I, O any](api API, method, path string, handler func(context.Context, *I) (*O, error), operationHandlers ...func(o *Operation)) {
-	var o *O
+	// Keep this wrapper minimal, see Register. The typed nil *O is what the ID
+	// and summary generators inspect.
+	Register(api, convenienceOperation(method, path, (*O)(nil), operationHandlers), handler)
+}
+
+func convenienceOperation(method, path string, o any, operationHandlers []func(o *Operation)) Operation {
 	opID := GenerateOperationID(method, path, o)
 	opSummary := GenerateSummary(method, path, o)
 	operation := Operation{
@@ -2310,7 +2388,7 @@ func convenience[I, O any](api API, method, path string, handler func(context.Co
 		operation.Metadata["_convenience_summary"] = opSummary
 		operation.Metadata["_convenience_summary_out"] = o
 	}
-	Register(api, operation, handler)
+	return operation
 }
 
 // Get HTTP operation handler for an API. The handler must be a function that

@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/bits"
 	"net"
 	"net/netip"
 	"net/url"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -36,6 +38,7 @@ const (
 	TypeString  = "string"
 	TypeArray   = "array"
 	TypeObject  = "object"
+	TypeNull    = "null"
 )
 
 // Special JSON Schema formats.
@@ -67,6 +70,10 @@ func deref(t reflect.Type) reflect.Type {
 		t = t.Elem()
 	}
 	return t
+}
+
+func isTextUnmarshaler(t reflect.Type) bool {
+	return t.Implements(textUnmarshalerType) || reflect.PointerTo(t).Implements(textUnmarshalerType)
 }
 
 // Discriminator object when request bodies or response payloads may be one of a
@@ -241,6 +248,122 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 		{"not", s.Not, omitEmpty},
 		{"discriminator", s.Discriminator, omitEmpty},
 	}, s.Extensions)
+}
+
+// UnmarshalJSON loads a JSON Schema, such as one stored for runtime validation.
+// A `type` array may hold one type plus "null" (setting Nullable), `x-` keys
+// become Extensions, and unsupported keywords are ignored. Messages are
+// precomputed as Validate silently skips properties and patterns without them.
+func (s *Schema) UnmarshalJSON(data []byte) error {
+	var typ json.RawMessage
+	var addl json.RawMessage
+
+	// contentMediaType is omitted as MarshalJSON derives it from format.
+	if err := unmarshalJSON(data, map[string]any{
+		"type":                 &typ,
+		"title":                &s.Title,
+		"description":          &s.Description,
+		"$ref":                 &s.Ref,
+		"format":               &s.Format,
+		"contentEncoding":      &s.ContentEncoding,
+		"default":              &s.Default,
+		"examples":             &s.Examples,
+		"items":                &s.Items,
+		"additionalProperties": &addl,
+		"properties":           &s.Properties,
+		"enum":                 &s.Enum,
+		"const":                &s.Const,
+		"minimum":              &s.Minimum,
+		"exclusiveMinimum":     &s.ExclusiveMinimum,
+		"maximum":              &s.Maximum,
+		"exclusiveMaximum":     &s.ExclusiveMaximum,
+		"multipleOf":           &s.MultipleOf,
+		"minLength":            &s.MinLength,
+		"maxLength":            &s.MaxLength,
+		"pattern":              &s.Pattern,
+		"patternDescription":   &s.PatternDescription,
+		"minItems":             &s.MinItems,
+		"maxItems":             &s.MaxItems,
+		"uniqueItems":          &s.UniqueItems,
+		"required":             &s.Required,
+		"dependentRequired":    &s.DependentRequired,
+		"minProperties":        &s.MinProperties,
+		"maxProperties":        &s.MaxProperties,
+		"readOnly":             &s.ReadOnly,
+		"writeOnly":            &s.WriteOnly,
+		"deprecated":           &s.Deprecated,
+		"oneOf":                &s.OneOf,
+		"anyOf":                &s.AnyOf,
+		"allOf":                &s.AllOf,
+		"not":                  &s.Not,
+		"discriminator":        &s.Discriminator,
+	}, &s.Extensions); err != nil {
+		return err
+	}
+
+	// Inverse of MarshalJSON emitting `[type, "null"]` for nullable schemas.
+	if len(typ) > 0 {
+		var types []string
+		if json.Unmarshal(typ, &types) != nil {
+			var single string
+			if err := json.Unmarshal(typ, &single); err != nil {
+				return fmt.Errorf("type: %w", err)
+			}
+			types = []string{single}
+		}
+		// Reset so decoding into a reused Schema doesn't see the old type.
+		s.Type = ""
+		s.Nullable = false
+		for _, t := range types {
+			switch {
+			case t == "null":
+				s.Nullable = true
+			case s.Type != "":
+				return fmt.Errorf("type: multiple non-null types are unsupported: %s", typ)
+			default:
+				s.Type = t
+			}
+		}
+		if s.Nullable && s.Type == "" {
+			return fmt.Errorf("type: null-only types are unsupported: %s", typ)
+		}
+	}
+
+	// Validate only understands bool or *Schema here, not a generic map. Null
+	// would otherwise decode as false and silently disallow extra properties.
+	if len(addl) > 0 && string(addl) != "null" {
+		var b bool
+		if json.Unmarshal(addl, &b) == nil {
+			s.AdditionalProperties = b
+		} else {
+			addlSchema := &Schema{}
+			if err := json.Unmarshal(addl, addlSchema); err != nil {
+				return fmt.Errorf("additionalProperties: %w", err)
+			}
+			s.AdditionalProperties = addlSchema
+		}
+	}
+
+	// A null subschema would panic in PrecomputeMessages and Validate.
+	for name, sub := range s.Properties {
+		if sub == nil {
+			return fmt.Errorf("properties: %s: null schema", name)
+		}
+	}
+	for key, subs := range map[string][]*Schema{"oneOf": s.OneOf, "anyOf": s.AnyOf, "allOf": s.AllOf} {
+		if slices.Contains(subs, nil) {
+			return fmt.Errorf("%s: null schema", key)
+		}
+	}
+
+	// PrecomputeMessages panics on a bad pattern; this input is untrusted.
+	if s.Pattern != "" {
+		if _, err := regexp.Compile(s.Pattern); err != nil {
+			return fmt.Errorf("pattern: %w", err)
+		}
+	}
+	s.PrecomputeMessages()
+	return nil
 }
 
 // PrecomputeMessages tries to precompute as many validation error messages
@@ -463,6 +586,24 @@ func convertType(fieldName string, t reflect.Type, v any) any {
 		return v
 	}
 
+	target := deref(t)
+	if s, ok := v.(string); ok && isTextUnmarshaler(target) {
+		converted := reflect.New(target)
+		if err := converted.Interface().(encoding.TextUnmarshaler).UnmarshalText([]byte(s)); err != nil {
+			panic(fmt.Errorf("unable to convert %q to %v for field '%s': %v: %w", s, t, fieldName, err, ErrSchemaInvalid))
+		}
+		if t.Kind() == reflect.Pointer {
+			return converted.Interface()
+		}
+		return converted.Elem().Interface()
+	}
+
+	// JSON numbers decode as float64 and reflect's Convert silently wraps
+	// out-of-range values, e.g. 128 -> int8(-128).
+	if f, ok := v.(float64); ok && overflows(target, f) {
+		panic(fmt.Errorf("value %v overflows %v for field '%s': %w", f, t, fieldName, ErrSchemaInvalid))
+	}
+
 	// Directly convert equal underlying types, avoiding traversal.
 	// e.g., json.RawMessage -> []byte.
 	if tv.ConvertibleTo(t) {
@@ -484,31 +625,17 @@ func convertType(fieldName string, t reflect.Type, v any) any {
 			}
 
 			item = reflect.Indirect(item)
-			typ := deref(t.Elem())
-			if !item.Type().ConvertibleTo(typ) {
-				panic(fmt.Errorf("unable to convert %v to %v for field '%s': %w", item.Interface(), t.Elem(), fieldName, ErrSchemaInvalid))
-			}
-
-			value := item.Convert(typ)
-			if t.Elem().Kind() == reflect.Pointer {
-				// Special case: if the field is a pointer, we need to get a pointer
-				// to the converted value.
-				ptr := reflect.New(value.Type())
-				ptr.Elem().Set(value)
-				value = ptr
-			}
-
-			tmp = reflect.Append(tmp, value)
+			tmp = reflect.Append(tmp, reflect.ValueOf(convertType(fieldName, t.Elem(), item.Interface())))
 		}
 
 		return tmp.Interface()
 	}
 
-	if !tv.ConvertibleTo(deref(t)) {
+	if !tv.ConvertibleTo(target) {
 		panic(fmt.Errorf("unable to convert %v to %v for field '%s': %w", tv, t, fieldName, ErrSchemaInvalid))
 	}
 
-	converted := val.Convert(deref(t))
+	converted := val.Convert(target)
 	if t.Kind() == reflect.Pointer {
 		// Special case: if the field is a pointer, we need to get a pointer
 		// to the converted value.
@@ -518,6 +645,33 @@ func convertType(fieldName string, t reflect.Type, v any) any {
 	}
 
 	return converted.Interface()
+}
+
+// intRange returns the bounds of integer type t. 64-bit bounds round to the
+// nearest float64, so tags written as e.g. MaxInt64 still fall within them.
+func intRange(t reflect.Type) (lo, hi float64, ok bool) {
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		hi = math.Ldexp(1, t.Bits()-1) - 1
+		return -hi - 1, hi, true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return 0, math.Ldexp(1, t.Bits()) - 1, true
+	}
+	return 0, 0, false
+}
+
+// overflows reports whether f cannot be represented by numeric type t.
+func overflows(t reflect.Type, f float64) bool {
+	z := reflect.Zero(t)
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return f < -(1<<63) || f >= 1<<63 || z.OverflowInt(int64(f))
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return f < 0 || f >= 1<<64 || z.OverflowUint(uint64(f))
+	case reflect.Float32, reflect.Float64:
+		return z.OverflowFloat(f)
+	}
+	return false
 }
 
 func jsonTagValue(r Registry, fieldName string, s *Schema, value string) any {
@@ -557,7 +711,17 @@ func jsonTagValue(r Registry, fieldName string, s *Schema, value string) any {
 func jsonTag(r Registry, f reflect.StructField, s *Schema, name string) any {
 	t := f.Type
 	if value := f.Tag.Get(name); value != "" {
-		return convertType(f.Name, t, jsonTagValue(r, f.Name, s, value))
+		parsed := jsonTagValue(r, f.Name, s, value)
+		converted := convertType(f.Name, t, parsed)
+		// TextUnmarshaler types are documented as strings, so keep the tag text.
+		base := deref(t)
+		if _, ok := parsed.(string); ok && isTextUnmarshaler(base) {
+			return parsed
+		}
+		if base.Kind() == reflect.Slice && isTextUnmarshaler(deref(base.Elem())) {
+			return parsed
+		}
+		return converted
 	}
 	return nil
 }
@@ -641,6 +805,24 @@ func SchemaFromField(registry Registry, f reflect.StructField, hint string) *Sch
 	}
 	if v := floatTag(f, "exclusiveMaximum"); v != nil {
 		targetSchema(fs).ExclusiveMaximum = v
+	}
+
+	// A bound outside the Go type's range documents values the server rejects.
+	t := deref(f.Type)
+	if k := t.Kind(); fs.Type == TypeArray && (k == reflect.Slice || k == reflect.Array) {
+		t = deref(t.Elem())
+	}
+	ts := targetSchema(fs)
+	if lo, hi, ok := intRange(t); ok && ts.Type == TypeInteger {
+		for _, b := range []struct {
+			name  string
+			v     *float64
+			slack float64
+		}{{"minimum", ts.Minimum, 0}, {"exclusiveMinimum", ts.ExclusiveMinimum, 1}, {"maximum", ts.Maximum, 0}, {"exclusiveMaximum", ts.ExclusiveMaximum, 1}} {
+			if b.v != nil && (*b.v < lo-b.slack || *b.v > hi+b.slack) {
+				panic(fmt.Errorf("%s %v for field '%s' is outside the range of %v: %w", b.name, *b.v, f.Name, t, ErrSchemaInvalid))
+			}
+		}
 	}
 	if v := floatTag(f, "multipleOf"); v != nil {
 		targetSchema(fs).MultipleOf = v
@@ -792,6 +974,10 @@ func schemaFromType(r Registry, t reflect.Type) *Schema {
 		return custom
 	}
 
+	if s := stdlibUUIDSchema(t, isPointer); s != nil {
+		return s
+	}
+
 	// Handle special cases for known stdlib types.
 	switch t {
 	case timeType:
@@ -825,7 +1011,14 @@ func schemaFromType(r Registry, t reflect.Type) *Schema {
 		} else {
 			s.Format = "int64"
 		}
-	case reflect.Int8, reflect.Int16, reflect.Int32:
+	case reflect.Int8, reflect.Int16, reflect.Uint8, reflect.Uint16:
+		// The int32 format alone would advertise values the type can't hold.
+		s.Type = TypeInteger
+		s.Format = "int32"
+		lo, hi, _ := intRange(t)
+		s.Minimum = &lo
+		s.Maximum = &hi
+	case reflect.Int32:
 		s.Type = TypeInteger
 		s.Format = "int32"
 	case reflect.Int64:
@@ -839,7 +1032,7 @@ func schemaFromType(r Registry, t reflect.Type) *Schema {
 			s.Format = "int64"
 		}
 		s.Minimum = &minZero
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32:
+	case reflect.Uint32:
 		// Unsigned integers can't be negative.
 		s.Type = TypeInteger
 		s.Format = "int32"
