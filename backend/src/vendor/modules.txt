@@ -121,8 +121,8 @@ github.com/clipperhouse/uax29/v2/graphemes
 # github.com/creasty/defaults v1.11.0
 ## explicit; go 1.22
 github.com/creasty/defaults
-# github.com/danielgtaylor/huma/v2 v2.39.1
-## explicit; go 1.25.0
+# github.com/danielgtaylor/huma/v2 v2.40.0
+## explicit; go 1.26.0
 github.com/danielgtaylor/huma/v2
 github.com/danielgtaylor/huma/v2/adapters/humaflow
 github.com/danielgtaylor/huma/v2/adapters/humaflow/flow
@@ -177,7 +177,7 @@ github.com/fatih/color
 ## explicit; go 1.23
 github.com/fsnotify/fsnotify
 github.com/fsnotify/fsnotify/internal
-# github.com/fxamacker/cbor/v2 v2.9.2
+# github.com/fxamacker/cbor/v2 v2.9.6
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
 # github.com/getsentry/sentry-go v0.50.0
@@ -280,14 +280,14 @@ github.com/lufia/plan9stats
 # github.com/maniartech/signals v1.3.1
 ## explicit; go 1.21
 github.com/maniartech/signals
-# github.com/mattn/go-colorable v0.1.15
+# github.com/mattn/go-colorable v0.1.16
 ## explicit; go 1.18
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.24
 ## explicit; go 1.20
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.24
-## explicit; go 1.20
+# github.com/mattn/go-runewidth v0.0.31
+## explicit; go 1.23
 github.com/mattn/go-runewidth
 # github.com/mattn/go-sqlite3 v1.14.33
 ## explicit; go 1.19
