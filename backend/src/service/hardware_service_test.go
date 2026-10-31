@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
+	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
@@ -905,6 +908,78 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryFallsBa
 		suite.Equal("/dev/disk/by-id/usb-TEST_123-part1", *part.DevicePath)
 		suite.Require().NotNil(part.FsType, "missing device entry must fall back to legacy probe")
 		suite.Equal("ext4", *part.FsType)
+	}
+}
+
+// TestGetHardwareInfo_MissingDeviceEntryProbesNTFS reproduces issue #1513: a
+// USB NTFS partition (sdb2) with no matching Supervisor device entry reached
+// the legacy probe, but u-root's magic table has no NTFS entry, so FsType
+// stayed nil and the partition could not be mounted. The probe here is the
+// real mount.FSFromBlock reading an image with an NTFS boot sector.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryProbesNTFS() {
+	sector := make([]byte, 512)
+	copy(sector[0:3], []byte{0xEB, 0x52, 0x90})
+	copy(sector[3:11], "NTFS    ")
+	sector[510], sector[511] = 0x55, 0xAA
+	img := make([]byte, 256*1024)
+	copy(img, sector)
+	imgPath := filepath.Join(suite.T().TempDir(), "sdb2.img")
+	suite.Require().NoError(os.WriteFile(imgPath, img, 0o600))
+
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("Samsung-SSD-870-QVO-4TB-TEST"),
+						Serial: new("TEST"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-ata-Samsung_SSD_870_QVO_4TB_TEST-part2"),
+								Name:        new("SAMSUNG"),
+								Device:      new("/dev/sdb2"),
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+	mock.When(suite.smartService.GetSmartInfo(mock.Any[context.Context](), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorSMARTNotSupported, "device", "sdb"))
+	mock.When(suite.hdidleService.GetDeviceConfig(mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdb"))
+
+	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		if devPath == "/dev/sdb2" {
+			return mount.FSFromBlock(imgPath)
+		}
+		return "", 0, nil
+	})
+
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.Require().Len(disks, 1)
+	disk, ok := disks["Samsung-SSD-870-QVO-4TB-TEST"]
+	suite.Require().True(ok, "disk should be present by drive id")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Require().Len(*disk.Partitions, 1)
+	for _, part := range *disk.Partitions {
+		suite.Equal("sdb2", *part.LegacyDeviceName)
+		suite.Require().NotNil(part.DevicePath, "missing device entry must reconstruct DevicePath")
+		suite.Equal("/dev/disk/by-id/ata-Samsung_SSD_870_QVO_4TB_TEST-part2", *part.DevicePath)
+		suite.Require().NotNil(part.FsType, "NTFS partition must be detected by the probe")
+		suite.Equal("ntfs", *part.FsType)
 	}
 }
 
