@@ -14,7 +14,7 @@ compile = false
 
 [tools]
 go = "1.27.3"
-act = "0.2.90"
+act = "0.2.92"
 vale = "3.25.1"
 markdownlint-cli2 = "0.24.0"
 "npm:doctoc" = "2.5.0"
