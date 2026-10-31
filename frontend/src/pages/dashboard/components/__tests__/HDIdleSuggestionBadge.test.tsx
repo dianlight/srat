@@ -43,7 +43,6 @@ const hdidleDevice = (overrides: Partial<import("../../../../store/sratApi").HdI
   idle_time: 0,
   power_condition: 0,
   enabled: Enabled.No,
-  command_type: Command_type.Scsi,
   force_enabled: false,
   suggestion_ignored: false,
   supported: false,
