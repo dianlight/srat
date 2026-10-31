@@ -12,7 +12,7 @@ import (
 
 // RcloneLinkMigrationSuite guards against model↔migration schema drift.
 //
-// The production table is created by goose migration 00019, NOT by GORM
+// The production table is created by goose migration 00020, NOT by GORM
 // AutoMigrate (RcloneLink is not in db_config.go's AutoMigrate list). Unit
 // suites that AutoMigrate the model therefore cannot catch a column-name
 // mismatch: GORM happily created "o_auth_state" for OAuthState while the
@@ -39,7 +39,7 @@ func (suite *RcloneLinkMigrationSuite) SetupTest() {
 	// Replicate the production bootstrap order from db_config.go:
 	// AutoMigrate of the core models FIRST, then goose migrations on top.
 	// RcloneLink is deliberately absent from that list (its schema comes
-	// exclusively from migration 00019).
+	// exclusively from migration 00020).
 	suite.Require().NoError(db.AutoMigrate(
 		&MountPointPath{}, &ExportedShare{}, &SambaUser{}, &Property{},
 		&Issue{}, &Problem{}, &HDIdleDevice{},
