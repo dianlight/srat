@@ -119,8 +119,10 @@ type hardwareService struct {
 	// sysBlockBasePath is "/sys/block" in production; tests override it
 	// to point at a temp dir containing fake rotational files.
 	sysBlockBasePath string
-	// fsProbeFunc detects the filesystem type on a block device (magic scan).
-	// It is mount.FSFromBlock by default; tests override it via MockSetFSProbeFunc.
+	// fsProbeFunc detects the filesystem type on a block device. By default it
+	// consults the filesystem adapters' signature table first (NTFS, exFAT,
+	// f2fs, ...) and falls back to mount.FSFromBlock for filesystems without an
+	// adapter (squashfs, iso9660). Tests override it via MockSetFSProbeFunc.
 	fsProbeFunc func(string) (string, uintptr, error)
 }
 
@@ -132,6 +134,7 @@ func NewHardwareService(
 	smartServiceInstance SmartServiceInterface,
 	hdidleServiceInstance HDIdleServiceInterface,
 	eventBus events.EventBusInterface,
+	fsProber FilesystemProber,
 ) HardwareServiceInterface {
 	hs := &hardwareService{
 		ctx:                 ctx,
@@ -144,7 +147,7 @@ func NewHardwareService(
 		lastPartitionCounts: make(map[string]partitionCountRecord),
 		readFile:            os.ReadFile,
 		sysBlockBasePath:    "/sys/block",
-		fsProbeFunc:         mount.FSFromBlock,
+		fsProbeFunc:         newFSProbeFunc(fsProber),
 	}
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
@@ -164,6 +167,22 @@ func NewHardwareService(
 		},
 	})
 	return hs
+}
+
+// newFSProbeFunc builds the default filesystem probe used to recover a missing
+// fstype (issues #1072, #1513). The adapter signature table is authoritative and
+// covers filesystems the kernel magic list misses (NTFS, exFAT, f2fs, hfs+, ...);
+// mount.FSFromBlock remains the fallback for filesystems without an adapter
+// (squashfs, iso9660).
+func newFSProbeFunc(prober FilesystemProber) func(string) (string, uintptr, error) {
+	return func(devicePath string) (string, uintptr, error) {
+		if prober != nil {
+			if fsType, err := prober.FsTypeFromDevice(devicePath); err == nil && fsType != "" {
+				return fsType, 0, nil
+			}
+		}
+		return mount.FSFromBlock(devicePath)
+	}
 }
 
 func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
@@ -433,10 +452,11 @@ func (h *hardwareService) GetHardwareInfo() (map[string]dto.Disk, errors.E) {
 							} else if device.Attributes != nil && device.Attributes.IDFSTYPE != nil && *device.Attributes.IDFSTYPE != "" {
 								partition.FsType = device.Attributes.IDFSTYPE
 							} else if device.DevPath != nil && *device.DevPath != "" && h.fsProbeFunc != nil {
-								// Issue #1072: Supervisor udev entry reports no
-								// ID_FS_TYPE while blkid sees a healthy FS.
-								// Probe magic directly so /api/volumes reports
-								// the real type and canMount resolves true.
+								// Issues #1072/#1513: Supervisor udev entry reports
+								// no ID_FS_TYPE while blkid sees a healthy FS.
+								// Probe the adapters' signatures (then the kernel
+								// magic table) so /api/volumes reports the real
+								// type and canMount resolves true.
 								if probed, _, probeErr := h.fsProbeFunc(*device.DevPath); probeErr == nil && probed != "" {
 									partition.FsType = new(probed)
 									tlog.DebugContext(h.ctx, "Recovered missing fstype via FS probe", "device", *device.DevPath, "fstype", probed)

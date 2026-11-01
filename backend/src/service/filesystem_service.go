@@ -73,6 +73,15 @@ type FilesystemInfoService interface {
 	GetSupportAndInfo(ctx context.Context, fsType string) (*dto.FilesystemInfo, errors.E)
 }
 
+// FilesystemProber is the narrow role used by HardwareService to recover a
+// missing filesystem type (issues #1072, #1513). It reads the adapters'
+// on-disk signatures, so filesystems the kernel magic table misses (NTFS,
+// exFAT, f2fs, hfs+, ...) are still recognised.
+type FilesystemProber interface {
+	// FsTypeFromDevice attempts to determine the filesystem type of a block device by reading its magic numbers.
+	FsTypeFromDevice(devicePath string) (string, errors.E)
+}
+
 type FilesystemFormatter interface {
 	// FormatPartition formats a device with the specified filesystem type.
 	// Returns an error if formatting cannot start, is already in progress, or fails.

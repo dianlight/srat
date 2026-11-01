@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
@@ -26,6 +28,7 @@ type HardwareServiceSuite struct {
 	haClient        hardware.ClientWithResponsesInterface
 	smartService    service.SmartServiceInterface
 	hdidleService   service.HDIdleServiceInterface
+	eventBus        events.EventBusInterface
 	app             *fxtest.App
 }
 
@@ -45,6 +48,8 @@ func (suite *HardwareServiceSuite) SetupTest() {
 			// Provide an EventBus bound to the same context
 			func(ctx context.Context) events.EventBusInterface { return events.NewEventBus(ctx) },
 			service.NewHardwareService,
+			service.NewFilesystemService,
+			func(fs service.FilesystemServiceInterface) service.FilesystemProber { return fs },
 			mock.Mock[hardware.ClientWithResponsesInterface],
 			mock.Mock[service.HDIdleServiceInterface],
 			mock.Mock[service.SmartServiceInterface],
@@ -53,6 +58,7 @@ func (suite *HardwareServiceSuite) SetupTest() {
 		fx.Populate(&suite.haClient),
 		fx.Populate(&suite.smartService),
 		fx.Populate(&suite.hdidleService),
+		fx.Populate(&suite.eventBus),
 	)
 	suite.app.RequireStart()
 }
@@ -1002,4 +1008,178 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_WarnsOnPhantomPartitionCo
 	suite.Contains(logs, "previous_partition_count=2")
 	suite.Contains(logs, "current_partition_count=3")
 	suite.Contains(logs, "new_partitions=nvme0n1p3")
+}
+
+// writeNTFSBlockDevice writes a minimal NTFS boot sector to a temp file named
+// like a partition so the adapter signature probe can recognise it without a
+// real block device (issue #1513).
+func (suite *HardwareServiceSuite) writeNTFSBlockDevice() string {
+	sector := make([]byte, 512)
+	// NTFS boot sector: jump instruction 0xEB 0x52 0x90 followed by the
+	// "NTFS    " OEM id at offset 3.
+	sector[0], sector[1], sector[2] = 0xEB, 0x52, 0x90
+	copy(sector[3:], "NTFS    ")
+
+	devicePath := filepath.Join(suite.T().TempDir(), "sdc1")
+	suite.Require().NoError(os.WriteFile(devicePath, sector, 0o600))
+	return devicePath
+}
+
+// TestGetHardwareInfo_MissingDeviceEntryNTFSRecoveredBySignatureProbe reproduces
+// issue #1513 on the #1072 fallback path: a USB NTFS partition whose Supervisor
+// entry carries no ID_FS_TYPE and has no matching Devices entry must still be
+// reported as ntfs, because the adapter signature table knows NTFS while
+// mount.FSFromBlock does not.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryNTFSRecoveredBySignatureProbe() {
+	ntfsDevice := suite.writeNTFSBlockDevice()
+
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-usb"),
+						Serial: new("USB123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-usb-TEST_123-part2"),
+								Name:        new("SAMSUNG"),
+								Device:      &ntfsDevice,
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:    new("sdc"),
+						DevPath: new("/dev/sdc"),
+						ById:    new("/dev/disk/by-id/usb-TEST_123"),
+						Attributes: &hardware.Attributes{
+							IDSERIALSHORT: new("USB123"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.Require().Len(disks, 1)
+	disk, ok := disks["drive-usb"]
+	suite.Require().True(ok, "disk should be keyed by the drive id")
+	suite.Require().NotNil(disk.Partitions)
+	suite.Require().Len(*disk.Partitions, 1)
+	for _, part := range *disk.Partitions {
+		suite.Require().NotNil(part.FsType, "NTFS must be recovered by the signature probe")
+		suite.Equal("ntfs", *part.FsType)
+		suite.Require().NotNil(part.DevicePath)
+		suite.Equal("/dev/disk/by-id/usb-TEST_123-part2", *part.DevicePath)
+	}
+}
+
+// TestGetHardwareInfo_EmptyIDFSTYPENTFSRecoveredBySignatureProbe reproduces issue
+// #1513 on the device-entry path: the Supervisor reports the partition device but
+// without ID_FS_TYPE. The adapter signature probe must recover ntfs so
+// /api/volumes reports fs_type and canMount resolves true.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_EmptyIDFSTYPENTFSRecoveredBySignatureProbe() {
+	ntfsDevice := suite.writeNTFSBlockDevice()
+	// The partition device carries the same name the converter derives from the
+	// filesystem device path, so the partition match below is exercised.
+	partitionName := new(ntfsDevice)
+
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives: &[]hardware.Drive{
+					{
+						Id:     new("drive-usb"),
+						Serial: new("USB123"),
+						Filesystems: &[]hardware.Filesystem{
+							{
+								Id:          new("by-id-usb-TEST_123-part2"),
+								Name:        new("SAMSUNG"),
+								Device:      &ntfsDevice,
+								MountPoints: &[]string{},
+							},
+						},
+					},
+				},
+				Devices: &[]hardware.Device{
+					{
+						Name:       partitionName,
+						DevPath:    &ntfsDevice,
+						ById:       new("/dev/disk/by-id/usb-TEST_123-part2"),
+						Attributes: &hardware.Attributes{
+							// Intentionally no IDFSTYPE: the Supervisor udev
+							// entry is empty while blkid sees NTFS.
+						},
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	disks, err := suite.hardwareService.GetHardwareInfo()
+
+	suite.NoError(err)
+	suite.Require().Len(disks, 1)
+	disk, ok := disks["drive-usb"]
+	suite.Require().True(ok)
+	suite.Require().NotNil(disk.Partitions)
+	suite.Require().Len(*disk.Partitions, 1)
+	for _, part := range *disk.Partitions {
+		suite.Require().NotNil(part.FsType, "empty IDFSTYPE must fall back to the signature probe")
+		suite.Equal("ntfs", *part.FsType)
+		suite.Require().NotNil(part.DevicePath)
+		suite.Equal("/dev/disk/by-id/usb-TEST_123-part2", *part.DevicePath)
+	}
+}
+
+// TestGetHardwareInfo_HomeAssistantStartInvalidatesCache exercises the
+// HomeAssistant START hook registered by NewHardwareService: a fresh HA start
+// must drop the 30-minute hardware cache so newly attached disks appear.
+func (suite *HardwareServiceSuite) TestGetHardwareInfo_HomeAssistantStartInvalidatesCache() {
+	mockResponse := &hardware.GetHardwareInfoResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"drives":[]}}`),
+		JSON200: &struct {
+			Data   *hardware.HardwareInfo             `json:"data,omitempty"`
+			Result *hardware.GetHardwareInfo200Result `json:"result,omitempty"`
+		}{
+			Data: &hardware.HardwareInfo{
+				Drives:  &[]hardware.Drive{},
+				Devices: &[]hardware.Device{},
+			},
+		},
+	}
+	mock.When(suite.haClient.GetHardwareInfoWithResponse(mock.Any[context.Context]())).ThenReturn(mockResponse, nil)
+
+	_, err := suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	_, err = suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	_, _ = mock.Verify(suite.haClient, matchers.Times(1)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
+
+	suite.eventBus.EmitHomeAssistant(events.HomeAssistantEvent{Type: events.EventTypes.START})
+
+	_, err = suite.hardwareService.GetHardwareInfo()
+	suite.Require().NoError(err)
+	_, _ = mock.Verify(suite.haClient, matchers.Times(2)).GetHardwareInfoWithResponse(mock.Any[context.Context]())
 }
