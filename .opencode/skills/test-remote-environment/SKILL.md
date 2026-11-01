@@ -1,7 +1,12 @@
 ---
 name: test-remote-environment
 description: Test on the Homeassitant Dev envoronment (test-case driven)
-argument-hint: "Describe what to test and whether custom component interaction is needed (e.g., 'test share creation flow, include custom component: yes'). Selected test cases will be proposed before execution."
+argument-hint: "Describe what to test and whether custom component interaction
+  is needed (e.g., 'test share creation flow, include custom component: yes').
+  Selected test cases will be proposed before execution."
+disable-model-invocation: true
+metadata:
+  opencode/autoinvoke: false
 ---
 
 # Test Remote Environment
@@ -377,6 +382,22 @@ When testing features that modify backend state (config saves, DB writes) and th
 - Testing any feature where a POST/PUT is followed by a GET on a different endpoint
 - Testing format/label flows (filesystem ops) — the mandatory freshness assertion above applies
 - Investigating data inconsistencies between individual and list endpoints
+
+### Reusable helper — filesystem share end-to-end test script
+
+For the "all supported filesystems on share use" scenario (format → mount → share → smbclient access matrix → cleanup), use the reusable helper below. Deploy it to the host once per session, then invoke with `<fs_type> <partition_id> <label>`:
+
+```bash
+# Deploy (from local machine):
+ssh root@${HOMEASSISTANT_IP:-192.168.0.68} -p 22222 'mkdir -p /tmp/scratchpad'
+ssh root@${HOMEASSISTANT_IP:-192.168.0.68} -p 22222 'cat > /tmp/scratchpad/test_fs.sh' < docs/test/helpers/test_fs.sh
+ssh root@${HOMEASSISTANT_IP:-192.168.0.68} -p 22222 'chmod +x /tmp/scratchpad/test_fs.sh'
+
+# Run for each filesystem type:
+ssh root@${HOMEASSISTANT_IP:-192.168.0.68} -p 22222 'bash /tmp/scratchpad/test_fs.sh <fs> <partition_id> <LABEL>'
+```
+
+The helper (stored at `docs/test/helpers/test_fs.sh`) performs: format (force), 20s wait, mount with default flags, share creation (admin/fsuser1/fsuser2 rw, fsuser3 ro, guest_ok=false), 10s Samba regen wait, smbclient verification (guest denied, admin rw, user1 rw, user2 rw, user3 ro), and cleanup (test dirs, share, unmount). Supported fs types that pass: ext4, vfat, ntfs, exfat, btrfs, f2fs. Known failures: xfs (mkfs.xfs 7.x incompatibility, false success — see issue #1517). Skip: apfs (no volume), gfs2/hfsplus/reiserfs/zfs (not supported).
 
 ### Handling Changes to Test Cases During Execution
 
