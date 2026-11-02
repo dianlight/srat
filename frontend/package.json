@@ -68,7 +68,7 @@
     "uuid": "^14.0.1"
   },
   "devDependencies": {
-    "@babel/core": "8.0.9",
+    "@babel/core": "8.0.10",
     "@babel/eslint-parser": "8.0.7",
     "eslint": "10.13.0",
     "@babel/preset-react": "8.0.1",
