@@ -177,7 +177,7 @@ jobs:
         run: |
           echo "::add-mask::${{ secrets.OPENCODE_CLIENT_ID }}"
           echo "::add-mask::${{ secrets.GITHUB_TOKEN }}"
-    
+
       - name: Sign in to OpenCode
         env:
           AUDIENCE: https://opencode.ai/console
@@ -191,7 +191,7 @@ jobs:
             -d subject_token="$oidc" | jq -r .access_token)
           echo "::add-mask::$token"
           echo "OPENCODE_API_KEY=$token" >> "$GITHUB_ENV"
-          
+
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

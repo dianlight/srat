@@ -58,3 +58,4 @@ frontend_test_output.txt
 .playwright-cli/
 .openchamber/
 .opencode/.modelselect-cache/
+docs/test/evidence/
