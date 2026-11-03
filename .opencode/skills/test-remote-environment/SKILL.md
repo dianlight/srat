@@ -196,6 +196,50 @@ mcp_home-assistan_ha_restart_addon  →  slug: "local_sambanas2"
 
 Wait ~10 seconds for the addon to fully start before proceeding.
 
+#### Step 2a — Toggle a runtime mode flag without losing the dev binary
+
+Cases that need `-protected-mode`, `-ro` (read-only) or secure mode must not restart the
+container: a container restart re-runs the addon entrypoint and can re-install the released
+binary, discarding the dev build you just deployed. Edit the **live** s6 service dir and
+restart only the `srat` service — s6 re-evaluates the full `run` script, so the flag takes
+effect and the deployed binary is preserved.
+
+```bash
+# Resolve the live dir (the /etc/s6-overlay path is NOT what s6 runs)
+docker exec app_local_sambanas2 sh -c '
+  P=$(pgrep -f "s6-supervise srat" | head -1)
+  SDIR=$(readlink -f /proc/$P/cwd)
+  cp "$SDIR/run" "$SDIR/run.orig"                                 # one-time backup
+  sed -i "s|^SRAT_ARGS=\"-port|SRAT_ARGS=\"-protected-mode -ro -port|" "$SDIR/run"
+  kill -TERM "$(pgrep -f srat-server-musl)"                        # s6 restarts the service
+'
+
+# Verify the flag reached the process, then assert the observable effect
+docker exec app_local_sambanas2 sh -c 'ps aux | grep -o "srat-server-musl.*" | head -1'
+curl -s http://192.168.0.68:62983/api/health
+```
+
+| Flag | Observable effect to assert |
+| --- | --- |
+| `-protected-mode` | WS `hello.protected_mode:true`, `GET /api/problems` contains `protected_mode`, dashboard card + disabled Mount/Hide |
+| `-ro` | WS `hello.read_only:true`, mutating endpoints 403 (`POST /api/volume/mount`), Settings form disabled |
+| `-secure-mode` | secure-mode banner / owner-scoped shares in `/api/shares` |
+
+Restore by copying the backup back and killing the server again:
+
+```bash
+docker exec app_local_sambanas2 sh -c '
+  P=$(pgrep -f "s6-supervise srat" | head -1); SDIR=$(readlink -f /proc/$P/cwd)
+  cp "$SDIR/run.orig" "$SDIR/run" && rm -f "$SDIR/run.orig"
+  kill -TERM "$(pgrep -f srat-server-musl)"
+'
+```
+
+Confirm the process line no longer carries the flag, `GET /api/problems` is empty again, and
+`ha addons info local_sambanas2` still reports `protected: false`. Leave ~15 s for startup.
+Interacting with `bashio` vars in the same script is safe: `bashio::app.protected` is only
+consulted when the script runs, so the flag mirrors the addon option the same way.
+
 ### Step 3 — Verify runtime health via logs (core first, then addon)
 
 First fetch Home Assistant core logs (this is where custom component Python logs and tracebacks appear):
