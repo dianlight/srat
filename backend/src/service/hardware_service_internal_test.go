@@ -5,10 +5,14 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 // fakeReadFile builds a func(string)([]byte, error) that returns content for
@@ -338,4 +342,69 @@ func TestRecordPartitionCounts_NilMapReceiver(t *testing.T) {
 	assert.Nil(t, h.lastPartitionCounts)
 	h.recordPartitionCounts(map[string]partitionCountRecord{})
 	assert.NotNil(t, h.lastPartitionCounts)
+}
+
+// fakeFSProber is a test double for the FilesystemProber role so the default
+// probe composition can be exercised without touching block devices.
+type fakeFSProber struct {
+	fsType string
+	err    tozderrors.E
+	calls  []string
+}
+
+func (f *fakeFSProber) FsTypeFromDevice(devicePath string) (string, tozderrors.E) {
+	f.calls = append(f.calls, devicePath)
+	return f.fsType, f.err
+}
+
+// TestNewFSProbeFunc_PrefersAdapterSignatures verifies the default probe
+// delegates to the adapter signature table first (issue #1513: NTFS is invisible
+// to mount.FSFromBlock).
+func TestNewFSProbeFunc_PrefersAdapterSignatures(t *testing.T) {
+	prober := &fakeFSProber{fsType: "ntfs"}
+
+	fsType, flags, err := newFSProbeFunc(prober)("/dev/sdc1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "ntfs", fsType)
+	assert.Zero(t, flags)
+	assert.Equal(t, []string{"/dev/sdc1"}, prober.calls)
+}
+
+// TestNewFSProbeFunc_FallsBackToKernelMagic verifies the kernel magic scan still
+// runs for filesystems without an adapter (squashfs, iso9660) and when the
+// prober reports nothing.
+func TestNewFSProbeFunc_FallsBackToKernelMagic(t *testing.T) {
+	devicePath := filepath.Join(t.TempDir(), "garbage")
+	require.NoError(t, os.WriteFile(devicePath, []byte("not a filesystem"), 0o600))
+
+	t.Run("prober error", func(t *testing.T) {
+		prober := &fakeFSProber{err: tozderrors.New("unknown filesystem")}
+
+		fsType, _, err := newFSProbeFunc(prober)(devicePath)
+
+		assert.Error(t, err)
+		assert.Empty(t, fsType)
+		assert.Equal(t, []string{devicePath}, prober.calls)
+	})
+
+	t.Run("prober empty result", func(t *testing.T) {
+		prober := &fakeFSProber{}
+
+		fsType, _, err := newFSProbeFunc(prober)(devicePath)
+
+		assert.Empty(t, fsType)
+		assert.Equal(t, []string{devicePath}, prober.calls)
+		// The kernel scan also finds nothing for plain text, so the returned
+		// error must be the fallback's; assert it is non-nil where the platform
+		// implements FSFromBlock (darwin returns errUnsupported).
+		assert.Error(t, err)
+	})
+
+	t.Run("nil prober", func(t *testing.T) {
+		fsType, _, err := newFSProbeFunc(nil)(devicePath)
+
+		assert.Empty(t, fsType)
+		assert.Error(t, err)
+	})
 }
