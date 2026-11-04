@@ -160,7 +160,7 @@ github.com/dianlight/tlog/sanitizer
 # github.com/dustin/go-humanize v1.1.0
 ## explicit; go 1.21
 github.com/dustin/go-humanize
-# github.com/ebitengine/purego v0.11.1
+# github.com/ebitengine/purego v0.11.2
 ## explicit; go 1.25.0
 github.com/ebitengine/purego
 github.com/ebitengine/purego/internal/cgo
@@ -417,7 +417,7 @@ github.com/sergi/go-diff/diffmatchpatch
 # github.com/sethvargo/go-retry v0.5.0
 ## explicit; go 1.25
 github.com/sethvargo/go-retry
-# github.com/shirou/gopsutil/v4 v4.26.9
+# github.com/shirou/gopsutil/v4 v4.26.10
 ## explicit; go 1.26.0
 github.com/shirou/gopsutil/v4/common
 github.com/shirou/gopsutil/v4/cpu
