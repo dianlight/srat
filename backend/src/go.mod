@@ -38,7 +38,7 @@ require (
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.12.1
 	github.com/sergi/go-diff v1.4.0
-	github.com/shirou/gopsutil/v4 v4.26.9
+	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/stretchr/testify v1.12.1
 	github.com/teivah/broadcast v0.1.0
@@ -87,7 +87,7 @@ require (
 	github.com/danielgtaylor/shorthand/v2 v2.4.0 // indirect
 	github.com/dave/jennifer v1.6.0 // indirect
 	github.com/dustin/go-humanize v1.1.0 // indirect
-	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/ebitengine/purego v0.11.2 // indirect
 	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.6 // indirect
 	github.com/glebarez/go-sqlite v1.22.0 // indirect
