@@ -443,6 +443,7 @@ export function VolumeDetailsPanel(props: VolumeDetailsPanelProps) {
         {partition &&
           isMounted &&
           mountData &&
+          !mountData.is_ha_mounted &&
           Object.values(partition.mount_point_data || {}).length === 1 && (
             <Card>
               <CardHeader

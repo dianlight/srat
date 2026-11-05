@@ -172,4 +172,22 @@ describe("ShareDetailsPanel", () => {
         const tooltip = await screen.findByRole("tooltip");
         expect(tooltip.textContent).toContain(longShareName);
     });
+
+    it("renders the Managed by Home Assistant chip when status.is_ha_mounted is true", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-ha-test-2");
+        const share = buildShare();
+        (share as any).status = { is_ha_mounted: true, is_valid: true, is_hidden: false };
+
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+            })
+        );
+
+        expect(await screen.findByText("Managed by Home Assistant")).toBeTruthy();
+    });
 });

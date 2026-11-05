@@ -18,6 +18,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/mount"
+	"github.com/dianlight/srat/service/volume"
 	"github.com/dianlight/tlog"
 )
 
@@ -250,7 +251,7 @@ func (self *SupervisorService) NetworkGetAllMounted(ctx context.Context) (mounts
 		}
 		mounts = make(map[string]mount.Mount) // Initialize the map
 		for _, mnt := range *resp.JSON200.Data.Mounts {
-			if *mnt.Server == self.state.AddonIpAddress {
+			if mnt.Server != nil && *mnt.Server == self.state.AddonIpAddress {
 				mounts[*mnt.Name] = mnt // Populate the map
 			}
 		}
@@ -259,6 +260,14 @@ func (self *SupervisorService) NetworkGetAllMounted(ctx context.Context) (mounts
 }
 
 func (self *SupervisorService) NetworkMountShare(ctx context.Context, share dto.SharedResource) errors.E {
+	if share.MountPointData != nil && (share.MountPointData.IsHAMounted || volume.IsHAManagedMountPath(share.MountPointData.Path)) {
+		slog.DebugContext(ctx, "Skipping HA mount for share on an HA-managed volume", "share", share.Name)
+		return nil
+	}
+	if share.Status != nil && share.Status.IsHAMounted {
+		slog.DebugContext(ctx, "Skipping HA mount for share on an HA-managed volume", "share", share.Name)
+		return nil
+	}
 	return self.networkMountShareWithRetry(ctx, share, 3)
 }
 
@@ -535,6 +544,16 @@ func (self *SupervisorService) NetworkMountAllShares(ctx context.Context) errors
 			}
 
 			if !share.Status.IsValid {
+				continue
+			}
+			// A share on an HA-mounted local disk is already reachable by HA;
+			// mounting it back into HA would target the disk's own path.
+			if share.MountPointData != nil && (share.MountPointData.IsHAMounted || volume.IsHAManagedMountPath(share.MountPointData.Path)) {
+				slog.DebugContext(ctx, "Skipping HA mount for share on an HA-managed volume", "share", share.Name)
+				continue
+			}
+			if share.Status != nil && share.Status.IsHAMounted {
+				slog.DebugContext(ctx, "Skipping HA mount for share on an HA-managed volume", "share", share.Name)
 				continue
 			}
 			switch share.Usage {

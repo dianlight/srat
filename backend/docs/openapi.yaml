@@ -1348,6 +1348,8 @@ components:
           type: boolean
         invalid_error:
           type: string
+        is_ha_mounted:
+          type: boolean
         is_mounted:
           type: boolean
         is_to_mount_at_startup:
@@ -1495,6 +1497,8 @@ components:
           type: boolean
         invalid_error:
           type: string
+        is_ha_mounted:
+          type: boolean
         is_mounted:
           type: boolean
         is_to_mount_at_startup:

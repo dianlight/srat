@@ -167,6 +167,24 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// Home Assistant owns the mount lifecycle for its local disks (2026.11+
+	// storage). SRAT must never mount over an HA-managed path. The flag is
+	// read-only on the wire, so also derive it from the path and the cache.
+	haManaged := md.IsHAMounted || IsHAManagedMountPath(md.Path)
+	if !haManaged {
+		if mp, ok := o.disks.GetMountPointByPath(md.Path); ok && mp.IsHAMounted {
+			haManaged = true
+		}
+	}
+	if haManaged {
+		md.IsHAMounted = true
+		return errors.WithDetails(dto.ErrorHAManagedVolume,
+			"Operation", "MountVolume",
+			"Path", md.Path,
+			"Detail", "Volume is mounted by Home Assistant; manage it in Settings > System > Storage.",
+		)
+	}
+
 	// Reject paths the database cannot persist before any OS work (#1091).
 	// Without this guard a colon path mounts at the OS level, returns
 	// success, then fails async persistence and loses state on restart.
@@ -400,6 +418,13 @@ func (o *MountOrchestrator) UnmountVolume(path string, force bool) errors.E {
 
 	// Look up mount point data from in-memory cache first
 	md, ok := o.disks.GetMountPointByPath(path)
+	if ok && md.IsHAMounted {
+		return errors.WithDetails(dto.ErrorHAManagedVolume,
+			"Operation", "UnmountVolume",
+			"Path", path,
+			"Detail", "Volume is mounted by Home Assistant; unmount it in Settings > System > Storage.",
+		)
+	}
 	if ok && md.Share != nil && md.Share.Status.IsHAMounted {
 		slog.DebugContext(o.ctx, "Found mount point as HAMounted", "path", path)
 		md.IsInvalid = true
@@ -541,6 +566,11 @@ func automountFSType(md *dto.MountPointData) string {
 // with ENODEV ("no such device") (#1342).
 func ShouldSkipAutomount(md *dto.MountPointData) bool {
 	if md == nil {
+		return true
+	}
+	// HA-managed mounts are brought up by Home Assistant; SRAT must not
+	// attempt its own mount, even when a startup flag is set.
+	if md.IsHAMounted || IsHAManagedMountPath(md.Path) {
 		return true
 	}
 	if IsSystemMountPath(md.Path) {

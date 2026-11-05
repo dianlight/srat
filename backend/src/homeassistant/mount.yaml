@@ -156,6 +156,7 @@ components:
           enum:
             - cifs
             - nfs
+            - disk
           description: Type of the mount.
         usage:
           type: string
@@ -188,6 +189,21 @@ components:
           type: string
           description: (cifs mounts only) Password to use for authentication
           writeOnly: true
+        uuid:
+          type: string
+          description: (disk mounts only) UUID of the partition
+        device:
+          type: string
+          description: (disk mounts only) Device path of the partition
+          writeOnly: true
+        filesystem:
+          type: string
+          description: (disk mounts only) File system of the partition
+          readOnly: true
+        user_path:
+          type: string
+          description: Where apps find the mount, for example /media/nas
+          readOnly: true
         state:
           type: string
           description: Current state of the mount (active, failed, etc.)

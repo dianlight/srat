@@ -73,6 +73,34 @@ export function getPartitionActionItems({
     return null;
   }
 
+  // Home Assistant owns the mount lifecycle for its local disks (2026.11+
+  // storage): no mount/unmount/automount/format/label actions. A share on the
+  // volume can still be opened from here.
+  const haMpd = liveEntries.find(
+    (entry) => (entry as MountPointData)?.is_ha_mounted,
+  ) as MountPointData | undefined;
+  if (haMpd) {
+    if (haMpd.share) {
+      return [
+        {
+          key: "go-to-share",
+          title: "Go to Share",
+          color: undefined,
+          onClick: () => onGoToShare(partition),
+        },
+      ];
+    }
+    // Sharing an HA-mounted disk is the primary supported use case.
+    return [
+      {
+        key: "create-share",
+        title: "Create Share",
+        color: "success",
+        onClick: () => onCreateShare(partition),
+      },
+    ];
+  }
+
   const actionItems: PartitionActionItem[] = [];
   const mountPointData = partition.mount_point_data || {};
   const keys = Object.keys(mountPointData);

@@ -133,6 +133,21 @@ type FormatPartitionInput struct {
 	AdditionalOptions map[string]string `json:"additionalOptions,omitempty" doc:"Filesystem-specific formatting options"`
 }
 
+// partitionIsHAManaged reports whether any mount point of the partition is
+// owned by Home Assistant. Such volumes must not be formatted, checked or
+// relabeled by SRAT; the user manages them in Settings > System > Storage.
+func partitionIsHAManaged(part *dto.Partition) bool {
+	if part == nil || part.MountPointData == nil {
+		return false
+	}
+	for _, mp := range *part.MountPointData {
+		if mp.IsHAMounted {
+			return true
+		}
+	}
+	return false
+}
+
 // FormatPartition formats a partition with the specified filesystem
 func (h *FilesystemHandler) FormatPartition(
 	ctx context.Context,
@@ -154,6 +169,10 @@ func (h *FilesystemHandler) FormatPartition(
 	if !found {
 		tlog.ErrorContext(ctx, "Partition not found", "partition_id", req.PartitionID)
 		return nil, huma.Error404NotFound("Partition not found")
+	}
+
+	if partitionIsHAManaged(partition) {
+		return nil, huma.Error409Conflict("Partition is managed by Home Assistant; format it in Settings > System > Storage")
 	}
 
 	// Get device path using DiskMap method
@@ -225,6 +244,10 @@ func (h *FilesystemHandler) CheckPartition(
 	partition, _, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
+	}
+
+	if partitionIsHAManaged(partition) {
+		return nil, huma.Error409Conflict("Partition is managed by Home Assistant; check it in Settings > System > Storage")
 	}
 
 	// Get device path and filesystem type
@@ -458,6 +481,10 @@ func (h *FilesystemHandler) SetPartitionLabel(
 	partition, diskID, found := diskMap.GetPartitionByID(req.PartitionID)
 	if !found {
 		return nil, huma.Error404NotFound("Partition not found")
+	}
+
+	if partitionIsHAManaged(partition) {
+		return nil, huma.Error409Conflict("Partition is managed by Home Assistant; relabel it in Settings > System > Storage")
 	}
 
 	// Get device path and filesystem type

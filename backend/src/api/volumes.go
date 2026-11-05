@@ -94,6 +94,8 @@ func (self *VolumeHandler) MountVolume(ctx context.Context, input *struct {
 			return nil, huma.Error406NotAcceptable("Invalid Parameter", errE)
 		} else if errors.Is(errE, dto.ErrorOperationNotPermittedInProtectedMode) {
 			return nil, huma.Error403Forbidden("Operation not permitted in protected mode", errE)
+		} else if errors.Is(errE, dto.ErrorHAManagedVolume) {
+			return nil, huma.Error409Conflict("Volume is managed by Home Assistant; manage it in Settings > System > Storage", errE)
 		} else if errors.Is(errE, dto.ErrorAlreadyMounted) {
 			return nil, huma.Error409Conflict("Volume is already mounted", errE)
 		} else {
@@ -132,6 +134,9 @@ func (self *VolumeHandler) UmountVolume(ctx context.Context, input *struct {
 	if err != nil {
 		if errors.Is(err, dto.ErrorOperationNotPermittedInProtectedMode) {
 			return nil, huma.Error403Forbidden("Operation not permitted in protected mode", err)
+		}
+		if errors.Is(err, dto.ErrorHAManagedVolume) {
+			return nil, huma.Error409Conflict("Volume is managed by Home Assistant; unmount it in Settings > System > Storage", err)
 		}
 		return nil, huma.Error406NotAcceptable(fmt.Sprintf("%#v", err.Details()["Detail"]), err)
 	}

@@ -1154,6 +1154,32 @@ func (s *UdevHandlerTestSuite) TestHandlePartitionEvent_Batch_SyncsAllBranches()
 	s.False(stale.IsMounted, "entry missing from procfs must be marked unmounted")
 }
 
+func (s *UdevHandlerTestSuite) TestHandlePartitionEvent_MarksHAManagedMount() {
+	diskID, partID := "disk-h-ha", "part-h-ha"
+	devPath := "/dev/sdz10"
+	diskIDCopy, partIDCopy, devCopy := diskID, partID, devPath
+	parts := map[string]dto.Partition{partID: {Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+	s.disks.NextRefreshVersion()
+
+	mountInfos := []*procfs.MountInfo{
+		{MountID: 1, ParentID: 1, MajorMinorVer: "0:1", Root: "/", Source: devPath, MountPoint: "/share/usb", FSType: "ext4", Options: map[string]string{}, SuperOptions: map[string]string{}},
+	}
+	part := parts[partID]
+	s.Require().NoError(s.handler.HandlePartitionEvent(s.ctx, events.PartitionEvent{
+		Event:      events.Event{Type: events.EventTypes.ADD},
+		Disk:       &disk,
+		Partitions: []*dto.Partition{&part},
+		MountInfos: mountInfos,
+	}))
+
+	mp, ok := s.disks.GetMountPoint(diskID, partID, "/share/usb")
+	s.Require().True(ok, "HA-managed mount must be added to the cache")
+	s.True(mp.IsHAMounted, "mount under a HA usage directory must be flagged HA-managed")
+	s.Equal("HOST", mp.Type)
+}
+
 func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_DeviceNotFound_SchedulesRefresh() {
 	baseRefreshes := s.refreshCount()
 	baseInvalidates := s.hardware.count()
