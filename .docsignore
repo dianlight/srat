@@ -22,6 +22,7 @@ backend/src/vendor/
 custom_components/.venv/
 docs/refactors/
 docs/tasks/
+openspec/
 frontend/node_modules/
 oauth_broker/node_modules/
 node_modules/
