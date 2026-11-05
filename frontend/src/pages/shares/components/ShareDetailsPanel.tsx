@@ -430,7 +430,15 @@ export function ShareDetailsPanel({
                         icon={<FolderSpecialIcon />}
                         label={`Usage: ${share.usage}`}
                         variant="outlined"
-                        color={share.is_ha_mounted ? "primary" : "default"}
+                        color={share.status?.is_ha_mounted ? "primary" : "default"}
+                      />
+                    )}
+                    {share.status?.is_ha_mounted && (
+                      <Chip
+                        label="Managed by Home Assistant"
+                        color="info"
+                        size="small"
+                        variant="outlined"
                       />
                     )}
                     {share.timemachine && (

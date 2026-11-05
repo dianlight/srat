@@ -1959,6 +1959,7 @@ export type MountPointData = {
   fstype?: string;
   invalid?: boolean;
   invalid_error?: string;
+  is_ha_mounted?: boolean;
   is_mounted: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;
@@ -2053,6 +2054,7 @@ export type PatchMountPointData = {
   fstype?: string;
   invalid?: boolean;
   invalid_error?: string;
+  is_ha_mounted?: boolean;
   is_mounted: boolean;
   is_to_mount_at_startup?: boolean;
   is_write_supported?: boolean;

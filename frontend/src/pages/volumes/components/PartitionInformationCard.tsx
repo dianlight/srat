@@ -60,6 +60,7 @@ export function PartitionInformationCard({
 }: PartitionInformationCardProps) {
   const mpds = Object.values(partition.mount_point_data || {});
   const isMounted = mpds.some((mpd) => mpd.is_mounted);
+  const isHAManaged = mpds.some((mpd) => mpd.is_ha_mounted);
   const partitionId = partition.id;
   const {
     currentData: filesystemStateCurrentData,
@@ -322,6 +323,14 @@ export function PartitionInformationCard({
               />
               {partition.system && (
                 <Chip label="System" size="small" variant="outlined" />
+              )}
+              {isHAManaged && (
+                <Chip
+                  label="Managed by Home Assistant"
+                  color="info"
+                  size="small"
+                  variant="outlined"
+                />
               )}
             </Stack>
           </Grid>

@@ -97,6 +97,12 @@ func (m *MountRepository) LoadByPath(path string, root string) (*dto.MountPointD
 	if convErr := m.conv.MountPointPathToMountPointData(rows[0], &dtoMP, nil); convErr != nil {
 		return nil, false, errors.WithStack(convErr)
 	}
+	if IsHAManagedMountPath(dtoMP.Path) {
+		dtoMP.IsHAMounted = true
+		if dtoMP.Type == "" || dtoMP.Type == "ADDON" {
+			dtoMP.Type = "HOST"
+		}
+	}
 	return &dtoMP, true, nil
 }
 

@@ -27,8 +27,9 @@ type ShareServiceSuite struct {
 	shareService service.ShareServiceInterface
 	userService  service.UserServiceInterface
 	//exported_share_repo repository.ExportedShareRepositoryInterface
-	app *fxtest.App
-	db  *gorm.DB
+	app   *fxtest.App
+	db    *gorm.DB
+	disks *dto.DiskMap
 }
 
 func TestShareServiceSuite(t *testing.T) {
@@ -72,6 +73,7 @@ func (suite *ShareServiceSuite) SetupTest() {
 				},
 			*/
 			dbom.NewDB,
+			func() *dto.DiskMap { return dto.NewDiskMap() },
 			service.NewShareService,
 			mock.Mock[service.BroadcasterServiceInterface],
 			mock.Mock[service.UserServiceInterface],
@@ -81,6 +83,7 @@ func (suite *ShareServiceSuite) SetupTest() {
 		//fx.Populate(&suite.exported_share_repo),
 		fx.Populate(&suite.userService),
 		fx.Populate(&suite.db),
+		fx.Populate(&suite.disks),
 	)
 
 	mock.When(suite.userService.ListUsers()).ThenReturn([]dto.User{
@@ -113,6 +116,36 @@ func (suite *ShareServiceSuite) TestListShares() {
 	suite.NoError(err)
 	suite.NotNil(shares)
 	suite.Len(shares, int(count))
+}
+
+// TestVerifyShareHAManagedVolume verifies that a share on an HA-managed mount
+// is valid and annotated as HA-mounted.
+func (suite *ShareServiceSuite) TestVerifyShareHAManagedVolume() {
+	diskID, partID := "disk-ha-share", "part-ha-share"
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}
+	suite.Require().NoError(suite.disks.AddOrUpdate(&disk))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path:        "/share/usb",
+		DeviceId:    partID,
+		IsMounted:   true,
+		IsHAMounted: true,
+	}))
+
+	share := &dto.SharedResource{
+		Name: "ha-share",
+		MountPointData: &dto.MountPointData{
+			Path:     "/share/usb",
+			DeviceId: partID,
+		},
+	}
+
+	suite.Require().NoError(suite.shareService.VerifyShare(share))
+	suite.NotNil(share.Status)
+	suite.True(share.Status.IsValid)
+	suite.True(share.Status.IsHAMounted)
+	suite.True(share.MountPointData.IsHAMounted)
 }
 
 // TestVerifyShareWithMountedRWVolume tests share verification with mounted RW volume

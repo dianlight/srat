@@ -102,6 +102,75 @@ describe("PartitionActions component", () => {
         expect(screen.getAllByRole("button").length).toBeGreaterThan(0);
     });
 
+    it("offers Create Share but no mount or filesystem actions for an HA-managed partition", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            filesystem_info: { support: { canFormat: true, canSetLabel: true, canCheck: true } },
+            mount_point_data: [
+                {
+                    path: "/share/usb",
+                    is_mounted: true,
+                    is_ha_mounted: true,
+                    is_to_mount_at_startup: false,
+                },
+            ],
+        });
+        render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => {},
+                onMount: () => {},
+                onUnmount: () => {},
+                onCreateShare: () => {},
+                onGoToShare: () => {},
+                onCheckFilesystem: () => {},
+                onSetFilesystemLabel: () => {},
+                onFormatPartition: () => {},
+            })
+        );
+
+        expect(screen.getByLabelText(/create share/i)).toBeTruthy();
+        expect(screen.queryByLabelText(/mount partition/i)).toBeNull();
+        expect(screen.queryByLabelText(/unmount partition/i)).toBeNull();
+        expect(screen.queryByLabelText(/format partition/i)).toBeNull();
+    });
+
+    it("offers only Go to Share for an HA-managed partition with a share", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const { PartitionActions } = await import("../PartitionActions");
+
+        const partition = buildPartition({
+            mount_point_data: [
+                {
+                    path: "/share/usb",
+                    is_mounted: true,
+                    is_ha_mounted: true,
+                    share: { name: "usb", disabled: false },
+                },
+            ],
+        });
+        render(
+            React.createElement(PartitionActions as any, {
+                partition,
+                protected_mode: false,
+                onToggleAutomount: () => {},
+                onMount: () => {},
+                onUnmount: () => {},
+                onCreateShare: () => {},
+                onGoToShare: () => {},
+            })
+        );
+
+        expect(screen.getByLabelText(/go to share/i)).toBeTruthy();
+        expect(screen.queryByLabelText(/unmount partition/i)).toBeNull();
+        expect(screen.queryByLabelText(/mount partition/i)).toBeNull();
+    });
+
     it("does not render Check Filesystem menu item when callback is missing", async () => {
         const React = await import("react");
         const { render, screen } = await import("@testing-library/react");
