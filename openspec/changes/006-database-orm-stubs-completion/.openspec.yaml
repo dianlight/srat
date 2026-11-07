@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-06
+skip_specs: true
+x-legacy-task: docs/tasks/006_db-orm-stubs-completion.md
+x-task-type: REFACTOR
+x-tracker: "https://github.com/dianlight/hassio-addons/issues/573"

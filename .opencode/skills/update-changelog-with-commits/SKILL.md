@@ -6,7 +6,7 @@ argument-hint: 'Optional: "top N" (default 5) to limit commit entries by lines c
 
 # Update Changelog with Commits
 
-Combines completed task documents (`docs/tasks/*.md`) with git commits since the last release tag to produce a comprehensive changelog entry under the `[ 🚧 Unreleased ]` section. Prioritizes commit entries by number of lines changed (top N) and merges them with task-based entries.
+Combines completed task documents (`openspec/changes/*.md`) with git commits since the last release tag to produce a comprehensive changelog entry under the `[ 🚧 Unreleased ]` section. Prioritizes commit entries by number of lines changed (top N) and merges them with task-based entries.
 
 ## When to Use
 
@@ -33,7 +33,7 @@ Run: `git describe --tags --abbrev=0` to get the most recent release tag.
 
 ### 3. Collect Completed Tasks
 
-Read all task files from `docs/tasks/*.md` and filter:
+Read all task files from `openspec/changes/*.md` and filter:
 - **Status = ✅ Complete** (only completed tasks)
 - Extract: TaskID, Title, Type ([FEATURE]/[FIX]/[DOCS]/[REFACTOR]), Objective, GitHub issue links
 
@@ -189,6 +189,6 @@ Follow the existing CHANGELOG.md style:
 
 ## Notes
 
-- This skill is **workspace-scoped** for the SRAT repository; it relies on the presence of `docs/tasks/` and the specific CHANGELOG.md format.
+- This skill is **workspace-scoped** for the SRAT repository; it relies on the presence of `openspec/changes/` and the specific CHANGELOG.md format.
 - The "top N commits" selection is deterministic based on `git show --stat` line counts.
 - If the last release tag cannot be found (no tags), the skill will abort with an error message.

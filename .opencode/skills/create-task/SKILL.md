@@ -1,12 +1,12 @@
 ---
 name: create-task
-description: 'Create a new task planning document for SRAT. Use when: adding a feature, planning a fix, documenting a refactor, or creating a new TODO item. Produces a <TaskID>_<Title>.md file in docs/tasks/ using the project task template. Triggers on: "create task", "new task", "add task", "plan feature", "create todo", "new issue task", "document work item".'
+description: 'Create a new task planning document for SRAT. Use when: adding a feature, planning a fix, documenting a refactor, or creating a new TODO item. Produces a <TaskID>_<Title>.md file in openspec/changes/ using the project task template. Triggers on: "create task", "new task", "add task", "plan feature", "create todo", "new issue task", "document work item".'
 argument-hint: 'Brief task title or description (e.g., "Add dark mode toggle to settings")'
 ---
 
 # Create Task
 
-Produces a structured task document in `docs/tasks/` using the [project task template](../../../docs/task-template.md).
+Produces a structured task document in `openspec/changes/` using the OpenSpec change workflow artifacts.
 
 ## When to Use
 
@@ -34,10 +34,10 @@ Collect the following (ask the user for anything not provided):
 
 ### 2. Determine the Next TaskID
 
-Scan `docs/tasks/` for existing files matching the pattern `NNN_*.md`:
+Scan `openspec/changes/` for existing files matching the pattern `NNN_*.md`:
 
 ```bash
-ls docs/tasks/*.md 2>/dev/null | grep -oP '^\d+' | sort -n | tail -1
+ls openspec/changes/*.md 2>/dev/null | grep -oP '^\d+' | sort -n | tail -1
 ```
 
 - If no files exist, start at `001`.
@@ -58,7 +58,7 @@ Examples:
 
 ### 4. Populate the Template
 
-Use [task-template.md](../../../docs/task-template.md) as the base. Fill in:
+Use the OpenSpec change artifacts as the base. Fill in:
 
 ```markdown
 # [FEATURE/FIX/DOCS/REFACTOR]: <Title>
@@ -97,9 +97,9 @@ Leave any section as a placeholder (`_TBD_`) if the user hasn't provided enough 
 
 ### 5. Create the File
 
-Write the populated content to `docs/tasks/<TaskID>_<title>.md`.
+Write the populated content to `openspec/changes/<TaskID>_<title>.md`.
 
-Create the `docs/tasks/` directory if it does not yet exist.
+Create the `openspec/changes/` directory if it does not yet exist.
 
 ### 6. Confirm
 
@@ -112,7 +112,7 @@ Suggest to the user:
 ## Quality Checklist
 
 - [ ] Filename matches `NNN_kebab-case-title.md` pattern
-- [ ] File is in `docs/tasks/`
+- [ ] File is in `openspec/changes/`
 - [ ] Heading type matches `FEATURE | FIX | DOCS | REFACTOR`
 - [ ] Status is `📅 Planned` for new tasks
 - [ ] Task List contains at least one item and always includes testing + documentation tasks

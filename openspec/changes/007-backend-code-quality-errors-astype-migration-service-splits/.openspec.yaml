@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-06
+skip_specs: true
+x-legacy-task: docs/tasks/007_backend-refactoring-errors-service-splits.md
+x-task-type: REFACTOR
+x-tracker: _TBD_

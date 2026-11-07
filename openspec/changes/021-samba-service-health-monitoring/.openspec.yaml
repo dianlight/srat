@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-06
+x-legacy-task: docs/tasks/021_samba-service-health-monitoring.md
+x-task-type: FEATURE
+x-tracker: _TBD_

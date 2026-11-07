@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-06
+skip_specs: true
+x-legacy-task: docs/tasks/036_frontend-performance-navbar-metrics-rendering.md
+x-task-type: REFACTOR
+x-tracker: _None — discovered in performance review 2026-04-28_

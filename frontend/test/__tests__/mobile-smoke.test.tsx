@@ -1,5 +1,6 @@
+import { renderWithTestStore } from "/test/testing";
 /**
- * Mobile 375px smoke test — task 10 of docs/tasks/045_full-mobile-support.md.
+ * Mobile 375px smoke test — task 10 of openspec/changes/045_full-mobile-support.md.
  *
  * Renders the full App in a real Chromium (Vitest browser mode) at a 375px
  * viewport and asserts:
@@ -19,7 +20,7 @@
  * with `mise run //frontend:test:browser`.
  */
 import { CssBaseline } from "@mui/material";
-import { ThemeProvider, createTheme } from "@mui/material/styles";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { TourProvider } from "@reactour/tour";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -28,7 +29,6 @@ import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BrowserPage } from "vitest/browser";
-import { renderWithTestStore } from "/test/testing";
 
 let page: BrowserPage | undefined;
 try {
@@ -85,9 +85,11 @@ describe.runIf(!!page)("mobile 375px smoke", () => {
   beforeEach(async () => {
     localStorage.clear();
     consoleErrors = [];
-    errorSpy = vi.spyOn(console, "error").mockImplementation((...args: unknown[]) => {
-      consoleErrors.push(args.map(argToString).join(" "));
-    });
+    errorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation((...args: unknown[]) => {
+        consoleErrors.push(args.map(argToString).join(" "));
+      });
   });
 
   afterEach(() => {

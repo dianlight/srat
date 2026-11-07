@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-05
+x-legacy-task: docs/tasks/008_share-subfolders-support.md
+x-task-type: FEATURE
+x-tracker: https://github.com/dianlight/srat/issues/184

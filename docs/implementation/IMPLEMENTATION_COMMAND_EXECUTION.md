@@ -136,5 +136,5 @@ mise run //frontend:test -- src/__tests__/App.commandEvents.test.tsx
 
 ## Related Task
 
-- Task doc: `docs/tasks/015_generic-live-command-execution-console-via-websocket.md`
+- Task doc: `openspec/changes/015_generic-live-command-execution-console-via-websocket.md`
 - GitHub issue: #540

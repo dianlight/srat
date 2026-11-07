@@ -1,12 +1,12 @@
 ---
 name: update-changelog
-description: 'Read completed or updated tasks from docs/tasks/ and append structured entries to CHANGELOG.md under the [ 🚧 Unreleased ] section, following the existing changelog format. Triggers on: "update changelog", "add to changelog", "changelog from tasks", "generate release notes", "write changelog entry".'
+description: 'Read completed or updated tasks from openspec/changes/ and append structured entries to CHANGELOG.md under the [ 🚧 Unreleased ] section, following the existing changelog format. Triggers on: "update changelog", "add to changelog", "changelog from tasks", "generate release notes", "write changelog entry".'
 argument-hint: 'Optional scope: "all done" (tasks marked ✅ Complete), "since <TaskID>" (tasks from NNN onwards), or a specific task filename/ID to add just one entry'
 ---
 
 # Update Changelog
 
-Reads completed or in-progress task documents from `docs/tasks/` and appends well-formatted entries to `CHANGELOG.md` under the `[ 🚧 Unreleased ]` section, following the project's existing changelog conventions.
+Reads completed or in-progress task documents from `openspec/changes/` and appends well-formatted entries to `CHANGELOG.md` under the `[ 🚧 Unreleased ]` section, following the project's existing changelog conventions.
 
 ## When to Use
 

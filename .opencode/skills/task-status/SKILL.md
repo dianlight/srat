@@ -1,13 +1,13 @@
 ---
 name: task-status
-description: 'Generate a Markdown progress report of all tasks in docs/tasks/ grouped by status (📅 Planned / 🔄 In Progress / ✅ Complete). Optionally filter by type (FEATURE/FIX/DOCS/REFACTOR) or linked repo. Output is suitable for a weekly standup, GitHub comment, or PR description. Triggers on: "task status", "show task progress", "what tasks are done", "weekly standup", "task report", "progress report", "list tasks".'
+description: 'Generate a Markdown progress report of all tasks in openspec/changes/ grouped by status (📅 Planned / 🔄 In Progress / ✅ Complete). Optionally filter by type (FEATURE/FIX/DOCS/REFACTOR) or linked repo. Output is suitable for a weekly standup, GitHub comment, or PR description. Triggers on: "task status", "show task progress", "what tasks are done", "weekly standup", "task report", "progress report", "list tasks".'
 argument-hint: 'Optional filter: "all" (default), "done", "in-progress", "planned", "features", "fixes", or a GitHub repo name ("srat" / "hassio-addons")'
 ---
 
 # Task Status Report
 
-Reads all task documents in `docs/tasks/` and generates a grouped progress summary.
-Also overwrite `docs/tasks/TASK_STATUS.md` with the same report for easy reference.
+Reads all task documents in `openspec/changes/` and generates a grouped progress summary.
+Also overwrite `openspec/changes/TASK_STATUS.md` with the same report for easy reference.
 
 ## When to Use
 
@@ -22,7 +22,7 @@ Also overwrite `docs/tasks/TASK_STATUS.md` with the same report for easy referen
 
 ### 1. Scan Task Files
 
-Read all files in `docs/tasks/` matching `NNN_*.md` (exclude `README.md`).
+Read all files in `openspec/changes/` matching `NNN_*.md` (exclude `README.md`).
 
 For each file, extract:
 
@@ -114,7 +114,7 @@ Also state the total number of tasks processed and the overall completion percen
 
 ## Quality Checklist
 
-- [ ] Every file in `docs/tasks/NNN_*.md` is represented (no silently skipped files)
+- [ ] Every file in `openspec/changes/NNN_*.md` is represented (no silently skipped files)
 - [ ] Status inference fallback is used when `**Status:**` field is missing
 - [ ] Progress percentages are rounded to nearest integer
 - [ ] "Next:" field is only shown for in-progress tasks (has at least one checked AND one unchecked item)

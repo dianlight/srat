@@ -14,7 +14,7 @@ Automate the process of creating or updating a pull request from the current bra
 1. **Detect Current Branch**
    - If already on `main`, abort (cannot PR main → main).
 2. **Check for Related Task**
-   - Search for a related task in `docs/tasks/` matching the branch name or recent commits.
+   - Search for a related task in `openspec/changes/` matching the branch name or recent commits.
    - If found, extract task details (title, description, checklist, linked issues).
    - If not found, summarize recent commit messages for PR body.
 3. **Find Issues to Close**

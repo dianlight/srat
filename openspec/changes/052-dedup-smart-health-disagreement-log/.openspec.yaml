@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-06
+skip_specs: true
+x-legacy-task: docs/tasks/052_dedup-smart-health-disagreement-log.md
+x-task-type: REFACTOR
+x-tracker: https://github.com/dianlight/srat/issues/1196

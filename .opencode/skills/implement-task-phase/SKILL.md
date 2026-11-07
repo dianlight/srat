@@ -1,12 +1,12 @@
 ---
 name: implement-task-phase
-description: 'Execute one checklist phase from a docs/tasks/*.md task with strict sequencing: pick exactly one unchecked item, implement only that scope, run targeted validation, and update task progress immediately. Triggers on: "implement next task item", "do task phase", "work on next checklist item", "execute phase 3 of task 012".'
+description: 'Execute one checklist phase from a openspec/changes/*.md task with strict sequencing: pick exactly one unchecked item, implement only that scope, run targeted validation, and update task progress immediately. Triggers on: "implement next task item", "do task phase", "work on next checklist item", "execute phase 3 of task 012".'
 argument-hint: 'Task identifier + optional phase selector (item number, exact checklist text, or "next")'
 ---
 
 # Implement a Single Task Phase
 
-Implements one checklist item at a time from `docs/tasks/*.md` with verification gates and immediate task-doc updates.
+Implements one checklist item at a time from `openspec/changes/*.md` with verification gates and immediate task-doc updates.
 
 ## When to Use
 
@@ -27,7 +27,7 @@ Implements one checklist item at a time from `docs/tasks/*.md` with verification
 
 ### 1. Resolve Task and Select Exactly One Item
 
-1. Resolve task file in `docs/tasks/` by ID or filename.
+1. Resolve task file in `openspec/changes/` by ID or filename.
 2. Read `## 📝 Task List` and find unchecked items.
 3. Selection rules:
   - If user names an item, use it.

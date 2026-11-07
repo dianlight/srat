@@ -1,7 +1,7 @@
 name: SambaNAS2 orphan watch
 
 # Daily check for dianlight/hassio-addons SambaNAS2 issues with no counterpart
-# in dianlight/srat issues or docs/tasks/*.md (same index the `sync-tasks`
+# in dianlight/srat issues or openspec/changes/*.md (same index the `sync-tasks`
 # skill builds for Mode A IMPORT).
 #
 # Detect + triage are read-only (job summaries only). The final `mirror` job
@@ -109,7 +109,7 @@ jobs:
                   hit = subprocess.run(
                       ["grep", "-rIlE",
                        rf"hassio-addons(#{n}\b|/issues/{n}\b)",
-                       "docs/tasks", "--include=*.md"],
+                       "openspec/changes", "--include=*.md"],
                       capture_output=True, text=True,
                   )
                   referenced = hit.returncode == 0
@@ -137,7 +137,7 @@ jobs:
             echo "## SambaNAS2 orphan watch"
             echo ""
             echo "SambaNAS2-related open issues in dianlight/hassio-addons with no reference"
-            echo "in srat issues or docs/tasks: **$COUNT**."
+            echo "in srat issues or openspec/changes: **$COUNT**."
             echo ""
             if [[ "$COUNT" == "0" ]]; then
               echo "All SambaNAS2 issues are tracked. Nothing to do."
@@ -264,7 +264,7 @@ jobs:
             — permission prompts hang the runner) and exit 0.
 
           ## Task
-          Work quickly: fetch each issue body once, scan only \`docs/tasks/*.md\`
+          Work quickly: fetch each issue body once, scan only \`openspec/changes/*.md\`
           headers + Objective paragraphs and open srat issue titles. Do NOT
           explore backend/frontend source code — classification only.
           For each orphan:
@@ -272,9 +272,9 @@ jobs:
           2. Classify: bug / feature / question / needs-info, and whether it is SRAT-related
              (backend, frontend, custom component) or pure-addon (Dockerfile, s6 services, docs).
           3. Find the closest existing counterpart using the \`sync-tasks\` heuristic: compare issue
-             title words against \`docs/tasks/*.md\` titles + Objective paragraphs (≥ 2 significant
+             title words against \`openspec/changes/*.md\` titles + Objective paragraphs (≥ 2 significant
              words in common) and against open srat issues (\`gh search issues\`).
-          4. Recommend exactly one: link the best matching \`docs/tasks/NNN_*.md\` or \`dianlight/srat#NNN\`,
+          4. Recommend exactly one: link the best matching \`openspec/changes/NNN_*.md\` or \`dianlight/srat#NNN\`,
              or state \"no match — candidate for a new task\" with a one-line suggested task title.
 
           ## Report format (markdown, one section per orphan)
@@ -365,7 +365,7 @@ jobs:
                 '',
                 '> See the orphan-watch run summary and AI triage (if any) for classification and suggested task match.',
                 '',
-                'Close this issue once it is tracked via a `hassio-addons#NNN` reference in `docs/tasks/*.md` or a duplicate srat issue link.',
+                'Close this issue once it is tracked via a `hassio-addons#NNN` reference in `openspec/changes/*.md` or a duplicate srat issue link.',
                 '',
                 '_Auto-created by `sambanas2-orphan-watch` mirror job._',
               ].join('\n');

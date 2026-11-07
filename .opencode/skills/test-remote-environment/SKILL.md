@@ -311,7 +311,7 @@ export API_URL=http://192.168.0.68:3000/  # must be env var — -a flag alone is
 mise run //frontend:dev:remote
 ```
 
-- `API_URL` **must be an env var** (`http://192.168.0.68:3000/` for remote). The Bun macro `getApiUrl()` is evaluated at import time (`frontend/src/index.html` imported at `frontend/bun.build.ts:8`) **before** `build()` sets `process.env.API_URL`; passing `-a http://...` alone leaves the macro as `dynamic` → same-origin `http://localhost:3080/` + `ws://localhost:3080/ws` (returns HTML 200, not WS, so `useVolume` shows `Error loading volumes: [object Object]`). See `docs/tasks/045_full-mobile-support.md:65`.
+- `API_URL` **must be an env var** (`http://192.168.0.68:3000/` for remote). The Bun macro `getApiUrl()` is evaluated at import time (`frontend/src/index.html` imported at `frontend/bun.build.ts:8`) **before** `build()` sets `process.env.API_URL`; passing `-a http://...` alone leaves the macro as `dynamic` → same-origin `http://localhost:3080/` + `ws://localhost:3080/ws` (returns HTML 200, not WS, so `useVolume` shows `Error loading volumes: [object Object]`). See `openspec/changes/045_full-mobile-support.md:65`.
 - **Phase-0 baked-URL check (mandatory before any UI case):** `scripts/env.sh` (sourced by every mise shell via root `.mise.toml` `[env]`) **overwrites a pre-set `API_URL`** — historically it derived `${SUPERVISOR_URL%/}:3000/` unconditionally, so an exported `API_URL=http://<ip>:62983/` was silently replaced and the bundle baked `:3000` (browser showed `ERR_CONNECTION_REFUSED` on every API call with 0 app errors). After starting the server, verify the BAKED url, not the flag:
   ```bash
   BUNPID=$(pgrep -f "bun.build.ts -w" | head -1); ps eww -p $BUNPID | tr ' ' '\n' | grep "^API_URL"

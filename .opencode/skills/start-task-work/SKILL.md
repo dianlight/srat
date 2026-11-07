@@ -1,16 +1,16 @@
 ---
 name: start-task-work
-description: 'Start implementation from a docs/tasks/*.md file with guardrails: verify/create linked GitHub issue in dianlight/srat, branch from main when needed, inspect code and produce a plan summary before coding, and keep the task doc updated at every phase. Supports strict mode to require a numeric task ID. Triggers on: "start task", "work on task", "begin task 012", "implement docs task", "start implementation from docs/tasks".'
+description: 'Start implementation from a openspec/changes/*.md file with guardrails: verify/create linked GitHub issue in dianlight/srat, branch from main when needed, inspect code and produce a plan summary before coding, and keep the task doc updated at every phase. Supports strict mode to require a numeric task ID. Triggers on: "start task", "work on task", "begin task 012", "implement docs task", "start implementation from openspec/changes".'
 argument-hint: 'Task identifier (preferred: task id like "012") + optional mode "strict-id" (rejects title-only or fuzzy matching)'
 ---
 
 # Start Work on a Task
 
-Safely starts work from a task document in `docs/tasks/` and prepares implementation without coding yet.
+Safely starts work from a task document in `openspec/changes/` and prepares implementation without coding yet.
 
 ## When to Use
 
-- User wants to begin work from an existing `docs/tasks/*.md` file
+- User wants to begin work from an existing `openspec/changes/*.md` file
 - User asks to implement a task by ID/title
 - You need a consistent pre-implementation workflow (issue tracking + branch hygiene + planning)
 
@@ -35,14 +35,14 @@ If the user enables `strict-id` mode (or asks for strict matching):
 
 - Accept only numeric task IDs (for example `012`)
 - Reject title-only/fuzzy references
-- Require exact `docs/tasks/NNN_*.md` resolution before continuing
+- Require exact `openspec/changes/NNN_*.md` resolution before continuing
 
 Use strict mode when users want deterministic automation and no accidental task selection.
 
 ### 1. Resolve the Target Task
 
-1. Find the task file in `docs/tasks/`:
-  - Prefer exact ID match (`012` → `docs/tasks/012_*.md`)
+1. Find the task file in `openspec/changes/`:
+  - Prefer exact ID match (`012` → `openspec/changes/012_*.md`)
   - Else match by filename/title keywords
 2. If ambiguous, ask the user to choose one file.
 3. Read the full task document and extract:
@@ -137,6 +137,6 @@ Only after user confirms the summary:
 
 - `start task 012`
 - `start task 012 strict-id`
-- `begin work on docs/tasks/009_smb-ip-address-interface-resolution.md`
+- `begin work on openspec/changes/009_smb-ip-address-interface-resolution.md`
 - `start implementation for task 010`
 - `work on task remove sse code`

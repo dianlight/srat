@@ -1,12 +1,12 @@
 ---
 name: close-task-work
-description: 'Close out a completed docs/tasks/*.md task by validating checklist completion, syncing GitHub issue status/comments, and preparing optional PR summary notes. Triggers on: "close task", "finalize task", "wrap up task 012", "complete docs task".'
+description: 'Close out a completed openspec/changes/*.md task by validating checklist completion, syncing GitHub issue status/comments, and preparing optional PR summary notes. Triggers on: "close task", "finalize task", "wrap up task 012", "complete docs task".'
 argument-hint: 'Task identifier (required) + optional publish mode ("issue-only", "issue-and-pr")'
 ---
 
 # Close a Task Workstream
 
-Finalizes a task from `docs/tasks/` after implementation is complete.
+Finalizes a task from `openspec/changes/` after implementation is complete.
 
 ## When to Use
 
@@ -94,5 +94,5 @@ Provide:
 ## Example Prompts
 
 - `close task 012`
-- `finalize docs/tasks/010_ui-configuration-wizard-guided-tour.md`
+- `finalize openspec/changes/010_ui-configuration-wizard-guided-tour.md`
 - `wrap up task 009 with issue-and-pr summary`

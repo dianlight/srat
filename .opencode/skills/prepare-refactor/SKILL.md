@@ -11,7 +11,7 @@ Structured safety harness that wraps any code refactor with a pre-analysis, miss
 ## When to Use
 
 - User asks to perform a refactor of any scope
-- A `docs/tasks/*.md` task has type `[REFACTOR]`
+- A `openspec/changes/*.md` task has type `[REFACTOR]`
 - Any work that reorganises, renames, moves, or structurally changes existing code without adding new user-visible features
 
 **Every time a task or work is identified as a refactor, ask the user:**
@@ -75,7 +75,7 @@ Record the user's choice in the tracking document.
 **Date:** YYYY-MM-DD  
 **Status:** 🔍 Analysis  
 **Prepare Check:** Yes | No (skipped by user)  
-**Linked Task:** docs/tasks/NNN_<title>.md (if applicable)  
+**Linked Task:** openspec/changes/NNN_<title>.md (if applicable)  
 **Scope:** <Brief description of what is being changed>
 
 ---

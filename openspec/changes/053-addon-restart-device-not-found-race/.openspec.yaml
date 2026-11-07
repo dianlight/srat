@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-06
+x-legacy-task: docs/tasks/053_addon-restart-device-race.md
+x-task-type: FIX
+x-tracker: "[srat#1266](https://github.com/dianlight/srat/issues/1266), [hassio-addons#767](https://github.com/dianlight/hassio-addons/issues/767)"

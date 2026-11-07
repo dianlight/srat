@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-06
+x-legacy-task: docs/tasks/033_database-recovery-safety-http-guards.md
+x-task-type: FIX
+x-tracker: _None — discovered in reliability review 2026-04-28_

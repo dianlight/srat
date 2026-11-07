@@ -1,0 +1,33 @@
+# Proposal
+
+## Why
+
+Fix four related security and reliability defects in the upgrade and HDIdle subsystems: 1. **ZipSlip bypass** — `extractFile` in `upgrade_service.go` has a `dest != "."` escape that disables path traversal protection when the destination is the current directory.
+
+## What Changes
+
+- In `upgrade_service.go extractFile`, remove the `dest != "."` guard — always verify `strings.HasPrefix(filepath.Clean(destPath), filepath.Clean(dest)+string(os.PathSeparator))`
+- Add `pattern:"[a-zA-Z0-9_-]+"` constraint to the `DiskID` path parameter struct tags in `hdidle_handler.go` (all four handler methods)
+- After constructing `devicePath := "/dev/disk/by-id/" + input.DiskID`, assert `strings.HasPrefix(filepath.Clean(devicePath), "/dev/disk/by-id/")` and return HTTP 400 on violation
+- Fix the debounce timer race in `watchForDevelopUpdates`: after `debounceTimer.Stop()` returns false, drain the timer channel (`<-debounceTimer.C`); protect the `selfupdate.Apply` call with a `sync.Mutex` so only one invocation runs at a time
+- Fix `HDIdleService.IsRunning()` data race: add `s.mu.RLock()` / `s.mu.RUnlock()`, or replace with an `atomic.Bool running` field updated under the mutex
+- Replace `http.DefaultClient.Do(req)` in `upgrade_service.go:553` with a dedicated `http.Client{Timeout: 30*time.Minute}`; remove the `// #nosec G704` suppression
+- Add tests: (a) verify `extractFile` rejects `../escape` zip entries with `dest = "."`; (b) verify `DiskID = "../../sda"` returns 400; (c) run `go test -race` on `hdidle_service.go` coverage
+- Update `docs/SECURITY_OPTIMIZATION_REVIEW.md` to mark B-SEC-07, B-SEC-08, B-SEC-09, B-REL-05, B-REL-06 resolved
+
+## Capabilities
+
+### New Capabilities
+
+- `upgrade-hdidle-path-traversal-timer-race-data-race`: Upgrade & HDIdle Path Traversal, Timer Race, and Data Race
+
+### Modified Capabilities
+
+(none)
+
+## Impact
+
+- **Inputs:** `backend/src/service/upgrade_service.go`, `backend/src/api/hdidle_handler.go`, `backend/src/service/hdidle_service.go`
+- **Outputs:** No path traversal; single concurrent install; race-free running check
+- **Dependencies:** `path/filepath`, `net/http`, `sync`, `os`
+- Legacy task: `docs/tasks/035_upgrade-hdidle-path-traversal-races.md`
