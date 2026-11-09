@@ -12,6 +12,15 @@ env_shell_expand = true
 [settings.python]
 compile = false
 
+# Bun must stay named `bun`: `npm.package_manager = "bun"` and the `[deps.bun]`
+# entries in frontend/oauth_broker resolve the package manager by that name, and
+# mise only orders it before the `npm:` tools when it finds it. Declaring it as
+# `"github:oven-sh/bun"` breaks that lookup ("bun may be required but was not
+# found") and every `npm:` install fails on a cold cache. The GitHub backend is
+# still needed because `bun lint`/`bun fmt` are canary-only.
+[tool_alias]
+bun = "github:oven-sh/bun"
+
 [tools]
 go = "1.27.3"
 act = "0.2.96"
@@ -19,8 +28,7 @@ vale = "3.26.0"
 markdownlint-cli2 = "0.24.0"
 "npm:doctoc" = "2.5.0"
 "npm:@fission-ai/openspec" = "1.16.0"
-#bun = "1.4.4"
-"github:oven-sh/bun" = "canary"
+bun = "canary"
 jq = "1.8.2"
 pkl = "0.32.2"
 biome = "2.4.15"

@@ -76,8 +76,10 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "Manual trigger detected. Reading latest draft release..."
 
-            LATEST_DRAFT_TITLE=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""' || echo "")
-            LATEST_DRAFT_TAG=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""' || echo "")
+            # No `|| echo ""` fallbacks here: an API/rate-limit failure must fail the
+            # step instead of silently degrading to "no draft release".
+            LATEST_DRAFT_TITLE=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .name // ""')
+            LATEST_DRAFT_TAG=$(gh api /repos/${{ github.repository }}/releases -q '[.[] | select(.draft == true)] | sort_by(.created_at) | last | .tag_name // ""')
 
             if [[ -z "$LATEST_DRAFT_TITLE" && -z "$LATEST_DRAFT_TAG" ]]; then
               echo "No draft release found. Manual runs require an existing draft release title/tag to derive the version."
@@ -107,8 +109,9 @@ jobs:
 
             echo "Fetching non-draft release tags for period ${CURRENT_PERIOD_PREFIX}..."
             # Get all tag_names from non-draft (published or pre-release) GitHub releases.
-            # The `|| echo ""` ensures the script doesn't fail if gh api returns error or no releases.
-            ALL_NON_DRAFT_RELEASE_TAGS_STRING=$(gh api --paginate /repos/${{ github.repository }}/releases -q '.[] | select(.draft == false) | .tag_name' || echo "")
+            # `gh api` exits 0 with empty output when there are no releases, so an error
+            # here is a real failure and must not be swallowed into "no tags found".
+            ALL_NON_DRAFT_RELEASE_TAGS_STRING=$(gh api --paginate /repos/${{ github.repository }}/releases -q '.[] | select(.draft == false) | .tag_name')
 
             FILTERED_TAGS_LIST=()
             if [[ -n "$ALL_NON_DRAFT_RELEASE_TAGS_STRING" ]]; then
@@ -289,12 +292,16 @@ jobs:
       - name: Extract Backend Coverage
         id: extract_coverage
         run: |
-          COVERAGE_LINE=$(grep "Total coverage:" backend/backend_test_output.txt | tail -1 || true)
+          set -euo pipefail
 
-          if [ -n "$COVERAGE_LINE" ]; then
-            COVERAGE=$(echo "$COVERAGE_LINE" | awk '{gsub(/%/, "", $3); print $3}')
-          else
-            COVERAGE="0.0"
+          if ! COVERAGE_LINE=$(grep "Total coverage:" backend/backend_test_output.txt | tail -1); then
+            echo "::error::No 'Total coverage:' line in backend/backend_test_output.txt; refusing to publish an unknown coverage value."
+            exit 1
+          fi
+          COVERAGE=$(echo "$COVERAGE_LINE" | awk '{gsub(/%/, "", $3); print $3}')
+          if [ -z "$COVERAGE" ]; then
+            echo "::error::Could not parse the backend coverage value from: ${COVERAGE_LINE}"
+            exit 1
           fi
           echo "backend_coverage=$COVERAGE" >> "$GITHUB_OUTPUT"
           echo "Backend Coverage: $COVERAGE%"
@@ -341,11 +348,16 @@ jobs:
       - name: Extract Frontend Coverage
         id: extract_coverage
         run: |
-          COVERAGE_LINE=$(grep "All files" frontend_test_output.txt | tail -1 || true)
-          if [ -n "$COVERAGE_LINE" ]; then
-            COVERAGE=$(echo "$COVERAGE_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/%/, "", $2); print $2}')
-          else
-            COVERAGE="0.0"
+          set -euo pipefail
+
+          if ! COVERAGE_LINE=$(grep "All files" frontend_test_output.txt | tail -1); then
+            echo "::error::No 'All files' coverage row in frontend_test_output.txt; refusing to publish an unknown coverage value."
+            exit 1
+          fi
+          COVERAGE=$(echo "$COVERAGE_LINE" | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); gsub(/%/, "", $2); print $2}')
+          if [ -z "$COVERAGE" ]; then
+            echo "::error::Could not parse the frontend coverage value from: ${COVERAGE_LINE}"
+            exit 1
           fi
           echo "frontend_coverage=$COVERAGE" >> "$GITHUB_OUTPUT"
           echo "Frontend Coverage: $COVERAGE%"
@@ -556,7 +568,6 @@ jobs:
 
       - name: BuildAll
         id: built_all
-        if: github.event_name != 'pull_request'
         env:
           CGO_ENABLED: 0 # Default for static variant; overridden per-variant in mise build tasks
         run: |
@@ -571,8 +582,11 @@ jobs:
 
           # Check if signing key is available
           if [ -z "$UPDATE_SIGNING_KEY" ]; then
-            echo "⚠️  WARNING: UPDATE_SIGNING_KEY secret not found. Binaries will not be signed."
-            echo "This is expected for forks and development branches."
+            if [ "${{ github.repository }}" = "dianlight/srat" ]; then
+              echo "::error::UPDATE_SIGNING_KEY is not configured; refusing to build unsigned release binaries."
+              exit 1
+            fi
+            echo "::warning::UPDATE_SIGNING_KEY not found (fork or development branch). Binaries will not be signed."
             echo "Signature verification will be skipped during updates."
             exit 0
           fi
@@ -594,6 +608,7 @@ jobs:
 
           # Sign each binary (static, musl, and glibc variants; srat-server symlink is not signed)
           echo "Signing binaries with minisign..."
+          signed_count=0
           for binary_path in backend/dist/*/srat-{cli,server-static,server-musl,server-glib}; do
             if [ -f "$binary_path" ]; then
               echo "Signing binary: $binary_path"
@@ -608,12 +623,18 @@ jobs:
                 -x "./${binary_path}.minisig"
 
               echo "✅ Signature created: ${binary_path}.minisig"
+              signed_count=$((signed_count + 1))
             else
               echo "⚠️ Binary not found: $binary_path"
             fi
           done
 
-          echo "Binary signing complete"
+          if [ "$signed_count" -eq 0 ]; then
+            echo "::error::No binaries were signed; BuildAll produced nothing to sign."
+            exit 1
+          fi
+
+          echo "Binary signing complete (${signed_count} binaries signed)"
 
       - name: Prepare temporary directory for zips
         if: github.event_name != 'pull_request'
@@ -707,20 +728,35 @@ jobs:
             echo "Successfully created ${zip_file_path}"
             echo "Archive contents:"
             unzip -l "$zip_file_path"
+          done
 
-            # Assertion (a): every release zip must contain the musl smartlib variant.
-            # The SambaNAS2 addon runs on Alpine (musl) and selects srat-server-musl via
-            # detectBestServerVariant; a release without it would silently degrade SMART
-            # access to the exec backend on the addon.
-            if ! unzip -l "$zip_file_path" | grep -q "srat-server-musl"; then
-              echo "❌ Release zip ${zip_file_path} is missing srat-server-musl (musl smartlib variant required for the Alpine addon)"
+      - name: Verify release zips include the musl smartlib variant
+        if: github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          # Assertion (a): every release zip must contain the musl smartlib variant.
+          # The SambaNAS2 addon runs on Alpine (musl) and selects srat-server-musl via
+          # detectBestServerVariant; a release without it would silently degrade SMART
+          # access to the exec backend on the addon. Kept out of the zip loop so an
+          # architecture skipped there (empty dir, missing minisigs) cannot dodge it.
+          zips=(/tmp/build_artifacts/srat_*.zip)
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "::error::No release zips were produced in /tmp/build_artifacts."
+            exit 1
+          fi
+
+          for zip_file in "${zips[@]}"; do
+            if ! unzip -l "$zip_file" | grep -q "srat-server-musl"; then
+              echo "::error::Release zip ${zip_file} is missing srat-server-musl (musl smartlib variant required for the Alpine addon)"
               exit 1
             fi
-            echo "✅ ${zip_file_path} contains srat-server-musl (musl smartlib variant)"
+            echo "✅ ${zip_file} contains srat-server-musl (musl smartlib variant)"
           done
 
       - name: Upload binaries as artifact
-        if: steps.built_all.conclusion == 'success'
+        if: github.event_name != 'pull_request' && steps.built_all.conclusion == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: binary-builds

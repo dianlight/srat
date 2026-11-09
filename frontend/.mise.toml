@@ -157,9 +157,10 @@ quiet = true
 [tasks."test:ci"]
 env = { API_URL = "", GITHUB_ACTIONS = true }
 # Node runtime (no --bun): @vitest/coverage-v8 report merging crashes under Bun 1.4.
+# Do not re-add --dangerouslyIgnoreUnhandledErrors: it let unhandled rejections pass CI.
 run = [
   "bun tsc --noEmit",
-  "bunx vitest run --coverage --bail=1 --reporter=dot --dangerouslyIgnoreUnhandledErrors --reporter=github-actions",
+  "bunx vitest run --coverage --bail=1 --reporter=dot --reporter=github-actions",
 ]
 quiet = true
 
