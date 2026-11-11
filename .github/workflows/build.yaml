@@ -271,9 +271,9 @@ jobs:
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: "2026.11.0"
+          version: "2026.11.4"
           install: true
           experimental: true
 
@@ -329,9 +329,9 @@ jobs:
       #          bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: "2026.11.0"
+          version: "2026.11.4"
           install: true
           experimental: true
 
@@ -392,9 +392,9 @@ jobs:
           python-version: "3.15"
 
       - name: Setup mise
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: "2026.11.0"
+          version: "2026.11.4"
           install: true
           experimental: true
 
@@ -502,9 +502,9 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@f5be966e4a917d54244728e6a5fdcd1d93a35e6c # v5.2.6
+        uses: jdx/mise-action@b44d12e7d0d8ee7461bb893e1b1993500433185b # v5.2.7
         with:
-          version: "2026.11.0"
+          version: "2026.11.4"
           install: true
           experimental: true
 
@@ -859,7 +859,7 @@ jobs:
 
       - name: Create Release and Upload Assets
         if: github.event_name != 'release' || github.event.action != 'published' || !github.event.release.prerelease
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           tag_name: ${{ needs.setversion.outputs.version }}
           name: Release ${{ needs.setversion.outputs.version }}
