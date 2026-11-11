@@ -22,7 +22,7 @@
   "scripts": {
     "watch": "bun tsc --noEmit && NODE_ENV=development bun run bun.build.ts -w",
     "gowatch": "bun tsc --noEmit && NODE_ENV=development API_URL=http://localhost:3000/ bun run bun.build.ts -w -o ../backend/src/web/static",
-    "gen:mocks": "bunx msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks && bun scripts/fix-msw-mocks.mjs",
+    "gen:mocks": "bun x msw-auto-mock ../backend/docs/openapi.json --typescript -o src/mocks && bun scripts/fix-msw-mocks.mjs",
     "lint": "bun lint --no-script",
     "test:browser": "vitest --config=vitest.browser.config.ts"
   },
@@ -90,7 +90,6 @@
     "@vitejs/plugin-react": "6.2.1",
     "@vitest/browser-playwright": "5.1.0",
     "@vitest/coverage-v8": "5.1.0",
-    "eslint": "10.13.0",
     "eslint": "10.14.0",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",

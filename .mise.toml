@@ -60,7 +60,7 @@ postinstall = "./scripts/setup-pkl-proxy.sh || true; hk install --mise"
 
 [tasks]
 docs = "mise run docs-toc && mise run docs-fix && mise run docs-validate"
-docs-toc = "./scripts/docs-ignore.sh list-md-files toc | xargs -r bunx doctoc --github"
+docs-toc = "./scripts/docs-ignore.sh list-md-files toc | xargs -r bun x doctoc --github"
 docs-validate = "./scripts/validate-docs.sh"
 docs-fix = "./scripts/validate-docs.sh --fix"
 brand-images = "python3 scripts/generate-brand-images.py"

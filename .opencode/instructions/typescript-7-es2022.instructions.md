@@ -331,7 +331,7 @@ This section consolidates status from `docs/TYPESCRIPT_7_IMPLEMENTATION_SUMMARY.
 - `bun tsc --noEmit` (plain) — clean
 - `mise run //frontend:lint` — passes
 - `mise run //frontend:build ../backend/src/web/static --version 0.0.0` — production `tsc` + bundle
-- `bunx vitest run` — 92 test files / 684 tests passing
+- `bun x vitest run` — 92 test files / 684 tests passing
 
 🚧 **Code Refactoring**: `noUncheckedIndexedAccess` still disabled pending refactoring of ~6 files (~13 indexed-access locations). Documented in `frontend/TYPESCRIPT_MIGRATION.md`.
 
@@ -344,7 +344,7 @@ cd frontend
 bun tsc --noEmit
 
 # Run tests (Bun 1.4 runtime — ~35-50% faster; do NOT add --coverage here)
-bunx --bun vitest run
+bun --bun x vitest run
 
 # Production build
 bun run build

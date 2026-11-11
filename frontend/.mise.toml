@@ -128,7 +128,7 @@ env = { API_URL = "http://localhost:3000" }
 # report merging crashes under Bun (works on Node). Use test:ci for coverage.
 run = [
   "bun tsc --noEmit",
-  "AGENT=1 bunx --bun vitest run --reporter=verbose --maxWorkers=2",
+  "AGENT=1 bun --bun x vitest run --reporter=verbose --maxWorkers=2",
 ]
 quiet = true
 
@@ -136,7 +136,7 @@ quiet = true
 env = { API_URL = "http://localhost:3000" }
 run = [
   "bun tsc --noEmit",
-  "AGENT=1 bunx --bun vitest run --reporter=verbose --changed --maxWorkers=1",
+  "AGENT=1 bun --bun x vitest run --reporter=verbose --changed --maxWorkers=1",
 ]
 quiet = true
 
@@ -148,9 +148,9 @@ arg "[files]" var=#true double_dash="optional" help="Specific test files or test
 '''
 env = { API_URL = "http://localhost:3000" }
 run = [
-  "bunx playwright install --with-deps --only-shell chromium",
+  "bun x playwright install --with-deps --only-shell chromium",
   "bun tsc --noEmit",
-  "AGENT=1 bunx vitest run --config=vitest.browser.config.ts ${usage_ui:+--browser.headless=false} ${usage_files}",
+  "AGENT=1 bun x vitest run --config=vitest.browser.config.ts ${usage_ui:+--browser.headless=false} ${usage_files}",
 ]
 quiet = true
 
@@ -160,7 +160,7 @@ env = { API_URL = "", GITHUB_ACTIONS = true }
 # Do not re-add --dangerouslyIgnoreUnhandledErrors: it let unhandled rejections pass CI.
 run = [
   "bun tsc --noEmit",
-  "bunx vitest run --coverage --bail=1 --reporter=dot --reporter=github-actions",
+  "bun x vitest run --coverage --bail=1 --reporter=dot --reporter=github-actions",
 ]
 quiet = true
 

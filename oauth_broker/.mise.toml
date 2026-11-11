@@ -22,23 +22,23 @@ quiet = true
 
 [tasks.test]
 description = "Run broker tests on Bun runtime (~2x faster, no coverage)"
-run = ["bun tsc --noEmit", "bunx --bun vitest run --reporter=verbose"]
+run = ["bun tsc --noEmit", "bun --bun x vitest run --reporter=verbose"]
 quiet = true
 
 [tasks."test:ci"]
 description = "Run broker tests on Node runtime for coverage merging (CI, ≥70% gate)"
 env = { GITHUB_ACTIONS = true }
-run = ["bun tsc --noEmit", "bunx vitest run --coverage --reporter=verbose"]
+run = ["bun tsc --noEmit", "bun x vitest run --coverage --reporter=verbose"]
 quiet = true
 
 [tasks."test:coverage"]
 description = "Run broker tests with coverage on Node runtime (local)"
-run = ["bun tsc --noEmit", "bunx vitest run --coverage --reporter=verbose"]
+run = ["bun tsc --noEmit", "bun x vitest run --coverage --reporter=verbose"]
 quiet = true
 
 [tasks."deploy:worker"]
 description = "Deploy to Cloudflare Workers (requires CLOUDFLARE_API_TOKEN + wrangler secrets)"
-run = "bunx wrangler deploy --env {{env.ENV | default(value='production')}}"
+run = "bun x wrangler deploy --env {{env.ENV | default(value='production')}}"
 quiet = true
 
 [tasks."deploy:render"]
@@ -52,5 +52,5 @@ run = "bun run src/index.ts"
 quiet = true
 
 [tasks."dev:worker"]
-run = "bunx wrangler dev"
+run = "bun x wrangler dev"
 quiet = true

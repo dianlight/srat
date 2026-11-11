@@ -48,7 +48,7 @@ jobs:
           # canonical formatters so pushes to main never leave a diff for the
           # Documentation Maintenance workflow to turn into a follow-up PR.
           bun fmt SECURITY.md
-          bunx doctoc --github SECURITY.md
+          bun x doctoc --github SECURITY.md
           # doctoc rewrites the TOC in place only when headings change; a
           # table-only update leaves no diff here.
 

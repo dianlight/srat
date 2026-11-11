@@ -14,10 +14,12 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
+
 import packageJson from "../package.json" with { type: "json" };
 
 const args = process.argv.slice(2).filter((a) => a !== "--");
-let staticDir = args[0] && !args[0].startsWith("--") ? args[0] : "../backend/src/web/static";
+let staticDir =
+  args[0] && !args[0].startsWith("--") ? args[0] : "../backend/src/web/static";
 const releaseFlag = args.indexOf("--release");
 const release =
   (releaseFlag !== -1 ? args[releaseFlag + 1] : undefined) ||
@@ -43,7 +45,9 @@ const resolvedDir = path.isAbsolute(staticDir)
   : path.resolve(import.meta.dir, "..", staticDir);
 
 if (!existsSync(resolvedDir)) {
-  console.warn(`[sentry-sourcemaps] Skipping upload: dir not found: ${resolvedDir}`);
+  console.warn(
+    `[sentry-sourcemaps] Skipping upload: dir not found: ${resolvedDir}`,
+  );
   process.exit(0);
 }
 
@@ -52,7 +56,9 @@ const maps = readdirSync(resolvedDir, { recursive: true }).filter(
 );
 
 if (maps.length === 0) {
-  console.warn(`[sentry-sourcemaps] No *.js.map files in ${resolvedDir}; nothing to upload.`);
+  console.warn(
+    `[sentry-sourcemaps] No *.js.map files in ${resolvedDir}; nothing to upload.`,
+  );
   process.exit(0);
 }
 
@@ -63,7 +69,7 @@ console.log(
 // Best-effort: if the sentry-cli platform binary isn't available (e.g. under
 // bun where its install script may not have downloaded it), skip with a
 // warning rather than failing the whole release build.
-const cliCheck = Bun.spawnSync(["bunx", "sentry-cli", "--version"], {
+const cliCheck = Bun.spawnSync(["bun", "x", "sentry-cli", "--version"], {
   env: { ...process.env, SENTRY_AUTH_TOKEN: authToken, SENTRY_ORG: org },
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -76,7 +82,8 @@ if (cliCheck.exitCode !== 0) {
 
 const proc = Bun.spawnSync(
   [
-    "bunx",
+    "bun",
+    "x",
     "sentry-cli",
     "sourcemaps",
     "upload",
@@ -95,7 +102,9 @@ const proc = Bun.spawnSync(
 );
 
 if (proc.exitCode !== 0) {
-  console.error(`[sentry-sourcemaps] Upload failed with exit code ${proc.exitCode}`);
+  console.error(
+    `[sentry-sourcemaps] Upload failed with exit code ${proc.exitCode}`,
+  );
   process.exit(proc.exitCode);
 }
 

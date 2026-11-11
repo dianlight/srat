@@ -41,14 +41,14 @@ check_dependencies() {
 	RUNNER=""
 
 	# Check for bunx or npmx (for JS tools)
-	if command -v bunx &>/dev/null; then
-		RUNNER="bunx"
-		print_status "info" "Using bunx for running JS CLI tools"
+	if command -v bun &>/dev/null; then
+		RUNNER="bun x"
+		print_status "info" "Using bun x for running JS CLI tools"
 	elif command -v npx &>/dev/null; then
 		RUNNER="npx"
 		print_status "info" "Using npx for running JS CLI tools"
 	else
-		missing_deps+=("bunx or npx (JS CLI runner)")
+		missing_deps+=("bun or npx (JS CLI runner)")
 	fi
 
 	# Check for Vale (prose linter)
@@ -178,7 +178,7 @@ case "${1:-}" in
 	echo
 	echo "Dependencies:"
 	echo "  Required:"
-	echo "    - bunx or npx (JavaScript CLI runner)"
+	echo "    - bun or npx (JavaScript CLI runner)"
 	echo "  Optional:"
 	echo "    - Vale (prose linter)"
 	echo
@@ -192,12 +192,12 @@ case "${1:-}" in
 	print_status "info" "Running auto-fix for formatting issues..."
 
 	# Detect runner
-	if command -v bunx &>/dev/null; then
-		RUNNER="bunx"
+	if command -v bun &>/dev/null; then
+		RUNNER="bun x"
 	elif command -v npx &>/dev/null; then
 		RUNNER="npx"
 	else
-		print_status "error" "No JS CLI runner found (bunx or npx required)"
+		print_status "error" "No JS CLI runner found (bun or npx required)"
 		exit 1
 	fi
 
@@ -224,12 +224,12 @@ case "${1:-}" in
 	;;
 "--markdownlint-fix-only")
 	check_dependencies
-	if command -v bunx &>/dev/null; then
-		RUNNER="bunx"
+	if command -v bun &>/dev/null; then
+		RUNNER="bun x"
 	elif command -v npx &>/dev/null; then
 		RUNNER="npx"
 	else
-		print_status "error" "No JS CLI runner found (bunx or npx required)"
+		print_status "error" "No JS CLI runner found (bun or npx required)"
 		exit 1
 	fi
 	mapfile -t md_files < <(get_markdown_files markdownlint)
