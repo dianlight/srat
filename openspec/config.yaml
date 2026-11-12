@@ -8,6 +8,11 @@ schema: spec-driven
 #   context: |
 #     Designs and tasks must cover Windows, macOS, and Linux
 #     Write all artifacts in Spanish
+context: |
+      Designs and task must cover Linux on different architecture and be testable on MacOS
+      Running environment is under docker app in an HomeAssistant OS envornment
+      Write all artifacts in English
+
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
@@ -18,6 +23,12 @@ schema: spec-driven
 #       - Always state what is out of scope
 #     tasks:
 #       - Break tasks into chunks of max 2 hours
+
+rules:
+  proposal:
+    - Always conider the backend/frontend/custom_component/oauth_brocker divisions and competence
+  tasks:
+    - Every UI task includes a Playwright test
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
@@ -30,3 +41,12 @@ schema: spec-driven
 #     archive:
 #       guidance:
 #         - Summarize the archive outcome before finishing
+
+operations:
+  apply:
+    guidance:
+      - Run the linter before marking a task complete
+      - Run test-remote-environment skill to create and test the task
+  archive:
+    guidance:
+      - Summarize what shipped before archiving

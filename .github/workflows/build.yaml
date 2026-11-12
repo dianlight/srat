@@ -279,9 +279,20 @@ jobs:
 
       - name: Install Ubuntu Packages for Tests
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs ntfs-3g
+          set -euo pipefail
+          # Runner DNS blips (Temporary failure resolving archive.ubuntu.com) otherwise
+          # abort the job with apt exit 100; retry with backoff and per-acquire retries.
+          APT_OPTS=(-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+          for attempt in 1 2 3; do
+            if sudo apt-get "${APT_OPTS[@]}" update \
+              && sudo apt-get "${APT_OPTS[@]}" install -y --no-install-recommends \
+                   fuse3 exfatprogs btrfs-progs dosfstools hfsprogs f2fs-tools xfsprogs ntfs-3g; then
+              exit 0
+            fi
+            echo "apt attempt ${attempt} failed; retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       - name: Test Backend ${{ needs.setversion.outputs.version }}
         id: test_backend

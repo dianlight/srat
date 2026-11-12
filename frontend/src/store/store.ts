@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { useDispatch, useSelector } from "react-redux";
+
 import { errorSlice } from "./errorSlice";
 import { githubApi } from "./githubApi";
 import { githubRestApi } from "./githubRestApi";
@@ -33,6 +34,15 @@ export const store = configureStore({
   // No need for @redux-devtools/extension package - RTK handles it automatically
   // DevTools will be enabled in development mode and disabled in production
   devTools: process.env.NODE_ENV !== "production",
+  // Why: the default "raf" auto-batch enhancer calls the global cancelAnimationFrame from
+  // its queued callback. Under Vitest, happy-dom's teardown deletes that global while a
+  // callback is still pending, which surfaces as an unhandled "cancelAnimationFrame is not
+  // defined" ReferenceError. Microtask batching drains before teardown; production keeps
+  // the default RAF batching.
+  enhancers: (getDefaultEnhancers) =>
+    getDefaultEnhancers({
+      autoBatch: process.env.NODE_ENV === "test" ? { type: "tick" } : undefined,
+    }),
 });
 
 setupListeners(store.dispatch);
