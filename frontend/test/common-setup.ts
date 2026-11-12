@@ -146,7 +146,7 @@ if (!(globalThis as any).IntersectionObserver) {
 const rafPolyfill = (cb: (ts: number) => void) =>
   setTimeout(() => cb(Date.now()), 0);
 const cafPolyfill = (id: any) => clearTimeout(id);
-if (typeof Object.prototype.requestAnimationFrame !== "function") {
+if (typeof (Object.prototype as any).requestAnimationFrame !== "function") {
   Object.defineProperty(Object.prototype, "requestAnimationFrame", {
     value: rafPolyfill,
     writable: true,
@@ -154,7 +154,7 @@ if (typeof Object.prototype.requestAnimationFrame !== "function") {
     enumerable: false,
   });
 }
-if (typeof Object.prototype.cancelAnimationFrame !== "function") {
+if (typeof (Object.prototype as any).cancelAnimationFrame !== "function") {
   Object.defineProperty(Object.prototype, "cancelAnimationFrame", {
     value: cafPolyfill,
     writable: true,
