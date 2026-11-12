@@ -23,7 +23,7 @@ bun = "github:oven-sh/bun"
 
 [tools]
 go = "1.27.3"
-act = "0.2.96"
+act = "0.2.97"
 vale = "3.26.0"
 markdownlint-cli2 = "0.24.0"
 "npm:doctoc" = "2.5.0"
