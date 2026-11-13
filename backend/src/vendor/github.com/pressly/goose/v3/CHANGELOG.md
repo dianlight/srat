@@ -7,6 +7,27 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [v3.30.0] - 2026-11-10
+
+### Added
+
+- Container image at `ghcr.io/pressly/goose` for `linux/amd64` and `linux/arm64`, published on
+  each release. The image is based on distroless static, runs as a nonroot user, and supports
+  `.sql` migrations only (#1093)
+
+### Changed
+
+- Various dependency upgrades
+- SQL parser: reduce memory use when parsing migration files, and make parsing much faster when
+  the race detector is on (#1155, #1156)
+
+### Fixed
+
+- CLI: `goose validate` failed on Go migrations that register an inlined function (#1110)
+- Provider: SQL-only migrations with unpadded versions (`1_`, `2_`, `10_`) were sorted by
+  filename instead of version. This affected `ListSources` and `GetVersions`, as well as `Up`
+  when versioning was disabled (#1124)
+
 ## [v3.29.0] - 2026-10-11
 
 ### Added
@@ -366,7 +387,8 @@ Here's a quick summary:
 - Add new `context.Context`-aware functions and methods, for both sql and go migrations.
 - Return error when no migration files found or dir is not a directory.
 
-[Unreleased]: https://github.com/pressly/goose/compare/v3.29.0...HEAD
+[Unreleased]: https://github.com/pressly/goose/compare/v3.30.0...HEAD
+[v3.30.0]: https://github.com/pressly/goose/compare/v3.29.0...v3.30.0
 [v3.29.0]: https://github.com/pressly/goose/compare/v3.28.0...v3.29.0
 [v3.28.0]: https://github.com/pressly/goose/compare/v3.27.3...v3.28.0
 [v3.27.3]: https://github.com/pressly/goose/compare/v3.27.2...v3.27.3

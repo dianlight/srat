@@ -206,9 +206,44 @@ again:
 	}
 }
 
-// Close frees the resources of t.
+// Close frees the resources of t: every stack segment, every alloca and the
+// thread registration. It does not depend on the Alloc/Free pairs and the
+// alloca regions of the frames having balanced, so it also cleans up after a
+// recovered panic that skipped their frees, or when t is closed from under a
+// call that still has frames on it.
 func (t *TLS) Close() {
-	t.Free(int(unsafe.Sizeof(int32(0))))
+	t.freeMemory()
+	t.pthreadData.close(t)
+	*t = TLS{}
+}
+
+// freeMemory frees the memory of t, see Close, and leaves its other fields
+// alone.
+func (t *TLS) freeMemory() {
+	t.allocaClose()
+	// t.stack is the header of the current segment, the other segments hold
+	// their own. Store it, then walk the chain from the first segment: prev
+	// links lead back to it and next links lead forward, through the empty
+	// segments kept by stackFrameKeepalive.
+	if t.stack.page != 0 {
+		*(*stackHeader)(unsafe.Pointer(t.stack.page)) = t.stack
+		p := t.stack.page
+		for q := t.stack.prev; q != 0; q = (*stackHeader)(unsafe.Pointer(q)).prev {
+			p = q
+		}
+		for p != 0 {
+			next := (*stackHeader)(unsafe.Pointer(p)).next
+			if memgrind {
+				if atomic.AddInt32(&t.stackHeaderBalance, -1) < 0 {
+					panic(todo("negative stack header balance"))
+				}
+			}
+			Xfree(t, p)
+			p = next
+		}
+		t.stack = stackHeader{}
+		t.sp = 0
+	}
 	if memgrind {
 		if t.stackHeaderBalance != 0 {
 			panic(todo("non zero stack header balance: %d", t.stackHeaderBalance))
@@ -216,8 +251,6 @@ func (t *TLS) Close() {
 
 		atomic.AddInt32(&tlsBalance, -1)
 	}
-	t.pthreadData.close(t)
-	*t = TLS{}
 }
 
 // Alloc allocates n bytes of thread-local storage. It must be paired with a
