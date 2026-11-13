@@ -46,16 +46,16 @@ func (suite *SambaDefaultsTestSuite) TestNtfsDefaults() {
 	suite.Equal("0", byName["uid"])
 	suite.Equal("0", byName["gid"])
 
-	suite.Equal("", adapter.GetSambaForceUser())
-	suite.Equal("", adapter.GetSambaForceGroup())
+	suite.Empty(adapter.GetSambaForceUser())
+	suite.Empty(adapter.GetSambaForceGroup())
 }
 
 func (suite *SambaDefaultsTestSuite) TestNtfsAliasDefaults() {
 	for _, alias := range []string{"ntfs3", "ntfs-3g", "fuseblk"} {
 		adapter := suite.adapter(alias)
 		suite.NotEmpty(adapter.GetDefaultMountFlags(), "alias %s", alias)
-		suite.Equal("", adapter.GetSambaForceUser(), "alias %s", alias)
-		suite.Equal("", adapter.GetSambaForceGroup(), "alias %s", alias)
+		suite.Empty(adapter.GetSambaForceUser(), "alias %s", alias)
+		suite.Empty(adapter.GetSambaForceGroup(), "alias %s", alias)
 	}
 }
 
