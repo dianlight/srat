@@ -505,6 +505,9 @@ func (h *UdevHandler) HandlePartitionUdevRemoveEvent(devName string) {
 				continue
 			}
 			mountCopy := mountPoint
+			if mountCopy.IsHAMounted || IsHAManagedMountPath(mountCopy.Path) {
+				continue
+			}
 			if err := h.orchestrator.unmountVolume(&mountCopy, true); err != nil {
 				slog.WarnContext(h.ctx, "Failed to unmount path during partition remove handling", "path", mountCopy.Path, "devname", devName, "err", err)
 			}
@@ -583,6 +586,26 @@ func (h *UdevHandler) HandlePartitionEvent(ctx context.Context, e events.Partiti
 	return h.SyncPartitionMountData(ctx, e.Disk, e.Partition, mountInfos)
 }
 
+// haUsageMountPrefixes are the addon-visible directories Home Assistant uses
+// for Supervisor mount usage types. A block-device mount below one of these
+// was created by Home Assistant (2026.11+ local disk storage), not by SRAT,
+// because SRAT always mounts under /mnt. See
+// https://contributors.home-assistant.io/apps/supervisor-api/models/#mount
+var haUsageMountPrefixes = []string{"/share/", "/media/", "/backup/"}
+
+// IsHAManagedMountPath reports whether path is a mount point owned by Home
+// Assistant rather than SRAT. The trailing slash keeps the bare usage roots
+// (/share, /media, /backup) out: those are native bind mounts, not disks.
+func IsHAManagedMountPath(path string) bool {
+	trimmed := strings.TrimSpace(path)
+	for _, prefix := range haUsageMountPrefixes {
+		if strings.HasPrefix(trimmed, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 // SyncPartitionMountData reconciles a partition's mount points with the
 // current procfs snapshot: it loads persisted mount points from the
 // repository, adds missing ones to the in-memory cache, updates mount points
@@ -606,6 +629,15 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 	}
 	// Add missing mount points from DB to in-memory cache
 	for _, md := range mountData {
+		// HA ownership is derived at runtime (2026.11+ local disk storage)
+		// and is never persisted; re-derive it from the path so a DB-loaded
+		// mount point keeps the correct flag even before the procfs loop.
+		if IsHAManagedMountPath(md.Path) {
+			md.IsHAMounted = true
+			if md.Type == "" || md.Type == "ADDON" {
+				md.Type = "HOST"
+			}
+		}
 		err := h.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *md)
 		if err != nil {
 			slog.WarnContext(h.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", md.Path, "err", err)
@@ -617,6 +649,7 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 	tlog.TraceContext(ctx, "Synchronizing mount points for partition", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_data_count", len(mountData), "procfs_mounts_count", len(mountInfos))
 	for _, prtstate := range mountInfos {
 		iw := osutil.IsWritable(prtstate.MountPoint)
+		isHAManaged := IsHAManagedMountPath(prtstate.MountPoint)
 		if mountPoint, ok := h.disks.GetMountPoint(*part.DiskId, *part.Id, prtstate.MountPoint); ok {
 			tlog.TraceContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
@@ -632,7 +665,11 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 				slog.WarnContext(ctx, "Failed to scan custom mount flags", "mount_path", prtstate.MountPoint, "error", err)
 			}
 			mountPoint.FSType = &prtstate.FSType
+			mountPoint.IsHAMounted = isHAManaged
 			mountPoint.Type = "ADDON"
+			if isHAManaged {
+				mountPoint.Type = "HOST"
+			}
 			err := h.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *mountPoint)
 			if err != nil {
 				slog.WarnContext(h.ctx, "Failed to add mount point to disk map", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", mountPoint.Path, "err", err)
@@ -654,12 +691,16 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 				DeviceId:         *part.Id,
 				IsWriteSupported: &iw,
 				IsMounted:        true,
+				IsHAMounted:      isHAManaged,
 				Flags:            &dto.MountFlags{},
 				CustomFlags:      &dto.MountFlags{},
 				FSType:           &prtstate.FSType,
 				Type:             "ADDON",
 				Partition:        part,
 				RefreshVersion:   h.disks.CurrentRefreshVersion(),
+			}
+			if isHAManaged {
+				mountPoint.Type = "HOST"
 			}
 			if err := mountPoint.Flags.Scan(prtstate.Options); err != nil {
 				slog.WarnContext(ctx, "Failed to scan mount flags", "mount_path", prtstate.MountPoint, "error", err)
@@ -751,7 +792,7 @@ func (h *UdevHandler) HandleMountPointEvent(ctx context.Context, e events.MountP
 		slog.ErrorContext(ctx, "Failed to persist mount point on event", "mount_point", e.MountPoint, "err", err)
 		return err
 	}
-	if (e.Type == events.EventTypes.ADD || e.Type == events.EventTypes.UPDATE) && !e.MountPoint.IsMounted && e.MountPoint.IsToMountAtStartup != nil && *e.MountPoint.IsToMountAtStartup {
+	if (e.Type == events.EventTypes.ADD || e.Type == events.EventTypes.UPDATE) && !e.MountPoint.IsMounted && !e.MountPoint.IsHAMounted && e.MountPoint.IsToMountAtStartup != nil && *e.MountPoint.IsToMountAtStartup {
 		// #1340: Protected mode blocks mount(2) by design. Persist above
 		// stays so config is not lost, but never attempt the mount: skip
 		// quietly at info level without retry accounting, notifications,

@@ -203,6 +203,61 @@ func (s *MountOrchestratorTestSuite) TestUnmountVolume_ProtectedMode() {
 	s.Zero(s.mounter.unmountCalls)
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_HAManagedRejected() {
+	err := s.orchestrator.MountVolume(&dto.MountPointData{
+		Path:        "/share/usb",
+		Root:        "/",
+		DeviceId:    "part-x",
+		IsHAMounted: true,
+	})
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorHAManagedVolume)
+	s.Zero(s.mounter.mountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestUnmountVolume_HAManagedRejected() {
+	diskID, partID := "disk-ha", "part-ha"
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+	s.Require().NoError(s.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path:        "/share/usb",
+		DeviceId:    partID,
+		IsMounted:   true,
+		IsHAMounted: true,
+	}))
+
+	err := s.orchestrator.UnmountVolume("/share/usb", false)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorHAManagedVolume)
+	s.Zero(s.mounter.unmountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_HAManagedByPathOrCacheRejected() {
+	diskID, partID := "disk-ha2", "part-ha2"
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+	s.Require().NoError(s.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path:        "/share/usb",
+		DeviceId:    partID,
+		IsMounted:   true,
+		IsHAMounted: true,
+	}))
+
+	err := s.orchestrator.MountVolume(&dto.MountPointData{
+		Path:        "/share/usb",
+		Root:        "/",
+		DeviceId:    partID,
+		IsHAMounted: false,
+	})
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorHAManagedVolume)
+	s.Zero(s.mounter.mountCalls)
+}
+
 func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_NotFound() {
 	got, err := s.orchestrator.PatchMountPointSettings("/", "/mnt/orch-missing", dto.MountPointData{})
 	s.Require().Error(err)
@@ -257,6 +312,31 @@ func TestInferMountPointType(t *testing.T) {
 	}
 }
 
+func TestIsHAManagedMountPath(t *testing.T) {
+	cases := []struct {
+		path string
+		want bool
+	}{
+		{"/share/usb", true},
+		{"/media/usb", true},
+		{"/backup/usb", true},
+		{"/share/usb/nested", true},
+		{"/share", false},
+		{"/media", false},
+		{"/backup", false},
+		{"/mnt/usb", false},
+		{"/config", false},
+		{"", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.path, func(t *testing.T) {
+			if got := volume.IsHAManagedMountPath(tc.path); got != tc.want {
+				t.Errorf("IsHAManagedMountPath(%q) = %v, want %v", tc.path, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestShouldSkipAutomount(t *testing.T) {
 	native := "native"
 	nativeUpper := "NATIVE"
@@ -267,6 +347,9 @@ func TestShouldSkipAutomount(t *testing.T) {
 		want bool
 	}{
 		{"nil", nil, true},
+		{"ha managed path without flag", &dto.MountPointData{Path: "/share/usb"}, true},
+		{"ha managed share mount", &dto.MountPointData{Path: "/share/usb", FSType: &ext4, IsHAMounted: true}, true},
+		{"ha managed media mount", &dto.MountPointData{Path: "/media/usb", IsHAMounted: true}, true},
 		{"system path with ext4", &dto.MountPointData{Path: "/addon_configs", FSType: &ext4}, true},
 		{"system path without fstype", &dto.MountPointData{Path: "/addon_configs"}, true},
 		{"native fstype on data path", &dto.MountPointData{Path: "/mnt/data", FSType: &native}, true},

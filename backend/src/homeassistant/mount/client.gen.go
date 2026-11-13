@@ -23,6 +23,7 @@ const (
 // Defines values for MountType.
 const (
 	Cifs MountType = "cifs"
+	Disk MountType = "disk"
 	Nfs  MountType = "nfs"
 )
 
@@ -30,6 +31,8 @@ const (
 func (e MountType) Valid() bool {
 	switch e {
 	case Cifs:
+		return true
+	case Disk:
 		return true
 	case Nfs:
 		return true
@@ -61,6 +64,12 @@ func (e MountUsage) Valid() bool {
 
 // Mount defines model for Mount.
 type Mount struct {
+	// Device (disk mounts only) Device path of the partition
+	Device *string `json:"device,omitempty"`
+
+	// Filesystem (disk mounts only) File system of the partition
+	Filesystem *string `json:"filesystem,omitempty"`
+
 	// Name Name of the mount.
 	Name *string `json:"name,omitempty"`
 
@@ -91,8 +100,14 @@ type Mount struct {
 	// Usage Usage of the mount (backup, media, or share)
 	Usage *MountUsage `json:"usage,omitempty"`
 
+	// UserPath Where apps find the mount, for example /media/nas
+	UserPath *string `json:"user_path,omitempty"`
+
 	// Username (cifs mounts only) Username to use for authentication
 	Username *string `json:"username,omitempty"`
+
+	// Uuid (disk mounts only) UUID of the partition
+	Uuid *string `json:"uuid,omitempty"`
 }
 
 // MountType Type of the mount.

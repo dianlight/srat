@@ -13,6 +13,7 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/service/volume"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
 	"go.uber.org/fx"
@@ -101,6 +102,7 @@ type ShareServiceInterface interface {
 type ShareService struct {
 	ctx                context.Context
 	db                 *gorm.DB
+	disks              *dto.DiskMap
 	supervisor_service SupervisorServiceInterface
 	//exported_share_repo repository.ExportedShareRepositoryInterface
 	user_service UserServiceInterface
@@ -119,8 +121,9 @@ type ShareService struct {
 
 type ShareServiceParams struct {
 	fx.In
-	Ctx context.Context
-	Db  *gorm.DB
+	Ctx   context.Context
+	Db    *gorm.DB
+	Disks *dto.DiskMap `optional:"true"`
 	//	SupervisorService SupervisorServiceInterface `optional:"true"`
 	//ExportedShareRepo repository.ExportedShareRepositoryInterface
 	UserService UserServiceInterface
@@ -138,6 +141,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		//		supervisor_service: in.SupervisorService,
 		ctx:      in.Ctx,
 		db:       in.Db,
+		disks:    in.Disks,
 		eventBus: in.EventBus,
 		//defaultConfig:    in.DefaultConfig,
 		sharesQueueMutex: &sync.RWMutex{},
@@ -663,6 +667,9 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		return nil, errors.Wrap(err, "failed to verify share")
+	}
 	s.annotateStandardShareHidden(&dtoShare)
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
@@ -748,6 +755,11 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 	if share.Status == nil {
 		share.Status = &dto.SharedResourceStatus{}
 	}
+
+	// HA ownership and live mount state are derived from the volume cache;
+	// keep the share annotation in sync before validating it.
+	enrichSharePartitionFromCache(share, s.disks)
+	share.Status.IsHAMounted = share.MountPointData != nil && (share.MountPointData.IsHAMounted || (share.MountPointData.Path != "" && volume.IsHAManagedMountPath(share.MountPointData.Path)))
 
 	// Issue #898/#900: standard share names (legacy and new) expose the new
 	// application-based directories. Check directory existence FIRST for

@@ -33,8 +33,11 @@ export interface PartitionActionOptions {
   onToggleAutomount: (partition: Partition) => void;
   onMount: (partition: Partition) => void;
   onUnmount: (partition: Partition, force: boolean) => void;
-  onCreateShare: (partition: Partition) => void;
-  onGoToShare: (partition: Partition) => void;
+  onCreateShare: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;
@@ -64,9 +67,47 @@ export function getPartitionActionItems({
         !(entry as MountPointData)?.is_mounted
       ),
   );
+
+  // Home Assistant owns the mount lifecycle for its local disks (2026.11+
+  // storage): no mount/unmount/automount/format/label actions. A share on the
+  // volume can still be created or opened from here.
+  //
+  // This branch MUST run before the host_mount_point_data guard below: an
+  // HA-managed disk always surfaces its host-namespace mount under
+  // host_mount_point_data (e.g. /mnt/data/supervisor/media/<name>), and that
+  // guard would otherwise return null first and hide the only supported
+  // action (Create Share / Go to Share).
+  const haMpd = liveEntries.find(
+    (entry) => (entry as MountPointData)?.is_ha_mounted,
+  ) as MountPointData | undefined;
+
+  if (protectedMode || partition.name?.startsWith("hassos-")) {
+    return null;
+  }
+
+  if (haMpd) {
+    if (haMpd.share) {
+      return [
+        {
+          key: "go-to-share",
+          title: "Go to Share",
+          color: undefined,
+          onClick: () => onGoToShare(partition, haMpd),
+        },
+      ];
+    }
+    // Sharing an HA-mounted disk is the primary supported use case.
+    return [
+      {
+        key: "create-share",
+        title: "Create Share",
+        color: "success",
+        onClick: () => onCreateShare(partition, haMpd),
+      },
+    ];
+  }
+
   if (
-    protectedMode ||
-    partition.name?.startsWith("hassos-") ||
     Object.values(partition.host_mount_point_data || {}).length > 0 ||
     liveEntries.length > 1
   ) {

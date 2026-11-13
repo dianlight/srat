@@ -310,6 +310,34 @@ func (suite *FilesystemHandlerSuite) TestFormatPartition_Success() {
 	suite.True(result.Success)
 }
 
+func (suite *FilesystemHandlerSuite) TestFormatPartition_HAManagedRejected() {
+	partitionID := "ha-partition-id"
+	devicePath := "/dev/sdb2"
+	fsType := "ext4"
+	diskID := "ha-disk-id"
+
+	partition := dto.Partition{
+		Id:               &partitionID,
+		LegacyDevicePath: &devicePath,
+		FsType:           &fsType,
+	}
+	partitions := map[string]dto.Partition{partitionID: partition}
+	suite.Require().NoError(suite.diskMap.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &partitions}))
+	suite.Require().NoError(suite.diskMap.AddOrUpdateMountPoint(diskID, partitionID, dto.MountPointData{
+		Path:        "/share/usb",
+		DeviceId:    partitionID,
+		IsMounted:   true,
+		IsHAMounted: true,
+	}))
+
+	resp := suite.testAPI.Post("/filesystem/format", map[string]any{
+		"partitionId":    partitionID,
+		"filesystemType": fsType,
+	})
+
+	suite.Equal(http.StatusConflict, resp.Code)
+}
+
 func (suite *FilesystemHandlerSuite) TestFormatPartition_PartitionNotFound() {
 	// diskMap is empty by default (no partitions found)
 

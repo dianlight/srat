@@ -14,6 +14,30 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 	if share == nil || share.MountPointData == nil || disks == nil {
 		return
 	}
+
+	// Reflect the live mount-point state from the volume cache: HA ownership,
+	// mounted/invalid flags and write support are derived at runtime and are
+	// never persisted on the share's mount row.
+	if share.MountPointData.Path != "" {
+		if mp, ok := disks.GetMountPointByPath(share.MountPointData.Path); ok {
+			share.MountPointData.IsHAMounted = mp.IsHAMounted || volume.IsHAManagedMountPath(share.MountPointData.Path)
+			share.MountPointData.IsMounted = mp.IsMounted
+			share.MountPointData.IsInvalid = mp.IsInvalid
+			if mp.IsWriteSupported != nil {
+				share.MountPointData.IsWriteSupported = mp.IsWriteSupported
+			}
+		} else {
+			// Cache miss: still derive HA ownership from the path so a share
+			// on an HA-managed mount is never misclassified.
+			if volume.IsHAManagedMountPath(share.MountPointData.Path) {
+				share.MountPointData.IsHAMounted = true
+				if share.MountPointData.Type == "" || share.MountPointData.Type == "ADDON" {
+					share.MountPointData.Type = "HOST"
+				}
+			}
+		}
+	}
+
 	if share.MountPointData.Partition != nil && share.MountPointData.Partition.FsType != nil && *share.MountPointData.Partition.FsType != "" {
 		if share.MountPointData.FSType == nil || *share.MountPointData.FSType == "" {
 			share.MountPointData.FSType = share.MountPointData.Partition.FsType

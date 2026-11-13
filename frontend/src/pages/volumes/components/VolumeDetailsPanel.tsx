@@ -15,9 +15,11 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useMemo, useState } from "react";
+
 import { PreviewDialog } from "../../../components/PreviewDialog";
 import {
   type Disk,
+  type MountPointData,
   type Partition,
   type Settings,
   useGetApiSettingsQuery,
@@ -35,8 +37,11 @@ export interface DetailsActions {
   onToggleAutomount?: (partition: Partition) => void;
   onMount?: (partition: Partition) => void;
   onUnmount?: (partition: Partition, force: boolean) => void;
-  onCreateShare?: (partition: Partition) => void;
-  onGoToShare?: (partition: Partition) => void;
+  onCreateShare?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare?: (partition: Partition, mountPointData?: MountPointData) => void;
   onLabelUpdated?: (partitionId: string, label: string) => void;
   protectedMode?: boolean;
   readOnly?: boolean;
@@ -53,8 +58,11 @@ interface VolumeDetailsPanelProps {
   onToggleAutomount?: (partition: Partition) => void;
   onMount?: (partition: Partition) => void;
   onUnmount?: (partition: Partition, force: boolean) => void;
-  onCreateShare?: (partition: Partition) => void;
-  onGoToShare?: (partition: Partition) => void;
+  onCreateShare?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare?: (partition: Partition, mountPointData?: MountPointData) => void;
   onLabelUpdated?: (partitionId: string, label: string) => void;
   // share?: SharedResource;
 }
@@ -443,6 +451,7 @@ export function VolumeDetailsPanel(props: VolumeDetailsPanelProps) {
         {partition &&
           isMounted &&
           mountData &&
+          !mountData.is_ha_mounted &&
           Object.values(partition.mount_point_data || {}).length === 1 && (
             <Card>
               <CardHeader

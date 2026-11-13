@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { Partition } from "../../../store/sratApi";
+
+import type { MountPointData, Partition } from "../../../store/sratApi";
 import { getPartitionActionItems } from "../components/PartitionActionItems";
 
 export interface UsePartitionActionsParams {
@@ -8,8 +9,11 @@ export interface UsePartitionActionsParams {
   onToggleAutomount?: (partition: Partition) => void;
   onMount?: (partition: Partition) => void;
   onUnmount?: (partition: Partition, force: boolean) => void;
-  onCreateShare?: (partition: Partition) => void;
-  onGoToShare?: (partition: Partition) => void;
+  onCreateShare?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare?: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;

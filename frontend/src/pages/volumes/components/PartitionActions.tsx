@@ -23,8 +23,9 @@ import {
   useTheme,
 } from "@mui/material";
 import { type ReactElement, useState } from "react";
+
 import { FontAwesomeSvgIcon } from "../../../components/FontAwesomeSvgIcon";
-import type { Partition } from "../../../store/sratApi";
+import type { MountPointData, Partition } from "../../../store/sratApi";
 import { usePartitionActions } from "../hooks/usePartitionActions";
 import type { PartitionActionKey } from "./PartitionActionItems";
 
@@ -34,8 +35,11 @@ interface PartitionActionsProps {
   onToggleAutomount: (partition: Partition) => void;
   onMount: (partition: Partition) => void;
   onUnmount: (partition: Partition, force: boolean) => void;
-  onCreateShare: (partition: Partition) => void;
-  onGoToShare: (partition: Partition) => void;
+  onCreateShare: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;

@@ -508,4 +508,24 @@ describe("VolumeDetailsPanel", () => {
         ).toBeTruthy();
         expect(screen.queryByText("Partition Information")).toBeNull();
     });
+    it("renders the Managed by Home Assistant chip and hides Mount Settings for an HA-managed partition", async () => {
+        const partition = createPartition({
+            mount_point_data: {
+                "/share/usb": {
+                    path: "/share/usb",
+                    fstype: "ext4",
+                    is_mounted: true,
+                    is_ha_mounted: true,
+                },
+            },
+        });
+
+        await renderPanel({ disk: baseDisk as any, partition });
+
+        expect(
+            await screen.findByText("Managed by Home Assistant"),
+        ).toBeTruthy();
+        expect(screen.queryByText("Mount Settings")).toBeNull();
+    });
+
 });

@@ -2,9 +2,11 @@ import * as Sentry from "@sentry/react";
 import type { useConfirm } from "material-ui-confirm";
 import type { NavigateFunction } from "react-router";
 import { toast } from "react-toastify";
+
 import { type LocationState, TabIDs } from "../../store/locationState";
 import type {
   Disk,
+  MountPointData,
   Partition,
   PatchApiVolumeSettingsApiArg,
 } from "../../store/sratApi";
@@ -333,15 +335,15 @@ export function findPartitionByMountPath(
 export function navigateToCreateShare(
   navigate: NavigateFunction,
   partition: Partition,
+  mountPointData?: MountPointData,
 ): void {
-  const firstMountPointData = Object.values(
-    partition.mount_point_data || {},
-  )[0];
-  if (firstMountPointData?.path) {
+  const resolvedMountPointData =
+    mountPointData ?? Object.values(partition.mount_point_data || {})[0];
+  if (resolvedMountPointData?.path) {
     navigate("/", {
       state: {
         tabId: TabIDs.SHARES,
-        newShareData: firstMountPointData,
+        newShareData: resolvedMountPointData,
       } as LocationState,
     });
   } else {
@@ -354,8 +356,11 @@ export function navigateToCreateShare(
 export function navigateToShare(
   navigate: NavigateFunction,
   partition: Partition,
+  mountPointData?: MountPointData,
 ): void {
-  const share = Object.values(partition.mount_point_data || {})[0]?.share;
+  const share =
+    mountPointData?.share ??
+    Object.values(partition.mount_point_data || {})[0]?.share;
   if (share?.name) {
     navigate("/", {
       state: { tabId: TabIDs.SHARES, shareName: share.name } as LocationState,
