@@ -33,8 +33,11 @@ export interface PartitionActionOptions {
   onToggleAutomount: (partition: Partition) => void;
   onMount: (partition: Partition) => void;
   onUnmount: (partition: Partition, force: boolean) => void;
-  onCreateShare: (partition: Partition) => void;
-  onGoToShare: (partition: Partition) => void;
+  onCreateShare: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;
@@ -89,7 +92,7 @@ export function getPartitionActionItems({
           key: "go-to-share",
           title: "Go to Share",
           color: undefined,
-          onClick: () => onGoToShare(partition),
+          onClick: () => onGoToShare(partition, haMpd),
         },
       ];
     }
@@ -99,7 +102,7 @@ export function getPartitionActionItems({
         key: "create-share",
         title: "Create Share",
         color: "success",
-        onClick: () => onCreateShare(partition),
+        onClick: () => onCreateShare(partition, haMpd),
       },
     ];
   }

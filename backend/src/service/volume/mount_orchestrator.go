@@ -418,7 +418,7 @@ func (o *MountOrchestrator) UnmountVolume(path string, force bool) errors.E {
 
 	// Look up mount point data from in-memory cache first
 	md, ok := o.disks.GetMountPointByPath(path)
-	if ok && md.IsHAMounted {
+	if (ok && md.IsHAMounted) || IsHAManagedMountPath(path) {
 		return errors.WithDetails(dto.ErrorHAManagedVolume,
 			"Operation", "UnmountVolume",
 			"Path", path,
@@ -603,6 +603,10 @@ func (o *MountOrchestrator) PatchMountPointSettings(root string, path string, pa
 	}
 	if convErr := o.conv.MountPointPathToMountPointData(dbMountData, &currentDto, disksContext); convErr != nil {
 		return nil, errors.WithStack(convErr)
+	}
+	// IsHAMounted is runtime-only and is not restored by the converter; keep it across the cache write.
+	if mp, ok := o.disks.GetMountPointByPath(path); (ok && mp.IsHAMounted) || IsHAManagedMountPath(path) {
+		currentDto.IsHAMounted = true
 	}
 	// Update cached mount point data
 	if currentDto.Partition != nil && currentDto.Partition.DiskId != nil && currentDto.Partition.Id != nil {

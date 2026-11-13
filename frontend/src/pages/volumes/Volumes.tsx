@@ -9,6 +9,7 @@ import {
 import { useConfirm } from "material-ui-confirm";
 import { useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
+
 import { PreviewDialog } from "../../components/PreviewDialog";
 import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { useVolume } from "../../hooks/volumeHook";
@@ -16,6 +17,7 @@ import { type LocationState, TabIDs } from "../../store/locationState";
 import {
   type Disk,
   type FilesystemState,
+  type MountPointData,
   type Partition,
   sratApi,
   useDeleteApiVolumeMutation,
@@ -97,11 +99,15 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     );
   }
 
-  const handleCreateShare = (partition: Partition) =>
-    navigateToCreateShare(navigate, partition);
+  const handleCreateShare = (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => navigateToCreateShare(navigate, partition, mountPointData);
 
-  const handleGoToShare = (partition: Partition) =>
-    navigateToShare(navigate, partition);
+  const handleGoToShare = (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => navigateToShare(navigate, partition, mountPointData);
 
   function onSubmitUmountVolume(partition: Partition, force = false) {
     requestUnmountVolume({

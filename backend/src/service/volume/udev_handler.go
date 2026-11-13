@@ -505,6 +505,9 @@ func (h *UdevHandler) HandlePartitionUdevRemoveEvent(devName string) {
 				continue
 			}
 			mountCopy := mountPoint
+			if mountCopy.IsHAMounted || IsHAManagedMountPath(mountCopy.Path) {
+				continue
+			}
 			if err := h.orchestrator.unmountVolume(&mountCopy, true); err != nil {
 				slog.WarnContext(h.ctx, "Failed to unmount path during partition remove handling", "path", mountCopy.Path, "devname", devName, "err", err)
 			}

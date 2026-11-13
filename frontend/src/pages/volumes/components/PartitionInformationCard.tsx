@@ -18,8 +18,10 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { useMemo } from "react";
+
 import {
   type FilesystemState,
+  type MountPointData,
   type Partition,
   Time_machine_support,
   useGetApiFilesystemStateQuery,
@@ -35,8 +37,11 @@ interface PartitionInformationCardProps {
   onToggleAutomount?: (partition: Partition) => void;
   onMount?: (partition: Partition) => void;
   onUnmount?: (partition: Partition, force: boolean) => void;
-  onCreateShare?: (partition: Partition) => void;
-  onGoToShare?: (partition: Partition) => void;
+  onCreateShare?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare?: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: () => void;
   onSetFilesystemLabel?: () => void;
   onFormatPartition?: () => void;

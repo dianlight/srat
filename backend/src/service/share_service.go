@@ -667,6 +667,9 @@ func (s *ShareService) setShareEnabled(name string, enabled bool) (*dto.SharedRe
 	if errS != nil {
 		return nil, errors.Wrap(errS, "failed to convert share")
 	}
+	if err := s.VerifyShare(&dtoShare); err != nil {
+		return nil, errors.Wrap(err, "failed to verify share")
+	}
 	s.annotateStandardShareHidden(&dtoShare)
 	_ = s.eventBus.EmitShare(events.ShareEvent{
 		Type:  events.EventTypes.UPDATE,
