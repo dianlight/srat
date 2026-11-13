@@ -28,9 +28,9 @@ func TestExtractMajorMinor(t *testing.T) {
 		{name: "empty device", device: "", expectError: true},
 	}
 
-	// Values that fit in uint32 but only fit in int on 64-bit platforms.
-	// On 32-bit platforms math.MaxInt is 2147483647, so these must be rejected
-	// by the explicit MaxInt bound check in extractMajorMinor.
+	// Values that fit in int32 but not in uint32 were accepted on 64-bit
+	// platforms previously; the explicit MaxInt32 bound in extractMajorMinor now
+	// rejects them on all platforms.
 	// wantMinor is int64 so the literals compile on both 32-bit and 64-bit.
 	platformCases := []struct {
 		name      string
@@ -41,7 +41,7 @@ func TestExtractMajorMinor(t *testing.T) {
 		{name: "max uint32", device: "/dev/loop4294967295", wantMinor: 4294967295},
 	}
 	for _, tt := range platformCases {
-		if int64(math.MaxInt) < tt.wantMinor {
+		if int64(math.MaxInt32) < tt.wantMinor {
 			tests = append(tests, struct {
 				name          string
 				device        string

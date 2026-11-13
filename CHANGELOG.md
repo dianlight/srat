@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- **Security**: resolve open CodeQL alerts — zip-slip hardening in custom component install (`homeassistant_component_service.go`) and integer-conversion bound in `osutil_linux.go`; add actions-language CodeQL analysis for workflow permission checks.
+
 ### 🏗 Chore
 
 ## 2026.10.1

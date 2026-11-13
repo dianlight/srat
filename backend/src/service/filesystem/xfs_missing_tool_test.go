@@ -7,7 +7,6 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -90,9 +89,9 @@ func (suite *XfsMissingToolTestSuite) TestGetLabel_GenuineFailureStillReports() 
 	defer adapter.invalidateCommandResultCache()
 
 	label, err := adapter.GetLabel(suite.ctx, "/dev/fake-xfs-genuine-failure")
-	require.Error(suite.T(), err)
-	assert.Empty(suite.T(), label)
-	assert.Contains(suite.T(), err.Error(), "xfs_admin")
+	suite.Require().Error(err)
+	suite.Empty(label)
+	suite.Contains(err.Error(), "xfs_admin")
 }
 
 func (suite *XfsMissingToolTestSuite) TestGetLabel_SuccessParsesLabel() {

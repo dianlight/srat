@@ -186,6 +186,23 @@ func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_Rej
 	suite.Contains(err.Error(), "illegal file path")
 }
 
+func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_HandlesSkippedEntries() {
+	// Build an archive that exercises the skipped-entry branches.
+	buffer := new(bytes.Buffer)
+	writer := zip.NewWriter(buffer)
+	writer.Create(".")    // cleanedName == "."
+	writer.Create("srat") // relativeName == CustomComponentSRATName -> skip
+	de, _ := writer.Create("subdir/")
+	de.Write([]byte(""))
+	// manifest under nested dir to keep manifest check? manifest at root
+	me, _ := writer.Create("manifest.json")
+	me.Write([]byte(`{"version":"2026.05.1"}`))
+	writer.Close()
+
+	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), buffer.Bytes())
+	suite.Require().NoError(err)
+}
+
 func (suite *HomeAssistantComponentServiceSuite) TestInstallOrUpgradeFromZip_RejectsEmptyArchive() {
 	err := suite.service.InstallOrUpgradeFromZip(suite.T().Context(), nil)
 	suite.Require().Error(err)

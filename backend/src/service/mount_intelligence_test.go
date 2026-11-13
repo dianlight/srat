@@ -149,8 +149,8 @@ func TestEnrichExportedShareForceUserGroup_NtfsOmitsForceUser(t *testing.T) {
 		dbs := dbom.ExportedShare{}
 		ft := fsType
 		enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{FSType: &ft}, stubForceUserGroupProber{user: "root", group: "root"})
-		assert.Equal(t, "", dbs.ForceUser, fsType)
-		assert.Equal(t, "", dbs.ForceGroup, fsType)
+		assert.Empty(t, dbs.ForceUser, fsType)
+		assert.Empty(t, dbs.ForceGroup, fsType)
 	}
 }
 
@@ -166,8 +166,8 @@ func TestEnrichExportedShareForceUserGroup_FallsBackToPartitionFsType(t *testing
 	dbs := dbom.ExportedShare{}
 	partFs := "ntfs3"
 	enrichExportedShareForceUserGroup(&dbs, &dto.MountPointData{Partition: &dto.Partition{FsType: &partFs}}, stubForceUserGroupProber{user: "root", group: "root"})
-	assert.Equal(t, "", dbs.ForceUser)
-	assert.Equal(t, "", dbs.ForceGroup)
+	assert.Empty(t, dbs.ForceUser)
+	assert.Empty(t, dbs.ForceGroup)
 }
 
 func TestEnrichExportedShareForceUserGroup_UnknownFsFallsBackToRoot(t *testing.T) {
@@ -188,13 +188,13 @@ func TestEnrichExportedShareForceUserGroup_RealFilesystemService(t *testing.T) {
 
 	ntfs := dbom.ExportedShare{}
 	enrichExportedShareForceUserGroup(&ntfs, &dto.MountPointData{FSType: new("ntfs")}, prober)
-	assert.Equal(t, "", ntfs.ForceUser)
-	assert.Equal(t, "", ntfs.ForceGroup)
+	assert.Empty(t, ntfs.ForceUser)
+	assert.Empty(t, ntfs.ForceGroup)
 
 	ntfs3 := dbom.ExportedShare{}
 	enrichExportedShareForceUserGroup(&ntfs3, &dto.MountPointData{FSType: new("ntfs3")}, prober)
-	assert.Equal(t, "", ntfs3.ForceUser)
-	assert.Equal(t, "", ntfs3.ForceGroup)
+	assert.Empty(t, ntfs3.ForceUser)
+	assert.Empty(t, ntfs3.ForceGroup)
 
 	ext4 := dbom.ExportedShare{}
 	enrichExportedShareForceUserGroup(&ext4, &dto.MountPointData{FSType: new("ext4")}, prober)

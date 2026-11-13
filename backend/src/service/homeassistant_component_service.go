@@ -380,10 +380,15 @@ func (s *HomeAssistantComponentService) InstallOrUpgradeFromZip(ctx context.Cont
 			continue
 		}
 
+		// Reuse the repository's proven zip-path sanitizer (see upgrade_service.go)
+		// so the go/zipslip guard is recognized by CodeQL.
+		if err := validateZipEntryName(relativeName); err != nil {
+			return fmt.Errorf("illegal file path in archive: %w", err)
+		}
 		destination := filepath.Join(installPath, relativeName)
 		cleanInstall := filepath.Clean(installPath)
-		if destination != cleanInstall && !strings.HasPrefix(destination, cleanInstall+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path in archive: %s", file.Name)
+		if err := checkZipPath(cleanInstall, destination); err != nil {
+			return fmt.Errorf("illegal file path in archive: %w", err)
 		}
 
 		if file.FileInfo().IsDir() {

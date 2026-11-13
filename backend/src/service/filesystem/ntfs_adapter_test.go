@@ -115,8 +115,8 @@ func (suite *NtfsAdapterTestSuite) TestGetDefaultMountFlags() {
 // TestGetSambaForceUserGroup verifies NTFS shares do not force root so the
 // authenticated Samba user (and on-disk ACLs) are honored (#1264).
 func (suite *NtfsAdapterTestSuite) TestGetSambaForceUserGroup() {
-	suite.Equal("", suite.adapter.GetSambaForceUser())
-	suite.Equal("", suite.adapter.GetSambaForceGroup())
+	suite.Empty(suite.adapter.GetSambaForceUser())
+	suite.Empty(suite.adapter.GetSambaForceGroup())
 }
 
 func (suite *NtfsAdapterTestSuite) TestIsSupported() {
