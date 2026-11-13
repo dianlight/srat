@@ -23,8 +23,11 @@ import (
 )
 
 const (
-	isMemBrk = false
-	memgrind = true
+	// allocaBump selects the alloca(3) bump region, see allocaChunk. Each
+	// alloca is malloc'd instead, so that the audit sees it.
+	allocaBump = false
+	isMemBrk   = false
+	memgrind   = true
 )
 
 type memReportItem struct {

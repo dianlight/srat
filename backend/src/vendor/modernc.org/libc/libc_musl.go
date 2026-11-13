@@ -172,6 +172,23 @@ func init() {
 	X__libc.Fpage_size = Tsize_t(os.Getpagesize())
 }
 
+// musl's stdio locks a FILE only when its lock word is not negative. The
+// standard streams start at -1, and fopen, fdopen, fmemopen and
+// open_memstream set it to -1 while libc.threaded is zero. musl's
+// pthread_create sets libc.threaded and clears the lock words of the open
+// FILEs before it starts the first thread, but the hand-written Xpthread_create
+// does not, and every TLS may be a thread anyway. Without locks, two TLSs
+// writing to the same FILE corrupt its buffer pointers and write past its
+// buffer. So stdio locks from the start, as it does in a musl program once
+// it has created a thread. Doing it later would race with a stdio call
+// already in progress on another TLS.
+func init() {
+	X__libc.Fthreaded = 1
+	X__stdin_FILE.Flock = 0
+	X__stdout_FILE.Flock = 0
+	X__stderr_FILE.Flock = 0
+}
+
 // RawMem64 represents the biggest uint64 array the runtime can handle.
 type RawMem64 [unsafe.Sizeof(RawMem{}) / unsafe.Sizeof(uint64(0))]uint64
 
@@ -265,7 +282,7 @@ type tlsStackSlot struct {
 // TLS emulates thread local storage. TLS is not safe for concurrent use by
 // multiple goroutines.
 type TLS struct {
-	allocaStack         []int
+	allocaStack         []allocaMark
 	allocas             []uintptr
 	jumpBuffers         []uintptr
 	pendingSignals      chan os.Signal
@@ -281,6 +298,20 @@ type TLS struct {
 
 	checkSignals bool
 	ownsPthread  bool
+
+	// The alloca(3) bump region. New fields go after the ones above so that
+	// their offsets do not change for ABI0 code built against older versions.
+	allocaChunks []allocaChunk
+	allocaNext   int     // allocaChunks index of the chunk to use when the current one is full
+	allocaP      uintptr // the next free byte in the current chunk
+	allocaEnd    uintptr // the end of the current chunk, zero before the first chunk
+
+	started bool // by Xpthread_create, whose goroutine ends the thread
+
+	// SetExitUnwind.
+	atExit      []uintptr // atexit handlers
+	atQuickExit []uintptr // at_quick_exit handlers
+	exitUnwind  bool
 }
 
 var __ccgo_environOnce sync.Once
@@ -537,30 +568,6 @@ func (tls *TLS) raiseSignal(sig int32) long {
 	return 0
 }
 
-func (tls *TLS) alloca(n Tsize_t) (r uintptr) {
-	r = mustMalloc(n)
-	tls.allocas = append(tls.allocas, r)
-	return r
-}
-
-// AllocaEntry must be called early on function entry when the function calls
-// or may call alloca(3).
-func (tls *TLS) AllocaEntry() {
-	tls.allocaStack = append(tls.allocaStack, len(tls.allocas))
-}
-
-// AllocaExit must be defer-called on function exit when the function calls or
-// may call alloca(3).
-func (tls *TLS) AllocaExit() {
-	n := len(tls.allocaStack)
-	x := tls.allocaStack[n-1]
-	tls.allocaStack = tls.allocaStack[:n-1]
-	for _, v := range tls.allocas[x:] {
-		Xfree(tls, v)
-	}
-	tls.allocas = tls.allocas[:x]
-}
-
 func (tls *TLS) Close() {
 	defer func() { *tls = TLS{} }()
 
@@ -568,9 +575,7 @@ func (tls *TLS) Close() {
 	delete(tlsByTID, tls.ID)
 	delete(threadNames, tls.pthread)
 	tlsRegistryMu.Unlock()
-	for _, v := range tls.allocas {
-		Xfree(tls, v)
-	}
+	tls.allocaClose()
 	for _, v := range tls.stack /* shrink diabled[:tls.sp] */ {
 		Xfree(tls, v.p)
 	}
@@ -634,17 +639,42 @@ func (tls *TLS) Longjmp(jb uintptr, val int32) {
 
 // ============================================================================
 
+// Xexit implements exit(3) in musl's order: the atexit handlers, newest first,
+// then the functions registered by AtExit, then the flush of every stdio
+// stream, then the end of the process. A handler may register more handlers,
+// which run next, so no lock is held while one runs. See also SetExitUnwind.
 func Xexit(tls *TLS, code int32) {
-	//TODO atexit finalizers
-	X__stdio_exit(tls)
-	for i := len(atExit) - 1; i >= 0; i-- {
-		atExit[i]()
+	if tls != nil && tls.exitUnwind {
+		tls.exitUnwound(code)
 	}
-	atExitHandlersMu.Lock()
-	for i := len(atExitHandlers) - 1; i >= 0; i-- {
-		v := atExitHandlers[i]
+
+	for {
+		atExitHandlersMu.Lock()
+		n := len(atExitHandlers)
+		if n == 0 {
+			atExitHandlersMu.Unlock()
+			break
+		}
+
+		v := atExitHandlers[n-1]
+		atExitHandlers = atExitHandlers[:n-1]
+		atExitHandlersMu.Unlock()
 		(*(*func(*TLS))(unsafe.Pointer(&struct{ uintptr }{v})))(tls)
 	}
+	for {
+		atExitMu.Lock()
+		n := len(atExit)
+		if n == 0 {
+			atExitMu.Unlock()
+			break
+		}
+
+		f := atExit[n-1]
+		atExit = atExit[:n-1]
+		atExitMu.Unlock()
+		f()
+	}
+	X__stdio_exit(tls)
 	os.Exit(int(code))
 }
 
@@ -665,8 +695,13 @@ var abort Tsigaction
 // does and as the netbsd Xabort explains: a process-directed kill(2) is
 // asynchronous and the calling thread can run on before it lands. With
 // SIG_DFL installed the kernel terminates the process in tgkill; the
-// process-directed kill and the panic are unreachable fallbacks.
+// process-directed kill and the panic are unreachable fallbacks. See also
+// SetExitUnwind.
 func Xabort(tls *TLS) {
+	if tls != nil && tls.exitUnwind {
+		panic(ExitError{Status: 128 + SIGABRT, Abort: true})
+	}
+
 	___libc_sigaction(tls, SIGABRT, uintptr(unsafe.Pointer(&abort)), 0)
 	resetSigDfl(SIGABRT)
 	unix.Tgkill(unix.Getpid(), unix.Gettid(), unix.Signal(SIGABRT))
@@ -1136,7 +1171,13 @@ var (
 	atExitHandlers   []uintptr
 )
 
+// Xatexit registers func_ with the process, or with tls under SetExitUnwind.
 func Xatexit(tls *TLS, func_ uintptr) (r int32) {
+	if tls != nil && tls.exitUnwind {
+		tls.atExit = append(tls.atExit, func_)
+		return 0
+	}
+
 	atExitHandlersMu.Lock()
 	atExitHandlers = append(atExitHandlers, func_)
 	atExitHandlersMu.Unlock()

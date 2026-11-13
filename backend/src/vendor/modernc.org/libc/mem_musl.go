@@ -14,7 +14,9 @@ import (
 )
 
 const (
-	isMemBrk = false
+	// allocaBump selects the alloca(3) bump region, see allocaChunk.
+	allocaBump = true
+	isMemBrk   = false
 )
 
 func Xmalloc(tls *TLS, n Tsize_t) (r uintptr) {
