@@ -7,6 +7,13 @@ config_roots = ["frontend", "backend", "custom_components", "oauth_broker"]
 npm.package_manager = "bun"
 # npm.bun = true
 env_shell_expand = true
+# Disable mise-versions host: its cached GitHub release metadata goes stale for
+# the mutable `canary` tag (rebuilt on every bun commit), causing checksum
+# mismatches. Fetch release metadata directly from api.github.com instead.
+use_versions_host = false
+# Keep release metadata (incl. the canary asset digest) fresh: the default cache
+# (up to ~23h) goes stale whenever bun rebuilds the canary asset in place.
+fetch_remote_versions_cache = "5m"
 # libc = "musl"
 
 [settings.python]
@@ -17,7 +24,8 @@ compile = false
 # mise only orders it before the `npm:` tools when it finds it. Declaring it as
 # `"github:oven-sh/bun"` breaks that lookup ("bun may be required but was not
 # found") and every `npm:` install fails on a cold cache. The GitHub backend is
-# still needed because `bun lint`/`bun fmt` are canary-only.
+# still needed because `bun lint`/`bun fmt` (and the `--hash` lint flag) are
+# canary-only.
 [tool_alias]
 bun = "github:oven-sh/bun"
 
