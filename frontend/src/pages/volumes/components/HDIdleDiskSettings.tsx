@@ -28,14 +28,15 @@ import {
   TextFieldElement,
   useForm,
 } from "react-hook-form-mui";
-import { getCurrentEnv } from "../../../macro/Environment" with {
-  type: "macro",
-};
+
+import { getCurrentEnv } from "../../../macro/Environment" with { type: "macro" };
 import type { Command_type, Disk, HdIdleDevice } from "../../../store/sratApi";
 import {
   Enabled,
+  sratApi,
   usePutApiDiskByDiskIdHdidleConfigMutation,
 } from "../../../store/sratApi";
+import { useAppDispatch } from "../../../store/store";
 
 interface HDIdleDiskSettingsProps {
   disk: Disk;
@@ -67,6 +68,7 @@ export function HDIdleDiskSettings({
       ...disk?.hdidle_device,
     },
   });
+  const dispatch = useAppDispatch();
   const diskId = disk?.id || "";
   const [saveConfig, { isLoading: isSaving }] =
     usePutApiDiskByDiskIdHdidleConfigMutation();
@@ -133,19 +135,19 @@ export function HDIdleDiskSettings({
     setExpanded(!expanded);
   };
 
-  const handleApply = async () => {
+  const saveHdIdleConfig = async (enabled: Enabled, forceEnabled: boolean) => {
     if (!diskId) return;
     const values = getValues();
     const payload: HdIdleDevice = {
       // The backend expects the full by-id device path in the payload
       disk_id: diskId,
       device_path: `/dev/disk/by-id/${diskId}`,
-      enabled: values.enabled as Enabled,
+      enabled,
       idle_time: secondsToNanos(Number(values.idle_time ?? 0)),
       command_type:
         (values.command_type as Command_type) ?? ("scsi" as Command_type),
       power_condition: Number(values.power_condition ?? 0),
-      force_enabled: disk.hdidle_device?.force_enabled ?? false,
+      force_enabled: forceEnabled,
       suggestion_ignored: false,
       supported: disk.hdidle_device?.supported ?? false,
       supports_ata: disk.hdidle_device?.supports_ata ?? false,
@@ -153,9 +155,21 @@ export function HDIdleDiskSettings({
     };
     try {
       await saveConfig({ diskId, hdIdleDevice: payload }).unwrap();
+      // The saved per-disk HDIdle config is part of the volumes payload, so
+      // invalidate the volumes cache to make the dashboard (suggestion badge,
+      // spin status) and any volume-driven consumers pick up the new state.
+      dispatch(sratApi.util.invalidateTags(["volume"]));
     } catch (err) {
       console.warn("[HDIdleDiskSettings] save failed:", err);
     }
+  };
+
+  const handleApply = async () => {
+    const values = getValues();
+    await saveHdIdleConfig(
+      values.enabled as Enabled,
+      disk.hdidle_device?.force_enabled ?? false,
+    );
   };
 
   const handleCancel = () => {
@@ -182,11 +196,18 @@ export function HDIdleDiskSettings({
   };
 
   const handleForceDialogConfirm = () => {
-    if (pendingEnabled !== null) {
-      setValue("enabled", pendingEnabled, { shouldDirty: true });
+    const enabledToApply = pendingEnabled;
+    if (enabledToApply !== null) {
+      setValue("enabled", enabledToApply, { shouldDirty: true });
       setPendingEnabled(null);
     }
     setForceDialogOpen(false);
+    // Persist the forced enable immediately: the backend requires
+    // force_enabled=true for non-rotational disks, so dropping through here
+    // without saving would leave the toggle drifting from the saved state.
+    if (enabledToApply !== null) {
+      void saveHdIdleConfig(enabledToApply, true);
+    }
   };
 
   const handleForceDialogCancel = () => {
@@ -261,9 +282,10 @@ export function HDIdleDiskSettings({
                             }
 
                             onChange(newValue as Enabled);
-                            if (newValue !== Enabled.Custom) {
-                              handleApply();
-                            }
+                            // Persist both directions of the toggle so the
+                            // UI immediately reflects the saved on/off state
+                            // instead of leaving an unsaved draft behind.
+                            void handleApply();
                           }}
                           aria-label="toggle disk override"
                         >
