@@ -1,6 +1,7 @@
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import { Stack, Tooltip, Typography } from "@mui/material";
 import { useFormContext } from "react-hook-form";
+
 import { useLabFeatures } from "../../../hooks/useLabFeatures";
 import {
   type Settings as ApiSettings,
@@ -33,8 +34,8 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
   const mdnsEnabled = Boolean(watch("mdns_registration"));
   const isComponentConnected = Boolean(
     componentStatus &&
-      "connected" in componentStatus &&
-      componentStatus.connected,
+    "connected" in componentStatus &&
+    componentStatus.connected,
   );
 
   const labLabel = (text: string) => (
@@ -125,7 +126,9 @@ export function HomeAssistantPanel({ readOnly }: HomeAssistantPanelProps) {
           <SettingSwitchRow
             ariaLabel="Use NFS for HA"
             control={control}
-            disabled={!(capabilities as SystemCapabilities)?.support_nfs}
+            disabled={
+              readOnly || !(capabilities as SystemCapabilities)?.support_nfs
+            }
             label={labLabel("Use NFS for HA")}
             name="ha_use_nfs"
           />
