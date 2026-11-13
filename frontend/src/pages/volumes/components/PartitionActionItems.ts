@@ -64,21 +64,24 @@ export function getPartitionActionItems({
         !(entry as MountPointData)?.is_mounted
       ),
   );
-  if (
-    protectedMode ||
-    partition.name?.startsWith("hassos-") ||
-    Object.values(partition.host_mount_point_data || {}).length > 0 ||
-    liveEntries.length > 1
-  ) {
-    return null;
-  }
 
   // Home Assistant owns the mount lifecycle for its local disks (2026.11+
   // storage): no mount/unmount/automount/format/label actions. A share on the
-  // volume can still be opened from here.
+  // volume can still be created or opened from here.
+  //
+  // This branch MUST run before the host_mount_point_data guard below: an
+  // HA-managed disk always surfaces its host-namespace mount under
+  // host_mount_point_data (e.g. /mnt/data/supervisor/media/<name>), and that
+  // guard would otherwise return null first and hide the only supported
+  // action (Create Share / Go to Share).
   const haMpd = liveEntries.find(
     (entry) => (entry as MountPointData)?.is_ha_mounted,
   ) as MountPointData | undefined;
+
+  if (protectedMode || partition.name?.startsWith("hassos-")) {
+    return null;
+  }
+
   if (haMpd) {
     if (haMpd.share) {
       return [
@@ -99,6 +102,13 @@ export function getPartitionActionItems({
         onClick: () => onCreateShare(partition),
       },
     ];
+  }
+
+  if (
+    Object.values(partition.host_mount_point_data || {}).length > 0 ||
+    liveEntries.length > 1
+  ) {
+    return null;
   }
 
   const actionItems: PartitionActionItem[] = [];
