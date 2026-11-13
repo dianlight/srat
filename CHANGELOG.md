@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- **NTFS and exFAT partitions detected without udev data**: the filesystem probe fallback now recognises NTFS and exFAT volumes from the boot sector OEM ID, which u-root's magic table does not cover. USB partitions whose Supervisor device entry carries no `ID_FS_TYPE` no longer show an empty filesystem type with `canMount: false`. ([srat#1513](https://github.com/dianlight/srat/issues/1513))
+
 ### 🏗 Chore
 
 ## 2026.10.1
