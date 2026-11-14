@@ -177,8 +177,17 @@ func (broker *BroadcasterService) setupEventListeners() []func() {
 		if event.Problem == nil {
 			return nil
 		}
-		slog.DebugContext(ctx, "BroadcasterService received Problem event", "problem_key", event.Problem.ProblemKey, "status", event.Problem.Status)
-		broker.BroadcastMessage(*event.Problem)
+		problemSnapshot := *event.Problem
+		// REMOVE events carry the pre-delete snapshot, which still reads as
+		// active (for example status "created"). The WS frame has no separate
+		// lifecycle field, so mark the snapshot terminal before broadcasting.
+		// Otherwise dashboard cards, bell badges and toasts stay alive after a
+		// dismissal until a full reload (issue #1526).
+		if event.Type == events.EventTypes.REMOVE {
+			problemSnapshot.Status = dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSDELETED
+		}
+		slog.DebugContext(ctx, "BroadcasterService received Problem event", "problem_key", problemSnapshot.ProblemKey, "status", problemSnapshot.Status, "event_type", event.Type)
+		broker.BroadcastMessage(problemSnapshot)
 		// Problem-to-repair WS parity (issue #1301): every problem lifecycle
 		// transition also emits a repair_command frame so REST mutations via
 		// PUT /api/problems/* converge on both surfaces. Repair-originated
