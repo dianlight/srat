@@ -99,6 +99,17 @@ func (suite *ProblemHandlerSuite) TestGetProblemSuccess() {
 	_, _ = mock.Verify(suite.mockProblem, matchers.Times(1)).Get(mock.Exact("sample.problem"))
 }
 
+func (suite *ProblemHandlerSuite) TestGetProblemNotFound() {
+	mock.When(suite.mockProblem.Get(mock.Exact("missing.problem"))).ThenReturn(nil, dto.ErrorProblemNotFound)
+
+	_, apiInst := humatest.New(suite.T())
+	suite.handler.RegisterProblemHandler(apiInst)
+
+	resp := apiInst.Get("/problems/missing.problem")
+	suite.Require().Equal(http.StatusNotFound, resp.Code)
+	_, _ = mock.Verify(suite.mockProblem, matchers.Times(1)).Get(mock.Exact("missing.problem"))
+}
+
 func (suite *ProblemHandlerSuite) TestUpsertProblemSuccess() {
 	item := sampleProblem()
 	mock.When(suite.mockProblem.Upsert(mock.Any[*dto.Problem]())).ThenReturn(item, nil)

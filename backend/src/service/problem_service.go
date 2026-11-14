@@ -189,6 +189,9 @@ func (s *ProblemService) Get(problemKey string) (*dto.Problem, error) {
 
 	var row dbom.Problem
 	if err := s.db.WithContext(s.ctx).Where("problem_key = ?", problemKey).First(&row).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, dto.ErrorProblemNotFound
+		}
 		return nil, err
 	}
 

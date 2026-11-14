@@ -199,6 +199,50 @@ func TestBroadcasterSetupEventListeners_CoversAllEventTypes(t *testing.T) {
 	mock.VerifyNoMoreInteractions(shareService)
 }
 
+// TestBroadcasterProblemRemoveBroadcastsTerminalSnapshot covers issue #1526: a
+// REMOVE event carries the pre-delete problem snapshot, so the WS frame must be
+// marked terminal for frontend consumers to drop the card, bell entry and toast.
+func TestBroadcasterProblemRemoveBroadcastsTerminalSnapshot(t *testing.T) {
+	ctx := t.Context()
+	eventBus := events.NewEventBus(ctx)
+	b := &BroadcasterService{
+		ctx:      ctx,
+		relay:    broadcast.NewRelay[broadcastEvent](),
+		eventBus: eventBus,
+		disks:    dto.NewDiskMap(),
+		state:    &dto.ContextState{},
+	}
+
+	unsub := b.setupEventListeners()
+	defer func() {
+		for _, fn := range unsub {
+			fn()
+		}
+	}()
+
+	listener := b.relay.Listener(4)
+	defer listener.Close()
+
+	original := &dto.Problem{
+		ProblemKey: "protected_mode",
+		Title:      "Addon in Protected Mode",
+		Status:     dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED,
+	}
+	eventBus.EmitProblem(events.ProblemEvent{Event: events.Event{Type: events.EventTypes.REMOVE}, Problem: original})
+
+	select {
+	case msg := <-listener.Ch():
+		snapshot, ok := msg.Message.(dto.Problem)
+		if !ok {
+			t.Fatalf("expected problem snapshot, got %T", msg.Message)
+		}
+		assert.Equal(t, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSDELETED, snapshot.Status)
+		assert.Equal(t, dto.ProblemLifecycleStatuses.PROBLEMLIFECYCLESTATUSCREATED, original.Status, "event payload must not be mutated")
+	case <-time.After(250 * time.Millisecond):
+		t.Fatal("expected problem broadcast for REMOVE event")
+	}
+}
+
 func TestBroadcasterDirtyDataDedupe_ResetsAfterClean(t *testing.T) {
 	ctx := t.Context()
 	eventBus := events.NewEventBus(ctx)

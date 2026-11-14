@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	"gorm.io/gorm"
 )
 
 type ProblemServiceSuite struct {
@@ -22,6 +23,7 @@ type ProblemServiceSuite struct {
 	app      *fxtest.App
 	svc      service.ProblemServiceInterface
 	eventBus events.EventBusInterface
+	db       *gorm.DB
 }
 
 func TestProblemServiceSuite(t *testing.T) {
@@ -44,6 +46,7 @@ func (suite *ProblemServiceSuite) SetupTest() {
 		),
 		fx.Populate(&suite.svc),
 		fx.Populate(&suite.eventBus),
+		fx.Populate(&suite.db),
 	)
 	suite.app.RequireStart()
 }
@@ -109,7 +112,24 @@ func (suite *ProblemServiceSuite) TestGet() {
 
 func (suite *ProblemServiceSuite) TestGetMissing() {
 	_, err := suite.svc.Get("no_such_key")
+	suite.Require().ErrorIs(err, dto.ErrorProblemNotFound)
+}
+
+func (suite *ProblemServiceSuite) TestGetRequiresProblemKey() {
+	_, err := suite.svc.Get("   ")
 	suite.Require().Error(err)
+}
+
+func (suite *ProblemServiceSuite) TestGetFromDatabaseWhenCacheIsEmpty() {
+	// Seed the shared in-memory DB after service construction so Get has to
+	// fall through to the database instead of the cache loaded at startup.
+	row := &dbom.Problem{ProblemKey: "db_only_key", Title: "DB Only"}
+	suite.Require().NoError(suite.db.Create(row).Error)
+
+	problem, err := suite.svc.Get("db_only_key")
+	suite.Require().NoError(err)
+	suite.Require().NotNil(problem)
+	suite.Equal("db_only_key", problem.ProblemKey)
 }
 
 func (suite *ProblemServiceSuite) TestList() {

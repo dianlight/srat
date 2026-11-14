@@ -8,6 +8,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/service"
 	"github.com/dianlight/tlog"
+	"gitlab.com/tozd/go/errors"
 )
 
 // ProblemAPI handles API requests for unified problems.
@@ -88,6 +89,9 @@ func (a *ProblemAPI) RegisterProblemHandler(api huma.API) {
 	}, func(ctx context.Context, input *GetProblemInput) (*GetProblemOutput, error) {
 		item, err := a.service.Get(input.ProblemKey)
 		if err != nil {
+			if errors.Is(err, dto.ErrorProblemNotFound) {
+				return nil, huma.Error404NotFound("problem not found", err)
+			}
 			tlog.ErrorContext(ctx, "failed to get problem", "problem_key", input.ProblemKey, "error", err)
 			return nil, huma.Error500InternalServerError("failed to get problem", err)
 		}
