@@ -238,7 +238,7 @@ Each filesystem adapter uses specific commands from its Alpine package:
 
 ### xfs (xfsprogs)
 
-- **Format**: `mkfs.xfs [-f] [-L label] device`
+- **Format**: `mkfs.xfs [-f] [-L label] device`, then verifies the `XFSB` superblock before reporting success (#1517)
 - **Check**: `xfs_repair [-n] [-v] device`
 - **Get Label**: `xfs_admin -l device` (parses output)
 - **Set Label**: `xfs_admin -L label device`
