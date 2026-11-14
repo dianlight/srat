@@ -3,10 +3,21 @@ package filesystem
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/tlog"
 	"gitlab.com/tozd/go/errors"
+)
+
+const (
+	// xfsFormatVerifyAttempts bounds how many times a freshly formatted
+	// device is probed for the XFS superblock. Block-device metadata is
+	// usually visible immediately, but a short retry window covers slow
+	// devices and udev-triggered rescans.
+	xfsFormatVerifyAttempts = 3
+	// xfsFormatVerifyInterval is the delay between post-format probes.
+	xfsFormatVerifyInterval = 100 * time.Millisecond
 )
 
 // XfsAdapter implements FilesystemAdapter for XFS filesystems
@@ -105,10 +116,53 @@ func (a *XfsAdapter) Format(ctx context.Context, device string, options dto.Form
 		return errors.Errorf("mkfs.xfs failed with exit code %d: %s", result.ExitCode, output)
 	}
 
+	// mkfs.xfs can exit 0 without writing a filesystem (for example a
+	// wrapper or a wrong binary on PATH). Verify the on-disk signature so a
+	// no-op can never be reported as a successful format (#1517).
+	if verifyErr := a.verifyFormatted(ctx, device); verifyErr != nil {
+		if progress != nil {
+			progress("failure", 0, []string{"Format failed: " + verifyErr.Error()})
+		}
+		return verifyErr
+	}
+
 	if progress != nil {
 		progress("success", 100, []string{"Format completed successfully"})
 	}
 	return nil
+}
+
+// verifyFormatted confirms that device now carries an XFS superblock. It
+// retries briefly because a freshly written superblock can take a moment to
+// become readable through the block layer.
+func (a *XfsAdapter) verifyFormatted(ctx context.Context, device string) errors.E {
+	var readErr errors.E
+
+	for attempt := range xfsFormatVerifyAttempts {
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return errors.WithDetails(ctx.Err(), "Device", device, "Phase", "format verification")
+			case <-time.After(xfsFormatVerifyInterval):
+			}
+		}
+
+		matched, err := a.IsDeviceSupported(ctx, device)
+		if err != nil {
+			readErr = err
+			continue
+		}
+		if matched {
+			return nil
+		}
+		readErr = nil
+	}
+
+	if readErr != nil {
+		return errors.WithDetails(readErr, "Device", device, "Hint", "mkfs.xfs reported success but the XFS signature could not be read")
+	}
+
+	return errors.Errorf("mkfs.xfs reported success but %s does not contain an XFS filesystem", device)
 }
 
 // Check runs filesystem check on an xfs device

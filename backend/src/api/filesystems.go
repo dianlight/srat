@@ -197,7 +197,9 @@ func (h *FilesystemHandler) FormatPartition(
 		return nil, huma.Error500InternalServerError("Failed to format partition", formatErr)
 	}
 
-	tlog.InfoContext(ctx, "Successfully formatted partition",
+	// The format itself runs asynchronously; its outcome is reported through
+	// filesystem task events. Do not claim success before mkfs has finished.
+	tlog.InfoContext(ctx, "Format operation started",
 		"partition", req.PartitionID,
 		"filesystem", req.FilesystemType,
 		"device", devicePath)
