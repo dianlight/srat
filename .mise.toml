@@ -30,7 +30,7 @@ compile = false
 bun = "github:oven-sh/bun"
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 act = "0.2.97"
 vale = "3.26.0"
 markdownlint-cli2 = "0.24.0"
