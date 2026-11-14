@@ -74,7 +74,6 @@ export function HDIdleDiskSettings({
     usePutApiDiskByDiskIdHdidleConfigMutation();
   const [expanded, setExpanded] = useState(false);
   const [forceDialogOpen, setForceDialogOpen] = useState(false);
-  const [pendingEnabled, setPendingEnabled] = useState<Enabled | null>(null);
   const isTestEnv = (globalThis as Record<string, unknown>).__TEST__ === true;
   const [visible, setVisible] = useState(isTestEnv);
   const diskName = disk.model || disk.id || "Unknown";
@@ -189,29 +188,22 @@ export function HDIdleDiskSettings({
     });
   };
 
-  // Force dialog handlers
-  const handleForceDialogOpen = (newValue: Enabled) => {
-    setPendingEnabled(newValue);
+  // Force dialog handlers. The dialog is only reachable from the "enable"
+  // path of the toggle, so the value it confirms is always Enabled.Custom.
+  const handleForceDialogOpen = () => {
     setForceDialogOpen(true);
   };
 
   const handleForceDialogConfirm = () => {
-    const enabledToApply = pendingEnabled;
-    if (enabledToApply !== null) {
-      setValue("enabled", enabledToApply, { shouldDirty: true });
-      setPendingEnabled(null);
-    }
+    setValue("enabled", Enabled.Custom, { shouldDirty: true });
     setForceDialogOpen(false);
     // Persist the forced enable immediately: the backend requires
     // force_enabled=true for non-rotational disks, so dropping through here
     // without saving would leave the toggle drifting from the saved state.
-    if (enabledToApply !== null) {
-      void saveHdIdleConfig(enabledToApply, true);
-    }
+    void saveHdIdleConfig(Enabled.Custom, true);
   };
 
   const handleForceDialogCancel = () => {
-    setPendingEnabled(null);
     setForceDialogOpen(false);
   };
 
@@ -277,7 +269,7 @@ export function HDIdleDiskSettings({
                               isEnabling &&
                               wasDisabled
                             ) {
-                              handleForceDialogOpen(newValue as Enabled);
+                              handleForceDialogOpen();
                               return;
                             }
 
