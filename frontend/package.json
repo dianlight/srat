@@ -95,7 +95,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-testing-library": "7.16.2",
     "fastify-plugin": "6.0.1",
-    "msw": "3.0.4",
+    "msw": "3.0.5",
     "msw-auto-mock": "0.32.1",
     "typescript": "7.0.2",
     "vitest": "5.1.0",
