@@ -114,7 +114,8 @@ func (m *MountRepository) LoadByPath(path string, root string) (*dto.MountPointD
 // Non-/mnt paths and names without dashes pass through unchanged.
 func normalizeMountPath(path string) string {
 	base := filepath.Base(path)
-	if !strings.HasPrefix(path, "/mnt/") {
+	// Only normalize direct children of /mnt; nested paths keep their parent.
+	if !strings.HasPrefix(path, "/mnt/") || filepath.Dir(strings.TrimRight(path, "/")) != "/mnt" {
 		return path
 	}
 	if !strings.ContainsAny(base, "- ") {

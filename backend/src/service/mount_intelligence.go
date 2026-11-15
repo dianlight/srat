@@ -28,22 +28,32 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 		mp, ok := disks.GetMountPointByPath(path)
 		if !ok {
 			if norm := volume.NormalizeMountPath(path); norm != path {
-				if m, ok2 := disks.GetMountPointByPath(norm); ok2 {
+				if m, ok2 := disks.GetMountPointByPath(norm); ok2 && (share.MountPointData.DeviceId == "" || m.DeviceId == share.MountPointData.DeviceId) {
 					mp, ok = m, true
 					path = norm
 				}
 			}
 		}
 		if !ok {
+			// Only accept a normalized candidate when it belongs to the same
+			// device as the share, and only when there is exactly one such
+			// candidate, so we never pick an arbitrary row by iteration order.
+			var compatible []*dto.MountPointData
 			for _, candidate := range disks.GetAllMountPoints() {
 				if candidate == nil || candidate.Path == "" {
 					continue
 				}
-				if volume.NormalizeMountPath(candidate.Path) == volume.NormalizeMountPath(share.MountPointData.Path) {
-					mp, ok = candidate, true
-					path = candidate.Path
-					break
+				if volume.NormalizeMountPath(candidate.Path) != volume.NormalizeMountPath(share.MountPointData.Path) {
+					continue
 				}
+				if share.MountPointData.DeviceId != "" && candidate.DeviceId != share.MountPointData.DeviceId {
+					continue
+				}
+				compatible = append(compatible, candidate)
+			}
+			if len(compatible) == 1 {
+				mp, ok = compatible[0], true
+				path = compatible[0].Path
 			}
 		}
 		if ok && mp != nil {
@@ -59,9 +69,13 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 			// volume is not falsely marked invalid (#1585).
 			if share.MountPointData.IsMounted {
 				share.MountPointData.IsInvalid = false
-			} else if info, err := os.Stat(share.MountPointData.Path); err == nil && info.IsDir() {
-				share.MountPointData.IsInvalid = false
-			} else if err != nil {
+			} else if info, err := os.Stat(share.MountPointData.Path); err == nil {
+				if info.IsDir() {
+					share.MountPointData.IsInvalid = false
+				} else {
+					share.MountPointData.IsInvalid = true
+				}
+			} else {
 				share.MountPointData.IsInvalid = true
 			}
 			if !share.MountPointData.IsMounted {
