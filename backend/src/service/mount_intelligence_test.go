@@ -108,6 +108,40 @@ func TestEnrichSharePartitionFromCache_PopulatesPartitionAndFsType(t *testing.T)
 	assert.Equal(t, partitionID, *share.MountPointData.Partition.Id)
 }
 
+func TestEnrichSharePartitionFromCache_NormalizedPathVariant(t *testing.T) {
+	partitionID := "part-002"
+	diskID := "disk-002"
+	mp := dto.MountPointData{
+		Path:      "/mnt/Media_Drive",
+		IsMounted: true,
+		IsInvalid: false,
+		DeviceId:  partitionID,
+	}
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partitionID: {Id: &partitionID, DiskId: &diskID, MountPointData: &map[string]dto.MountPointData{"/mnt/Media_Drive": mp}},
+	}}
+	disks := dto.NewDiskMapFrom(&disk)
+
+	share := dto.SharedResource{MountPointData: &dto.MountPointData{Path: "/mnt/Media Drive", DeviceId: partitionID, IsMounted: false, IsInvalid: true}}
+	enrichSharePartitionFromCache(&share, disks)
+
+	assert.Equal(t, "/mnt/Media_Drive", share.MountPointData.Path)
+	assert.True(t, share.MountPointData.IsMounted)
+	assert.False(t, share.MountPointData.IsInvalid)
+}
+
+func TestEnrichSharePartitionFromCache_CacheMissMountedStaysValid(t *testing.T) {
+	disks := dto.NewDiskMap()
+	share := dto.SharedResource{MountPointData: &dto.MountPointData{
+		Path:      "/mnt/does-not-exist",
+		IsMounted: true,
+		IsInvalid: true,
+	}}
+	enrichSharePartitionFromCache(&share, disks)
+	assert.True(t, share.MountPointData.IsMounted)
+	assert.False(t, share.MountPointData.IsInvalid)
+}
+
 func TestHashDirtyTracker_IsStableAndDistinct(t *testing.T) {
 	trackerA := dto.DataDirtyTracker{Users: true, Shares: false, Settings: true}
 	trackerB := dto.DataDirtyTracker{Users: true, Shares: true, Settings: true}

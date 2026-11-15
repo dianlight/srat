@@ -114,10 +114,21 @@ func (m *MountRepository) LoadByPath(path string, root string) (*dto.MountPointD
 // Non-/mnt paths and names without dashes pass through unchanged.
 func normalizeMountPath(path string) string {
 	base := filepath.Base(path)
-	if !strings.Contains(base, "-") || !strings.HasPrefix(path, "/mnt/") {
+	if !strings.HasPrefix(path, "/mnt/") {
 		return path
 	}
-	return filepath.Join("/mnt", strings.ReplaceAll(base, "-", "_"))
+	if !strings.ContainsAny(base, "- ") {
+		return path
+	}
+	normalized := strings.ReplaceAll(base, " ", "_")
+	normalized = strings.ReplaceAll(normalized, "-", "_")
+	return filepath.Join("/mnt", normalized)
+}
+
+// NormalizeMountPath is the exported form of normalizeMountPath, used by
+// callers outside the volume package (#1585).
+func NormalizeMountPath(path string) string {
+	return normalizeMountPath(path)
 }
 
 // mountRowIsStaleOrphan reports whether a persisted row is safe to hard-delete:

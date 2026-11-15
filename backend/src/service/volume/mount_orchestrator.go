@@ -425,7 +425,7 @@ func (o *MountOrchestrator) UnmountVolume(path string, force bool) errors.E {
 			"Detail", "Volume is mounted by Home Assistant; unmount it in Settings > System > Storage.",
 		)
 	}
-	if ok && md.Share != nil && md.Share.Status.IsHAMounted {
+	if ok && md.Share != nil && md.Share.Status != nil && md.Share.Status.IsHAMounted {
 		slog.DebugContext(o.ctx, "Found mount point as HAMounted", "path", path)
 		md.IsInvalid = true
 		_ = o.eventBus.EmitShare(events.ShareEvent{

@@ -22,6 +22,9 @@ func TestNormalizeMountPath(t *testing.T) {
 		if got := normalizeMountPath(tc.in); got != tc.want {
 			t.Errorf("normalizeMountPath(%q) = %q, want %q", tc.in, got, tc.want)
 		}
+		if got := NormalizeMountPath(tc.in); got != tc.want {
+			t.Errorf("NormalizeMountPath(%q) = %q, want %q", tc.in, got, tc.want)
+		}
 	}
 }
 
