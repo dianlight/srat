@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+	"os"
 	"strings"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/dianlight/srat/service/filesystem"
 	"github.com/dianlight/srat/service/volume"
 )
@@ -19,14 +21,71 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 	// mounted/invalid flags and write support are derived at runtime and are
 	// never persisted on the share's mount row.
 	if share.MountPointData.Path != "" {
-		if mp, ok := disks.GetMountPointByPath(share.MountPointData.Path); ok {
-			share.MountPointData.IsHAMounted = mp.IsHAMounted || volume.IsHAManagedMountPath(share.MountPointData.Path)
+		// Resolve the live mount point from the volume cache, tolerating path
+		// form variants (spaces vs. underscores/dashes) that have caused stale
+		// "invalid" flags in the past (#1585, #1073).
+		path := share.MountPointData.Path
+		mp, ok := disks.GetMountPointByPath(path)
+		if !ok {
+			if norm := volume.NormalizeMountPath(path); norm != path {
+				if m, ok2 := disks.GetMountPointByPath(norm); ok2 && (share.MountPointData.DeviceId == "" || m.DeviceId == share.MountPointData.DeviceId) {
+					mp, ok = m, true
+					path = norm
+				}
+			}
+		}
+		if !ok {
+			// Only accept a normalized candidate when it belongs to the same
+			// device as the share, and only when there is exactly one such
+			// candidate, so we never pick an arbitrary row by iteration order.
+			var compatible []*dto.MountPointData
+			for _, candidate := range disks.GetAllMountPoints() {
+				if candidate == nil || candidate.Path == "" {
+					continue
+				}
+				if volume.NormalizeMountPath(candidate.Path) != volume.NormalizeMountPath(share.MountPointData.Path) {
+					continue
+				}
+				if share.MountPointData.DeviceId != "" && candidate.DeviceId != share.MountPointData.DeviceId {
+					continue
+				}
+				compatible = append(compatible, candidate)
+			}
+			if len(compatible) == 1 {
+				mp, ok = compatible[0], true
+				path = compatible[0].Path
+			}
+		}
+		if ok && mp != nil {
+			share.MountPointData.Path = path
+			share.MountPointData.IsHAMounted = mp.IsHAMounted || volume.IsHAManagedMountPath(path)
 			share.MountPointData.IsMounted = mp.IsMounted
 			share.MountPointData.IsInvalid = mp.IsInvalid
 			if mp.IsWriteSupported != nil {
 				share.MountPointData.IsWriteSupported = mp.IsWriteSupported
 			}
 		} else {
+			// Cache miss: derive mount state from the OS so a mounted/existing
+			// volume is not falsely marked invalid (#1585).
+			if share.MountPointData.IsMounted {
+				share.MountPointData.IsInvalid = false
+			} else if info, err := os.Stat(share.MountPointData.Path); err == nil {
+				if info.IsDir() {
+					share.MountPointData.IsInvalid = false
+				} else {
+					share.MountPointData.IsInvalid = true
+				}
+			} else {
+				share.MountPointData.IsInvalid = true
+			}
+			if !share.MountPointData.IsMounted {
+				if mounted, err := osutil.IsMounted(share.MountPointData.Path); err == nil && mounted {
+					share.MountPointData.IsMounted = true
+					share.MountPointData.IsInvalid = false
+				}
+			} else {
+				share.MountPointData.IsInvalid = false
+			}
 			// Cache miss: still derive HA ownership from the path so a share
 			// on an HA-managed mount is never misclassified.
 			if volume.IsHAManagedMountPath(share.MountPointData.Path) {

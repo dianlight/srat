@@ -5,6 +5,7 @@ package volume
 import (
 	"context"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -638,6 +639,13 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 				md.Type = "HOST"
 			}
 		}
+		// Recompute IsInvalid from the current path state so a stale persisted
+		// "invalid" flag cannot survive a refresh (#1585).
+		if fi, statErr := os.Stat(md.Path); statErr != nil {
+			md.IsInvalid = true
+		} else {
+			md.IsInvalid = !fi.IsDir()
+		}
 		err := h.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *md)
 		if err != nil {
 			slog.WarnContext(h.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", md.Path, "err", err)
@@ -654,6 +662,7 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 			tlog.TraceContext(ctx, "Found existing mount point in cache for partition, updating state", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_path", mountPoint.Path, "is_mounted", mountPoint.IsMounted)
 			oldstate := mountPoint.IsMounted
 			mountPoint.IsMounted = true
+			mountPoint.IsInvalid = false
 			mountPoint.Path = prtstate.MountPoint
 			mountPoint.Root = prtstate.Root
 			mountPoint.RefreshVersion = h.disks.CurrentRefreshVersion()
@@ -691,6 +700,7 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 				DeviceId:         *part.Id,
 				IsWriteSupported: &iw,
 				IsMounted:        true,
+				IsInvalid:        false,
 				IsHAMounted:      isHAManaged,
 				Flags:            &dto.MountFlags{},
 				CustomFlags:      &dto.MountFlags{},

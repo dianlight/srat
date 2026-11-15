@@ -182,6 +182,9 @@ func (m *volumeMountManager) Mount(md *dto.MountPointData, flags uintptr, data, 
 	// The conversion step uses a best-effort mount table lookup that can be
 	// transiently stale in some environments.
 	md.IsMounted = true
+	// A successful mount also means the path exists on disk, so clear any
+	// stale "invalid" flag carried over from a persisted row (#1585).
+	md.IsInvalid = false
 
 	if errCache := m.disks.AddOrUpdateMountPoint(*md.Partition.DiskId, *md.Partition.Id, *md); errCache != nil {
 		slog.ErrorContext(m.ctx, "Failed to add mount point to in-memory cache after successful mount",
