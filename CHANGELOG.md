@@ -2,6 +2,14 @@
 
 # Changelog
 
+## [ 🚧 Unreleased ]
+
+### ✨ Features
+
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
 ## 2026.11.0
 
 ### ✨ Features
