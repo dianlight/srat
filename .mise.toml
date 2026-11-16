@@ -10,6 +10,9 @@ env_shell_expand = true
 # Disable mise-versions host: its cached GitHub release metadata goes stale for
 # the mutable `canary` tag (rebuilt on every bun commit), causing checksum
 # mismatches. Fetch release metadata directly from api.github.com instead.
+# NOTE: this forces mise to call api.github.com directly, so CI must provide
+# MISE_GITHUB_TOKEN (see workflow-level env in .github/workflows/*.yml) or
+# installs hit the 60/hour anonymous limit.
 use_versions_host = false
 # Keep release metadata (incl. the canary asset digest) fresh: the default cache
 # (up to ~23h) goes stale whenever bun rebuilds the canary asset in place.
@@ -47,10 +50,12 @@ python = "3.15.2"
 "conda:mypy" = { version = "1.19.1" }
 shellcheck = "0.11.0"
 shfmt = "3.14.1"
-"go:golang.org/x/tools/gopls" = "latest"
-gh = "latest"
+# Pinned (not "latest") to avoid an api.github.com release lookup on every
+# CI run; Renovate keeps these updated via lock-file-maintenance.
+"go:golang.org/x/tools/gopls" = "0.24.0"
+gh = "2.104.0"
 hk = "2.12.0"
-yamllint = "latest"
+yamllint = "1.38.0"
 # opencode = "latest"
 # copilot-cli = "latest"
 

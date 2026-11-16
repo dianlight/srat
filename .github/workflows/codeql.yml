@@ -11,6 +11,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MISE_GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   analyze-actions:
     name: Analyze (actions)

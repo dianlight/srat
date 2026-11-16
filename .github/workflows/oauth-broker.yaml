@@ -18,6 +18,9 @@ on:
 permissions:
   contents: read
 
+env:
+  MISE_GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   setversion:
     runs-on: ubuntu-latest

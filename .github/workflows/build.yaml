@@ -38,6 +38,13 @@ permissions:
   contents: write
   discussions: write
 
+# mise resolves tool metadata through api.github.com (use_versions_host = false in
+# .mise.toml, kept for the bun canary digest). Without a token that is the
+# anonymous 60/hour limit; pass the workflow token to every step so task-time
+# installs (gh, air, gosec, go@1.27.4) authenticate.
+env:
+  MISE_GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   setversion:
     runs-on: ubuntu-latest
@@ -496,6 +503,7 @@ jobs:
       SENTRY_ORG: ${{ vars.SENTRY_ORG || '' }}
       SENTRY_PROJECT_FRONTEND: ${{ vars.SENTRY_PROJECT_FRONTEND }}
       GIST_TOKEN: ${{ secrets.GIST_TOKEN || 'disabled' }}
+      MISE_GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

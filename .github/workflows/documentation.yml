@@ -24,6 +24,12 @@ permissions:
   # To report GitHub Actions status checks
   statuses: write
 
+# mise resolves tool metadata through api.github.com (use_versions_host = false in
+# .mise.toml). Pass the workflow token to every step so task-time installs
+# authenticate instead of hitting the 60/hour anonymous limit.
+env:
+  MISE_GITHUB_TOKEN: ${{ github.token }}
+
 jobs:
   docs-changes:
     runs-on: ubuntu-latest
