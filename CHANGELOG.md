@@ -6,11 +6,24 @@
 
 ### ✨ Features
 
+- **HA 2026.11 native USB mounting**: Added compatibility with Home Assistant 2026.11 native USB disk mounting so newly attached USB volumes are detected and managed. ([#1567](https://github.com/dianlight/srat/pull/1567))
+
 ### 🐛 Bug Fixes
 
 - **Security**: resolve open CodeQL alerts — zip-slip hardening in custom component install (`homeassistant_component_service.go`) and integer-conversion bound in `osutil_linux.go`; add actions-language CodeQL analysis for workflow permission checks.
+- **Stale mount flag**: Cleared stale invalid mount point flags so affected volumes no longer stay stuck in an invalid state. ([#1585](https://github.com/dianlight/srat/pull/1585))
+- **XFS format verification**: XFS format results are now verified instead of reporting success when the format failed. ([#1583](https://github.com/dianlight/srat/pull/1583))
+- **WebSocket problem removal**: Problem REMOVE frames are marked terminal in the WebSocket snapshot so dismissed issues do not reappear. ([#1581](https://github.com/dianlight/srat/pull/1581))
+- **HDIdle UI state**: HDIdle on/off changes are reflected immediately in the UI. ([#1574](https://github.com/dianlight/srat/pull/1574))
+
+### 🔧 Maintenance
+
+- **OpenSpec task tracking**: Migrated the project task system to OpenSpec and refreshed the related CI/toolchain configuration (bun canary handling, `MISE_GITHUB_TOKEN` passing, apt install retries).
+- **Dependency and toolchain updates**: Updated Go 1.27.4, goose v3.30.0, frontend packages, wrangler, mise, ruff, vale, and other dependencies.
 
 ### 🏗 Chore
+
+- **HA Testing Expert agent**: Added remote-test preflight guidance for recreating the `:3000` forward, WS read-only simulation, and protection-mode preconditions, plus a problem-badge parity regression case.
 
 ## 2026.10.1
 
