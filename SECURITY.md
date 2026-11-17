@@ -15,6 +15,7 @@ currently being supported with security updates.
 
 | Version     | Supported          |
 | ----------- | ------------------ |
+| 2026.11.x   | :white_check_mark: |
 | 2026.10.x   | :white_check_mark: |
 | < 2026.10.0 | :x:                |
 
