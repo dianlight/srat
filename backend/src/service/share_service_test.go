@@ -520,6 +520,39 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	suite.Len(created.Users, 1)
 }
 
+// TestCreateShareDuplicateActiveReturnsConflict pins #003.020: creating a
+// share whose name is already active must return the domain Conflict error
+// (HTTP 409), not a raw GORM unique-constraint failure (HTTP 500).
+func (suite *ShareServiceSuite) TestCreateShareDuplicateActiveReturnsConflict() {
+	newShare := dto.SharedResource{
+		Name:     "dup-active-share",
+		Disabled: new(false),
+		Usage:    "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/dup-active-1",
+			DeviceId:  "dupdev-1",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{{Username: "homeassistant"}},
+	}
+	created, err := suite.shareService.CreateShare(newShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+
+	duplicate := newShare
+	duplicate.MountPointData = &dto.MountPointData{
+		IsMounted: true,
+		Path:      "/mnt/dup-active-2",
+		DeviceId:  "dupdev-2",
+		Type:      "ADDON",
+	}
+	dupCreated, err := suite.shareService.CreateShare(duplicate)
+	suite.Nil(dupCreated)
+	suite.Require().Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareAlreadyExists), "expected ErrorShareAlreadyExists, got %v", err)
+}
+
 // TestCreateShareMissingMountPointType asserts that a share without a mount
 // point type is rejected with a validation error instead of a DB constraint
 // failure (issue #901).

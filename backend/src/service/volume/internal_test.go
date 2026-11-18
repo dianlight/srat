@@ -43,7 +43,11 @@ func TestMountRowIsStaleOrphan(t *testing.T) {
 	}
 	host := dto.MountPointData{Type: "HOST", IsInvalid: true}
 	if mountRowIsStaleOrphan(&host) {
-		t.Error("HOST row must never be an orphan")
+		t.Error("HOST row must never be an orphan (may back HA share configs)")
+	}
+	hostMounted := dto.MountPointData{Type: "HOST", IsMounted: true, IsInvalid: true}
+	if mountRowIsStaleOrphan(&hostMounted) {
+		t.Error("mounted HOST row must never be an orphan")
 	}
 	wantStartup := dto.MountPointData{IsToMountAtStartup: &startup, IsInvalid: true}
 	if mountRowIsStaleOrphan(&wantStartup) {

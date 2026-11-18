@@ -360,6 +360,19 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return s.UpdateShare(share.Name, share)
 	}
 
+	// An active share with the same name must surface as a clean Conflict
+	// (409), not as a raw GORM unique-constraint failure (500). The soft-delete
+	// restore above only handles deleted rows; active duplicates fall through
+	// here. The Create-time ErrDuplicatedKey mapping below is the race fallback.
+	var activeCount int64
+	if err := s.db.WithContext(s.ctx).Model(&dbom.ExportedShare{}).
+		Where("name = ? AND deleted_at IS NULL", share.Name).Count(&activeCount).Error; err != nil {
+		return nil, errors.Wrapf(err, "failed to check for existing active share %s", share.Name)
+	}
+	if activeCount > 0 {
+		return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
+	}
+
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
 	err := conv.SharedResourceToExportedShare(share, &dbShare)
@@ -381,6 +394,13 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	if errC := gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare); errC != nil {
+		// Duplicate share names must surface as a clean Conflict (409) via
+		// dto.ErrorShareAlreadyExists, not leak a raw GORM unique-constraint
+		// failure out as a 500. Active duplicates hit the DB unique index;
+		// soft-deleted ones were already restored above via UpdateShare.
+		if errors.Is(errC, gorm.ErrDuplicatedKey) {
+			return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
+		}
 		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, errC)
 	}
 

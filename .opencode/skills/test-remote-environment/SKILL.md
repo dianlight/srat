@@ -563,6 +563,11 @@ Per-case handling:
 - Execution deviates from spec → ask user (update file / deviate only / skip) → record deviation
 - After each case → record case_end_time and evidence
 
+Pre-check (Phase 0) before any mount/HA-mount-related case (func-id `003` volumes, `002` disks):
+- Record which mount paths are HA-owned before choosing a detection strategy: `GET /api/volumes` `is_ha_mounted` flags + `ha mounts info` (Supervisor-managed paths under `/media/`, `/share/`, `/backup/`).
+- Do NOT default to interval-mount-table polling as the fix path; prefer the existing udev event → `SyncPartitionMountData` → EventBus → WS propagation chain, and only add a watcher if HA-initiated mount events cannot be sourced otherwise.
+- If no mount-table/HA-mount change-propagation case exists, suggest adding one via `test-plan` (e.g. `003.021_ha-mount-change-propagation-uds-ws-events`).
+
 All cases done → Step 9 Summary
 ├── Per-case table + total suite time
 ├── Coverage gap analysis (func-ids not tested)
