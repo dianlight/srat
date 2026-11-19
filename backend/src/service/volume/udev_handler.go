@@ -690,6 +690,17 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 		} else {
 			md.IsInvalid = !fi.IsDir()
 		}
+		// Keep the runtime state already observed in the cache. The DB
+		// converter derives IsMounted from the live OS mount table, so
+		// overwriting an existing entry here would reset a previously
+		// unmounted row to mounted. The procfs loop below would then see
+		// oldstate==true and skip the MountPointEvent that subscribers such
+		// as the share service need to re-associate a share by device after
+		// an HA mount is (re)created on a persisted path (003.023/003.024).
+		if existing, ok := h.disks.GetMountPoint(*part.DiskId, *part.Id, md.Path); ok {
+			md.IsMounted = existing.IsMounted
+			md.RefreshVersion = existing.RefreshVersion
+		}
 		err := h.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *md)
 		if err != nil {
 			slog.WarnContext(h.ctx, "Failed to add mount point to disk map during partition event handling", "disk_id", *part.DiskId, "partition_id", *part.Id, "mount_path", md.Path, "err", err)
