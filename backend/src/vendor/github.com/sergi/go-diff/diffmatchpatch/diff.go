@@ -456,6 +456,19 @@ func commonSuffixLength(text1, text2 []rune) int {
 	}
 }
 
+// commonSuffixBytes returns the length in bytes of the common suffix of two strings, never splitting a rune.
+func commonSuffixBytes(text1, text2 string) int {
+	n := 0
+	for n < len(text1) && n < len(text2) {
+		_, size := utf8.DecodeLastRuneInString(text1[:len(text1)-n])
+		if size > len(text2)-n || text1[len(text1)-n-size:len(text1)-n] != text2[len(text2)-n-size:len(text2)-n] {
+			break
+		}
+		n += size
+	}
+	return n
+}
+
 // DiffCommonOverlap determines if the suffix of one string is the prefix of another.
 func (dmp *DiffMatchPatch) DiffCommonOverlap(text1 string, text2 string) int {
 	// Cache the text lengths to prevent multiple calls.
@@ -598,7 +611,7 @@ func (dmp *DiffMatchPatch) diffHalfMatchI(l, s []rune, i int) [][]rune {
 		bestLongtextB,
 		bestShorttextA,
 		bestShorttextB,
-		append(bestCommonA, bestCommonB...),
+		append(append([]rune(nil), bestCommonA...), bestCommonB...),
 	}
 }
 
@@ -748,7 +761,7 @@ func diffCleanupSemanticScore(one, two string) int {
 	lineBreak1 := whitespace1 && linebreakRegex.MatchString(char1)
 	lineBreak2 := whitespace2 && linebreakRegex.MatchString(char2)
 	blankLine1 := lineBreak1 && blanklineEndRegex.MatchString(one)
-	blankLine2 := lineBreak2 && blanklineEndRegex.MatchString(two)
+	blankLine2 := lineBreak2 && blanklineStartRegex.MatchString(two)
 
 	if blankLine1 || blankLine2 {
 		// Five points for blank lines.
@@ -785,7 +798,7 @@ func (dmp *DiffMatchPatch) DiffCleanupSemanticLossless(diffs []Diff) []Diff {
 			equality2 := diffs[pointer+1].Text
 
 			// First, shift the edit as far left as possible.
-			commonOffset := dmp.DiffCommonSuffix(equality1, edit)
+			commonOffset := commonSuffixBytes(equality1, edit)
 			if commonOffset > 0 {
 				commonString := edit[len(edit)-commonOffset:]
 				equality1 = equality1[0 : len(equality1)-commonOffset]
@@ -1251,7 +1264,7 @@ func (dmp *DiffMatchPatch) DiffToDelta(diffs []Diff) string {
 	delta := text.String()
 	if len(delta) != 0 {
 		// Strip off trailing tab character.
-		delta = delta[0 : utf8.RuneCountInString(delta)-1]
+		delta = delta[0 : len(delta)-1]
 		delta = unescaper.Replace(delta)
 	}
 	return delta
@@ -1312,7 +1325,7 @@ func (dmp *DiffMatchPatch) DiffFromDelta(text1 string, delta string) (diffs []Di
 	}
 
 	if i != len(runes) {
-		return nil, fmt.Errorf("Delta length (%v) is different from source text length (%v)", i, len(text1))
+		return nil, fmt.Errorf("Delta length (%v) is different from source text length (%v)", i, len(runes))
 	}
 
 	return diffs, nil

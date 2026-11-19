@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // Patch represents one patch operation.
@@ -143,6 +144,16 @@ func (dmp *DiffMatchPatch) patchMake2(text1 string, diffs []Diff) []Patch {
 	patches := []Patch{}
 	if len(diffs) == 0 {
 		return patches // Get rid of the null case.
+	}
+
+	// DiffMain replaces invalid UTF-8 with the Unicode replacement character.
+	// Use that normalized source when it is exactly what the diffs describe,
+	// while preserving raw bytes in caller-supplied byte-level diffs.
+	if !utf8.ValidString(text1) {
+		diffText1 := dmp.DiffText1(diffs)
+		if string([]rune(text1)) == diffText1 {
+			text1 = diffText1
+		}
 	}
 
 	patch := Patch{}
@@ -530,7 +541,11 @@ func (dmp *DiffMatchPatch) PatchFromText(textline string) ([]Patch, error) {
 
 			line = text[textPointer][1:]
 			line = strings.Replace(line, "+", "%2b", -1)
-			line, _ = url.QueryUnescape(line)
+			var err error
+			line, err = url.QueryUnescape(line)
+			if err != nil {
+				return patches, err
+			}
 			if sign == '-' {
 				// Deletion.
 				patch.diffs = append(patch.diffs, Diff{DiffDelete, line})
