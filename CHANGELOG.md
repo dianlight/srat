@@ -10,6 +10,8 @@
 
 ### 🏗 Chore
 
+- **Bun 1.4.5**: Upgrades the toolchain to stable Bun 1.4.5 and drops the canary-only install workarounds, so local and CI installs use the normal release channel.
+
 ## 2026.11.0
 
 ### ✨ Features
