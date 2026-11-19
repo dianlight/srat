@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"log/slog"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,6 +69,12 @@ type VolumeService struct {
 	maxProvisionalRechecks int
 	pendingRecheck         *provisionalRecheckState
 	recheckMu              sync.Mutex
+
+	// Mount-table change detection: HA Supervisor mounts do not emit block
+	// uevents, so a read of /api/volumes reconciles the cache when the procfs
+	// mount table signature changes. This is on-demand, not interval polling.
+	mountSigMu   sync.Mutex
+	lastMountSig string
 }
 
 type VolumeServiceProps struct {
@@ -246,11 +254,53 @@ func (s *VolumeService) GetDevicePathByDeviceID(deviceID string) (string, errors
 	return s.orchestrator.GetDevicePathByDeviceID(deviceID)
 }
 
+// mountTableChanged reports whether the procfs mount table differs from the
+// signature recorded at the last check. Home Assistant mounts a disk without
+// a block uevent, so this on-demand check is what makes new HA mounts visible
+// to GET /api/volumes. It never runs on a timer.
+func (s *VolumeService) mountTableChanged() bool {
+	if s.procfsGetMounts == nil {
+		return false
+	}
+	mounts, err := s.procfsGetMounts()
+	if err != nil {
+		return false
+	}
+	entries := make([]string, 0, len(mounts))
+	for _, m := range mounts {
+		if m == nil {
+			continue
+		}
+		entries = append(entries, m.Source+"\x00"+m.MountPoint+"\x00"+m.FSType)
+	}
+	sort.Strings(entries)
+	signature := strings.Join(entries, "\x01")
+
+	s.mountSigMu.Lock()
+	defer s.mountSigMu.Unlock()
+	if s.lastMountSig == "" {
+		s.lastMountSig = signature
+		return false
+	}
+	if s.lastMountSig == signature {
+		return false
+	}
+	s.lastMountSig = signature
+	return true
+}
+
 func (s *VolumeService) GetVolumesData() ([]*dto.Disk, errors.E) {
 	if s.disks.Len() == 0 {
 		if err := s.getVolumesData(); err != nil {
 			slog.ErrorContext(s.ctx, "Failed to get volumes data in GetVolumesData", "err", err)
 			return nil, errors.WithStack(err)
+		}
+	} else if s.mountTableChanged() && s.udevHandler != nil {
+		// HA Supervisor mounts emit no block uevent. Reconcile the cached
+		// partitions directly so MountPointEvents reach subscribers such as
+		// the share service, which re-associates shares by device.
+		if err := s.udevHandler.SyncAllMountData(s.ctx); err != nil {
+			slog.WarnContext(s.ctx, "Failed to reconcile mount table on volumes read", "err", err)
 		}
 	}
 	return s.disks.All(), nil

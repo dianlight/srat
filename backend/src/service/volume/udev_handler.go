@@ -146,6 +146,25 @@ func (h *UdevHandler) SetDeviceNotFoundRetryDelay(d time.Duration) {
 	h.deviceNotFoundRetryDelay = d
 }
 
+// sameDevicePath resolves symlinks before comparing two device paths. HA
+// Supervisor mounts report the kernel device name (/dev/sdb2) while SRAT
+// partitions use /dev/disk/by-id/... symlinks, so a raw string comparison
+// misses HA-created mounts.
+func sameDevicePath(a, b string) bool {
+	if a == "" || b == "" {
+		return false
+	}
+	if a == b {
+		return true
+	}
+	ra, errA := filepath.EvalSymlinks(a)
+	rb, errB := filepath.EvalSymlinks(b)
+	if errA == nil && errB == nil {
+		return ra == rb
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
+}
+
 // MatchPartitionWithDevName reports whether a partition answers to a kernel
 // device name in any of its spellings (full path, legacy path, bare name).
 func MatchPartitionWithDevName(partition *dto.Partition, devName string) bool {
@@ -607,6 +626,31 @@ func IsHAManagedMountPath(path string) bool {
 	return false
 }
 
+// SyncAllMountData reconciles every cached partition against the current
+// procfs mount table. Home Assistant Supervisor mounts do not emit block
+// uevents, so an HA-created mount is only discovered when volumes are read.
+func (h *UdevHandler) SyncAllMountData(ctx context.Context) errors.E {
+	if h == nil || h.procfsMounts == nil {
+		return nil
+	}
+	mountInfos, err := h.procfsMounts()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	var firstErr errors.E
+	for _, disk := range h.disks.All() {
+		if disk == nil || disk.Partitions == nil {
+			continue
+		}
+		for _, part := range *disk.Partitions {
+			if err := h.SyncPartitionMountData(ctx, disk, &part, mountInfos); err != nil && firstErr == nil {
+				firstErr = err
+			}
+		}
+	}
+	return firstErr
+}
+
 // SyncPartitionMountData reconciles a partition's mount points with the
 // current procfs snapshot: it loads persisted mount points from the
 // repository, adds missing ones to the in-memory cache, updates mount points
@@ -691,7 +735,8 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 				})
 			}
 			continue
-		} else if prtstate.Source == *part.DevicePath || (part.LegacyDevicePath != nil && prtstate.Source == *part.LegacyDevicePath) {
+		} else if sameDevicePath(prtstate.Source, *part.DevicePath) ||
+			(part.LegacyDevicePath != nil && sameDevicePath(prtstate.Source, *part.LegacyDevicePath)) {
 			// Found matching mount info for partition
 
 			mountPoint := dto.MountPointData{

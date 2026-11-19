@@ -50,6 +50,14 @@ func (s *mediaRecoveryShareServiceStub) GetShareFromPath(string) (*dto.SharedRes
 	return nil, errors.New("not implemented")
 }
 
+func (s *mediaRecoveryShareServiceStub) GetSharesByDeviceID(string) ([]dto.SharedResource, errors.E) {
+	return nil, errors.New("not implemented")
+}
+
+func (s *mediaRecoveryShareServiceStub) ReassociateShareMount(string, string, string, string) errors.E {
+	return errors.New("not implemented")
+}
+
 func (s *mediaRecoveryShareServiceStub) SetShareFromPathEnabled(string, bool) (*dto.SharedResource, errors.E) {
 	return nil, errors.New("not implemented")
 }

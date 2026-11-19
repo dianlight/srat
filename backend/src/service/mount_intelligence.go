@@ -56,6 +56,30 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 				path = compatible[0].Path
 			}
 		}
+		if !ok && share.MountPointData.DeviceId != "" {
+			// Ownership transfer: the same device can be remounted under an
+			// HA path (/media, /share, /backup) instead of /mnt, or back
+			// again. Path matching cannot find it, so fall back to a unique
+			// live mount row for the device. Ambiguous matches are ignored
+			// rather than guessed.
+			var live []*dto.MountPointData
+			for _, candidate := range disks.GetAllMountPoints() {
+				if candidate == nil || candidate.Path == "" {
+					continue
+				}
+				if candidate.DeviceId != share.MountPointData.DeviceId {
+					continue
+				}
+				if !candidate.IsMounted || candidate.IsInvalid {
+					continue
+				}
+				live = append(live, candidate)
+			}
+			if len(live) == 1 {
+				mp, ok = live[0], true
+				path = live[0].Path
+			}
+		}
 		if ok && mp != nil {
 			share.MountPointData.Path = path
 			share.MountPointData.IsHAMounted = mp.IsHAMounted || volume.IsHAManagedMountPath(path)
@@ -63,6 +87,15 @@ func enrichSharePartitionFromCache(share *dto.SharedResource, disks *dto.DiskMap
 			share.MountPointData.IsInvalid = mp.IsInvalid
 			if mp.IsWriteSupported != nil {
 				share.MountPointData.IsWriteSupported = mp.IsWriteSupported
+			}
+			// Keep the mount type in sync with the new owner so HA guards and
+			// automount decisions apply to the re-associated share.
+			if share.MountPointData.IsHAMounted {
+				if share.MountPointData.Type == "" || share.MountPointData.Type == "ADDON" {
+					share.MountPointData.Type = "HOST"
+				}
+			} else if share.MountPointData.Type == "HOST" {
+				share.MountPointData.Type = "ADDON"
 			}
 		} else {
 			// Cache miss: derive mount state from the OS so a mounted/existing

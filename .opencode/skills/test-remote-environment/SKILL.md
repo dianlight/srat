@@ -567,6 +567,10 @@ Pre-check (Phase 0) before any mount/HA-mount-related case (func-id `003` volume
 - Record which mount paths are HA-owned before choosing a detection strategy: `GET /api/volumes` `is_ha_mounted` flags + `ha mounts info` (Supervisor-managed paths under `/media/`, `/share/`, `/backup/`).
 - Do NOT default to interval-mount-table polling as the fix path; prefer the existing udev event → `SyncPartitionMountData` → EventBus → WS propagation chain, and only add a watcher if HA-initiated mount events cannot be sourced otherwise.
 - If no mount-table/HA-mount change-propagation case exists, suggest adding one via `test-plan` (e.g. `003.021_ha-mount-change-propagation-uds-ws-events`).
+- Stale HA mount rows suppress the MountPointEvent needed for share re-association. Before a case that creates an HA mount, check `GET /api/volumes` for rows matching the planned mount name; if one exists, generate a fresh name (for example `srat_t23_$(date +%s)`) and record the deviation. Existing stale rows cannot be purged through the API.
+- After a mount or ownership transition, poll the Samba config (`testparm` section) for up to 30 seconds instead of a fixed 12-second wait; Samba's soft restart has taken ~27 seconds on this host.
+- Treat `supervisor_service.go` `Mounting error ... mount_activation_error` (Supervisor CIFS 400) as known environment noise on share-creation cases: it does not affect SMB export or writes, and does not fail the "No new ERROR" assertion.
+- When creating a share on a path that was previously mounted by HA, the `smbclient` binary may only exist inside the addon container; connect to `//192.168.0.68` from there using the exported uppercase name with hyphens replaced by underscores.
 
 All cases done → Step 9 Summary
 ├── Per-case table + total suite time
