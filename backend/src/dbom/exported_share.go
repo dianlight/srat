@@ -21,6 +21,7 @@ type ExportedShare struct {
 	RecycleBin         bool `gorm:"default:false"`
 	GuestOk            bool `gorm:"default:false"`
 	TimeMachineMaxSize string
+	Subfolder          string `gorm:"default:''"`
 	Usage              dto.HAMountUsage
 	MountPointDataPath *string
 	MountPointDataRoot *string
