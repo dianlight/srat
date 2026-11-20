@@ -37,7 +37,7 @@ require (
 	github.com/prometheus/procfs v0.23.0
 	github.com/rs/cors v1.11.1
 	github.com/samber/slog-http v1.12.1
-	github.com/sergi/go-diff v1.4.2
+	github.com/sergi/go-diff v1.4.4
 	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/shomali11/util v0.0.0-20220717175126-f0771b70947f
 	github.com/stretchr/testify v1.12.1

@@ -336,8 +336,8 @@ github.com/samber/slog-http v1.12.1/go.mod h1:PAcQQrYFo5KM7Qbk50gNNwKEAMGCyfsw6G
 github.com/samber/slog-multi v1.7.1 h1:aCLXHRxgU+2v0PVlEOh7phynzM7CRo89ZgFtOwaqVEE=
 github.com/samber/slog-multi v1.7.1/go.mod h1:A4KQC99deqfkCDJcL/cO3kX6McX7FffQAx/8QHink+c=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
-github.com/sergi/go-diff v1.4.2 h1:h/nr6WH+32OMs5amzAyj5nQv7sdYS2CMjQ3yDZRGCvU=
-github.com/sergi/go-diff v1.4.2/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
+github.com/sergi/go-diff v1.4.4 h1:hJ31M2v+KXD+fDxKjUpr9qXthRE35QsPNono0FjSTCg=
+github.com/sergi/go-diff v1.4.4/go.mod h1:A0bzQcvG0E7Rwjx0REVgAGH58e96+X0MeOfepqsbeW4=
 github.com/sethvargo/go-retry v0.5.0 h1:JYfFKmVJ8ER06GReN1efzc5cm52BrVsFVzmcHiKJwfY=
 github.com/sethvargo/go-retry v0.5.0/go.mod h1:tvsjdKG6xfiCx4LSiUZ06kcv38xvdVQwv8R6/VnnVWg=
 github.com/shirou/gopsutil/v4 v4.26.10 h1:MJN6euesJx53MVEjscYeyRSRcrdIcy3sz5k9nosjldg=
