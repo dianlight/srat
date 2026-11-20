@@ -42,13 +42,8 @@ type diskStatsService struct {
 	sysFsBasePath            string
 	smartEnabledCache        *cache.Cache // smartEnabledCache tracks SMART enabled/disabled state per disk to avoid unnecessary disk access
 	smartIntegrationDisabled atomic.Bool
-	// smartQueryErrWarned records disks whose failed SMART query has already
-	// been logged at Warn, so repeated cache refreshes on the same unsupported
-	// disk are demoted to Debug. sync.Map is concurrency-safe and its zero value
-	// is ready to use.
-	smartQueryErrWarned    sync.Map
-	settingService         SettingServiceInterface
-	pauseResumeCommandChan chan string // Channel to signal run process to pause/resume
+	settingService           SettingServiceInterface
+	pauseResumeCommandChan   chan string // Channel to signal run process to pause/resume
 }
 
 // NewDiskStatsService creates a new DiskStatsService.
@@ -527,23 +522,6 @@ func (s *diskStatsService) fetchDiskStats(deviceName string) (blockdevice.IOStat
 	return stats, nil
 }
 
-// logSmartQueryFailureOnce keeps the first SMART query failure per disk visible
-// at Warn (with its error message) and demotes repeated failures to Debug.
-// USB bridges without SMART support fail on every cache refresh; that is an
-// expected hardware limitation, so the error is logged as a plain string to
-// avoid tlog rendering a full stack trace for the tozd errors.E value.
-//
-// TODO: remove this workaround once tlog provides WarnOnce
-// (https://github.com/dianlight/tlog/issues/26) and call it directly instead.
-func (s *diskStatsService) logSmartQueryFailureOnce(diskId string, err error) {
-	const msg = "SMART query failed, caching as disabled"
-	if _, warned := s.smartQueryErrWarned.LoadOrStore(diskId, struct{}{}); warned {
-		tlog.DebugContext(s.ctx, msg, "disk", diskId, "err", err.Error())
-		return
-	}
-	tlog.WarnContext(s.ctx, msg, "disk", diskId, "err", err.Error())
-}
-
 // isSmartEnabled checks if SMART is enabled for a disk.
 // It uses a cache to avoid querying the disk unnecessarily.
 // Cache is populated from SMART events when SMART is enabled/disabled via API.
@@ -568,9 +546,13 @@ func (s *diskStatsService) isSmartEnabled(diskId string) bool {
 
 	smartInfo, err := s.smartService.GetSmartInfo(s.ctx, diskId)
 	if err != nil {
-		// SMART not supported or error - cache as disabled to avoid future queries
+		// SMART not supported or error - cache as disabled to avoid future queries.
+		// USB bridges fail on every refresh; keep the first failure visible at
+		// Warn and let tlog rate-limit the repeats. The error is passed as a
+		// plain string so tlog does not render a full tozd stack trace.
 		s.smartEnabledCache.Set(diskId, false, cache.DefaultExpiration)
-		s.logSmartQueryFailureOnce(diskId, err)
+		tlog.WarnLowRateContext(s.ctx, smartWarnRateLimit,
+			"SMART query failed, caching as disabled", "disk", diskId, "err", err.Error())
 		return false
 	}
 

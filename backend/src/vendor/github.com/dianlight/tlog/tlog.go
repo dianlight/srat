@@ -373,11 +373,31 @@ func (l *Logger) log(ctx context.Context, level slog.Level, msg string, args ...
 	if !l.Enabled(ctx, level) {
 		return
 	}
-	//var pc uintptr
 	var pcs []uintptr = make([]uintptr, 50)
 	// skip [runtime.Callers, this function, this function's caller]
 	runtime.Callers(3, pcs[:])
-	r := slog.NewRecord(time.Now(), level, msg, pcs[0])
+	l.logRecord(ctx, level, msg, pcs[0], time.Now(), args...)
+}
+
+// logRecord emits a log record with an explicit caller PC and timestamp.
+// Unlike log, it does not derive the PC from the call stack, so it can be used
+// to re-emit a synthetic record (e.g. a rate-limit summary) while keeping the
+// original call site in AddSource.
+func (l *Logger) logRecord(ctx context.Context, level slog.Level, msg string, pc uintptr, now time.Time, args ...any) {
+	if v, ok := rateLimitFromContext(ctx); ok {
+		cfg := normalizeRateLimitConfig(v.cfg)
+		if cfg.Window > 0 {
+			var emit bool
+			msg, args, emit = defaultRateLimiter.filter(l, v.original, cfg, level, msg, args, pc, now)
+			if !emit {
+				return
+			}
+			// Downstream handlers and callbacks should see the caller's context,
+			// not the internal value used to carry the rate-limit config.
+			ctx = v.original
+		}
+	}
+	r := slog.NewRecord(now, level, msg, pc)
 	r.Add(args...)
 	_ = l.Handler().Handle(ctx, r)
 }

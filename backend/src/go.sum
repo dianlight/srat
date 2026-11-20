@@ -105,8 +105,8 @@ github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1 h1:ErdYAMXP1keGPDTZWNC8iVzZzVUox62bHhwg0b15ClE=
 github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1/go.mod h1:Bz7RB7pZPHytej4wafuKPKkpNR6k4/CYySN7gzjp4oI=
-github.com/dianlight/tlog v0.2.2 h1:SBXWqsIr2MLcTTMJtZvh5j5xYksYn5ZRjRudvtcCiPk=
-github.com/dianlight/tlog v0.2.2/go.mod h1:oX7P84OwzOWRKQGVtMCFq3NP8OVYRZosmt5WmDT9SyE=
+github.com/dianlight/tlog v0.3.0 h1:kbOwdrauE9v5yYC4xN+vM6oV9rAEoWTPOn+NjVWwlqk=
+github.com/dianlight/tlog v0.3.0/go.mod h1:QtokOMr8TZKT5eO01/C7H71OaJUSlmPY0Kh8CKGtp4c=
 github.com/dustin/go-humanize v1.1.0 h1:dbKTrvD0klcbBV/h4AWJdMuZogJACoMlvWIWZ5b2xWg=
 github.com/dustin/go-humanize v1.1.0/go.mod h1:hc1CvRkJMsgxqjmjMQF3QNRAZBwY8AXBAzKYoSX9sFI=
 github.com/ebitengine/purego v0.11.2 h1:WWiTx8rD8zYdOwSj8O/NiNbsOvSAgJMTlyV1XlbUSeU=
@@ -205,8 +205,8 @@ github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7/go.mod h1:2iMrUgb
 github.com/json-iterator/go v1.1.12 h1:PV8peI4a0ysnczrg+LtxykD8LfKY9ML6u2jnxaEnrnM=
 github.com/json-iterator/go v1.1.12/go.mod h1:e30LSqwooZae/UwlEbR2852Gd8hjQvJoHmT4TnhNGBo=
 github.com/juju/gnuflag v0.0.0-20171113085948-2ce1bb71843d/go.mod h1:2PavIy+JPciBPrBUjwbNvtwB6RQlve+hkpll6QSNmOE=
-github.com/k0kubun/pp/v3 v3.5.1 h1:fS8Xt0MWVVSiKwfXeIdE0WJlktdA87/gt0Hs0+j2R2s=
-github.com/k0kubun/pp/v3 v3.5.1/go.mod h1:s7qPOSp65uuilpprLJs2yDi9DNd7JGyWJPtPvDFpG9w=
+github.com/k0kubun/pp/v3 v3.5.4 h1:oe91HOYfMR6ZltkvLJO7fMzABxjwLyGGom+y57y4OLE=
+github.com/k0kubun/pp/v3 v3.5.4/go.mod h1:DutZ7L+PcUeCOPRblsedtiZ9oQkCcFI0CnRtii5Q9ko=
 github.com/kisielk/sqlstruct v0.0.0-20201105191214-5f3e10d3ab46/go.mod h1:yyMNCyc/Ib3bDTKd379tNMpB/7/H5TjM2Y9QJ5THLbE=
 github.com/klauspost/compress v1.20.4 h1:dD0v/bvxtjCBqQu6sx1TNWkalEY5lNTIe+HY9w8TeNI=
 github.com/klauspost/compress v1.20.4/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
