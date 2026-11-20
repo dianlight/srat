@@ -60,11 +60,10 @@ func captureTlogByMessage(t *testing.T, msg string, levels ...slog.Level) func()
 	}
 }
 
-// TestIsSmartEnabled_QueryFailureLoggedOncePerDisk asserts the log noise fix:
-// a failing SMART query (expected on USB bridges without SMART support) logs
-// its error message at Warn on first occurrence per disk and is demoted to
-// Debug on subsequent cache refreshes, without a full stacktrace.
-func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_QueryFailureLoggedOncePerDisk() {
+// TestIsSmartEnabled_QueryFailureRateLimited asserts the log noise fix: a
+// failing SMART query (expected on USB bridges without SMART support) is logged
+// once at Warn per rate-limit window instead of once per cache refresh.
+func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_QueryFailureRateLimited() {
 	diskID := "disk-usb-bridge"
 	queryErr := goerrors.New("Unknown USB bridge [0x090c:0x1000]: SMART not supported")
 	mock.When(suite.smartMock.GetSmartInfo(mock.AnyContext(), mock.Exact(diskID))).
@@ -72,29 +71,24 @@ func (suite *DiskStatsServiceSuite) TestIsSmartEnabled_QueryFailureLoggedOncePer
 
 	const wantMsg = "SMART query failed, caching as disabled"
 	snap := captureTlogByMessage(suite.T(), wantMsg, slog.LevelWarn, slog.LevelDebug)
+	tlog.ResetRateLimit()
+	suite.T().Cleanup(tlog.ResetRateLimit)
 
 	// Simulate two cache refreshes for the same unsupported bridge.
 	suite.False(suite.ds.isSmartEnabled(diskID))
 	suite.ds.InvalidateSmartCache(diskID)
 	suite.False(suite.ds.isSmartEnabled(diskID))
 
-	var got []recordedLog
 	suite.Require().Eventually(func() bool {
-		got = snap()
-		return len(got) == 2
-	}, 2*time.Second, 10*time.Millisecond, "expected two SMART-query-failure log records")
+		return len(snap()) == 1
+	}, 2*time.Second, 10*time.Millisecond, "expected one SMART-query-failure log record")
+	suite.Never(func() bool {
+		return len(snap()) > 1
+	}, 200*time.Millisecond, 10*time.Millisecond, "the repeated failure must be silenced within the window")
 
-	warns, debugs := 0, 0
-	for _, r := range got {
-		switch r.level {
-		case slog.LevelWarn:
-			warns++
-		case slog.LevelDebug:
-			debugs++
-		}
-		suite.Equal(queryErr.Error(), r.attrs["err"],
-			"error message must be kept as a plain string, without a formatted stacktrace group")
-	}
-	suite.Equal(1, warns, "first SMART query failure must remain visible at Warn")
-	suite.Equal(1, debugs, "repeated SMART query failure must be demoted to Debug")
+	got := snap()
+	suite.Require().Len(got, 1)
+	suite.Equal(slog.LevelWarn, got[0].level, "the first failure must be visible at Warn")
+	suite.Equal(queryErr.Error(), got[0].attrs["err"],
+		"error message must be kept as a plain string, without a formatted stacktrace group")
 }

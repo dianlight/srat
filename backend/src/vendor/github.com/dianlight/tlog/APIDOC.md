@@ -93,12 +93,16 @@ With colors enabled, the stack frames will be color\-coded: \- frame\_0: Red \(m
 - [func ClearCallbacks\(level slog.Level\)](<#ClearCallbacks>)
 - [func Debug\(msg string, args ...any\)](<#Debug>)
 - [func DebugContext\(ctx context.Context, msg string, args ...any\)](<#DebugContext>)
+- [func DebugLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#DebugLowRate>)
+- [func DebugLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#DebugLowRateContext>)
 - [func EnableColors\(enabled bool\)](<#EnableColors>)
 - [func EnableMultilineStacktrace\(enabled bool\)](<#EnableMultilineStacktrace>)
 - [func EnableSensitiveDataHiding\(enabled bool\)](<#EnableSensitiveDataHiding>)
 - [func Error\(msg string, args ...any\)](<#Error>)
 - [func ErrorContext\(ctx context.Context, msg string, args ...any\)](<#ErrorContext>)
 - [func ErrorFormatter\(fieldName string\) slogformatter.Formatter](<#ErrorFormatter>)
+- [func ErrorLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#ErrorLowRate>)
+- [func ErrorLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#ErrorLowRateContext>)
 - [func Fatal\(msg string, args ...any\)](<#Fatal>)
 - [func FatalContext\(ctx context.Context, msg string, args ...any\)](<#FatalContext>)
 - [func GetCallbackCount\(level slog.Level\) int](<#GetCallbackCount>)
@@ -107,6 +111,8 @@ With colors enabled, the stack frames will be color\-coded: \- frame\_0: Red \(m
 - [func GetTimeFormat\(\) string](<#GetTimeFormat>)
 - [func Info\(msg string, args ...any\)](<#Info>)
 - [func InfoContext\(ctx context.Context, msg string, args ...any\)](<#InfoContext>)
+- [func InfoLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#InfoLowRate>)
+- [func InfoLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#InfoLowRateContext>)
 - [func IsColorsEnabled\(\) bool](<#IsColorsEnabled>)
 - [func IsLevelEnabled\(level slog.Level\) bool](<#IsLevelEnabled>)
 - [func IsMultilineStacktraceEnabled\(\) bool](<#IsMultilineStacktraceEnabled>)
@@ -114,7 +120,10 @@ With colors enabled, the stack frames will be color\-coded: \- frame\_0: Red \(m
 - [func NewEventHandler\(\) slog.Handler](<#NewEventHandler>)
 - [func Notice\(msg string, args ...any\)](<#Notice>)
 - [func NoticeContext\(ctx context.Context, msg string, args ...any\)](<#NoticeContext>)
+- [func NoticeLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#NoticeLowRate>)
+- [func NoticeLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#NoticeLowRateContext>)
 - [func RegisterCallback\(level slog.Level, callback LogCallback\) string](<#RegisterCallback>)
+- [func ResetRateLimit\(\)](<#ResetRateLimit>)
 - [func RestartProcessor\(\)](<#RestartProcessor>)
 - [func SetFormatterConfig\(config FormatterConfig\)](<#SetFormatterConfig>)
 - [func SetLevel\(level slog.Level\)](<#SetLevel>)
@@ -124,12 +133,15 @@ With colors enabled, the stack frames will be color\-coded: \- frame\_0: Red \(m
 - [func TozdErrorFormatter\(\) slogformatter.Formatter](<#TozdErrorFormatter>)
 - [func Trace\(msg string, args ...any\)](<#Trace>)
 - [func TraceContext\(ctx context.Context, msg string, args ...any\)](<#TraceContext>)
+- [func TraceLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#TraceLowRate>)
+- [func TraceLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#TraceLowRateContext>)
 - [func UnixTimestampFormatter\(key string\) slogformatter.Formatter](<#UnixTimestampFormatter>)
 - [func UnregisterCallback\(level slog.Level, callbackID string\) bool](<#UnregisterCallback>)
 - [func Warn\(msg string, args ...any\)](<#Warn>)
 - [func WarnContext\(ctx context.Context, msg string, args ...any\)](<#WarnContext>)
-- [func WithCaller\(\) \[\]any](<#WithCaller>)
-- [func WithLevel\(level slog.Level\) \*slog.Logger](<#WithLevel>)
+- [func WarnLowRate\(cfg RateLimitConfig, msg string, args ...any\)](<#WarnLowRate>)
+- [func WarnLowRateContext\(ctx context.Context, cfg RateLimitConfig, msg string, args ...any\)](<#WarnLowRateContext>)
+- [func WithCaller\(skipFrames int\) \[\]any](<#WithCaller>)
 - [type EventHandler](<#EventHandler>)
   - [func \(h \*EventHandler\) Enabled\(\_ context.Context, \_ slog.Level\) bool](<#EventHandler.Enabled>)
   - [func \(h \*EventHandler\) Handle\(ctx context.Context, record slog.Record\) error](<#EventHandler.Handle>)
@@ -140,14 +152,19 @@ With colors enabled, the stack frames will be color\-coded: \- frame\_0: Red \(m
 - [type LogCallback](<#LogCallback>)
 - [type LogEvent](<#LogEvent>)
 - [type Logger](<#Logger>)
-  - [func NewLogger\(\) \*Logger](<#NewLogger>)
-  - [func NewLoggerWithLevel\(level slog.Level\) \*Logger](<#NewLoggerWithLevel>)
+  - [func NewLogger\(opts ...LoggerOption\) \*Logger](<#NewLogger>)
+  - [func NewLoggerWithLevel\(level slog.Level, opts ...LoggerOption\) \*Logger](<#NewLoggerWithLevel>)
   - [func \(l \*Logger\) Fatal\(msg string, args ...any\)](<#Logger.Fatal>)
   - [func \(l \*Logger\) FatalContext\(ctx context.Context, msg string, args ...any\)](<#Logger.FatalContext>)
   - [func \(l \*Logger\) Notice\(msg string, args ...any\)](<#Logger.Notice>)
   - [func \(l \*Logger\) NoticeContext\(ctx context.Context, msg string, args ...any\)](<#Logger.NoticeContext>)
   - [func \(l \*Logger\) Trace\(msg string, args ...any\)](<#Logger.Trace>)
   - [func \(l \*Logger\) TraceContext\(ctx context.Context, msg string, args ...any\)](<#Logger.TraceContext>)
+- [type LoggerOption](<#LoggerOption>)
+  - [func WithAddCommonKeys\(keys \[\]string\) LoggerOption](<#WithAddCommonKeys>)
+  - [func WithCommonKeys\(keys \[\]string\) LoggerOption](<#WithCommonKeys>)
+  - [func WithLevel\(level slog.Level\) LoggerOption](<#WithLevel>)
+- [type RateLimitConfig](<#RateLimitConfig>)
 
 
 ## Constants
@@ -185,7 +202,7 @@ func ClearCallbacks(level slog.Level)
 ClearCallbacks removes all callbacks for a specific level
 
 <a name="Debug"></a>
-## func [Debug](<https://github.com/dianlight/tlog/blob/main/tlog.go#L341>)
+## func [Debug](<https://github.com/dianlight/tlog/blob/main/tlog.go#L361>)
 
 ```go
 func Debug(msg string, args ...any)
@@ -194,7 +211,7 @@ func Debug(msg string, args ...any)
 Debug logs a message at debug level
 
 <a name="DebugContext"></a>
-## func [DebugContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L366>)
+## func [DebugContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L406>)
 
 ```go
 func DebugContext(ctx context.Context, msg string, args ...any)
@@ -202,8 +219,26 @@ func DebugContext(ctx context.Context, msg string, args ...any)
 
 DebugContext logs a message at debug level with context
 
+<a name="DebugLowRate"></a>
+## func [DebugLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L300>)
+
+```go
+func DebugLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+DebugLowRate logs a message at debug level with rate limiting.
+
+<a name="DebugLowRateContext"></a>
+## func [DebugLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L305>)
+
+```go
+func DebugLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+DebugLowRateContext logs a message at debug level with context and rate limiting.
+
 <a name="EnableColors"></a>
-## func [EnableColors](<https://github.com/dianlight/tlog/blob/main/tlog.go#L527>)
+## func [EnableColors](<https://github.com/dianlight/tlog/blob/main/tlog.go#L567>)
 
 ```go
 func EnableColors(enabled bool)
@@ -212,7 +247,7 @@ func EnableColors(enabled bool)
 EnableColors enables or disables colored output
 
 <a name="EnableMultilineStacktrace"></a>
-## func [EnableMultilineStacktrace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L546>)
+## func [EnableMultilineStacktrace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L586>)
 
 ```go
 func EnableMultilineStacktrace(enabled bool)
@@ -221,7 +256,7 @@ func EnableMultilineStacktrace(enabled bool)
 EnableMultilineStacktrace toggles multi\-line stack trace formatting.
 
 <a name="EnableSensitiveDataHiding"></a>
-## func [EnableSensitiveDataHiding](<https://github.com/dianlight/tlog/blob/main/tlog.go#L564>)
+## func [EnableSensitiveDataHiding](<https://github.com/dianlight/tlog/blob/main/tlog.go#L604>)
 
 ```go
 func EnableSensitiveDataHiding(enabled bool)
@@ -230,7 +265,7 @@ func EnableSensitiveDataHiding(enabled bool)
 EnableSensitiveDataHiding enables or disables hiding of sensitive data \(PII\)
 
 <a name="Error"></a>
-## func [Error](<https://github.com/dianlight/tlog/blob/main/tlog.go#L413>)
+## func [Error](<https://github.com/dianlight/tlog/blob/main/tlog.go#L453>)
 
 ```go
 func Error(msg string, args ...any)
@@ -239,7 +274,7 @@ func Error(msg string, args ...any)
 Error logs a message at error level
 
 <a name="ErrorContext"></a>
-## func [ErrorContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L419>)
+## func [ErrorContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L459>)
 
 ```go
 func ErrorContext(ctx context.Context, msg string, args ...any)
@@ -273,8 +308,26 @@ passed to ErrorFormatter\("error"\), will be transformed into:
 }
 ```
 
+<a name="ErrorLowRate"></a>
+## func [ErrorLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L348>)
+
+```go
+func ErrorLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+ErrorLowRate logs a message at error level with rate limiting.
+
+<a name="ErrorLowRateContext"></a>
+## func [ErrorLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L353>)
+
+```go
+func ErrorLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+ErrorLowRateContext logs a message at error level with context and rate limiting.
+
 <a name="Fatal"></a>
-## func [Fatal](<https://github.com/dianlight/tlog/blob/main/tlog.go#L426>)
+## func [Fatal](<https://github.com/dianlight/tlog/blob/main/tlog.go#L466>)
 
 ```go
 func Fatal(msg string, args ...any)
@@ -283,7 +336,7 @@ func Fatal(msg string, args ...any)
 Fatal logs a message at fatal level and exits the program
 
 <a name="FatalContext"></a>
-## func [FatalContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L433>)
+## func [FatalContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L473>)
 
 ```go
 func FatalContext(ctx context.Context, msg string, args ...any)
@@ -301,7 +354,7 @@ func GetCallbackCount(level slog.Level) int
 GetCallbackCount returns the number of callbacks registered for a level
 
 <a name="GetLevel"></a>
-## func [GetLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L448>)
+## func [GetLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L488>)
 
 ```go
 func GetLevel() slog.Level
@@ -310,7 +363,7 @@ func GetLevel() slog.Level
 GetLevel returns the current minimum log level
 
 <a name="GetLevelString"></a>
-## func [GetLevelString](<https://github.com/dianlight/tlog/blob/main/tlog.go#L478>)
+## func [GetLevelString](<https://github.com/dianlight/tlog/blob/main/tlog.go#L518>)
 
 ```go
 func GetLevelString() string
@@ -319,7 +372,7 @@ func GetLevelString() string
 GetLevelString returns the current log level as a string
 
 <a name="GetTimeFormat"></a>
-## func [GetTimeFormat](<https://github.com/dianlight/tlog/blob/main/tlog.go#L595>)
+## func [GetTimeFormat](<https://github.com/dianlight/tlog/blob/main/tlog.go#L635>)
 
 ```go
 func GetTimeFormat() string
@@ -328,7 +381,7 @@ func GetTimeFormat() string
 GetTimeFormat returns the current time format
 
 <a name="Info"></a>
-## func [Info](<https://github.com/dianlight/tlog/blob/main/tlog.go#L373>)
+## func [Info](<https://github.com/dianlight/tlog/blob/main/tlog.go#L413>)
 
 ```go
 func Info(msg string, args ...any)
@@ -337,7 +390,7 @@ func Info(msg string, args ...any)
 Info logs a message at info level
 
 <a name="InfoContext"></a>
-## func [InfoContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L379>)
+## func [InfoContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L419>)
 
 ```go
 func InfoContext(ctx context.Context, msg string, args ...any)
@@ -345,8 +398,26 @@ func InfoContext(ctx context.Context, msg string, args ...any)
 
 InfoContext logs a message at info level with context
 
+<a name="InfoLowRate"></a>
+## func [InfoLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L312>)
+
+```go
+func InfoLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+InfoLowRate logs a message at info level with rate limiting.
+
+<a name="InfoLowRateContext"></a>
+## func [InfoLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L317>)
+
+```go
+func InfoLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+InfoLowRateContext logs a message at info level with context and rate limiting.
+
 <a name="IsColorsEnabled"></a>
-## func [IsColorsEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L539>)
+## func [IsColorsEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L579>)
 
 ```go
 func IsColorsEnabled() bool
@@ -355,7 +426,7 @@ func IsColorsEnabled() bool
 IsColorsEnabled returns true if colors are enabled and terminal supports them
 
 <a name="IsLevelEnabled"></a>
-## func [IsLevelEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L487>)
+## func [IsLevelEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L527>)
 
 ```go
 func IsLevelEnabled(level slog.Level) bool
@@ -364,7 +435,7 @@ func IsLevelEnabled(level slog.Level) bool
 IsLevelEnabled checks if logging is enabled for the given level
 
 <a name="IsMultilineStacktraceEnabled"></a>
-## func [IsMultilineStacktraceEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L557>)
+## func [IsMultilineStacktraceEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L597>)
 
 ```go
 func IsMultilineStacktraceEnabled() bool
@@ -373,7 +444,7 @@ func IsMultilineStacktraceEnabled() bool
 IsMultilineStacktraceEnabled returns true if multi\-line stack traces are enabled.
 
 <a name="IsSensitiveDataHidingEnabled"></a>
-## func [IsSensitiveDataHidingEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L576>)
+## func [IsSensitiveDataHidingEnabled](<https://github.com/dianlight/tlog/blob/main/tlog.go#L616>)
 
 ```go
 func IsSensitiveDataHidingEnabled() bool
@@ -391,7 +462,7 @@ func NewEventHandler() slog.Handler
 
 
 <a name="Notice"></a>
-## func [Notice](<https://github.com/dianlight/tlog/blob/main/tlog.go#L387>)
+## func [Notice](<https://github.com/dianlight/tlog/blob/main/tlog.go#L427>)
 
 ```go
 func Notice(msg string, args ...any)
@@ -400,13 +471,31 @@ func Notice(msg string, args ...any)
 Notice logs a message at notice level
 
 <a name="NoticeContext"></a>
-## func [NoticeContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L393>)
+## func [NoticeContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L433>)
 
 ```go
 func NoticeContext(ctx context.Context, msg string, args ...any)
 ```
 
 NoticeContext logs a message at notice level with context
+
+<a name="NoticeLowRate"></a>
+## func [NoticeLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L324>)
+
+```go
+func NoticeLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+NoticeLowRate logs a message at notice level with rate limiting.
+
+<a name="NoticeLowRateContext"></a>
+## func [NoticeLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L329>)
+
+```go
+func NoticeLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+NoticeLowRateContext logs a message at notice level with context and rate limiting.
 
 <a name="RegisterCallback"></a>
 ## func [RegisterCallback](<https://github.com/dianlight/tlog/blob/main/tlog_event.go#L179>)
@@ -416,6 +505,15 @@ func RegisterCallback(level slog.Level, callback LogCallback) string
 ```
 
 RegisterCallback registers a callback for a specific log level Returns a callback ID that can be used to unregister the callback
+
+<a name="ResetRateLimit"></a>
+## func [ResetRateLimit](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L269>)
+
+```go
+func ResetRateLimit()
+```
+
+ResetRateLimit clears all pending rate\-limit windows, stopping their timers. The next LowRate call for any line behaves like a first occurrence.
 
 <a name="RestartProcessor"></a>
 ## func [RestartProcessor](<https://github.com/dianlight/tlog/blob/main/tlog_event.go#L271>)
@@ -427,7 +525,7 @@ func RestartProcessor()
 RestartProcessor shuts down the current processor and creates a new one This is mainly used for testing to ensure clean state between tests
 
 <a name="SetFormatterConfig"></a>
-## func [SetFormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L507>)
+## func [SetFormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L547>)
 
 ```go
 func SetFormatterConfig(config FormatterConfig)
@@ -436,7 +534,7 @@ func SetFormatterConfig(config FormatterConfig)
 SetFormatterConfig updates the formatter configuration and reinitializes the logger
 
 <a name="SetLevel"></a>
-## func [SetLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L441>)
+## func [SetLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L481>)
 
 ```go
 func SetLevel(level slog.Level)
@@ -445,7 +543,7 @@ func SetLevel(level slog.Level)
 SetLevel sets the minimum log level
 
 <a name="SetLevelFromString"></a>
-## func [SetLevelFromString](<https://github.com/dianlight/tlog/blob/main/tlog.go#L457>)
+## func [SetLevelFromString](<https://github.com/dianlight/tlog/blob/main/tlog.go#L497>)
 
 ```go
 func SetLevelFromString(levelStr string) error
@@ -454,7 +552,7 @@ func SetLevelFromString(levelStr string) error
 SetLevelFromString sets the log level from a string representation Supported levels: trace, debug, info, notice, warn/warning, error, fatal The comparison is case\-insensitive
 
 <a name="SetTimeFormat"></a>
-## func [SetTimeFormat](<https://github.com/dianlight/tlog/blob/main/tlog.go#L583>)
+## func [SetTimeFormat](<https://github.com/dianlight/tlog/blob/main/tlog.go#L623>)
 
 ```go
 func SetTimeFormat(format string)
@@ -481,7 +579,7 @@ func TozdErrorFormatter() slogformatter.Formatter
 TozdErrorFormatter formats gitlab.com/tozd/go/errors with colored stacktraces
 
 <a name="Trace"></a>
-## func [Trace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L328>)
+## func [Trace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L348>)
 
 ```go
 func Trace(msg string, args ...any)
@@ -490,13 +588,31 @@ func Trace(msg string, args ...any)
 Trace logs a message at trace level
 
 <a name="TraceContext"></a>
-## func [TraceContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L334>)
+## func [TraceContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L354>)
 
 ```go
 func TraceContext(ctx context.Context, msg string, args ...any)
 ```
 
 TraceContext logs a message at trace level with context
+
+<a name="TraceLowRate"></a>
+## func [TraceLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L288>)
+
+```go
+func TraceLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+TraceLowRate logs a message at trace level with rate limiting.
+
+<a name="TraceLowRateContext"></a>
+## func [TraceLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L293>)
+
+```go
+func TraceLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+TraceLowRateContext logs a message at trace level with context and rate limiting.
 
 <a name="UnixTimestampFormatter"></a>
 ## func [UnixTimestampFormatter](<https://github.com/dianlight/tlog/blob/main/tlog_time_formatter.go#L12>)
@@ -517,7 +633,7 @@ func UnregisterCallback(level slog.Level, callbackID string) bool
 UnregisterCallback removes a callback by its ID
 
 <a name="Warn"></a>
-## func [Warn](<https://github.com/dianlight/tlog/blob/main/tlog.go#L400>)
+## func [Warn](<https://github.com/dianlight/tlog/blob/main/tlog.go#L440>)
 
 ```go
 func Warn(msg string, args ...any)
@@ -526,7 +642,7 @@ func Warn(msg string, args ...any)
 Warn logs a message at warning level
 
 <a name="WarnContext"></a>
-## func [WarnContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L406>)
+## func [WarnContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L446>)
 
 ```go
 func WarnContext(ctx context.Context, msg string, args ...any)
@@ -534,23 +650,32 @@ func WarnContext(ctx context.Context, msg string, args ...any)
 
 WarnContext logs a message at warning level with context
 
+<a name="WarnLowRate"></a>
+## func [WarnLowRate](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L336>)
+
+```go
+func WarnLowRate(cfg RateLimitConfig, msg string, args ...any)
+```
+
+WarnLowRate logs a message at warning level with rate limiting.
+
+<a name="WarnLowRateContext"></a>
+## func [WarnLowRateContext](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L341>)
+
+```go
+func WarnLowRateContext(ctx context.Context, cfg RateLimitConfig, msg string, args ...any)
+```
+
+WarnLowRateContext logs a message at warning level with context and rate limiting.
+
 <a name="WithCaller"></a>
-## func [WithCaller](<https://github.com/dianlight/tlog/blob/main/tlog.go#L322>)
+## func [WithCaller](<https://github.com/dianlight/tlog/blob/main/tlog.go#L342>)
 
 ```go
-func WithCaller() []any
+func WithCaller(skipFrames int) []any
 ```
 
-WithCaller is a helper function that adds caller information to the log args Usage: tlog.Debug\("message", tlog.WithCaller\(\)..., "key", "value"\)
-
-<a name="WithLevel"></a>
-## func [WithLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L603>)
-
-```go
-func WithLevel(level slog.Level) *slog.Logger
-```
-
-WithLevel creates a logger with a specific minimum level This is useful for creating loggers with different levels without affecting the global logger
+WithCaller is a helper function that adds caller information to the log args The skipFrames parameter allows skipping additional stack frames beyond the default Usage: tlog.Debug\("message", tlog.WithCaller\(0\)..., "key", "value"\)
 
 <a name="EventHandler"></a>
 ## type [EventHandler](<https://github.com/dianlight/tlog/blob/main/tlog_event.go#L19-L21>)
@@ -600,7 +725,7 @@ func (h *EventHandler) WithGroup(name string) slog.Handler
 
 
 <a name="FormatterConfig"></a>
-## type [FormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L73-L79>)
+## type [FormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L79-L85>)
 
 FormatterConfig holds configuration for log formatting
 
@@ -615,7 +740,7 @@ type FormatterConfig struct {
 ```
 
 <a name="GetFormatterConfig"></a>
-### func [GetFormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L520>)
+### func [GetFormatterConfig](<https://github.com/dianlight/tlog/blob/main/tlog.go#L560>)
 
 ```go
 func GetFormatterConfig() FormatterConfig
@@ -645,36 +770,37 @@ type LogEvent struct {
 ```
 
 <a name="Logger"></a>
-## type [Logger](<https://github.com/dianlight/tlog/blob/main/tlog.go#L35-L37>)
+## type [Logger](<https://github.com/dianlight/tlog/blob/main/tlog.go#L37-L40>)
 
 Logger wraps slog.Logger with additional tlog functionality
 
 ```go
 type Logger struct {
     *slog.Logger
+    // contains filtered or unexported fields
 }
 ```
 
 <a name="NewLogger"></a>
-### func [NewLogger](<https://github.com/dianlight/tlog/blob/main/tlog.go#L609>)
+### func [NewLogger](<https://github.com/dianlight/tlog/blob/main/tlog.go#L677>)
 
 ```go
-func NewLogger() *Logger
+func NewLogger(opts ...LoggerOption) *Logger
 ```
 
 NewLogger creates a new Logger instance with the default configuration
 
 <a name="NewLoggerWithLevel"></a>
-### func [NewLoggerWithLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L616>)
+### func [NewLoggerWithLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L689>)
 
 ```go
-func NewLoggerWithLevel(level slog.Level) *Logger
+func NewLoggerWithLevel(level slog.Level, opts ...LoggerOption) *Logger
 ```
 
 NewLoggerWithLevel creates a new Logger instance with a specific minimum level
 
 <a name="Logger.Fatal"></a>
-### func \(\*Logger\) [Fatal](<https://github.com/dianlight/tlog/blob/main/tlog.go#L647>)
+### func \(\*Logger\) [Fatal](<https://github.com/dianlight/tlog/blob/main/tlog.go#L720>)
 
 ```go
 func (l *Logger) Fatal(msg string, args ...any)
@@ -683,7 +809,7 @@ func (l *Logger) Fatal(msg string, args ...any)
 Fatal logs a message at fatal level and exits the program
 
 <a name="Logger.FatalContext"></a>
-### func \(\*Logger\) [FatalContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L654>)
+### func \(\*Logger\) [FatalContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L727>)
 
 ```go
 func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any)
@@ -692,7 +818,7 @@ func (l *Logger) FatalContext(ctx context.Context, msg string, args ...any)
 FatalContext logs a message at fatal level with context and exits the program
 
 <a name="Logger.Notice"></a>
-### func \(\*Logger\) [Notice](<https://github.com/dianlight/tlog/blob/main/tlog.go#L636>)
+### func \(\*Logger\) [Notice](<https://github.com/dianlight/tlog/blob/main/tlog.go#L709>)
 
 ```go
 func (l *Logger) Notice(msg string, args ...any)
@@ -701,7 +827,7 @@ func (l *Logger) Notice(msg string, args ...any)
 Notice logs a message at notice level
 
 <a name="Logger.NoticeContext"></a>
-### func \(\*Logger\) [NoticeContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L642>)
+### func \(\*Logger\) [NoticeContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L715>)
 
 ```go
 func (l *Logger) NoticeContext(ctx context.Context, msg string, args ...any)
@@ -710,7 +836,7 @@ func (l *Logger) NoticeContext(ctx context.Context, msg string, args ...any)
 NoticeContext logs a message at notice level with context
 
 <a name="Logger.Trace"></a>
-### func \(\*Logger\) [Trace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L625>)
+### func \(\*Logger\) [Trace](<https://github.com/dianlight/tlog/blob/main/tlog.go#L698>)
 
 ```go
 func (l *Logger) Trace(msg string, args ...any)
@@ -719,12 +845,76 @@ func (l *Logger) Trace(msg string, args ...any)
 Trace logs a message at trace level
 
 <a name="Logger.TraceContext"></a>
-### func \(\*Logger\) [TraceContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L631>)
+### func \(\*Logger\) [TraceContext](<https://github.com/dianlight/tlog/blob/main/tlog.go#L704>)
 
 ```go
 func (l *Logger) TraceContext(ctx context.Context, msg string, args ...any)
 ```
 
 TraceContext logs a message at trace level with context
+
+<a name="LoggerOption"></a>
+## type [LoggerOption](<https://github.com/dianlight/tlog/blob/main/tlog.go#L649>)
+
+LoggerOption is a functional option for configuring a Logger
+
+```go
+type LoggerOption func(*Logger)
+```
+
+<a name="WithAddCommonKeys"></a>
+### func [WithAddCommonKeys](<https://github.com/dianlight/tlog/blob/main/tlog.go#L659>)
+
+```go
+func WithAddCommonKeys(keys []string) LoggerOption
+```
+
+WithAddCommonKeys adds custom context keys to the default set of common keys
+
+<a name="WithCommonKeys"></a>
+### func [WithCommonKeys](<https://github.com/dianlight/tlog/blob/main/tlog.go#L652>)
+
+```go
+func WithCommonKeys(keys []string) LoggerOption
+```
+
+WithCommonKeys sets custom context keys to extract from context.Context
+
+<a name="WithLevel"></a>
+### func [WithLevel](<https://github.com/dianlight/tlog/blob/main/tlog.go#L670>)
+
+```go
+func WithLevel(level slog.Level) LoggerOption
+```
+
+WithLevel sets the minimum log level for the logger instance \(functional option\). This does not affect the global default logger's level unless used during its creation.
+
+<a name="RateLimitConfig"></a>
+## type [RateLimitConfig](<https://github.com/dianlight/tlog/blob/main/tlog_ratelimit.go#L22-L39>)
+
+RateLimitConfig configures the LowRate logging variants.
+
+A LowRate log emits the first occurrence of a log line immediately, then silences identical lines for Window. At the end of each window a synthetic summary line is fabricated \(even when no real log arrives\), carrying the number of silenced lines both as a message prefix and as a structured attribute.
+
+```go
+type RateLimitConfig struct {
+    // Window is the minimum interval between two emissive log lines. A value
+    // <= 0 disables deduplication (every call is emitted).
+    Window time.Duration
+
+    // IgnoreKeys lists attribute keys excluded from the deduplication
+    // fingerprint. It is optional; when nil it defaults to {"time"}. The
+    // "time" key is always excluded, since it is time-variant by definition.
+    IgnoreKeys []string
+
+    // SuppressedFormat is a fmt format with one %d verb used as the prefix of
+    // a fabricated summary. Optional; defaults to "[%d silenced] ".
+    SuppressedFormat string
+
+    // SilencedKey is the attribute key used for the silenced count. Optional;
+    // defaults to "silenced".
+    SilencedKey string
+}
+```
 
 Generated by [gomarkdoc](<https://github.com/princjef/gomarkdoc>)

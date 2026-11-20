@@ -15,6 +15,7 @@
     - [Getting Current Level](#getting-current-level)
     - [Supported Level Strings](#supported-level-strings)
   - [Advanced Usage](#advanced-usage)
+    - [Rate-Limited Logging](#rate-limited-logging)
     - [Event Callbacks](#event-callbacks)
       - [Registering Callbacks](#registering-callbacks)
       - [LogEvent Structure](#logevent-structure)
@@ -181,6 +182,37 @@ The following strings are supported for `SetLevelFromString()`:
 - Leading and trailing whitespace is automatically trimmed
 
 ## Advanced Usage
+
+### Rate-Limited Logging
+
+Use the `LowRate` variants when the same log line can repeat frequently. They deduplicate by content inside tlog, so no caller-managed keys or `sync.Map` are needed. There is one variant per level, with and without context:
+
+```go
+cfg := tlog.RateLimitConfig{
+    Window:           time.Minute,            // one emit per identical line per minute
+    IgnoreKeys:       []string{"duration"},   // optional; "time" is always ignored
+    SuppressedFormat: "[%d silenced] ",       // optional; this is the default
+    SilencedKey:      "silenced",             // optional; this is the default
+}
+
+tlog.WarnLowRate(cfg, "USB bridge without SMART support", "error", err)
+tlog.ErrorLowRateContext(ctx, cfg, "request failed", "id", id)
+```
+
+Available: `TraceLowRate`, `DebugLowRate`, `InfoLowRate`, `NoticeLowRate`, `WarnLowRate`, `ErrorLowRate`, plus their `...LowRateContext` counterparts. (`Fatal` has no rate-limited variant.)
+
+#### Behavior
+
+1. The first occurrence of a line is emitted immediately.
+2. Identical lines are silenced for `Window`.
+3. At the end of each window tlog **fabricates** a summary line — even when no real log arrived — with the silenced count as a message prefix (`[N silenced] `) and as a structured attribute (`silenced=N`). The next window starts at that emit time.
+4. If nothing was silenced in a window, no summary is emitted and the next real line starts a fresh window.
+
+The deduplication key is built from the message and attributes only: the timestamp and any `IgnoreKeys` are excluded, source location is not part of the key (identical messages from different call sites deduplicate together), and different `Window` values are independent. `Window <= 0` disables deduplication.
+
+```go
+tlog.ResetRateLimit() // clear all pending windows and stop their timers
+```
 
 ### Event Callbacks
 
