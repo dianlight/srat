@@ -14,7 +14,7 @@ require (
 	github.com/danielgtaylor/huma/v2 v2.40.0
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dianlight/smartmontools-sdk/bindings/go/v8 v8.0.1
-	github.com/dianlight/tlog v0.2.2
+	github.com/dianlight/tlog v0.3.0
 	github.com/fatih/color v1.19.0
 	github.com/fsnotify/fsnotify v1.10.1
 	github.com/getsentry/sentry-go v0.50.0
@@ -100,7 +100,7 @@ require (
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/jmattheis/goverter v1.11.1 // indirect
-	github.com/k0kubun/pp/v3 v3.5.1 // indirect
+	github.com/k0kubun/pp/v3 v3.5.4 // indirect
 	github.com/lmittmann/tint v1.1.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20251013123823-9fd1530e3ec3 // indirect

@@ -28,6 +28,7 @@
   - [For Existing Users](#for-existing-users)
   - [To Enable New Features](#to-enable-new-features)
 - [Future Extensibility](#future-extensibility)
+- [Rate-Limited Logging (LowRate)](#rate-limited-logging-lowrate)
 - [Conclusion](#conclusion)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -229,6 +230,10 @@ The new architecture provides a solid foundation for future enhancements:
 3. **Configuration Persistence**: Ready for configuration file support
 4. **Performance Monitoring**: Hooks available for performance metrics
 5. **Integration Support**: Ready for integration with monitoring systems
+
+## Rate-Limited Logging (LowRate)
+
+Every non-fatal log level now has a `LowRate` variant (`WarnLowRate`, `ErrorLowRateContext`, etc.) that accepts a `RateLimitConfig`. Deduplication is centralized in the logging core and keyed by message plus attributes, explicitly excluding the record timestamp and any caller-ignored keys. Identical lines are silenced for `Window`; at each window boundary tlog fabricates a summary carrying the silenced count as both a `[N silenced] ` message prefix and a `silenced=N` structured attribute. State is thread-safe, self-cleaning, and clearable via `ResetRateLimit()`.
 
 ## Conclusion
 

@@ -1,6 +1,40 @@
 # Changelog
 
-## [v3.5.1](https://github.com/k0kubun/pp/tree/v3.5.1)
+## [v3.5.4](https://github.com/k0kubun/pp/tree/v3.5.4)
+
+[Full Changelog](https://github.com/k0kubun/pp/compare/v3.5.3...v3.5.4)
+
+**Merged pull requests:**
+
+- Preserve values for map keys containing NaN [\#119](https://github.com/k0kubun/pp/pull/119) ([yuefdev](https://github.com/yuefdev))
+
+## [v3.5.3](https://github.com/k0kubun/pp/tree/v3.5.3) (2026-10-09)
+
+[Full Changelog](https://github.com/k0kubun/pp/compare/v3.5.2...v3.5.3)
+
+**Merged pull requests:**
+
+- Format Errorf arguments only once [\#118](https://github.com/k0kubun/pp/pull/118) ([abo3losh1](https://github.com/abo3losh1))
+- Bump golang.org/x/text from 0.41.0 to 0.42.0 [\#117](https://github.com/k0kubun/pp/pull/117) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.40.0 to 0.41.0 [\#116](https://github.com/k0kubun/pp/pull/116) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.38.0 to 0.40.0 [\#115](https://github.com/k0kubun/pp/pull/115) ([dependabot[bot]](https://github.com/apps/dependabot))
+
+## [v3.5.2](https://github.com/k0kubun/pp/tree/v3.5.2) (2026-07-15)
+
+[Full Changelog](https://github.com/k0kubun/pp/compare/v3.5.1...v3.5.2)
+
+**Merged pull requests:**
+
+- Reduce allocations in nested rendering [\#114](https://github.com/k0kubun/pp/pull/114) ([apstndb](https://github.com/apstndb))
+- Bump golang.org/x/text from 0.37.0 to 0.38.0 [\#113](https://github.com/k0kubun/pp/pull/113) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump github.com/mattn/go-colorable from 0.1.14 to 0.1.15 [\#112](https://github.com/k0kubun/pp/pull/112) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.36.0 to 0.37.0 [\#111](https://github.com/k0kubun/pp/pull/111) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.35.0 to 0.36.0 [\#110](https://github.com/k0kubun/pp/pull/110) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.34.0 to 0.35.0 [\#109](https://github.com/k0kubun/pp/pull/109) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.33.0 to 0.34.0 [\#108](https://github.com/k0kubun/pp/pull/108) ([dependabot[bot]](https://github.com/apps/dependabot))
+- Bump golang.org/x/text from 0.32.0 to 0.33.0 [\#107](https://github.com/k0kubun/pp/pull/107) ([dependabot[bot]](https://github.com/apps/dependabot))
+
+## [v3.5.1](https://github.com/k0kubun/pp/tree/v3.5.1) (2026-01-23)
 
 [Full Changelog](https://github.com/k0kubun/pp/compare/v3.5.0...v3.5.1)
 

@@ -32,6 +32,11 @@ const (
 	smartInfoCacheCleanup = 5 * time.Minute
 )
 
+// smartWarnRateLimit throttles recurring SMART warnings shared by the SMART
+// services. tlog emits the first occurrence immediately, silences duplicates
+// within the window, and reports the silenced count in a summary afterwards.
+var smartWarnRateLimit = tlog.RateLimitConfig{Window: time.Minute}
+
 // smartInfoCacheEntry stores either a successful SmartInfo or the error that
 // should be replayed for the TTL window. Negative caching matters: devices
 // without SMART support are exactly the ones re-probed most often.
@@ -141,12 +146,6 @@ type smartService struct {
 	// s.mutex while holding testMu).
 	testMu      sync.Mutex
 	testTracker map[string]*selfTestTrackerEntry
-	// smartctlDisagreeWarned records devices whose CheckHealth/smartctl
-	// disagreement has already been logged at Warn. On affected hardware the
-	// reconciliation runs about once a minute, so repeats are demoted to Debug
-	// while the first occurrence stays visible. sync.Map is concurrency-safe
-	// and its zero value is ready to use.
-	smartctlDisagreeWarned sync.Map
 }
 
 type SmartServiceParams struct {
@@ -474,22 +473,6 @@ func (s *smartService) GetSmartStatus(ctx context.Context, deviceId string) (*dt
 	return ret, nil
 }
 
-// logSmartctlDisagreementOnce keeps the first CheckHealth/smartctl disagreement
-// per device visible at Warn and demotes the routine repeats to Debug. The
-// reconciliation itself is correct (#1196); on affected hardware it simply runs
-// far too often for a Warn on every call to remain actionable.
-//
-// TODO: remove this workaround once tlog provides WarnOnce
-// (https://github.com/dianlight/tlog/issues/26) and call it directly instead.
-func (s *smartService) logSmartctlDisagreementOnce(ctx context.Context, devicePath string) {
-	const msg = "SMART lib CheckHealth disagreed with smartctl; trusting smartctl PASSED"
-	if _, warned := s.smartctlDisagreeWarned.LoadOrStore(devicePath, struct{}{}); warned {
-		tlog.DebugContext(ctx, msg, "device", devicePath)
-		return
-	}
-	tlog.WarnContext(ctx, msg, "device", devicePath)
-}
-
 // GetHealthStatus returns the health status of a device by evaluating SMART attributes
 func (s *smartService) GetHealthStatus(ctx context.Context, deviceId string) (*dto.SmartHealthStatus, errors.E) {
 	// Check if client is available
@@ -563,7 +546,11 @@ func (s *smartService) GetHealthStatus(ctx context.Context, deviceId string) (*d
 			tlog.WarnContext(ctx, "SMART verify CheckHealth failed; keeping primary result",
 				"device", devicePath, "error", verr)
 		} else if verified {
-			s.logSmartctlDisagreementOnce(ctx, devicePath)
+			// Reconciliation is correct (#1196), but on affected hardware it runs
+			// about once a minute - too often for a Warn on every call.
+			tlog.WarnLowRateContext(ctx, smartWarnRateLimit,
+				"SMART lib CheckHealth disagreed with smartctl; trusting smartctl PASSED",
+				"device", devicePath)
 			health.Passed = true
 			health.OverallStatus = "healthy"
 		}

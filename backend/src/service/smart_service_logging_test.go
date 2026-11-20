@@ -61,11 +61,10 @@ func captureTlogByMessage(t *testing.T, msg string, levels ...slog.Level) func()
 	}
 }
 
-// TestGetHealthStatus_VerifyDisagreementLoggedOncePerDevice asserts the log
-// noise fix: the #1196 smartctl-disagreement reconciliation stays visible at
-// Warn on first occurrence per device and is demoted to Debug on the routine
-// repeats observed in the field (~once per minute for a healthy drive).
-func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyDisagreementLoggedOncePerDevice() {
+// TestGetHealthStatus_VerifyDisagreementRateLimited asserts the log noise fix:
+// the #1196 smartctl-disagreement reconciliation is logged once at Warn per
+// rate-limit window instead of on every routine health check.
+func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyDisagreementRateLimited() {
 	tempFile, err := os.CreateTemp("", "testdevice")
 	suite.Require().NoError(err)
 	defer os.Remove(tempFile.Name())
@@ -93,6 +92,8 @@ func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyDisagreementLoggedOnce
 
 	const wantMsg = "SMART lib CheckHealth disagreed with smartctl; trusting smartctl PASSED"
 	snap := captureTlogByMessage(suite.T(), wantMsg, slog.LevelWarn, slog.LevelDebug)
+	tlog.ResetRateLimit()
+	suite.T().Cleanup(tlog.ResetRateLimit)
 
 	for range 2 {
 		health, hErr := suite.service.GetHealthStatus(context.Background(), tempFile.Name())
@@ -101,21 +102,14 @@ func (suite *SmartServiceSuite) TestGetHealthStatus_VerifyDisagreementLoggedOnce
 		suite.True(health.Passed)
 	}
 
-	var got []recordedLog
 	suite.Require().Eventually(func() bool {
-		got = snap()
-		return len(got) == 2
-	}, 2*time.Second, 10*time.Millisecond, "expected exactly two disagreement log records")
+		return len(snap()) == 1
+	}, 2*time.Second, 10*time.Millisecond, "expected one disagreement log record")
+	suite.Never(func() bool {
+		return len(snap()) > 1
+	}, 200*time.Millisecond, 10*time.Millisecond, "the repeated disagreement must be silenced within the window")
 
-	warns, debugs := 0, 0
-	for _, r := range got {
-		switch r.level {
-		case slog.LevelWarn:
-			warns++
-		case slog.LevelDebug:
-			debugs++
-		}
-	}
-	suite.Equal(1, warns, "first disagreement must remain visible at Warn")
-	suite.Equal(1, debugs, "repeated disagreement must be demoted to Debug")
+	got := snap()
+	suite.Require().Len(got, 1)
+	suite.Equal(slog.LevelWarn, got[0].level, "the first disagreement must be visible at Warn")
 }
