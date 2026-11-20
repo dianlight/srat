@@ -6,6 +6,16 @@
 
 ### ✨ Features
 
+### 🐛 Bug Fixes
+
+### 🏗 Chore
+
+- **Bun 1.4.5**: Upgrades the toolchain to stable Bun 1.4.5 and drops the canary-only install workarounds, so local and CI installs use the normal release channel.
+
+## 2026.11.0
+
+### ✨ Features
+
 - **HA 2026.11 native USB mounting**: Added compatibility with Home Assistant 2026.11 native USB disk mounting so newly attached USB volumes are detected and managed. ([#1567](https://github.com/dianlight/srat/pull/1567))
 
 ### 🐛 Bug Fixes
@@ -591,4 +601,4 @@ With your donations, we are able to continue developing and improving this proje
 
 - First Fully functional version ready for first merge.
 
-<!-- release-timestamp: 2026-10-21T15:29:08Z -->
+<!-- release-timestamp: 2026-11-16T20:58:10Z -->

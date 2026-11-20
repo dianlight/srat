@@ -7,6 +7,7 @@ import (
 
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/internal/osutil"
 	"github.com/prometheus/procfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -288,6 +289,65 @@ func TestSyncPartitionMountData_LoadsDBRows(t *testing.T) {
 	got, ok := disks.GetMountPoint("disk-00", "part-00-00", "/mnt/db")
 	require.True(t, ok, "mount point persisted in DB must be re-added to the cache")
 	assert.False(t, got.IsMounted)
+}
+
+// TestSyncAllMountData_StaleDBRowStillEmitsMountEvent is a regression test for
+// the addon-to-HA ownership transfer used by remote cases 003.023/003.024.
+// When an HA mount name was used before, a stale mount_point_paths row remains.
+// The DB converter derives IsMounted from the live OS mount table, so loading
+// that row during reconciliation resets the cache's previously unmounted
+// state to mounted; the procfs loop then sees oldstate==true and skips the
+// MountPointEvent the share service needs to re-associate the share by device.
+func TestSyncAllMountData_StaleDBRowStillEmitsMountEvent(t *testing.T) {
+	hw := buildH2Hardware(1, 1)
+	disk := hw["disk-00"]
+	disks := dto.NewDiskMapFrom(&disk)
+	svc, _, _ := newH2VolumeService(t, disks, hw)
+
+	const haPath = "/media/srat_stale_row_test"
+	part := (*disk.Partitions)["part-00-00"]
+
+	// From the converter's point of view the HA path is mounted, while the
+	// cache still holds the previous unmounted observation of that row.
+	restore := osutil.MockMountInfo("100 1 0:96 / " + haPath + " rw - exfat /dev/sdb2 rw\n")
+	t.Cleanup(restore)
+
+	stale := dto.MountPointData{
+		Path:        haPath,
+		Root:        "/",
+		DeviceId:    *part.Id,
+		Type:        "HOST",
+		IsMounted:   false,
+		Flags:       &dto.MountFlags{},
+		CustomFlags: &dto.MountFlags{},
+	}
+	require.NoError(t, svc.repo.Persist(&stale))
+	require.NoError(t, disks.AddOrUpdateMountPoint("disk-00", "part-00-00", stale))
+
+	// The procfs snapshot now contains the HA mount for the same partition.
+	svc.MockSetProcfsGetMounts(func() ([]*procfs.MountInfo, error) {
+		return []*procfs.MountInfo{
+			{
+				MountID: 6001, ParentID: 1, MajorMinorVer: "0:96", Root: "/",
+				Source: *part.DevicePath, MountPoint: haPath, FSType: "exfat",
+				Options: map[string]string{"rw": ""}, SuperOptions: map[string]string{},
+			},
+		}, nil
+	})
+
+	var seen []events.MountPointEvent
+	unsub := svc.eventBus.OnMountPoint(func(_ context.Context, e events.MountPointEvent) errors.E {
+		seen = append(seen, e)
+		return nil
+	})
+	t.Cleanup(unsub)
+
+	require.NoError(t, svc.udevHandler.SyncAllMountData(context.Background()))
+
+	require.Len(t, seen, 1, "a newly present HA mount must emit a MountPointEvent even when a stale DB row exists")
+	assert.Equal(t, haPath, seen[0].MountPoint.Path)
+	assert.True(t, seen[0].MountPoint.IsMounted)
+	assert.True(t, seen[0].MountPoint.IsHAMounted)
 }
 
 // TestSyncPartitionMountData_PruneStaleInvalidOrphans is the #1073 regression

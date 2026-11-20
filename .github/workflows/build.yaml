@@ -38,10 +38,8 @@ permissions:
   contents: write
   discussions: write
 
-# mise resolves tool metadata through api.github.com (use_versions_host = false in
-# .mise.toml, kept for the bun canary digest). Without a token that is the
-# anonymous 60/hour limit; pass the workflow token to every step so task-time
-# installs (gh, air, gosec, go@1.27.4) authenticate.
+# Authenticate mise task-time installs that query the GitHub API (e.g. gh,
+# gopls) so CI does not hit the 60/hour anonymous rate limit.
 env:
   MISE_GITHUB_TOKEN: ${{ github.token }}
 
@@ -272,15 +270,15 @@ jobs:
           fetch-depth: 0
 
       - name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: "backend/src/go.mod"
           cache-dependency-path: "**/*.sum"
 
       - name: Setup mise
-        uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: "2026.11.7"
+          version: "2026.11.9"
           install: true
           experimental: true
 
@@ -347,9 +345,9 @@ jobs:
       #          bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: "2026.11.7"
+          version: "2026.11.9"
           install: true
           experimental: true
 
@@ -410,9 +408,9 @@ jobs:
           python-version: "3.15"
 
       - name: Setup mise
-        uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: "2026.11.7"
+          version: "2026.11.9"
           install: true
           experimental: true
 
@@ -511,7 +509,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: "backend/src/go.mod"
           cache-dependency-path: "**/*.sum"
@@ -521,9 +519,9 @@ jobs:
           bun-version-file: frontend/package.json
 
       - name: Setup mise
-        uses: jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785 # v5.2.8
+        uses: jdx/mise-action@236a21c3b91f5db6d4e174b348674a0f0caac06d # v5.2.9
         with:
-          version: "2026.11.7"
+          version: "2026.11.9"
           install: true
           experimental: true
 

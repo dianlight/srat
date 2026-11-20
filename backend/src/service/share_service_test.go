@@ -520,6 +520,39 @@ func (suite *ShareServiceSuite) TestCreateShareSuccess() {
 	suite.Len(created.Users, 1)
 }
 
+// TestCreateShareDuplicateActiveReturnsConflict pins #003.020: creating a
+// share whose name is already active must return the domain Conflict error
+// (HTTP 409), not a raw GORM unique-constraint failure (HTTP 500).
+func (suite *ShareServiceSuite) TestCreateShareDuplicateActiveReturnsConflict() {
+	newShare := dto.SharedResource{
+		Name:     "dup-active-share",
+		Disabled: new(false),
+		Usage:    "media",
+		MountPointData: &dto.MountPointData{
+			IsMounted: true,
+			Path:      "/mnt/dup-active-1",
+			DeviceId:  "dupdev-1",
+			Type:      "ADDON",
+		},
+		Users: []dto.User{{Username: "homeassistant"}},
+	}
+	created, err := suite.shareService.CreateShare(newShare)
+	suite.Require().NoError(err)
+	suite.Require().NotNil(created)
+
+	duplicate := newShare
+	duplicate.MountPointData = &dto.MountPointData{
+		IsMounted: true,
+		Path:      "/mnt/dup-active-2",
+		DeviceId:  "dupdev-2",
+		Type:      "ADDON",
+	}
+	dupCreated, err := suite.shareService.CreateShare(duplicate)
+	suite.Nil(dupCreated)
+	suite.Require().Error(err)
+	suite.True(errors.Is(err, dto.ErrorShareAlreadyExists), "expected ErrorShareAlreadyExists, got %v", err)
+}
+
 // TestCreateShareMissingMountPointType asserts that a share without a mount
 // point type is rejected with a validation error instead of a DB constraint
 // failure (issue #901).
@@ -2014,4 +2047,134 @@ func (suite *ShareServiceStartupSeedingSuite) TestStartupSeedingIsIdempotentAcro
 	secondShares, err := secondShareService.ListShares()
 	suite.Require().NoError(err)
 	suite.Len(secondShares, 9)
+}
+
+// TestGetSharesByDeviceID pins the device-based fallback used when a mount
+// ownership change moves a share to a different path.
+func (suite *ShareServiceSuite) TestGetSharesByDeviceID() {
+	root := "/"
+	pathA, pathB := "/mnt/dev-a", "/mnt/dev-b"
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name:               "share-a",
+		MountPointDataPath: &pathA,
+		MountPointDataRoot: &root,
+		MountPointData:     dbom.MountPointPath{Path: pathA, Root: &root, Type: "ADDON", DeviceId: "dev-a"},
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name:               "share-b",
+		MountPointDataPath: &pathB,
+		MountPointDataRoot: &root,
+		MountPointData:     dbom.MountPointPath{Path: pathB, Root: &root, Type: "ADDON", DeviceId: "dev-b"},
+	}).Error)
+
+	shares, err := suite.shareService.GetSharesByDeviceID("dev-a")
+	suite.Require().NoError(err)
+	suite.Require().Len(shares, 1)
+	suite.Equal("share-a", shares[0].Name)
+
+	empty, err := suite.shareService.GetSharesByDeviceID("")
+	suite.Require().NoError(err)
+	suite.Empty(empty)
+}
+
+// TestVerifyShareReassociatesByDeviceAfterOwnershipChange covers both
+// transitions: addon mount to HA mount, and HA mount back to addon mount. The
+// share keeps its device but its persisted path is stale after the switch.
+func (suite *ShareServiceSuite) TestVerifyShareReassociatesByDeviceAfterOwnershipChange() {
+	diskID, partID := "disk-transfer", "part-transfer"
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}
+	suite.Require().NoError(suite.disks.AddOrUpdate(&disk))
+
+	// Home Assistant owns the device now, under an HA-managed path.
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: "/media/transferred", DeviceId: partID, IsMounted: true, Type: "HOST",
+	}))
+	haShare := &dto.SharedResource{
+		Name:           "transfer-to-ha",
+		MountPointData: &dto.MountPointData{Path: "/mnt/old", Root: "/", DeviceId: partID, Type: "ADDON"},
+	}
+	suite.Require().NoError(suite.shareService.VerifyShare(haShare))
+	suite.Require().NotNil(haShare.Status)
+	suite.True(haShare.Status.IsValid, "share must stay valid after HA remount")
+	suite.Equal("/media/transferred", haShare.MountPointData.Path)
+	suite.True(haShare.MountPointData.IsHAMounted)
+	suite.Equal("HOST", haShare.MountPointData.Type)
+
+	// The addon owns the same device again, under a new /mnt path.
+	suite.Require().True(suite.disks.RemoveMountPoint(diskID, partID, "/media/transferred"))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: "/mnt/transferred", DeviceId: partID, IsMounted: true, Type: "ADDON",
+	}))
+	addonShare := &dto.SharedResource{
+		Name:           "transfer-to-addon",
+		MountPointData: &dto.MountPointData{Path: "/media/old", Root: "/", DeviceId: partID, Type: "HOST"},
+	}
+	suite.Require().NoError(suite.shareService.VerifyShare(addonShare))
+	suite.Require().NotNil(addonShare.Status)
+	suite.True(addonShare.Status.IsValid, "share must stay valid after addon remount")
+	suite.Equal("/mnt/transferred", addonShare.MountPointData.Path)
+	suite.False(addonShare.MountPointData.IsHAMounted)
+	suite.Equal("ADDON", addonShare.MountPointData.Type)
+}
+
+// TestReassociateShareMountPersistsNewPath verifies that the device fallback
+// updates the persisted share path in one transaction, and that a share still
+// mounted at its original path is never moved.
+func (suite *ShareServiceSuite) TestReassociateShareMountPersistsNewPath() {
+	root := "/"
+	oldPath, newPath := "/mnt/old-persist", "/media/new-persist"
+	stayPath := "/mnt/stay-persist"
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name:               "move-share",
+		MountPointDataPath: &oldPath,
+		MountPointDataRoot: &root,
+		MountPointData:     dbom.MountPointPath{Path: oldPath, Root: &root, Type: "ADDON", DeviceId: "dev-persist"},
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name:               "stay-share",
+		MountPointDataPath: &stayPath,
+		MountPointDataRoot: &root,
+		MountPointData:     dbom.MountPointPath{Path: stayPath, Root: &root, Type: "ADDON", DeviceId: "dev-stay"},
+	}).Error)
+
+	diskID, partID := "disk-persist", "part-persist"
+	disk := dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}
+	suite.Require().NoError(suite.disks.AddOrUpdate(&disk))
+	// The original path is stale; the new one is live.
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: oldPath, DeviceId: partID, IsMounted: false, IsInvalid: true,
+	}))
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: newPath, DeviceId: partID, IsMounted: true, IsHAMounted: true,
+	}))
+	// The other share is still served at its path.
+	suite.Require().NoError(suite.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: stayPath, DeviceId: "dev-stay", IsMounted: true,
+	}))
+
+	suite.Require().NoError(suite.shareService.ReassociateShareMount("move-share", newPath, root, partID))
+	suite.Require().NoError(suite.shareService.ReassociateShareMount("stay-share", "/media/ignored", root, "dev-stay"))
+
+	var moved dbom.ExportedShare
+	suite.Require().NoError(suite.db.Where(g.ExportedShare.Name.Eq("move-share")).First(&moved).Error)
+	suite.Require().NotNil(moved.MountPointDataPath)
+	suite.Equal(newPath, *moved.MountPointDataPath)
+
+	var newRow dbom.MountPointPath
+	suite.Require().NoError(suite.db.Where("path = ? AND root = ?", newPath, root).First(&newRow).Error)
+	suite.Equal(partID, newRow.DeviceId)
+
+	var staleCount int64
+	suite.Require().NoError(suite.db.Unscoped().Model(&dbom.MountPointPath{}).
+		Where("path = ? AND root = ?", oldPath, root).Count(&staleCount).Error)
+	suite.Equal(int64(1), staleCount, "old mount row is kept: exported_shares has a foreign key on (path, root)")
+
+	var stayed dbom.ExportedShare
+	suite.Require().NoError(suite.db.Where(g.ExportedShare.Name.Eq("stay-share")).First(&stayed).Error)
+	suite.Require().NotNil(stayed.MountPointDataPath)
+	suite.Equal(stayPath, *stayed.MountPointDataPath)
 }

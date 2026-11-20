@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -93,6 +94,8 @@ type ShareServiceInterface interface {
 	DisableShare(name string) (*dto.SharedResource, errors.E)
 	EnableShare(name string) (*dto.SharedResource, errors.E)
 	GetShareFromPath(path string) (*dto.SharedResource, errors.E)
+	GetSharesByDeviceID(deviceID string) ([]dto.SharedResource, errors.E)
+	ReassociateShareMount(shareName, path, root, deviceID string) errors.E
 	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
 	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
@@ -152,14 +155,37 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
 		share, err := s.GetShareFromPath(event.MountPoint.Path)
 		if err != nil {
-			if errors.Is(err, dto.ErrorShareNotFound) {
-				if ensureErr := s.ensureInternalShare(ctx, event.MountPoint.Path, event.MountPoint); ensureErr != nil {
-					return ensureErr
+			if !errors.Is(err, dto.ErrorShareNotFound) {
+				return err
+			}
+			// An HA or addon remount can move the same device to a different
+			// path. Notify shares keyed to the old path so the dirty-data
+			// pipeline regenerates smb.conf with the live mount path.
+			byDevice, devErr := s.GetSharesByDeviceID(event.MountPoint.DeviceId)
+			if devErr != nil {
+				return devErr
+			}
+			if len(byDevice) > 0 {
+				for i := range byDevice {
+					if event.MountPoint.IsMounted && !event.MountPoint.IsInvalid && byDevice[i].MountPointData != nil {
+						if err := s.ReassociateShareMount(byDevice[i].Name, event.MountPoint.Path, event.MountPoint.Root, event.MountPoint.DeviceId); err != nil {
+							slog.WarnContext(ctx, "Failed to reassociate share mount", "share", byDevice[i].Name, "path", event.MountPoint.Path, "err", err)
+						} else {
+							byDevice[i].MountPointData.Path = event.MountPoint.Path
+						}
+					}
+					_ = s.eventBus.EmitShare(events.ShareEvent{
+						Type:  events.EventTypes.UPDATE,
+						Share: &byDevice[i], // Let subscribers fetch the share if needed
+					})
 				}
-				tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 				return nil
 			}
-			return err
+			if ensureErr := s.ensureInternalShare(ctx, event.MountPoint.Path, event.MountPoint); ensureErr != nil {
+				return ensureErr
+			}
+			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
+			return nil
 		}
 		if share == nil {
 			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
@@ -360,6 +386,19 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 		return s.UpdateShare(share.Name, share)
 	}
 
+	// An active share with the same name must surface as a clean Conflict
+	// (409), not as a raw GORM unique-constraint failure (500). The soft-delete
+	// restore above only handles deleted rows; active duplicates fall through
+	// here. The Create-time ErrDuplicatedKey mapping below is the race fallback.
+	var activeCount int64
+	if err := s.db.WithContext(s.ctx).Model(&dbom.ExportedShare{}).
+		Where("name = ? AND deleted_at IS NULL", share.Name).Count(&activeCount).Error; err != nil {
+		return nil, errors.Wrapf(err, "failed to check for existing active share %s", share.Name)
+	}
+	if activeCount > 0 {
+		return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
+	}
+
 	var conv converter.DtoToDbomConverterImpl
 	var dbShare dbom.ExportedShare
 	err := conv.SharedResourceToExportedShare(share, &dbShare)
@@ -381,6 +420,13 @@ func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResourc
 	}
 
 	if errC := gorm.G[dbom.ExportedShare](s.db).Create(s.ctx, &dbShare); errC != nil {
+		// Duplicate share names must surface as a clean Conflict (409) via
+		// dto.ErrorShareAlreadyExists, not leak a raw GORM unique-constraint
+		// failure out as a 500. Active duplicates hit the DB unique index;
+		// soft-deleted ones were already restored above via UpdateShare.
+		if errors.Is(errC, gorm.ErrDuplicatedKey) {
+			return nil, errors.WithStack(dto.ErrorShareAlreadyExists)
+		}
 		return nil, errors.Errorf("failed to save share '%s' to repository: %w", share.Name, errC)
 	}
 
@@ -593,6 +639,130 @@ func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, error
 	s.annotateStandardShareHidden(&dtoShare)
 
 	return &dtoShare, nil
+}
+
+// GetSharesByDeviceID returns every share whose mount row belongs to a device.
+// Mount ownership changes (addon /mnt paths versus HA /media, /share, /backup
+// paths) change the persisted path while the device stays the same, so the
+// path-only GetShareFromPath lookup cannot find those shares. Related data is
+// always preloaded, as required by the share service contract.
+func (s *ShareService) GetSharesByDeviceID(deviceID string) ([]dto.SharedResource, errors.E) {
+	if strings.TrimSpace(deviceID) == "" {
+		return nil, nil
+	}
+
+	var rows []dbom.ExportedShare
+	if err := s.db.WithContext(s.ctx).
+		Preload("MountPointData", nil).
+		Preload("Users", nil).
+		Preload("RoUsers", nil).
+		Joins("JOIN mount_point_paths ON mount_point_paths.path = exported_shares.mount_point_data_path AND mount_point_paths.root = exported_shares.mount_point_data_root").
+		Where("mount_point_paths.device_id = ? AND exported_shares.deleted_at IS NULL", deviceID).
+		Find(&rows).Error; err != nil {
+		return nil, errors.Wrap(err, "failed to get shares by device id")
+	}
+
+	var conv converter.DtoToDbomConverterImpl
+	shares := make([]dto.SharedResource, 0, len(rows))
+	for _, row := range rows {
+		dtoShare, errS := conv.ExportedShareToSharedResource(row)
+		if errS != nil {
+			return nil, errors.Wrap(errS, "failed to convert share")
+		}
+		if err := s.VerifyShare(&dtoShare); err != nil {
+			slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
+		}
+		s.annotateStandardShareHidden(&dtoShare)
+		shares = append(shares, dtoShare)
+	}
+	return shares, nil
+}
+
+// ReassociateShareMount repoints a share to the live mount path after its
+// device changed owners (addon /mnt path versus HA /media, /share, /backup).
+// It only moves shares that are no longer served by their old path, in one
+// transaction, and keeps the old mount row when another share still uses it.
+func (s *ShareService) ReassociateShareMount(shareName, path, root, deviceID string) errors.E {
+	if shareName == "" || path == "" {
+		return nil
+	}
+	if root == "" {
+		root = "/"
+	}
+
+	errTx := s.db.WithContext(s.ctx).Transaction(func(tx *gorm.DB) error {
+		var share dbom.ExportedShare
+		if err := tx.Preload("MountPointData", nil).Where(g.ExportedShare.Name.Eq(shareName)).First(&share).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil
+			}
+			return err
+		}
+
+		oldPath, oldRoot := "", "/"
+		if share.MountPointDataPath != nil {
+			oldPath = *share.MountPointDataPath
+		}
+		if share.MountPointDataRoot != nil {
+			oldRoot = *share.MountPointDataRoot
+		}
+		if oldPath == path && oldRoot == root {
+			return nil
+		}
+		if mp, ok := s.disks.GetMountPointByPath(oldPath); ok && mp != nil && mp.IsMounted && !mp.IsInvalid {
+			// The share is still served where it is; never move it away.
+			return nil
+		}
+
+		var existing int64
+		if err := tx.Model(&dbom.MountPointPath{}).
+			Where("path = ? AND root = ?", path, root).Count(&existing).Error; err != nil {
+			return err
+		}
+		if existing == 0 {
+			mountType := "ADDON"
+			if volume.IsHAManagedMountPath(path) {
+				mountType = "HOST"
+			}
+			newMount := dbom.MountPointPath{
+				Path:               path,
+				Root:               &root,
+				Type:               mountType,
+				DeviceId:           deviceID,
+				FSType:             share.MountPointData.FSType,
+				Flags:              share.MountPointData.Flags,
+				Data:               share.MountPointData.Data,
+				IsToMountAtStartup: share.MountPointData.IsToMountAtStartup,
+			}
+			if err := tx.Create(&newMount).Error; err != nil {
+				return err
+			}
+		} else if deviceID != "" {
+			// Use an unmodelled table update: GORM would otherwise invoke the
+			// MountPointPath BeforeSave hook on the zero-value model and reject
+			// it with "path cannot be empty".
+			if err := tx.Table("mount_point_paths").
+				Where("path = ? AND root = ?", path, root).Update("device_id", deviceID).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Model(&dbom.ExportedShare{}).
+			Where(g.ExportedShare.Name.Eq(shareName)).
+			Updates(map[string]any{"mount_point_data_path": path, "mount_point_data_root": root}).Error; err != nil {
+			return err
+		}
+
+		// Do not hard-delete the old mount row: exported_shares has a real
+		// foreign key on (path, root), and soft-deleted shares still hold that
+		// reference, so deletion fails with a constraint violation. The stale
+		// row is harmless and is reconciled by the volume layer.
+		return nil
+	})
+	if errTx != nil {
+		return errors.Wrap(errTx, "failed to reassociate share mount")
+	}
+	return nil
 }
 
 func (s *ShareService) SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E) {

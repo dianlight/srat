@@ -24,9 +24,8 @@ permissions:
   # To report GitHub Actions status checks
   statuses: write
 
-# mise resolves tool metadata through api.github.com (use_versions_host = false in
-# .mise.toml). Pass the workflow token to every step so task-time installs
-# authenticate instead of hitting the 60/hour anonymous limit.
+# Authenticate mise task-time installs that query the GitHub API so CI does
+# not hit the 60/hour anonymous rate limit.
 env:
   MISE_GITHUB_TOKEN: ${{ github.token }}
 

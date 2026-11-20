@@ -137,6 +137,12 @@ func NormalizeMountPath(path string) string {
 // ExportedShare — nil or zero Name), missing on disk (IsInvalid is derived
 // from isPathDirNotExists during DTO conversion) and an ADDON mount (HOST
 // rows are never pruned here).
+//
+// HA-managed rows are deliberately excluded: an HA path can be unmounted yet
+// still back real share configs (#003.019 — the reproduced /media/srat_test_disk
+// row is referenced by the srattestha and SRAT_TEST_DISK shares). Pruning it
+// here would silently orphan those shares, so share cleanup belongs in the
+// share-validation path, not in mount-row reconciliation.
 func mountRowIsStaleOrphan(md *dto.MountPointData) bool {
 	if md == nil || md.IsMounted || md.Share != nil {
 		return false

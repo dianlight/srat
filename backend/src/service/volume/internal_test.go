@@ -3,12 +3,38 @@ package volume
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/dianlight/srat/dto"
+	"github.com/stretchr/testify/require"
 )
+
+// TestSameDevicePath verifies that a procfs source such as /dev/sdb2 matches a
+// partition's by-id symlink, which is how HA-created mounts are detected.
+func TestSameDevicePath(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "sdb2")
+	require.NoError(t, os.WriteFile(target, []byte(""), 0o600))
+	link := filepath.Join(dir, "usb-by-id")
+	require.NoError(t, os.Symlink(target, link))
+
+	if !sameDevicePath(link, target) {
+		t.Error("symlink and target must resolve to the same device")
+	}
+	if !sameDevicePath(target, link) {
+		t.Error("comparison must be symmetric")
+	}
+	if sameDevicePath(target, filepath.Join(dir, "sdc1")) {
+		t.Error("different paths must not match")
+	}
+	if sameDevicePath("", target) {
+		t.Error("empty path must not match")
+	}
+}
 
 func TestNormalizeMountPath(t *testing.T) {
 	cases := []struct{ in, want string }{
@@ -43,7 +69,11 @@ func TestMountRowIsStaleOrphan(t *testing.T) {
 	}
 	host := dto.MountPointData{Type: "HOST", IsInvalid: true}
 	if mountRowIsStaleOrphan(&host) {
-		t.Error("HOST row must never be an orphan")
+		t.Error("HOST row must never be an orphan (may back HA share configs)")
+	}
+	hostMounted := dto.MountPointData{Type: "HOST", IsMounted: true, IsInvalid: true}
+	if mountRowIsStaleOrphan(&hostMounted) {
+		t.Error("mounted HOST row must never be an orphan")
 	}
 	wantStartup := dto.MountPointData{IsToMountAtStartup: &startup, IsInvalid: true}
 	if mountRowIsStaleOrphan(&wantStartup) {
