@@ -19,7 +19,10 @@
   "commitMessagePrefix": "⬆️",
   "configMigration": true,
   "rebaseWhen": "behind-base-branch",
-  "dependencyDashboard": true,
+  "dependencyDashboard": {
+    "enabled": true,
+    "autoclose": true
+  },
   "separateMultipleMajor": true,
   "major": {
     "dependencyDashboardApproval": true
@@ -32,7 +35,6 @@
     "goGenerate"
   ],
   "abandonmentThreshold": "8 years",
-  "dependencyDashboardAutoclose": true,
   "mise": {
     "managerFilePatterns": [
       "**/{,.}mise{,.*}.toml",
