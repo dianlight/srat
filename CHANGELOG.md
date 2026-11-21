@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- Load the Apple stream module on ordinary non-FAT shares and preserve the separator before the recycle module
+
 ### 🏗 Chore
 
 - **Bun 1.4.5**: Upgrades the toolchain to stable Bun 1.4.5 and drops the canary-only install workarounds, so local and CI installs use the normal release channel.
