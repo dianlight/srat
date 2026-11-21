@@ -200,7 +200,7 @@ jobs:
       - name: Select model
         id: resolve
         continue-on-error: true
-        uses: dianlight/opencode-modelselect-action@3ec36a41d90fad0d56e0670699f960ae8d4e3eef # v1
+        uses: dianlight/opencode-modelselect-action@1a3669a3fa584587f2a0a7663cadb1ef76c81b24 # v1
         with:
           task-type: issue-triage
           tier: auto
