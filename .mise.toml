@@ -15,7 +15,7 @@ compile = false
 [tools]
 go = "1.27.4"
 act = "0.2.98"
-vale = "3.27.0"
+vale = "3.28.1"
 markdownlint-cli2 = "0.24.1"
 "npm:doctoc" = "2.5.0"
 "npm:@fission-ai/openspec" = "1.17.0"
