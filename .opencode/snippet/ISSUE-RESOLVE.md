@@ -10,4 +10,4 @@ description: follow the issue and resolve eith test and pr
 - validate fix with remote test ( if are defined in previus step )
 - summarize
 - only if you are sure do next steps otherwise ask user permission
-#PR
+- create the pull request with the `create-pr` skill (`.opencode/skills/create-pr/SKILL.md`)
