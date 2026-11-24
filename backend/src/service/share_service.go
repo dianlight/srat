@@ -931,6 +931,30 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 	enrichSharePartitionFromCache(share, s.disks)
 	share.Status.IsHAMounted = share.MountPointData != nil && (share.MountPointData.IsHAMounted || (share.MountPointData.Path != "" && volume.IsHAManagedMountPath(share.MountPointData.Path)))
 
+	// For shares on HA-managed (host) mounts, Usage is owned by Home
+	// Assistant: derive it from the Supervisor mount's usage instead of
+	// trusting the locally stored value (issue #1646).
+	if share.Status.IsHAMounted && s.supervisor_service != nil {
+		if mounts, err := s.supervisor_service.NetworkGetAllMounted(s.ctx); err == nil {
+			for _, m := range mounts {
+				match := false
+				if m.Name != nil && (strings.EqualFold(*m.Name, share.Name) || strings.EqualFold(*m.Name, sanitizeSupervisorMountName(share.Name))) {
+					match = true
+				}
+				if !match && m.Share != nil && strings.EqualFold(*m.Share, share.Name) {
+					match = true
+				}
+				if !match && m.Path != nil && share.MountPointData != nil && *m.Path != "" && *m.Path == share.MountPointData.Path {
+					match = true
+				}
+				if match && m.Usage != nil {
+					share.Usage = dto.HAMountUsage(*m.Usage)
+					break
+				}
+			}
+		}
+	}
+
 	// Issue #898/#900: standard share names (legacy and new) expose the new
 	// application-based directories. Check directory existence FIRST for
 	// standard shares so that legacy shares whose new directory exists stay

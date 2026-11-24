@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dbom/g"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
+	"github.com/dianlight/srat/homeassistant/mount"
 	"github.com/dianlight/srat/internal/ctxkeys"
 	"github.com/dianlight/srat/service"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
@@ -2177,4 +2178,34 @@ func (suite *ShareServiceSuite) TestReassociateShareMountPersistsNewPath() {
 	suite.Require().NoError(suite.db.Where(g.ExportedShare.Name.Eq("stay-share")).First(&stayed).Error)
 	suite.Require().NotNil(stayed.MountPointDataPath)
 	suite.Equal(stayPath, *stayed.MountPointDataPath)
+}
+
+// TestVerifyShare_HAMountedUsageDerivedFromSupervisor verifies that a share on
+// an HA-managed mount takes its Usage from the Supervisor mount (issue #1646).
+func (suite *ShareServiceSuite) TestVerifyShare_HAMountedUsageDerivedFromSupervisor() {
+	controller := mock.NewMockController(suite.T())
+	supervisorMock := mock.Mock[service.SupervisorServiceInterface](controller)
+	suite.shareService.SetSupervisorService(supervisorMock)
+
+	mounts := map[string]mount.Mount{
+		"ha_usbtest": {
+			Name:  new("ha_usbtest"),
+			Usage: new(mount.MountUsage("media")),
+		},
+	}
+	mock.When(supervisorMock.NetworkGetAllMounted(mock.Any[context.Context]())).ThenReturn(mounts, nil)
+
+	share := dto.SharedResource{
+		Name:  "ha_usbtest",
+		Usage: dto.UsageAsNone,
+		MountPointData: &dto.MountPointData{
+			Path:        "/media/ha_usbtest",
+			IsMounted:   true,
+			IsHAMounted: true,
+			Type:        "HOST",
+		},
+	}
+
+	suite.Require().NoError(suite.shareService.VerifyShare(&share))
+	suite.Equal(dto.UsageAsMedia, share.Usage)
 }

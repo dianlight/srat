@@ -581,6 +581,51 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_Issue221_ExactScenari
 	_, _ = mock.Verify(suite.mountClient, matchers.Times(1)).RemoveMountWithResponse(mock.Any[context.Context](), mock.Any[string]())
 }
 
+// TestNetworkMountShare_DoesNotPushUsageToMount asserts that a Usage mismatch
+// between SRAT and Home Assistant never causes SRAT to overwrite the mount's
+// usage. HA owns Usage for mounts it manages (issue #1646).
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_DoesNotPushUsageToMount() {
+	getMountsResponse := &mount.GetMountsResponse{
+		HTTPResponse: &http.Response{StatusCode: 200},
+		Body:         []byte(`{"result":"ok","data":{"mounts":[]}}`),
+		JSON200: &struct {
+			Data *struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			} `json:"data,omitempty"`
+			Result *mount.GetMounts200Result `json:"result,omitempty"`
+		}{
+			Data: &struct {
+				DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+				Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+			}{
+				Mounts: &[]mount.Mount{
+					{
+						Name:   new("test_share"),
+						State:  new("active"),
+						Type:   new(mount.MountType("cifs")),
+						Usage:  new(mount.MountUsage("media")),
+						Server: new("172.30.32.1"),
+					},
+				},
+			},
+		},
+	}
+
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).ThenReturn(getMountsResponse, nil)
+
+	testShare := dto.SharedResource{
+		Name:  "test-share",
+		Usage: "backup",
+	}
+	err := suite.supervisorService.NetworkMountShare(context.Background(), testShare)
+
+	suite.Require().NoError(err)
+	_, _ = mock.Verify(suite.mountClient, matchers.Times(0)).UpdateMountWithResponse(
+		mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount](),
+	)
+}
+
 // TestNetworkMountShare_Update400_NoRetryLogic tests the scenario where an update fails with 400
 // With the fix, this should now use retry logic to recover
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_Update400_NoRetryLogic() {

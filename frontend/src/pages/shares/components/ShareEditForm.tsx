@@ -25,6 +25,7 @@ import {
   SwitchElement,
   TextFieldElement,
 } from "react-hook-form-mui";
+
 import { useVolume } from "../../../hooks/volumeHook";
 import default_json from "../../../json/default_config.json";
 import {
@@ -32,8 +33,8 @@ import {
   type SharedResource,
   Time_machine_support,
   Usage,
-  type User,
   useGetApiUsersQuery,
+  type User,
 } from "../../../store/sratApi";
 import type { ShareEditProps } from "../types";
 import {
@@ -122,6 +123,12 @@ export function ShareEditForm({
       },
     });
   const isDisabled = watch("disabled") || disabled;
+  const selectedMountPointData = watch("mount_point_data");
+  const isHaMountedShare = Boolean(
+    shareData?.mount_point_data?.is_ha_mounted ||
+    shareData?.status?.is_ha_mounted ||
+    selectedMountPointData?.is_ha_mounted,
+  );
   const [availablePartitions, setAvailablePartition] = useState<
     MountPointData[]
   >([]);
@@ -151,7 +158,6 @@ export function ShareEditForm({
   //setEditName(shareData?.org_name === undefined);
 
   // Effect to auto-populate share name if empty when a volume is selected
-  const selectedMountPointData = watch("mount_point_data");
   const currentShareName = watch("name");
 
   useEffect(() => {
@@ -330,7 +336,12 @@ export function ShareEditForm({
                 size="small"
                 label="Usage"
                 name="usage"
-                disabled={isDisabled}
+                disabled={isDisabled || isHaMountedShare}
+                helperText={
+                  isHaMountedShare
+                    ? "Usage is managed by Home Assistant"
+                    : undefined
+                }
                 options={Object.values(Usage)
                   .filter((usage) => usage !== Usage.Internal)
                   .map((usage) => {
