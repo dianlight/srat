@@ -1,13 +1,19 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
 import type { Settings as ApiSettings } from "../../../../store/sratApi";
 import { GeneralPanel } from "../GeneralPanel";
 
+const mockState = vi.hoisted(() => ({
+  capabilities: { lib_smart_available: false } as Record<string, unknown>,
+}));
+
 vi.mock("../../../../store/sratApi", async () => {
-  const actual = await vi.importActual<typeof import("../../../../store/sratApi")>(
-    "../../../../store/sratApi",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../../../store/sratApi")
+  >("../../../../store/sratApi");
 
   return {
     ...actual,
@@ -19,7 +25,7 @@ vi.mock("../../../../store/sratApi", async () => {
       }),
     }),
     useGetApiCapabilitiesQuery: () => ({
-      data: { lib_smart_available: false },
+      data: mockState.capabilities,
       isLoading: false,
     }),
   };
@@ -52,6 +58,10 @@ function TestHarness({
 }
 
 describe("GeneralPanel switch accessibility", () => {
+  beforeEach(() => {
+    mockState.capabilities = { lib_smart_available: false };
+  });
+
   it("exposes core switches with semantic accessible names", () => {
     render(<TestHarness />);
 
@@ -89,13 +99,54 @@ describe("GeneralPanel switch accessibility", () => {
   });
 
   it("keeps the Samba mDNS Announce switch enabled regardless of the proxy setting", () => {
-    render(
-      <TestHarness defaultValues={{ use_component_mdns_proxy: false }} />,
-    );
+    render(<TestHarness defaultValues={{ use_component_mdns_proxy: false }} />);
 
     const toggle = screen.getByRole("switch", {
       name: /Samba mDNS Announce/i,
     });
     expect((toggle as HTMLInputElement).disabled).toBe(false);
+  });
+});
+
+describe("GeneralPanel SMART backend tooltip", () => {
+  beforeEach(() => {
+    mockState.capabilities = { lib_smart_available: false };
+  });
+
+  it("does not render the active backend as inline text", () => {
+    render(<TestHarness />);
+    expect(screen.queryByText(/Active backend:/)).toBeNull();
+  });
+
+  it("shows the active backend in the tooltip on hover (direct)", async () => {
+    mockState.capabilities = {
+      lib_smart_available: true,
+      smart_backend: "direct",
+    };
+    const user = userEvent.setup();
+    render(<TestHarness />);
+
+    const toggle = screen.getByRole("switch", { name: /smart enabled/i });
+    await user.hover(toggle);
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toMatch(/Active backend:/);
+    expect(tooltip.textContent).toMatch(/direct \(lib backend\)/);
+  });
+
+  it("shows the active backend in the tooltip on hover (legacy)", async () => {
+    mockState.capabilities = {
+      lib_smart_available: false,
+      smart_backend: "legacy",
+    };
+    const user = userEvent.setup();
+    render(<TestHarness />);
+
+    const toggle = screen.getByRole("switch", { name: /smart enabled/i });
+    await user.hover(toggle);
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip.textContent).toMatch(/Active backend:/);
+    expect(tooltip.textContent).toMatch(/legacy \(smartctl exec\)/);
   });
 });

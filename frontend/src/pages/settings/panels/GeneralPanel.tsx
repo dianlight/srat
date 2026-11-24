@@ -11,6 +11,7 @@ import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import { useFormContext } from "react-hook-form";
 import { SelectElement, TextFieldElement } from "react-hook-form-mui";
+
 import { TabIDs } from "../../../store/locationState";
 import {
   type Settings as ApiSettings,
@@ -217,10 +218,16 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
               prevent idle disks from spinning up.
             </Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
-              The active backend is detected at startup and read-only:{" "}
+              The active backend is detected at startup and is read-only:{" "}
               <strong>direct</strong> uses the <code>libsmartmon_go.so</code>{" "}
               library backend, <strong>legacy</strong> shells out to the{" "}
               <code>smartctl</code> executable.
+            </Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              Active backend: <strong>{smartBackend}</strong>
+              {smartBackend === "direct"
+                ? " (lib backend)"
+                : " (smartctl exec)"}
             </Typography>
           </>
         }
@@ -233,10 +240,6 @@ export function GeneralPanel({ readOnly }: GeneralPanelProps) {
             name="smart_on"
             {...commonProps}
           />
-          <Typography variant="body2" sx={{ mt: 0.5 }}>
-            Active backend: <strong>{smartBackend}</strong>
-            {smartBackend === "direct" ? " (lib backend)" : " (smartctl exec)"}
-          </Typography>
         </Box>
       </Tooltip>
 
