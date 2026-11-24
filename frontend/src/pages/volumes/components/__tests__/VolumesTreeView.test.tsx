@@ -2,816 +2,837 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createBaseProps = (overrides: Record<string, unknown> = {}) => ({
-    expandedItems: [],
-    onExpandedItemsChange: () => { },
-    onPartitionSelect: () => { },
-    onToggleAutomount: () => { },
-    onMount: () => { },
-    onUnmount: () => { },
-    onCreateShare: () => { },
-    onGoToShare: () => { },
-    ...overrides,
+  expandedItems: [],
+  onExpandedItemsChange: () => {},
+  onPartitionSelect: () => {},
+  onToggleAutomount: () => {},
+  onMount: () => {},
+  onUnmount: () => {},
+  onCreateShare: () => {},
+  onGoToShare: () => {},
+  ...overrides,
 });
 
 describe("VolumesTreeView Component", () => {
-    const createMatchMedia = (matches: boolean) => () => (({
-        matches,
-        addListener: () => { },
-        removeListener: () => { },
-        addEventListener: () => { },
-        removeEventListener: () => { },
-        dispatchEvent: () => false,
-        onchange: null,
-        media: "",
-    }) as any);
+  const createMatchMedia = (matches: boolean) => () =>
+    ({
+      matches,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+      media: "",
+    }) as any;
 
-    beforeEach(() => {
-        (window as any).matchMedia = createMatchMedia(false); // Force desktop mode
-        localStorage.clear();
-        document.body.innerHTML = "";
+  beforeEach(() => {
+    (window as any).matchMedia = createMatchMedia(false); // Force desktop mode
+    localStorage.clear();
+    document.body.innerHTML = "";
+  });
+
+  it("renders a single-mountpoint partition", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-1",
+        model: "Test Disk",
+        size: 1000000000,
+        partitions: {
+          "part-1": {
+            id: "part-1",
+            name: "Single Mount Partition",
+            size: 500000000,
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/single": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/single",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+          }),
+        ),
+      }),
+    );
+
+    const partitionName = await screen.findByText("Single Mount Partition");
+    const mountChip = await screen.findByText("Mounted");
+    const fstypeChip = await screen.findByText("ext4");
+    expect(partitionName).toBeTruthy();
+    expect(mountChip).toBeTruthy();
+    expect(fstypeChip).toBeTruthy();
+  });
+
+  it("shows filesystem alert icon when filesystem is not clear", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-alert",
+        model: "Alert Disk",
+        partitions: {
+          "part-alert": {
+            id: "part-alert",
+            name: "Alert Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/alert": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/alert",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+    const filesystemStateByPartitionId = {
+      "part-alert": {
+        hasErrors: true,
+        isClean: false,
+        isMounted: true,
+        stateDescription: "Filesystem errors detected",
+      },
+    };
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+            filesystemStateByPartitionId,
+          }),
+        ),
+      }),
+    );
+
+    const alertIcon = await screen.findByLabelText(
+      /filesystem status alert for alert partition/i,
+    );
+    expect(alertIcon).toBeTruthy();
+  });
+
+  it("does not show filesystem alert icon when filesystem is clean", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-clean",
+        model: "Clean Disk",
+        partitions: {
+          "part-clean": {
+            id: "part-clean",
+            name: "Clean Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/clean": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/clean",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+    const filesystemStateByPartitionId = {
+      "part-clean": {
+        hasErrors: false,
+        isClean: true,
+        isMounted: true,
+      },
+    };
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+            filesystemStateByPartitionId,
+          }),
+        ),
+      }),
+    );
+
+    expect(screen.queryByLabelText(/filesystem status alert/i)).toBeNull();
+  });
+
+  it("renders multiple mountpoints with a parent node", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-2",
+        model: "Multi Disk",
+        size: 2000000000,
+        partitions: {
+          "part-2": {
+            id: "part-2",
+            name: "Multi Mount Partition",
+            size: 1000000000,
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/data1": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/data1",
+                type: "HOST",
+              },
+              "/mnt/data2": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/data2",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+          }),
+        ),
+      }),
+    );
+
+    const partitionName = await screen.findByText("Multi Mount Partition");
+    const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
+    expect(partitionName).toBeTruthy();
+    expect(mountpointLabel).toBeTruthy();
+  });
+
+  it("invokes onPartitionSelect when a partition is clicked", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const user = userEvent.setup();
+    let selectedPartitionId: string | null = null;
+    const onPartitionSelect = (_disk: any, partition: any) => {
+      selectedPartitionId = partition?.id ?? null;
+    };
+
+    const disks = [
+      {
+        id: "disk-3",
+        model: "Click Disk",
+        partitions: {
+          "part-3": {
+            id: "part-3",
+            name: "Clickable Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/click": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/click",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+            onPartitionSelect,
+          }),
+        ),
+      }),
+    );
+
+    const partitionName = await screen.findByText("Clickable Partition");
+    await user.click(partitionName);
+
+    expect(partitionName).toBeTruthy();
+    expect(selectedPartitionId === "part-3").toBe(true);
+  });
+
+  it("filters system partitions when hideSystemPartitions is true", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-4",
+        model: "System Disk",
+        partitions: {
+          "part-4": {
+            id: "part-4",
+            name: "hassos-data",
+            system: true,
+            mount_point_data: {},
+            host_mount_point_data: {
+              "/mnt/host": {
+                path: "/mnt/host",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [],
+          }),
+        ),
+      }),
+    );
+
+    expect(screen.queryByText("SYSTEM DISK")).toBeNull();
+  });
+
+  it("shows a raw disk badge and hint for a disk without partitions", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { createTestStore } = await import("/test/testing");
+    const { getDiskIdentifier } = await import("../../utils");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-5",
+        model: "Raw USB Drive",
+        legacy_device_name: "sdb",
+        partitions: {},
+      },
+    ];
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [getDiskIdentifier(disks[0] as any, 0)],
+          }),
+        ),
+      }),
+    );
+
+    expect(screen.getByText("Raw disk (no partition table)")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No partition table detected. Select the disk for details.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("shows a raw disk badge and hint for a whole-disk filesystem partition", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { createTestStore } = await import("/test/testing");
+    const { getDiskIdentifier } = await import("../../utils");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-6",
+        model: "Raw USB Drive",
+        legacy_device_name: "sdd",
+        partitions: {
+          "usb-General_UDisk-0:0": {
+            id: "usb-General_UDisk-0:0",
+            legacy_device_name: "sdd",
+            fs_type: "vfat",
+            mount_point_data: {},
+          },
+        },
+      },
+    ];
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [getDiskIdentifier(disks[0] as any, 0)],
+          }),
+        ),
+      }),
+    );
+
+    expect(screen.getByText("Raw disk (no partition table)")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "No partition table detected. Select the disk for details.",
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText("1 partition(s)")).toBeNull();
+  });
+
+  it("shows a partition-like mount action for a raw disk with a whole-disk partition", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { createTestStore } = await import("/test/testing");
+    const { getDiskIdentifier } = await import("../../utils");
+
+    const user = userEvent.setup();
+    const store = await createTestStore();
+    const onMount = vi.fn(() => undefined);
+    const disks = [
+      {
+        id: "disk-7",
+        model: "Raw USB Drive",
+        legacy_device_name: "sde",
+        partitions: {
+          "usb-General_UDisk-0:0": {
+            id: "usb-General_UDisk-0:0",
+            legacy_device_name: "sde",
+            fs_type: "vfat",
+            mount_point_data: {},
+          },
+        },
+      },
+    ];
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [getDiskIdentifier(disks[0] as any, 0)],
+            onMount,
+          }),
+        ),
+      }),
+    );
+
+    const mountButton = await screen.findByRole("button", {
+      name: /mount partition/i,
     });
+    await user.click(mountButton);
+    expect(onMount).toHaveBeenCalledTimes(1);
+  });
 
-    it("renders a single-mountpoint partition", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
+  it("shows set label and format actions for a supported partition", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
 
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-1",
-                model: "Test Disk",
-                size: 1000000000,
-                partitions: {
-                    "part-1": {
-                        id: "part-1",
-                        name: "Single Mount Partition",
-                        size: 500000000,
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/single": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/single",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
+    const user = userEvent.setup();
+    const store = await createTestStore();
+    const onCheckFilesystem = vi.fn(() => undefined);
+    const onSetFilesystemLabel = vi.fn(() => undefined);
+    const onFormatPartition = vi.fn(() => undefined);
+    const disks = [
+      {
+        id: "disk-8",
+        model: "Supported Disk",
+        partitions: {
+          "part-8": {
+            id: "part-8",
+            name: "Supported Partition",
+            fs_type: "ext4",
+            filesystem_info: {
+              support: {
+                canCheck: true,
+                canSetLabel: true,
+                canFormat: true,
+              },
             },
-        ];
+            mount_point_data: {
+              "/mnt/supported": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/supported",
+                type: "HOST",
+              },
+            },
+          },
+        },
+      },
+    ];
 
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
 
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                        }),
-                    ),
-                },
-            ),
-        );
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+            onCheckFilesystem,
+            onSetFilesystemLabel,
+            onFormatPartition,
+          }),
+        ),
+      }),
+    );
 
-        const partitionName = await screen.findByText("Single Mount Partition");
-        const mountChip = await screen.findByText("Mounted");
-        const fstypeChip = await screen.findByText("ext4");
-        expect(partitionName).toBeTruthy();
-        expect(mountChip).toBeTruthy();
-        expect(fstypeChip).toBeTruthy();
+    // Verify buttons are rendered
+    const setLabelButton = await screen.findByRole("button", {
+      name: /set label/i,
     });
-
-    it("shows filesystem alert icon when filesystem is not clear", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-alert",
-                model: "Alert Disk",
-                partitions: {
-                    "part-alert": {
-                        id: "part-alert",
-                        name: "Alert Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/alert": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/alert",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-        const filesystemStateByPartitionId = {
-            "part-alert": {
-                hasErrors: true,
-                isClean: false,
-                isMounted: true,
-                stateDescription: "Filesystem errors detected",
-            },
-        };
-
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                            filesystemStateByPartitionId,
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        const alertIcon = await screen.findByLabelText(
-            /filesystem status alert for alert partition/i,
-        );
-        expect(alertIcon).toBeTruthy();
+    const formatButton = await screen.findByRole("button", {
+      name: /format partition/i,
     });
+    expect(setLabelButton).toBeTruthy();
+    expect(formatButton).toBeTruthy();
 
-    it("does not show filesystem alert icon when filesystem is clean", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
+    // Click set label and verify callback routing
+    await user.click(setLabelButton);
+    expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1);
+    expect(onFormatPartition).not.toHaveBeenCalled();
+    expect(onCheckFilesystem).not.toHaveBeenCalled();
 
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-clean",
-                model: "Clean Disk",
-                partitions: {
-                    "part-clean": {
-                        id: "part-clean",
-                        name: "Clean Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/clean": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/clean",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
+    // Click format and verify callback routing
+    await user.click(formatButton);
+    expect(onFormatPartition).toHaveBeenCalledTimes(1);
+    expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1); // still 1
+    expect(onCheckFilesystem).not.toHaveBeenCalled();
+  });
+
+  it("hides set label and format actions when filesystem support is unavailable", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-9",
+        model: "Unsupported Disk",
+        partitions: {
+          "part-9": {
+            id: "part-9",
+            name: "Unsupported Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/unsupported": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/unsupported",
+                type: "HOST",
+              },
             },
-        ];
-        const filesystemStateByPartitionId = {
-            "part-clean": {
-                hasErrors: false,
-                isClean: true,
-                isMounted: true,
+          },
+        },
+      },
+    ];
+
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+            onCheckFilesystem: vi.fn(() => undefined),
+            onSetFilesystemLabel: vi.fn(() => undefined),
+            onFormatPartition: vi.fn(() => undefined),
+          }),
+        ),
+      }),
+    );
+
+    await screen.findByText("Unsupported Partition");
+    expect(screen.queryByRole("button", { name: /set label/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /format partition/i }),
+    ).toBeNull();
+  });
+
+  it("colors the partition icon primary when automount is enabled on a mount point", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-automount",
+        model: "Automount Disk",
+        partitions: {
+          "part-automount": {
+            id: "part-automount",
+            name: "Automount Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/automount": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/automount",
+                type: "HOST",
+                is_to_mount_at_startup: true,
+              },
             },
-        };
+          },
+        },
+      },
+    ];
 
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
 
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                            filesystemStateByPartitionId,
-                        }),
-                    ),
-                },
-            ),
-        );
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+          }),
+        ),
+      }),
+    );
 
-        expect(screen.queryByLabelText(/filesystem status alert/i)).toBeNull();
-    });
+    await screen.findByText("Automount Partition");
 
-    it("renders multiple mountpoints with a parent node", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
+    // The partition icon (StorageIcon) must carry the primary color class
+    // when any mount point has automount enabled.
+    const primaryIcon = screen.getByTestId("StorageIcon");
+    expect(primaryIcon.getAttribute("class")).toContain(
+      "MuiSvgIcon-colorPrimary",
+    );
+  });
 
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-2",
-                model: "Multi Disk",
-                size: 2000000000,
-                partitions: {
-                    "part-2": {
-                        id: "part-2",
-                        name: "Multi Mount Partition",
-                        size: 1000000000,
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/data1": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/data1",
-                                type: "HOST",
-                            },
-                            "/mnt/data2": {
-                                is_mounted: false,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/data2",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
+  it("does not color the partition icon primary when automount is disabled", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-noautomount",
+        model: "No Automount Disk",
+        partitions: {
+          "part-noautomount": {
+            id: "part-noautomount",
+            name: "No Automount Partition",
+            fs_type: "ext4",
+            mount_point_data: {
+              "/mnt/noautomount": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ext4",
+                path: "/mnt/noautomount",
+                type: "HOST",
+                is_to_mount_at_startup: false,
+              },
             },
-        ];
+          },
+        },
+      },
+    ];
 
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                        }),
-                    ),
-                },
-            ),
-        );
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
 
-        const partitionName = await screen.findByText("Multi Mount Partition");
-        const mountpointLabel = await screen.findByText(/2 mountpoint\(s\)/i);
-        expect(partitionName).toBeTruthy();
-        expect(mountpointLabel).toBeTruthy();
-    });
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+          }),
+        ),
+      }),
+    );
 
-    it("invokes onPartitionSelect when a partition is clicked", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
+    await screen.findByText("No Automount Partition");
 
-        const store = await createTestStore();
-        const user = userEvent.setup();
-        let selectedPartitionId: string | null = null;
-        const onPartitionSelect = (_disk: any, partition: any) => {
-            selectedPartitionId = partition?.id ?? null;
-        };
+    const primaryIcon = screen.getByTestId("StorageIcon");
+    expect(primaryIcon.getAttribute("class")).not.toContain(
+      "MuiSvgIcon-colorPrimary",
+    );
+  });
 
-        const disks = [
-            {
-                id: "disk-3",
-                model: "Click Disk",
-                partitions: {
-                    "part-3": {
-                        id: "part-3",
-                        name: "Clickable Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/click": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/click",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
+  it("hides addon and stale mountpoints when partition is host-mounted", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier } = await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const disks = [
+      {
+        id: "disk-ha",
+        model: "HA Disk",
+        partitions: {
+          "part-ha": {
+            id: "part-ha",
+            name: "FSTESTNTFS",
+            fs_type: "ntfs",
+            mount_point_data: {
+              "/media/ha_usbtest": {
+                is_mounted: true,
+                is_write_supported: true,
+                fstype: "ntfs",
+                path: "/media/ha_usbtest",
+                type: "HOST",
+                is_ha_mounted: true,
+              },
+              "/media/srat_test_disk": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ntfs",
+                path: "/media/srat_test_disk",
+                type: "HOST",
+                is_ha_mounted: true,
+              },
+              "/mnt/usbtest": {
+                is_mounted: false,
+                is_write_supported: true,
+                fstype: "ntfs",
+                path: "/mnt/usbtest",
+                type: "ADDON",
+                share: { name: "USBTEST", disabled: true },
+              },
             },
-        ];
+          },
+        },
+      },
+    ];
 
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier],
+          }),
+        ),
+      }),
+    );
 
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                            onPartitionSelect,
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        const partitionName = await screen.findByText("Clickable Partition");
-        await user.click(partitionName);
-
-        expect(partitionName).toBeTruthy();
-        expect(selectedPartitionId === "part-3").toBe(true);
-    });
-
-    it("filters system partitions when hideSystemPartitions is true", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("/test/testing");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-4",
-                model: "System Disk",
-                partitions: {
-                    "part-4": {
-                        id: "part-4",
-                        name: "hassos-data",
-                        system: true,
-                        mount_point_data: {},
-                        host_mount_point_data: {
-                            "/mnt/host": {
-                                path: "/mnt/host",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [],
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        expect(screen.queryByText("SYSTEM DISK")).toBeNull();
-    });
-
-    it("shows a raw disk badge and hint for a disk without partitions", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("/test/testing");
-        const { getDiskIdentifier } = await import("../../utils");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-5",
-                model: "Raw USB Drive",
-                legacy_device_name: "sdb",
-                partitions: {},
-            },
-        ];
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [
-                                getDiskIdentifier(disks[0] as any, 0),
-                            ],
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        expect(
-            screen.getByText("Raw disk (no partition table)"),
-        ).toBeTruthy();
-        expect(
-            screen.getByText(
-                "No partition table detected. Select the disk for details.",
-            ),
-        ).toBeTruthy();
-    });
-
-    it("shows a raw disk badge and hint for a whole-disk filesystem partition", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("/test/testing");
-        const { getDiskIdentifier } = await import("../../utils");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-6",
-                model: "Raw USB Drive",
-                legacy_device_name: "sdd",
-                partitions: {
-                    "usb-General_UDisk-0:0": {
-                        id: "usb-General_UDisk-0:0",
-                        legacy_device_name: "sdd",
-                        fs_type: "vfat",
-                        mount_point_data: {},
-                    },
-                },
-            },
-        ];
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [
-                                getDiskIdentifier(disks[0] as any, 0),
-                            ],
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        expect(
-            screen.getByText("Raw disk (no partition table)"),
-        ).toBeTruthy();
-        expect(
-            screen.getByText(
-                "No partition table detected. Select the disk for details.",
-            ),
-        ).toBeTruthy();
-        expect(screen.queryByText("1 partition(s)")).toBeNull();
-    });
-
-    it("shows a partition-like mount action for a raw disk with a whole-disk partition", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { createTestStore } = await import("/test/testing");
-        const { getDiskIdentifier } = await import("../../utils");
-
-        const user = userEvent.setup();
-        const store = await createTestStore();
-        const onMount = vi.fn(() => undefined);
-        const disks = [
-            {
-                id: "disk-7",
-                model: "Raw USB Drive",
-                legacy_device_name: "sde",
-                partitions: {
-                    "usb-General_UDisk-0:0": {
-                        id: "usb-General_UDisk-0:0",
-                        legacy_device_name: "sde",
-                        fs_type: "vfat",
-                        mount_point_data: {},
-                    },
-                },
-            },
-        ];
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [
-                                getDiskIdentifier(disks[0] as any, 0),
-                            ],
-                            onMount,
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        const mountButton = await screen.findByRole("button", {
-            name: /mount partition/i,
-        });
-        await user.click(mountButton);
-        expect(onMount).toHaveBeenCalledTimes(1);
-    });
-
-    it("shows set label and format actions for a supported partition", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const userEvent = (await import("@testing-library/user-event")).default;
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
-
-        const user = userEvent.setup();
-        const store = await createTestStore();
-        const onCheckFilesystem = vi.fn(() => undefined);
-        const onSetFilesystemLabel = vi.fn(() => undefined);
-        const onFormatPartition = vi.fn(() => undefined);
-        const disks = [
-            {
-                id: "disk-8",
-                model: "Supported Disk",
-                partitions: {
-                    "part-8": {
-                        id: "part-8",
-                        name: "Supported Partition",
-                        fs_type: "ext4",
-                        filesystem_info: {
-                            support: {
-                                canCheck: true,
-                                canSetLabel: true,
-                                canFormat: true,
-                            },
-                        },
-                        mount_point_data: {
-                            "/mnt/supported": {
-                                is_mounted: false,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/supported",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                            onCheckFilesystem,
-                            onSetFilesystemLabel,
-                            onFormatPartition,
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        // Verify buttons are rendered
-        const setLabelButton = await screen.findByRole("button", { name: /set label/i });
-        const formatButton = await screen.findByRole("button", { name: /format partition/i });
-        expect(setLabelButton).toBeTruthy();
-        expect(formatButton).toBeTruthy();
-
-        // Click set label and verify callback routing
-        await user.click(setLabelButton);
-        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1);
-        expect(onFormatPartition).not.toHaveBeenCalled();
-        expect(onCheckFilesystem).not.toHaveBeenCalled();
-
-        // Click format and verify callback routing
-        await user.click(formatButton);
-        expect(onFormatPartition).toHaveBeenCalledTimes(1);
-        expect(onSetFilesystemLabel).toHaveBeenCalledTimes(1); // still 1
-        expect(onCheckFilesystem).not.toHaveBeenCalled();
-    });
-
-    it("hides set label and format actions when filesystem support is unavailable", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-9",
-                model: "Unsupported Disk",
-                partitions: {
-                    "part-9": {
-                        id: "part-9",
-                        name: "Unsupported Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/unsupported": {
-                                is_mounted: false,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/unsupported",
-                                type: "HOST",
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                            onCheckFilesystem: vi.fn(() => undefined),
-                            onSetFilesystemLabel: vi.fn(() => undefined),
-                            onFormatPartition: vi.fn(() => undefined),
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        await screen.findByText("Unsupported Partition");
-        expect(
-            screen.queryByRole("button", { name: /set label/i }),
-        ).toBeNull();
-        expect(
-            screen.queryByRole("button", { name: /format partition/i }),
-        ).toBeNull();
-    });
-
-    it("colors the partition icon primary when automount is enabled on a mount point", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-automount",
-                model: "Automount Disk",
-                partitions: {
-                    "part-automount": {
-                        id: "part-automount",
-                        name: "Automount Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/automount": {
-                                is_mounted: true,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/automount",
-                                type: "HOST",
-                                is_to_mount_at_startup: true,
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        await screen.findByText("Automount Partition");
-
-        // The partition icon (StorageIcon) must carry the primary color class
-        // when any mount point has automount enabled.
-        const primaryIcon = screen.getByTestId("StorageIcon");
-        expect(primaryIcon.getAttribute("class")).toContain(
-            "MuiSvgIcon-colorPrimary",
-        );
-    });
-
-    it("does not color the partition icon primary when automount is disabled", async () => {
-        const React = await import("react");
-        const { render, screen } = await import("@testing-library/react");
-        const { Provider } = await import("react-redux");
-        const { VolumesTreeView } = await import("../VolumesTreeView");
-        const { getDiskIdentifier } = await import("../../utils");
-        const { createTestStore } = await import("/test/testing");
-
-        const store = await createTestStore();
-        const disks = [
-            {
-                id: "disk-noautomount",
-                model: "No Automount Disk",
-                partitions: {
-                    "part-noautomount": {
-                        id: "part-noautomount",
-                        name: "No Automount Partition",
-                        fs_type: "ext4",
-                        mount_point_data: {
-                            "/mnt/noautomount": {
-                                is_mounted: false,
-                                is_write_supported: true,
-                                fstype: "ext4",
-                                path: "/mnt/noautomount",
-                                type: "HOST",
-                                is_to_mount_at_startup: false,
-                            },
-                        },
-                    },
-                },
-            },
-        ];
-
-        const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
-
-        render(
-            React.createElement(
-                Provider,
-                {
-                    store,
-                    children: React.createElement(
-                        VolumesTreeView as any,
-                        createBaseProps({
-                            disks,
-                            expandedItems: [diskIdentifier],
-                        }),
-                    ),
-                },
-            ),
-        );
-
-        await screen.findByText("No Automount Partition");
-
-        const primaryIcon = screen.getByTestId("StorageIcon");
-        expect(primaryIcon.getAttribute("class")).not.toContain(
-            "MuiSvgIcon-colorPrimary",
-        );
-    });
+    await screen.findByText("FSTESTNTFS");
+    expect(screen.queryByText("/media/srat_test_disk")).toBeNull();
+    expect(screen.queryByText("/mnt/usbtest")).toBeNull();
+  });
 });
-

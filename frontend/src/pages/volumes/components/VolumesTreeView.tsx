@@ -9,6 +9,7 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { filesize } from "filesize";
 import { useMemo } from "react";
+
 import type {
   Disk,
   FilesystemState,
@@ -347,10 +348,31 @@ export function VolumesTreeView(props: VolumesTreeViewProps) {
     const partitionNameDecoded = decodeEscapeSequence(
       partition.name || partition.id || "Unnamed Partition",
     );
-    const mpds = Object.values(partition.mount_point_data || {});
-    const mpdEntries = Object.entries(partition.mount_point_data || {}).sort(
+    // #1645: when a partition is host-mounted by the Supervisor, the
+    // addon-side (/mnt, ADDON) mount point and stale HA-managed rows that
+    // are not actually mounted must not be presented as usable mountpoints.
+    const allMpdEntries = Object.entries(partition.mount_point_data || {}).sort(
       (a, b) => a[0].localeCompare(b[0]),
     );
+    const hasHAMounted = allMpdEntries.some(
+      ([, mpd]) => mpd.is_ha_mounted === true,
+    );
+    const mpdEntries = allMpdEntries.filter(([key, mpd]) => {
+      // Stale HA-managed row: claimed by Home Assistant but not actually
+      // mounted (no matching host_mount_point_data entry). Hide it.
+      if (mpd.is_ha_mounted === true && mpd.is_mounted !== true) {
+        return false;
+      }
+      // HA owns the mount lifecycle: hide addon-side mount points.
+      if (
+        hasHAMounted &&
+        (mpd.type === "ADDON" || (mpd.path || key).startsWith("/mnt/"))
+      ) {
+        return false;
+      }
+      return true;
+    });
+    const mpds = mpdEntries.map(([, mpd]) => mpd);
     const isMounted = mpds.some((mpd) => mpd.is_mounted);
     const filesystemAlertIcon = renderFilesystemAlertIcon(partition);
 
