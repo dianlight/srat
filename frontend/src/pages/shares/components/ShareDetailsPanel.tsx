@@ -278,6 +278,16 @@ export function ShareDetailsPanel({
                     size="small"
                   />
                 </Grid>
+                {mountData?.is_ha_mounted === true && (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Chip
+                      label="Managed by Home Assistant"
+                      color="info"
+                      variant="outlined"
+                      size="small"
+                    />
+                  </Grid>
+                )}
                 {mountData?.time_machine_support && (
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <Typography
