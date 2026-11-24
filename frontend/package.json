@@ -1,6 +1,6 @@
 {
   "name": "srat-frontend",
-  "version": "2026.9.3",
+  "version": "2026.11.20-dev.1",
   "description": "Samba Rest Adminitration Tool",
   "homepage": "https://github.com/dianlight/srat#readme",
   "bugs": {
