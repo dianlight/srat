@@ -379,8 +379,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		}
 		self.dismissSupervisorMountTargetNotEmpty(ctx, *rmount.Name)
 		return nil
-	} else if string(share.Usage) != string(*rmount.Usage) ||
-		*rmount.State != "active" ||
+	} else if *rmount.State != "active" ||
 		(*useNfs && *rmount.Type == "cifs") ||
 		(!*useNfs && *rmount.Type == "nfs") {
 		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
