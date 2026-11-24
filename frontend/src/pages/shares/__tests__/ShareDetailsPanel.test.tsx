@@ -190,4 +190,28 @@ describe("ShareDetailsPanel", () => {
 
         expect(await screen.findByText("Managed by Home Assistant")).toBeTruthy();
     });
+
+    it("renders the Managed by Home Assistant chip in the Mount Point Information card when mount_point_data.is_ha_mounted is true", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-ha-mountpoint-test");
+        const share = buildShare();
+        share.mount_point_data.is_ha_mounted = true;
+        share.mount_point_data.type = "HOST";
+
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+            })
+        );
+
+        // Expand the Mount Point Information card so its content is visible
+        const user = userEvent.setup();
+        await user.click(screen.getByLabelText(/show more/i) as any);
+
+        expect(await screen.findByText("Managed by Home Assistant")).toBeTruthy();
+    });
 });
