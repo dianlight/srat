@@ -40,6 +40,21 @@ func TestFsTypeFromDevice_NTFS(t *testing.T) {
 	assert.Equal(t, "ntfs", fsType)
 }
 
+// TestFsTypeFromDevice_ExFAT covers the exFAT counterpart of issue #1513: the
+// adapter signature table must recognise the "EXFAT   " OEM magic, which the
+// kernel magic table (mount.FSFromBlock) does not list among its detectable
+// filesystems.
+func TestFsTypeFromDevice_ExFAT(t *testing.T) {
+	fsService := service.NewFilesystemService(context.Background(), func() {}, nil)
+
+	devicePath := writeBootSector(t, "sdb2", 3, "EXFAT   ")
+
+	fsType, err := fsService.FsTypeFromDevice(devicePath)
+
+	require.Nil(t, err)
+	assert.Equal(t, "exfat", fsType)
+}
+
 // TestFsTypeFromDevice_Unknown verifies a device with no known magic still
 // reports an unknown-filesystem error rather than a bogus type.
 func TestFsTypeFromDevice_Unknown(t *testing.T) {

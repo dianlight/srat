@@ -48,12 +48,14 @@ type fakeOrchestratorMounter struct {
 	mountCalls       int
 	unmountCalls     int
 	mountErr         errors.E
+	lastMountFSType  string
 	lastUnmountPath  string
 	lastUnmountForce bool
 }
 
-func (f *fakeOrchestratorMounter) Mount(md *dto.MountPointData, _ uintptr, _, _ string) errors.E {
+func (f *fakeOrchestratorMounter) Mount(md *dto.MountPointData, _ uintptr, _, mountFsType string) errors.E {
 	f.mountCalls++
+	f.lastMountFSType = mountFsType
 	if f.mountErr != nil {
 		return f.mountErr
 	}
@@ -74,9 +76,10 @@ func (f *fakeOrchestratorMounter) Unmount(md *dto.MountPointData, force bool) er
 // settings patch and the automount guard.
 type MountOrchestratorTestSuite struct {
 	volumeTestFixture
-	orchestrator *volume.MountOrchestrator
-	mounter      *fakeOrchestratorMounter
-	protected    bool
+	orchestrator        *volume.MountOrchestrator
+	mounter             *fakeOrchestratorMounter
+	protected           bool
+	volumesRefreshCalls int
 }
 
 func TestMountOrchestratorTestSuite(t *testing.T) {
@@ -98,6 +101,7 @@ func (s *MountOrchestratorTestSuite) SetupTest() {
 			return s.protected
 		},
 		Volumes: func() ([]*dto.Disk, errors.E) {
+			s.volumesRefreshCalls++
 			return s.disks.All(), nil
 		},
 	})
@@ -117,6 +121,36 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_EmptyPath() {
 	err := s.orchestrator.MountVolume(&dto.MountPointData{DeviceId: "part-x"})
 	s.Require().Error(err)
 	s.ErrorIs(err, dto.ErrorInvalidParameter)
+	s.Zero(s.mounter.mountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_ForcesVolumesRefresh() {
+	s.volumesRefreshCalls = 0
+	err := s.orchestrator.MountVolume(&dto.MountPointData{Path: "/mnt/x", Root: "/", DeviceId: "part-x"})
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorDeviceNotFound)
+	s.GreaterOrEqual(s.volumesRefreshCalls, 1, "MountVolume must force a volumes refresh before mounting")
+	s.Zero(s.mounter.mountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_VolumesRefreshErrorTolerated() {
+	s.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
+		Ctx:        s.ctx,
+		Disks:      s.disks,
+		Filesystem: &fakeOrchestratorFS{},
+		Mounter:    s.mounter,
+		EventBus:   s.eventBus,
+		Repo:       s.mountRepoIf,
+		ProtectedMode: func() bool {
+			return s.protected
+		},
+		Volumes: func() ([]*dto.Disk, errors.E) {
+			return nil, errors.New("no disks yet")
+		},
+	})
+	err := s.orchestrator.MountVolume(&dto.MountPointData{Path: "/mnt/x", Root: "/", DeviceId: "part-x"})
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorDeviceNotFound)
 	s.Zero(s.mounter.mountCalls)
 }
 
@@ -513,6 +547,27 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_Success_DismissesNotificati
 	s.Equal(1, s.mounter.mountCalls)
 	s.True(md.IsMounted)
 	s.Len(ha.dismissed, 2, "successful mount dismisses failure notifications")
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_NilFSTypeUsesPartitionFsType() {
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+
+	diskID, partID, fsType := "disk-orch-exfat", "part-orch-exfat", "exfat"
+	devCopy := deviceFile
+	parts := map[string]dto.Partition{partID: {
+		Id: new(partID), DiskId: &diskID, DevicePath: &devCopy, FsType: &fsType,
+	}}
+	s.Require().NoError(s.disks.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts}))
+
+	md := &dto.MountPointData{
+		Path: filepath.Join(tmpDir, "mnt", "exfat"), Root: "/", DeviceId: partID,
+		Flags: &dto.MountFlags{}, FSType: nil,
+	}
+	s.Require().NoError(s.orchestrator.MountVolume(md))
+	s.Equal(1, s.mounter.mountCalls)
+	s.Equal("exfat", s.mounter.lastMountFSType, "nil request fstype must fall back to the partition's detected fs_type")
 }
 
 func (s *MountOrchestratorTestSuite) TestMountVolume_MounterError() {

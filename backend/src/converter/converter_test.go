@@ -10,12 +10,14 @@ import (
 	"github.com/dianlight/srat/config"
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
+	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/google/go-github/v93/github"
 	"github.com/shirou/gopsutil/v4/net"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	tozderrors "gitlab.com/tozd/go/errors"
 )
 
 type fakeFileInfo struct {
@@ -830,4 +832,61 @@ func TestDtoToDbomConverter_MountPointPathsToMountPointDataMap_WithNilValues(t *
 	mpData := result["/mnt/path1"]
 	assert.NotNil(t, mpData)
 	assert.Equal(t, "/mnt/path1", mpData.Path)
+}
+
+// fakeFilesystemProber is a test double for the converter's FilesystemProber
+// capability used to verify adapter-aware fstype resolution (srat#1513).
+type fakeFilesystemProber struct {
+	fsType string
+	err    error
+	calls  []string
+}
+
+func (f *fakeFilesystemProber) FsTypeFromDevice(devicePath string) (string, tozderrors.E) {
+	f.calls = append(f.calls, devicePath)
+	if f.err != nil {
+		return "", tozderrors.New(f.err.Error())
+	}
+	return f.fsType, nil
+}
+
+func TestResolveFSType_UsesFilesystemProber(t *testing.T) {
+	prober := &fakeFilesystemProber{fsType: "ntfs"}
+	SetFilesystemProber(prober)
+	t.Cleanup(func() { SetFilesystemProber(nil) })
+
+	assert.Equal(t, "ntfs", resolveFSType("/dev/sdb2"))
+	assert.Equal(t, []string{"/dev/sdb2"}, prober.calls)
+}
+
+func TestResolveFSType_FallsBackToKernelProbeWhenProberFails(t *testing.T) {
+	prober := &fakeFilesystemProber{err: errors.New("unknown filesystem")}
+	SetFilesystemProber(prober)
+	t.Cleanup(func() { SetFilesystemProber(nil) })
+
+	// A failing prober must not fabricate a fstype; the kernel magic probe
+	// fallback decides the final value (empty for unknown filesystems).
+	assert.Empty(t, resolveFSType("/dev/sdc1"))
+	assert.Equal(t, []string{"/dev/sdc1"}, prober.calls)
+}
+
+func TestMountPointsToMountPointDatas_UsesProberFSType(t *testing.T) {
+	prober := &fakeFilesystemProber{fsType: "exfat"}
+	SetFilesystemProber(prober)
+	t.Cleanup(func() { SetFilesystemProber(nil) })
+
+	source := hardware.Filesystem{
+		Id:          new("by-id-usb-TEST_123-part2"),
+		Device:      new("/dev/sdb2"),
+		MountPoints: &[]string{"/mnt/ntfs-data"},
+	}
+
+	result := mountPointsToMountPointDatas(source)
+
+	require.NotNil(t, result)
+	require.Len(t, *result, 1)
+	entry := (*result)["/mnt/ntfs-data"]
+	require.NotNil(t, entry)
+	require.NotNil(t, entry.FSType)
+	assert.Equal(t, "exfat", *entry.FSType)
 }

@@ -167,6 +167,16 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
+	// Force a hardware re-enumeration before mounting: right after an addon
+	// restart the disk cache can still be empty and udev events may not have
+	// re-populated it yet. Enumeration errors are ignored so the mount
+	// request is still attempted with whatever data is available.
+	if o.volumes != nil {
+		if _, errVolumes := o.volumes(); errVolumes != nil {
+			slog.DebugContext(o.ctx, "MountVolume: volumes refresh failed, continuing with cached data", "error", errVolumes)
+		}
+	}
+
 	// Home Assistant owns the mount lifecycle for its local disks (2026.11+
 	// storage). HA ownership is runtime state, not a property of the path:
 	// a persisted HA-usage path must become mountable again once HA has
@@ -317,8 +327,9 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		// User-provided flags win on name collision so explicit configuration
 		// is never overridden by defaults.
 		effectiveFlags := *md.Flags
-		if md.FSType != nil && *md.FSType != "" {
-			if defaults, defaultsErr := o.fs.GetDefaultMountFlags(*md.FSType); defaultsErr == nil && len(defaults) > 0 {
+		effectiveFSType := automountFSType(md)
+		if effectiveFSType != "" {
+			if defaults, defaultsErr := o.fs.GetDefaultMountFlags(effectiveFSType); defaultsErr == nil && len(defaults) > 0 {
 				present := make(map[string]struct{}, len(effectiveFlags))
 				for _, f := range effectiveFlags {
 					present[strings.ToLower(strings.TrimSpace(f.Name))] = struct{}{}
@@ -329,10 +340,10 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 					}
 				}
 				if len(effectiveFlags) != len(*md.Flags) {
-					slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "defaults", defaults)
+					slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", effectiveFSType, "defaults", defaults)
 				}
 			} else if defaultsErr != nil {
-				slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "err", defaultsErr)
+				slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", effectiveFSType, "err", defaultsErr)
 			}
 		}
 
@@ -346,10 +357,11 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 			)
 		}
 
-		mountFsType := ""
-		if md.FSType != nil {
-			mountFsType = *md.FSType
-		}
+		// Resolve the effective fstype the same way automount does: a missing
+		// request fstype must fall back to the partition's detected fs_type so
+		// adapter-detected filesystems (exfat, ntfs) are not passed to the
+		// mounter as "auto" (u-root's magic probe cannot detect them).
+		mountFsType := automountFSType(md)
 
 		// Final validation: ensure DevicePath exists on the OS before
 		// delegating to the mount manager. (The nil/empty check already

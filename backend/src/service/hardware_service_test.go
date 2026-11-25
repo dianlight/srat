@@ -13,8 +13,8 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/homeassistant/hardware"
-	"github.com/dianlight/srat/internal/darwinstubs/mount"
 	"github.com/dianlight/srat/service"
+	"github.com/dianlight/srat/service/filesystem"
 	"github.com/ovechkin-dm/mockio/v2/matchers"
 	"github.com/ovechkin-dm/mockio/v2/mock"
 	"github.com/stretchr/testify/suite"
@@ -918,8 +918,9 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryFallsBa
 // TestGetHardwareInfo_MissingDeviceEntryProbesNTFS reproduces issue #1513: a
 // USB NTFS partition (sdb2) with no matching Supervisor device entry reached
 // the legacy probe, but u-root's magic table has no NTFS entry, so FsType
-// stayed nil and the partition could not be mounted. The probe here is the
-// real mount.FSFromBlock reading an image with an NTFS boot sector.
+// stayed nil and the partition could not be mounted. The probe must therefore
+// resolve the filesystem through the adapter signature table, which knows the
+// NTFS boot sector.
 func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryProbesNTFS() {
 	sector := make([]byte, 512)
 	copy(sector[0:3], []byte{0xEB, 0x52, 0x90})
@@ -964,8 +965,16 @@ func (suite *HardwareServiceSuite) TestGetHardwareInfo_MissingDeviceEntryProbesN
 		ThenReturn(nil, errors.WithDetails(dto.ErrorHDIdleNotSupported, "device", "sdb"))
 
 	suite.hardwareService.MockSetFSProbeFunc(func(devPath string) (string, uintptr, error) {
+		// Route through the real NTFS adapter signature table (boot-sector OEM
+		// magic) instead of raw mount.FSFromBlock, which cannot detect NTFS
+		// (srat#1513).
 		if devPath == "/dev/sdb2" {
-			return mount.FSFromBlock(imgPath)
+			ntfsAdapter := filesystem.NewNtfsAdapter()
+			supported, err := ntfsAdapter.IsDeviceSupported(context.Background(), imgPath)
+			if err != nil || !supported {
+				return "", 0, err
+			}
+			return ntfsAdapter.GetName(), 0, nil
 		}
 		return "", 0, nil
 	})

@@ -11,6 +11,7 @@ import (
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/homeassistant/hardware"
 	"github.com/dianlight/srat/internal/darwinstubs/mount"
+	"gitlab.com/tozd/go/errors"
 )
 
 // goverter:converter
@@ -51,6 +52,43 @@ type HaHardwareToDto interface {
 	FilesystemToPartition(source hardware.Filesystem, target *dto.Partition) error
 }
 
+// FilesystemProber is the narrow capability the hardware→DTO converter needs
+// to resolve a filesystem type from a device. It is implemented by
+// service.FilesystemService, which walks the adapter signature table (boot
+// sector OEM magic detection for ntfs/exfat, ...); the interface is declared
+// here to keep the converter free of a service→converter import cycle.
+type FilesystemProber interface {
+	FsTypeFromDevice(devicePath string) (string, errors.E)
+}
+
+// filesystemProber resolves device filesystem types through the adapter
+// signature table. Wired to the real FilesystemService by the hardware service;
+// replaceable in tests.
+var filesystemProber FilesystemProber
+
+// SetFilesystemProber wires the adapter-aware filesystem prober used when
+// converting hardware filesystems into DTO mount point data.
+func SetFilesystemProber(prober FilesystemProber) {
+	filesystemProber = prober
+}
+
+// resolveFSType returns the filesystem type for a device, preferring the
+// adapter signature table (which covers filesystems the kernel magic table
+// misses, e.g. ntfs/exfat) and falling back to the generic kernel magic probe
+// for filesystems without an adapter (squashfs, iso9660, ...).
+func resolveFSType(devicePath string) string {
+	if filesystemProber != nil {
+		if fsType, err := filesystemProber.FsTypeFromDevice(devicePath); err == nil && fsType != "" {
+			return fsType
+		}
+	}
+	fstype, _, err := mount.FSFromBlock(devicePath)
+	if err != nil {
+		return ""
+	}
+	return fstype
+}
+
 func mountPointsToMountPointDatas(source hardware.Filesystem) *map[string]dto.MountPointData {
 	mountPointDatas := make(map[string]dto.MountPointData)
 
@@ -58,7 +96,10 @@ func mountPointsToMountPointDatas(source hardware.Filesystem) *map[string]dto.Mo
 		return &mountPointDatas
 	}
 
-	fstype, _, _ := mount.FSFromBlock(*source.Device)
+	fstype := ""
+	if source.Device != nil {
+		fstype = resolveFSType(*source.Device)
+	}
 
 	for _, s := range *source.MountPoints {
 		mountPointDatas[s] = dto.MountPointData{

@@ -303,7 +303,13 @@ func (s *VolumeService) GetVolumesData() ([]*dto.Disk, errors.E) {
 			slog.WarnContext(s.ctx, "Failed to reconcile mount table on volumes read", "err", err)
 		}
 	}
-	return s.disks.All(), nil
+	// Null check: return an empty slice instead of null when no disks are
+	// present (e.g. right after a restart), so API consumers can rely on a
+	// non-null response instead of treating null as "no data".
+	if disks := s.disks.All(); disks != nil {
+		return disks, nil
+	}
+	return []*dto.Disk{}, nil
 }
 
 // getVolumesData retrieves and synchronizes volume data with caching and concurrency control.
