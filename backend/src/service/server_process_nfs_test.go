@@ -97,3 +97,27 @@ func TestWriteNFSConfigWriteError(t *testing.T) {
 
 	require.Error(t, server.writeNFSConfig(context.Background()))
 }
+
+func TestWriteNFSConfigEscapesPathsAndChecksSubtrees(t *testing.T) {
+	server, host, shares, exports := newNFSTestServer(t)
+	mock.When(host.GetHostName()).ThenReturn("homeassistant", nil)
+	mock.When(shares.ListShares()).ThenReturn([]dto.SharedResource{
+		nfsShare("DATA1", "/mnt/DATA1", nil),
+		nfsShare("ITALIE", "/mnt/DATA1", new("Rodina/Italie 2025")),
+	}, nil)
+
+	require.NoError(t, server.writeNFSConfig(context.Background()))
+
+	content, err := os.ReadFile(exports)
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "\n/mnt/DATA1 homeassistant(rw,sync,no_subtree_check,")
+	assert.Contains(t, string(content), "\n"+`/mnt/DATA1/Rodina/Italie\0402025 homeassistant(rw,sync,subtree_check,`,
+		"a subfolder export is escaped and checks its subtree")
+}
+
+func TestExportsPath(t *testing.T) {
+	assert.Equal(t, "/mnt/DATA1/emperor", exportsPath("/mnt/DATA1/emperor"))
+	assert.Equal(t, `/mnt/DATA1/Italie\0402025`, exportsPath("/mnt/DATA1/Italie 2025"))
+	assert.Equal(t, `/mnt/a\011b\134c\043d\042e`, exportsPath("/mnt/a\tb\\c#d\"e"))
+	assert.Equal(t, "/mnt/DATA1/Dovolená", exportsPath("/mnt/DATA1/Dovolená"), "UTF-8 names are kept")
+}

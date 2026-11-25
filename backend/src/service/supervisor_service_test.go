@@ -1615,3 +1615,73 @@ func (suite *SupervisorServiceSuite) TestNetworkUnmountAllShares_ErrorLogRedacts
 	suite.NotContains(out, password, "unmount error log must not contain password bytes")
 	suite.NotContains(out, "leakcheckuser", "unmount error log must not contain user topology")
 }
+
+// activeNfsMounts is a GetMounts response with one active NFS mount of the
+// "test-share" share at nfsPath.
+func activeNfsMounts(nfsPath string) *mount.GetMountsResponse {
+	mounts := []mount.Mount{{
+		Name:   new("test_share"),
+		Server: new("172.30.32.1"),
+		Usage:  new(mount.MountUsage("media")),
+		State:  new("active"),
+		Type:   new(mount.MountType("nfs")),
+		Path:   new(nfsPath),
+	}}
+	resp := &mount.GetMountsResponse{HTTPResponse: &http.Response{StatusCode: 200}}
+	resp.JSON200 = &struct {
+		Data *struct {
+			DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+			Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+		} `json:"data,omitempty"`
+		Result *mount.GetMounts200Result `json:"result,omitempty"`
+	}{Data: &struct {
+		DefaultBackupMount *string        `json:"default_backup_mount,omitempty"`
+		Mounts             *[]mount.Mount `json:"mounts,omitempty"`
+	}{Mounts: &mounts}}
+	return resp
+}
+
+// TestNetworkMountShare_ActiveNfsMountFollowsSubfolder checks that an active
+// NFS mount of another folder is updated to the share's subfolder (issue #184),
+// and that a mount of the right folder is left alone.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_ActiveNfsMountFollowsSubfolder() {
+	suite.app.RequireStop()
+	var settingService service.SettingServiceInterface
+	suite.app = fxtest.New(suite.T(),
+		fx.Provide(
+			func() *matchers.MockController { return mock.NewMockController(suite.T()) },
+			func() (context.Context, context.CancelFunc) { return context.WithCancel(context.Background()) },
+			func() *dto.ContextState {
+				return &dto.ContextState{HACoreReady: true, SupervisorURL: "http://supervisor/", AddonIpAddress: "172.30.32.1"}
+			},
+			service.NewSupervisorService,
+			events.NewEventBus,
+			mock.Mock[mount.ClientWithResponsesInterface],
+			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.DirtyDataServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
+		),
+		fx.Populate(&suite.supervisorService),
+		fx.Populate(&suite.mountClient),
+		fx.Populate(&settingService),
+	)
+	suite.app.RequireStart()
+	useNfs := true
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+	mock.When(suite.mountClient.GetMountsWithResponse(mock.Any[context.Context]())).
+		ThenReturn(activeNfsMounts("test"), nil).
+		ThenReturn(activeNfsMounts("test/photos"), nil)
+	updateCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), updateCaptor.Capture())).
+		ThenReturn(&mount.UpdateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	share := shareWithExportableFS(true)
+	share.Subfolder = new("photos")
+	suite.Require().NoError(suite.supervisorService.NetworkMountShare(context.Background(), share))
+	suite.Require().NoError(suite.supervisorService.NetworkMountShare(context.Background(), share))
+
+	mock.Verify(suite.mountClient, matchers.Times(1)).UpdateMountWithResponse(mock.Any[context.Context](), mock.Any[string](), mock.Any[mount.Mount]())
+	captured := updateCaptor.Last()
+	suite.Require().NotNil(captured.Path)
+	suite.Equal("test/photos", *captured.Path, "the update uses the same path form as a create")
+}

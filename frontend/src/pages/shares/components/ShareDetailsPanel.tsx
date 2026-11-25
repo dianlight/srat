@@ -75,15 +75,25 @@ export function ShareDetailsPanel({
         height: "100%",
         overflow: "auto",
         p: 2,
-        opacity: share.status?.is_valid === false ? 0.6 : 1,
-        pointerEvents: share.status?.is_valid === false ? "none" : "auto",
-        filter: share.status?.is_valid === false ? "grayscale(50%)" : "none",
+        // An invalid share stays editable, e.g. to pick another subfolder
+        // when its folder is gone (issue #184): only the read-only mount
+        // details below ignore clicks, and the dimming lifts while editing.
+        opacity: share.status?.is_valid === false && !isEditing ? 0.6 : 1,
+        filter:
+          share.status?.is_valid === false && !isEditing
+            ? "grayscale(50%)"
+            : "none",
         transition: "opacity 0.3s, filter 0.3s",
       }}
     >
       <Stack spacing={3}>
         {/* Mount Point Information Card */}
-        <Card sx={{ position: "relative" }}>
+        <Card
+          sx={{
+            position: "relative",
+            pointerEvents: share.status?.is_valid === false ? "none" : "auto",
+          }}
+        >
           {share.status?.is_valid === false && (
             <Box
               sx={{

@@ -130,13 +130,19 @@ func TestResolveShareDirectoryReportsMkdirFailure(t *testing.T) {
 	requireShareValidationError(t, err)
 }
 
-func TestIsWithin(t *testing.T) {
-	assert.True(t, isWithin("/mnt/DATA1", "/mnt/DATA1"))
-	assert.True(t, isWithin("/mnt/DATA1", "/mnt/DATA1/emperor"))
-	assert.True(t, isWithin("/mnt/DATA1", "/mnt/DATA1/..hidden"))
-	assert.False(t, isWithin("/mnt/DATA1", "/mnt"))
-	assert.False(t, isWithin("/mnt/DATA1", "/mnt/DATA10"))
-	assert.False(t, isWithin("/mnt/DATA1", "/etc"))
+func TestSameDirectoryAsAny(t *testing.T) {
+	volume := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(volume, "real"), 0o755))
+	require.NoError(t, os.MkdirAll(filepath.Join(volume, "other"), 0o755))
+	require.NoError(t, os.Symlink("real", filepath.Join(volume, "alias")))
+	require.NoError(t, os.Symlink(".", filepath.Join(volume, "here")))
+
+	assert.True(t, sameDirectoryAsAny(volume, "alias", []string{"other", "real"}), "symlink to a used folder")
+	assert.True(t, sameDirectoryAsAny(volume, "here", []string{""}), "symlink to the volume root")
+	assert.False(t, sameDirectoryAsAny(volume, "other", []string{"real", "missing"}))
+	assert.False(t, sameDirectoryAsAny(volume, "missing", []string{"real"}))
+	assert.False(t, sameDirectoryAsAny(volume, "real", nil))
+	assert.False(t, sameDirectoryAsAny(filepath.Join(volume, "no-volume"), "real", []string{"real"}))
 }
 
 // folderTestService returns a ShareService that knows `volume` as a mount
@@ -168,7 +174,7 @@ func TestListVolumeFolders(t *testing.T) {
 	assert.Empty(t, root.Path)
 	assert.False(t, root.Truncated)
 
-	nested, err := s.ListVolumeFolders(volume, " Rodina/ ")
+	nested, err := s.ListVolumeFolders(volume, "Rodina/")
 	require.NoError(t, err)
 	assert.Equal(t, "Rodina", nested.Path)
 	assert.Equal(t, []string{"lost+found", "photos"}, nested.Folders, "lost+found is only hidden at the volume root")

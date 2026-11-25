@@ -169,7 +169,8 @@ export function SubfolderPicker({
             )}
             {listing?.truncated ? (
               <Typography variant="caption" color="text.secondary">
-                Only the first {listing.folders.length} folders are shown; use the filter to narrow them down.
+                Only the first {listing.folders.length} folders are listed. For a folder not in the list,
+                type its path in the Subfolder field.
               </Typography>
             ) : null}
           </>

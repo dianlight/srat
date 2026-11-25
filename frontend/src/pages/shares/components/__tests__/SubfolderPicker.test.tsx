@@ -146,6 +146,6 @@ describe("SubfolderPicker", () => {
         })),
       },
     });
-    expect(screen.getByText(/only the first 2 folders are shown/i)).toBeTruthy();
+    expect(screen.getByText(/only the first 2 folders are listed.*type its path/i)).toBeTruthy();
   });
 });

@@ -64,23 +64,30 @@ describe("shares utils", () => {
 
 		expect(normalizeSubfolder(undefined)).toBe("");
 		expect(normalizeSubfolder(null)).toBe("");
-		expect(normalizeSubfolder("  ")).toBe("");
-		expect(normalizeSubfolder(" photos/2024/ ")).toBe("photos/2024");
+		expect(normalizeSubfolder("photos/2024/")).toBe("photos/2024");
+		// Names are never trimmed: a space can be part of a folder name.
+		expect(normalizeSubfolder("Italie 2025")).toBe("Italie 2025");
 	});
 
 	it("explains unacceptable share subfolders like the backend", async () => {
 		const { subfolderProblem } = await import("../utils");
 
-		for (const ok of ["", "emperor", "photos/2024", "..hidden/v1.2", "Rodina/Dovolená"]) {
+		for (const ok of ["", "emperor", "photos/2024/", "..hidden/v1.2", "Rodina/Dovolená", "Italie 2025", "a".repeat(255)]) {
 			expect(subfolderProblem(ok)).toBeUndefined();
 		}
 		expect(subfolderProblem("/etc")).toMatch(/leading \//);
+		expect(subfolderProblem("/")).toMatch(/leading \//);
 		expect(subfolderProblem("photos\\2024")).toMatch(/separate/);
 		expect(subfolderProblem("photos//2024")).toMatch(/empty/);
 		expect(subfolderProblem("../etc")).toMatch(/"\.\."/);
 		expect(subfolderProblem("./photos")).toMatch(/"\."/);
-		expect(subfolderProblem("a".repeat(256))).toMatch(/255/);
+		expect(subfolderProblem("a".repeat(256))).toMatch(/255 bytes/);
+		// 128 two-byte characters are 256 bytes, over the limit like on the server.
+		expect(subfolderProblem("é".repeat(128))).toMatch(/255 bytes/);
 		expect(subfolderProblem("pho\u0007tos")).toMatch(/control/);
+		expect(subfolderProblem(" photos")).toMatch(/space/);
+		expect(subfolderProblem("photos /2024")).toMatch(/space/);
+		expect(subfolderProblem("   ")).toMatch(/space/);
 	});
 
 	it("lists the folders of a volume already used by other shares", async () => {

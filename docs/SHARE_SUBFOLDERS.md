@@ -33,18 +33,24 @@ follows the same permissions as the rest of the volume.
 ## Rules
 
 - The subfolder is relative to the volume: `/` separates folders; absolute
-  paths, `.` and `..` segments, empty segments, backslashes and control
-  characters are refused.
+  paths, `.` and `..` segments, empty segments, backslashes, control
+  characters and folder names that start or end with a space are refused.
+  Names are never trimmed or otherwise changed, and each name can have 255
+  bytes at most.
 - A subfolder can never point outside its volume, also through a symlink.
-  Symlinks that stay inside the volume are followed.
-- Two shares cannot expose the same folder. The volume root counts as a folder
-  too: once a share exposes the whole volume, other shares on it need a
-  subfolder.
+  Symlinks that stay inside the volume are followed. Folders are looked up and
+  created relative to the open volume, so a symlink swapped in meanwhile
+  cannot redirect them.
+- Two shares cannot expose the same folder, also under two names through a
+  symlink. The volume root counts as a folder too: once a share exposes the
+  whole volume, other shares on it need a subfolder. A disabled share keeps its
+  folder, so enabling it again never creates a duplicate.
 - A folder is only created on a mounted volume, never in the empty mount point
   directory.
 - When the folder of a share disappears, the share is reported invalid and left
   out of `smb.conf`. It never falls back to exposing the whole volume.
-- Internal (system) shares cannot use a subfolder.
+- Internal (system) shares and shares with a standard share name (such as
+  `addons`) cannot use a subfolder.
 
 ## Lab Mode and Existing Shares
 
@@ -57,8 +63,12 @@ the subfolder would widen the share to the whole volume.
 The subfolder is applied wherever the share is published:
 
 - `smb.conf`: `path = <mount point>/<subfolder>`.
-- NFS exports: only the folder is exported.
-- Home Assistant network mounts over NFS (`ha_use_nfs`) mount the folder.
+- NFS exports: only the folder is exported, with `subtree_check` so file
+  handles cannot reach the rest of the volume. Spaces and other special
+  characters in the path are escaped as `exports(5)` requires.
+- Home Assistant network mounts over NFS (`ha_use_nfs`) mount the folder; when
+  the subfolder changes, the mount is updated to the new folder.
+- Media links for media shares point at the folder.
 
 On a volume with several shares, the volume reports the share of the volume
 root when there is one.

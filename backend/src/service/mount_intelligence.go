@@ -184,6 +184,18 @@ func resolveShareExportPath(share dto.SharedResource) string {
 	return dto.ShareDirectory(mountPath, share.SubfolderOrRoot())
 }
 
+// haNFSMountPath is the NFS path Home Assistant mounts for a share: its export
+// path relative to the /mnt NFS root, or the share name when the path is
+// unknown. Create and update requests use the same form.
+func haNFSMountPath(share dto.SharedResource) string {
+	nfsPath := resolveShareExportPath(share)
+	if nfsPath == "" {
+		return share.Name
+	}
+	// strip /mnt prefix if exists to avoid issues with ha_supervisor path handling
+	return strings.TrimPrefix(nfsPath, "/mnt/")
+}
+
 func resolveActualMountPointPath(share dto.SharedResource) string {
 	if share.MountPointData == nil {
 		return ""

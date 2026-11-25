@@ -17,10 +17,12 @@ const maxSubfolderSegmentLength = 255
 //
 // Absolute paths, "." and ".." segments, empty segments, backslashes and
 // control characters are rejected, so a subfolder can never point outside
-// its volume by its spelling. Symlinks are checked against the real
-// filesystem by the share service.
+// its volume by its spelling. Names are never trimmed: a segment starting or
+// ending with whitespace is rejected instead of silently naming another
+// folder. Symlinks are checked against the real filesystem by the share
+// service.
 func CleanShareSubfolder(raw string) (string, errors.E) {
-	subfolder := strings.TrimSpace(raw)
+	subfolder := raw
 	if subfolder == "" {
 		return "", nil
 	}
@@ -41,6 +43,8 @@ func CleanShareSubfolder(raw string) (string, errors.E) {
 			return "", invalidSubfolder(raw, "subfolder segment is too long")
 		case strings.ContainsFunc(segment, unicode.IsControl):
 			return "", invalidSubfolder(raw, "subfolder must not contain control characters")
+		case strings.TrimSpace(segment) != segment:
+			return "", invalidSubfolder(raw, "folder names must not start or end with a space")
 		}
 	}
 	return strings.Join(segments, "/"), nil

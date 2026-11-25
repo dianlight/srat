@@ -175,3 +175,85 @@ func TestRecoverMediaUsageSymlinks_ReplacesStaleSymlink(t *testing.T) {
 		t.Fatalf("expected updated symlink target %q, got %q", newTarget, resolved)
 	}
 }
+
+func TestRecoverMediaUsageSymlinks_LinksTheShareSubfolder(t *testing.T) {
+	volume := t.TempDir()
+	folder := filepath.Join(volume, "photos")
+	if err := os.MkdirAll(folder, 0o755); err != nil {
+		t.Fatalf("failed to create share folder: %v", err)
+	}
+	linkRoot := filepath.Join(t.TempDir(), "media")
+	if err := os.MkdirAll(linkRoot, 0o755); err != nil {
+		t.Fatalf("failed to create link root: %v", err)
+	}
+	// A link to the whole volume is replaced by one to the share's folder.
+	if err := os.Symlink(volume, filepath.Join(linkRoot, "PHOTOS")); err != nil {
+		t.Fatalf("failed to create stale symlink: %v", err)
+	}
+	svc := &ServerService{
+		share_service: &mediaRecoveryShareServiceStub{
+			shares: []dto.SharedResource{{
+				Name:           "PHOTOS",
+				Usage:          dto.UsageAsMedia,
+				Disabled:       new(false),
+				Subfolder:      new("photos"),
+				Status:         &dto.SharedResourceStatus{IsValid: true},
+				MountPointData: &dto.MountPointData{Path: volume},
+			}},
+		},
+	}
+
+	if err := svc.recoverMediaUsageSymlinks(context.Background(), linkRoot); err != nil {
+		t.Fatalf("recoverMediaUsageSymlinks returned error: %v", err)
+	}
+
+	resolved, err := os.Readlink(filepath.Join(linkRoot, "PHOTOS"))
+	if err != nil {
+		t.Fatalf("failed to read symlink: %v", err)
+	}
+	if resolved != folder {
+		t.Fatalf("expected symlink target %q, got %q", folder, resolved)
+	}
+}
+
+func TestRecoverMediaUsageSymlinks_SkipsSharesThatCannotBeLinked(t *testing.T) {
+	volume := t.TempDir()
+	linkRoot := filepath.Join(t.TempDir(), "media")
+	if err := os.MkdirAll(filepath.Join(linkRoot, "TAKEN"), 0o755); err != nil {
+		t.Fatalf("failed to create blocking folder: %v", err)
+	}
+	media := func(name string, mp *dto.MountPointData) dto.SharedResource {
+		return dto.SharedResource{
+			Name: name, Usage: dto.UsageAsMedia, Disabled: new(false),
+			Status: &dto.SharedResourceStatus{IsValid: true}, MountPointData: mp,
+		}
+	}
+	disabled := media("DISABLED", &dto.MountPointData{Path: volume})
+	disabled.Disabled = new(true)
+	invalid := media("INVALID", &dto.MountPointData{Path: volume})
+	invalid.Status = &dto.SharedResourceStatus{IsValid: false}
+	notMedia := media("BACKUP", &dto.MountPointData{Path: volume})
+	notMedia.Usage = dto.UsageAsBackup
+	svc := &ServerService{share_service: &mediaRecoveryShareServiceStub{shares: []dto.SharedResource{
+		notMedia, disabled, invalid,
+		media("NOMOUNT", nil),
+		media("RELATIVE", &dto.MountPointData{Path: "mnt/relative"}),
+		media("MISSING", &dto.MountPointData{Path: filepath.Join(volume, "missing")}),
+		media("TAKEN", &dto.MountPointData{Path: volume}),
+	}}}
+
+	if err := svc.recoverMediaUsageSymlinks(context.Background(), linkRoot); err != nil {
+		t.Fatalf("recoverMediaUsageSymlinks returned error: %v", err)
+	}
+
+	entries, err := os.ReadDir(linkRoot)
+	if err != nil {
+		t.Fatalf("failed to read link root: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "TAKEN" || !entries[0].IsDir() {
+		t.Fatalf("expected only the untouched TAKEN folder, got %v", entries)
+	}
+	if err := svc.recoverMediaUsageSymlinks(context.Background(), "  "); err != nil {
+		t.Fatalf("an empty link root is a no-op, got %v", err)
+	}
+}

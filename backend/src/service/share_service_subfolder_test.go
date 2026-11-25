@@ -2,8 +2,10 @@ package service_test
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 
+	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
 	"github.com/dianlight/srat/events"
 	"github.com/dianlight/srat/internal/osutil"
@@ -40,7 +42,7 @@ func subfolderShare(name, subfolder string, volume *dto.MountPointData) dto.Shar
 func (suite *ShareServiceSuite) TestCreateShareWithSubfolderCreatesFolder() {
 	volume := suite.subfolderVolume("sub-create")
 
-	created, err := suite.shareService.CreateShare(subfolderShare("sub-create", " photos/2024/ ", volume))
+	created, err := suite.shareService.CreateShare(subfolderShare("sub-create", "photos/2024/", volume))
 
 	suite.Require().NoError(err)
 	suite.Require().NotNil(created.Subfolder)
@@ -211,4 +213,81 @@ func (suite *ShareServiceSuite) TestMountEventUpdatesEverySubfolderShare() {
 		}
 	}
 	suite.Equal(map[string]bool{"mountevent-emperor": true, "mountevent-pavel": true}, updated)
+}
+
+func (suite *ShareServiceSuite) TestCreateShareRefusesSymlinkAliasOfUsedFolder() {
+	volume := suite.subfolderVolume("sub-alias")
+	suite.Require().NoError(os.Mkdir(filepath.Join(volume.Path, "real"), 0o755))
+	suite.Require().NoError(os.Symlink("real", filepath.Join(volume.Path, "alias")))
+	_, err := suite.shareService.CreateShare(subfolderShare("alias-real", "real", volume))
+	suite.Require().NoError(err)
+
+	_, err = suite.shareService.CreateShare(subfolderShare("alias-alias", "alias", volume))
+
+	suite.True(errors.Is(err, dto.ErrorShareFolderInUse), "alias of a used folder, got %v", err)
+}
+
+func (suite *ShareServiceSuite) TestCreateStandardNamedShareWithSubfolderRejected() {
+	volume := suite.subfolderVolume("sub-standard")
+
+	_, err := suite.shareService.CreateShare(subfolderShare("addons", "emperor", volume))
+
+	suite.True(errors.Is(err, dto.ErrorShareValidation), "got %v", err)
+}
+
+// TestRecreateDeletedShareRechecksItsFolder covers restoring a soft-deleted
+// share: its stored subfolder must not come back unchecked.
+func (suite *ShareServiceSuite) TestRecreateDeletedShareRechecksItsFolder() {
+	volume := suite.subfolderVolume("sub-restore")
+	_, err := suite.shareService.CreateShare(subfolderShare("restore-a", "photos", volume))
+	suite.Require().NoError(err)
+	suite.Require().NoError(suite.shareService.DeleteShare("restore-a"))
+	_, err = suite.shareService.CreateShare(subfolderShare("restore-b", "photos", volume))
+	suite.Require().NoError(err)
+
+	again := subfolderShare("restore-a", "photos", volume)
+	_, err = suite.shareService.CreateShare(again)
+	suite.True(errors.Is(err, dto.ErrorShareFolderInUse), "explicit folder in use, got %v", err)
+
+	again.Subfolder = nil
+	restored, err := suite.shareService.CreateShare(again)
+	suite.Require().NoError(err)
+	suite.Empty(restored.SubfolderOrRoot(), "an absent subfolder on create is the volume root")
+	other, err := suite.shareService.GetShare("restore-b")
+	suite.Require().NoError(err)
+	suite.Equal("photos", other.SubfolderOrRoot())
+}
+
+// TestMountEventReassociatesStrandedSibling covers a remount where one share
+// of the device already moved to the new path and another did not.
+func (suite *ShareServiceSuite) TestMountEventReassociatesStrandedSibling() {
+	root := "/"
+	newPath, oldPath := "/mnt/sib-new", "/mnt/sib-old"
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name: "sib-moved", MountPointDataPath: &newPath, MountPointDataRoot: &root,
+		MountPointData: dbom.MountPointPath{Path: newPath, Root: &root, Type: "ADDON", DeviceId: "dev-sib"},
+	}).Error)
+	suite.Require().NoError(suite.db.Create(&dbom.ExportedShare{
+		Name: "sib-stuck", Subfolder: "pavel", MountPointDataPath: &oldPath, MountPointDataRoot: &root,
+		MountPointData: dbom.MountPointPath{Path: oldPath, Root: &root, Type: "ADDON", DeviceId: "dev-sib"},
+	}).Error)
+
+	handlerCaptor := mock.Captor[func(context.Context, events.MountPointEvent) errors.E]()
+	mock.Verify(suite.eventBus, mock.Once()).OnMountPoint(handlerCaptor.Capture())
+	eventCaptor := mock.Captor[events.ShareEvent]()
+	mock.When(suite.eventBus.EmitShare(eventCaptor.Capture())).ThenReturn(nil)
+
+	err := handlerCaptor.Last()(suite.T().Context(), events.MountPointEvent{MountPoint: &dto.MountPointData{
+		Path: newPath, Root: root, DeviceId: "dev-sib", IsMounted: true, Type: "ADDON",
+	}})
+
+	suite.Require().NoError(err)
+	stuck, errG := suite.shareService.GetShare("sib-stuck")
+	suite.Require().NoError(errG)
+	suite.Equal(newPath, stuck.MountPointData.Path, "the stranded share moved to the live path")
+	counts := map[string]int{}
+	for _, event := range eventCaptor.Values() {
+		counts[event.Share.Name]++
+	}
+	suite.Equal(map[string]int{"sib-moved": 1, "sib-stuck": 1}, counts, "each share notified once")
 }

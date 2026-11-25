@@ -17,11 +17,14 @@ func TestCleanShareSubfolder(t *testing.T) {
 		wantErr  bool
 	}{
 		{name: "empty means volume root", raw: "", expected: ""},
-		{name: "blank means volume root", raw: "   ", expected: ""},
 		{name: "single folder", raw: "movies", expected: "movies"},
 		{name: "nested folder", raw: "photos/2024", expected: "photos/2024"},
-		{name: "surrounding spaces trimmed", raw: "  photos/2024  ", expected: "photos/2024"},
+		{name: "inner spaces kept", raw: "Italie 2025/day 1", expected: "Italie 2025/day 1"},
 		{name: "trailing slash dropped", raw: "photos/", expected: "photos"},
+		{name: "blank is not the volume root", raw: "   ", wantErr: true},
+		{name: "leading space", raw: " photos", wantErr: true},
+		{name: "trailing space in a segment", raw: "photos /2024", wantErr: true},
+		{name: "root slash", raw: "/", wantErr: true},
 		{name: "dots inside a name are allowed", raw: "..hidden/v1.2", expected: "..hidden/v1.2"},
 		{name: "unicode name", raw: "Rodina/Dovolená", expected: "Rodina/Dovolená"},
 		{name: "absolute path", raw: "/etc", wantErr: true},

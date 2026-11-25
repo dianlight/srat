@@ -91,29 +91,35 @@ export const getCasingIcon = (
 // Share subfolders (issue #184) mirror the backend rules in
 // dto.CleanShareSubfolder, so the form can explain a refusal before saving.
 
-// normalizeSubfolder returns the canonical form of a subfolder: trimmed,
-// without a trailing "/". An empty string is the volume root.
+// normalizeSubfolder returns the canonical form of a subfolder: without a
+// trailing "/". Names are never trimmed (a space can be part of a folder
+// name). An empty string is the volume root.
 export function normalizeSubfolder(subfolder?: string | null): string {
-  return (subfolder ?? "").trim().replace(/\/$/, "");
+  return (subfolder ?? "").replace(/\/$/, "");
 }
+
+const utf8 = new TextEncoder();
 
 // subfolderProblem explains why a subfolder is not acceptable, or returns
 // undefined when it is.
 export function subfolderProblem(subfolder?: string | null): string | undefined {
-  const value = normalizeSubfolder(subfolder);
-  if (value === "") return undefined;
-  if (value.startsWith("/"))
+  const raw = subfolder ?? "";
+  if (raw === "") return undefined;
+  if (raw.startsWith("/"))
     return "Use a folder inside the volume, without a leading /";
-  if (value.includes("\\")) return 'Use "/" to separate folders';
-  for (const segment of value.split("/")) {
+  if (raw.includes("\\")) return 'Use "/" to separate folders';
+  for (const segment of normalizeSubfolder(raw).split("/")) {
     if (segment === "") return "Folder names cannot be empty";
     if (segment === "." || segment === "..")
       return 'Folder names "." and ".." are not allowed';
-    if (segment.length > 255) return "Folder names can have 255 characters at most";
+    if (utf8.encode(segment).length > 255)
+      return "Folder names can have 255 bytes at most";
     const isControl = (char: string) =>
       char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f;
     if ([...segment].some(isControl))
       return "Folder names cannot contain control characters";
+    if (segment.trim() !== segment)
+      return "Folder names cannot start or end with a space";
   }
   return undefined;
 }

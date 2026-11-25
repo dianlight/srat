@@ -307,6 +307,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 
 	rmount, ok := mounts[sanitizeSupervisorMountName(share.Name)]
 	enrichSharePartitionFromCache(&share, self.disks)
+	nfsWanted := *useNfs && isShareNFSExportable(ctx, share)
 	if !ok {
 		// new mount
 		rmount = mount.Mount{}
@@ -318,13 +319,8 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		rmount.Share = &share.Name
 		rmount.Server = &self.state.AddonIpAddress
 
-		if *useNfs && isShareNFSExportable(ctx, share) {
-			nfsPath := resolveShareExportPath(share)
-			if nfsPath == "" {
-				nfsPath = share.Name
-			}
-			// strip /mnt prefix if exists to avoid issues with ha_supervisor path handling
-			nfsPath = strings.TrimPrefix(nfsPath, "/mnt/")
+		if nfsWanted {
+			nfsPath := haNFSMountPath(share)
 			rmount.Type = new(mount.MountType("nfs"))
 			rmount.Path = &nfsPath
 			rmount.Username = nil
@@ -381,18 +377,18 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		return nil
 	} else if *rmount.State != "active" ||
 		(*useNfs && *rmount.Type == "cifs") ||
-		(!*useNfs && *rmount.Type == "nfs") {
+		(!*useNfs && *rmount.Type == "nfs") ||
+		// A changed subfolder (issue #184) changes the export behind an
+		// active NFS mount: remount the new folder.
+		(nfsWanted && *rmount.Type == "nfs" && (rmount.Path == nil || *rmount.Path != haNFSMountPath(share))) {
 		if err := conv.SharedResourceToMount(share, &rmount); err != nil {
 			return errors.Wrap(err, "failed converting share to HA mount update payload")
 		}
 		mountName := sanitizeSupervisorMountName(share.Name)
 		rmount.Name = &mountName
 		rmount.Share = &share.Name
-		if *useNfs && isShareNFSExportable(ctx, share) {
-			nfsPath := resolveShareExportPath(share)
-			if nfsPath == "" {
-				nfsPath = share.Name
-			}
+		if nfsWanted {
+			nfsPath := haNFSMountPath(share)
 			rmount.Type = new(mount.MountType("nfs"))
 			rmount.Path = &nfsPath
 			rmount.Username = nil

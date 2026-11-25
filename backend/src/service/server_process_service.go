@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -732,7 +733,8 @@ func (self *ServerService) recoverMediaUsageSymlinks(ctx context.Context, linkRo
 			continue
 		}
 
-		targetPath := share.MountPointData.Path
+		// A subfolder share (issue #184) links only its folder.
+		targetPath := dto.ShareDirectory(share.MountPointData.Path, share.SubfolderOrRoot())
 		if !filepath.IsAbs(targetPath) {
 			slog.WarnContext(ctx, "Skipping media symlink recovery for non-absolute mount path", "share", share.Name, "target", targetPath)
 			continue
@@ -890,6 +892,22 @@ func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, di
 // nfsExportsFile is where writeNFSConfig writes; tests use a temporary file.
 var nfsExportsFile = "/etc/exports"
 
+// exportsPath escapes a path for /etc/exports: whitespace, control
+// characters, backslash, '#' and '"' become octal escapes such as \040,
+// as described in exports(5), so a folder like "Italie 2025" stays one entry.
+func exportsPath(p string) string {
+	var b strings.Builder
+	for i := 0; i < len(p); i++ {
+		c := p[i]
+		if c <= ' ' || c == '\\' || c == '#' || c == '"' || c == 0x7f {
+			fmt.Fprintf(&b, "\\%03o", c)
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
 // writeNFSConfig writes the NFS exports configuration to /etc/exports
 func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 	tlog.TraceContext(ctx, "Writing NFS exports configuration file", "file", nfsExportsFile)
@@ -959,11 +977,17 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			// Generate NFS export entry
 			// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
 			// Using fsid based on share index to ensure unique identification
-			exportsContent.WriteString(path)
+			exportsContent.WriteString(exportsPath(path))
 			exportsContent.WriteString(" ")
 			exportsContent.WriteString(hostname)
 			//exportsContent.WriteString("172.30.32.0/24") // Allow access from local network and hostname for cluster compatibility
-			exportsContent.WriteString("(rw,sync,no_subtree_check,no_root_squash")
+			if share.SubfolderOrRoot() != "" {
+				// A subfolder export must not hand out file handles for the
+				// rest of the volume (issue #184).
+				exportsContent.WriteString("(rw,sync,subtree_check,no_root_squash")
+			} else {
+				exportsContent.WriteString("(rw,sync,no_subtree_check,no_root_squash")
+			}
 			// fsid need to be a UUID valid format
 			//exportsContent.WriteString(",fsid=")
 			//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))

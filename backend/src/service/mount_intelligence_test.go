@@ -250,3 +250,13 @@ func TestEnrichExportedShareForceUserGroup_RealFilesystemService(t *testing.T) {
 	assert.Equal(t, "root", unknown.ForceUser)
 	assert.Equal(t, "root", unknown.ForceGroup)
 }
+
+func TestHANFSMountPath(t *testing.T) {
+	share := dto.SharedResource{Name: "EMPEROR", MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}}
+	assert.Equal(t, "DATA1", haNFSMountPath(share))
+
+	share.Subfolder = new("emperor")
+	assert.Equal(t, "DATA1/emperor", haNFSMountPath(share))
+
+	assert.Equal(t, "NOPATH", haNFSMountPath(dto.SharedResource{Name: "NOPATH"}), "falls back to the share name")
+}
