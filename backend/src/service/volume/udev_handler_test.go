@@ -1180,6 +1180,42 @@ func (s *UdevHandlerTestSuite) TestHandlePartitionEvent_MarksHAManagedMount() {
 	s.Equal("HOST", mp.Type)
 }
 
+func (s *UdevHandlerTestSuite) TestHandlePartitionEvent_ClearsStaleHAMountedFlag() {
+	diskID, partID := "disk-h-ha-stale", "part-h-ha-stale"
+	devPath := "/dev/sdz11"
+	diskIDCopy, partIDCopy, devCopy := diskID, partID, devPath
+	parts := map[string]dto.Partition{partID: {Id: &partIDCopy, DiskId: &diskIDCopy, DevicePath: &devCopy}}
+	disk := dto.Disk{Id: &diskIDCopy, Partitions: &parts}
+	s.Require().NoError(s.disks.AddOrUpdate(&disk))
+	s.disks.NextRefreshVersion()
+
+	// Persisted HA-managed mount point that was previously mounted.
+	s.Require().NoError(s.repo.Persist(&dto.MountPointData{
+		Path: "/media/srat_probe_stale", Root: "/", DeviceId: partID,
+		Type: "HOST", Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}))
+	s.Require().NoError(s.disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{
+		Path: "/media/srat_probe_stale", DeviceId: partID, IsMounted: true,
+		IsHAMounted: true, Type: "HOST",
+		Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}))
+	s.disks.NextRefreshVersion()
+
+	// HA unmounts: procfs no longer reports the mount.
+	part := parts[partID]
+	s.Require().NoError(s.handler.HandlePartitionEvent(s.ctx, events.PartitionEvent{
+		Event:      events.Event{Type: events.EventTypes.ADD},
+		Disk:       &disk,
+		Partitions: []*dto.Partition{&part},
+		MountInfos: []*procfs.MountInfo{},
+	}))
+
+	mp, ok := s.disks.GetMountPoint(diskID, partID, "/media/srat_probe_stale")
+	s.Require().True(ok, "stale mount point row should remain tracked")
+	s.False(mp.IsMounted, "entry missing from procfs must be marked unmounted")
+	s.False(mp.IsHAMounted, "stale HA-managed flag must be cleared after unmount (#1658)")
+}
+
 func (s *UdevHandlerTestSuite) TestHandleMountPointEvent_DeviceNotFound_SchedulesRefresh() {
 	baseRefreshes := s.refreshCount()
 	baseInvalidates := s.hardware.count()

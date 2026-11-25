@@ -674,21 +674,26 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 	}
 	// Add missing mount points from DB to in-memory cache
 	for _, md := range mountData {
-		// HA ownership is derived at runtime (2026.11+ local disk storage)
-		// and is never persisted; re-derive it from the path so a DB-loaded
-		// mount point keeps the correct flag even before the procfs loop.
-		if IsHAManagedMountPath(md.Path) {
-			md.IsHAMounted = true
-			if md.Type == "" || md.Type == "ADDON" {
-				md.Type = "HOST"
-			}
-		}
+		// HA ownership (IsHAMounted) is runtime state derived from the live
+		// procfs mount table; do NOT re-derive it from the path here, otherwise
+		// a stale persisted row for an HA usage path keeps a false positive
+		// after Home Assistant unmounts it (#1658). The procfs loop below sets
+		// IsHAMounted=true only for mounts actually present.
 		// Recompute IsInvalid from the current path state so a stale persisted
 		// "invalid" flag cannot survive a refresh (#1585).
 		if fi, statErr := os.Stat(md.Path); statErr != nil {
 			md.IsInvalid = true
 		} else {
 			md.IsInvalid = !fi.IsDir()
+		}
+		// IsHAMounted is runtime state derived from the live procfs mount
+		// table. Reset it on load so a stale persisted row for an HA usage
+		// path cannot keep a false positive after Home Assistant unmounts
+		// the volume (#1658). The procfs loop below sets IsHAMounted=true
+		// (and Type=HOST) only for mounts actually present.
+		md.IsHAMounted = false
+		if md.Type == "HOST" {
+			md.Type = "ADDON"
 		}
 		// Keep the runtime state already observed in the cache. The DB
 		// converter derives IsMounted from the live OS mount table, so
@@ -818,6 +823,12 @@ func (h *UdevHandler) SyncPartitionMountData(ctx context.Context, disk *dto.Disk
 			tlog.DebugContext(ctx, "Marking mount point as unmounted since not found in procfs mounts", "disk_id", *disk.Id, "partition_id", *part.Id, "mount_path", mountPoint.Path)
 			oldtstate := mountPoint.IsMounted
 			mountPoint.IsMounted = false
+			// Home Assistant no longer has this mount live; clear the stale
+			// HA-managed flag so the volume can be (re)mounted by SRAT (#1658).
+			mountPoint.IsHAMounted = false
+			if mountPoint.Type == "HOST" {
+				mountPoint.Type = "ADDON"
+			}
 			mountPoint.RefreshVersion = h.disks.CurrentRefreshVersion()
 			err := h.disks.AddOrUpdateMountPoint(*part.DiskId, *part.Id, *mountPoint)
 			if err != nil {
