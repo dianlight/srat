@@ -108,6 +108,15 @@ describe("SubfolderPicker", () => {
     ).toBe(true);
   });
 
+  it("ignores Enter on a name of only spaces", async () => {
+    const user = userEvent.setup();
+    renderPicker();
+
+    await user.type(screen.getByLabelText("New folder"), "   {Enter}");
+
+    expect(screen.queryByText(/does not exist yet/i)).toBeNull();
+  });
+
   it("shows why a folder cannot be listed", () => {
     renderPicker({
       testOverrides: {

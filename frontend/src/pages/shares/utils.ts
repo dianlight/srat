@@ -114,8 +114,11 @@ export function subfolderProblem(subfolder?: string | null): string | undefined 
       return 'Folder names "." and ".." are not allowed';
     if (utf8.encode(segment).length > 255)
       return "Folder names can have 255 bytes at most";
-    const isControl = (char: string) =>
-      char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f;
+    // C0, DEL and C1 controls, like Go's unicode.IsControl in the backend.
+    const isControl = (char: string) => {
+      const code = char.charCodeAt(0);
+      return code < 0x20 || (code >= 0x7f && code <= 0x9f);
+    };
     if ([...segment].some(isControl))
       return "Folder names cannot contain control characters";
     if (segment.trim() !== segment)

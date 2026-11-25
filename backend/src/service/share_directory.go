@@ -1,6 +1,7 @@
 package service
 
 import (
+	"io"
 	"io/fs"
 	"log/slog"
 	"os"
@@ -98,23 +99,58 @@ func resolveShareDirectory(mountPath, subfolder string, create bool) (string, er
 	return filepath.Join(mountPath, subfolder), nil
 }
 
-// mkdirLike creates name inside root with the mode and owner of the volume root.
+// sharedModeBits are the mode bits a created subfolder copies from the volume root.
+const sharedModeBits = fs.ModePerm | fs.ModeSetgid | fs.ModeSticky
+
+// rootChmod and rootLchown are mockable so tests can simulate filesystems that
+// refuse permission changes.
+var (
+	rootChmod  = (*os.Root).Chmod
+	rootLchown = (*os.Root).Lchown
+)
+
+// mkdirLike creates name inside root with the mode and owner of the volume
+// root. A folder that does not end up with them is removed again and the share
+// is refused, so a retry cannot find the folder and accept it as it is.
 func mkdirLike(root *os.Root, name, full string, rootInfo fs.FileInfo) errors.E {
-	mode := rootInfo.Mode() & (fs.ModePerm | fs.ModeSetgid | fs.ModeSticky)
+	mode := rootInfo.Mode() & sharedModeBits
 	if err := root.Mkdir(name, mode.Perm()); err != nil {
 		return errors.WithDetails(dto.ErrorShareValidation,
 			"Message", "cannot create subfolder", "Path", full, "Error", err.Error())
 	}
 	// Mkdir applies the umask and drops the special bits: set the exact mode.
-	if err := root.Chmod(name, mode); err != nil {
-		slog.Warn("Cannot copy volume permissions to share subfolder", "path", full, "err", err)
-	}
+	// Filesystems without Unix permissions (FAT, exFAT, NTFS) may refuse the
+	// change while already giving every folder the same mode and owner, so
+	// the result decides, not the error.
+	errs := []error{rootChmod(root, name, mode)}
 	if stat, ok := rootInfo.Sys().(*syscall.Stat_t); ok {
-		if err := root.Lchown(name, int(stat.Uid), int(stat.Gid)); err != nil {
-			slog.Warn("Cannot copy volume owner to share subfolder", "path", full, "err", err)
-		}
+		errs = append(errs, rootLchown(root, name, int(stat.Uid), int(stat.Gid)))
 	}
-	return nil
+	if info, err := root.Lstat(name); err == nil && sameModeAndOwner(info, rootInfo) {
+		return nil
+	}
+	if err := root.Remove(name); err != nil {
+		slog.Warn("Cannot remove share subfolder without the volume permissions", "path", full, "err", err)
+	}
+	details := []any{"Message", "cannot give the subfolder the permissions of the volume", "Path", full}
+	if err := errors.Join(errs...); err != nil {
+		details = append(details, "Error", err.Error())
+	}
+	return errors.WithDetails(dto.ErrorShareValidation, details...)
+}
+
+// sameModeAndOwner reports whether the directory info has the mode bits and
+// owner of want.
+func sameModeAndOwner(info, want fs.FileInfo) bool {
+	if !info.IsDir() || info.Mode()&sharedModeBits != want.Mode()&sharedModeBits {
+		return false
+	}
+	wantStat, ok := want.Sys().(*syscall.Stat_t)
+	if !ok {
+		return true
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	return ok && stat.Uid == wantStat.Uid && stat.Gid == wantStat.Gid
 }
 
 // sameDirectoryAsAny reports whether subfolder is the same directory as one of
@@ -141,6 +177,10 @@ func sameDirectoryAsAny(mountPath, subfolder string, others []string) bool {
 
 // maxListedFolders caps one folder listing; beyond it the path can be typed.
 var maxListedFolders = 1000
+
+// listBatchSize is how many entries a listing reads at a time, so a huge
+// folder is never read into memory at once.
+var listBatchSize = 256
 
 // ListVolumeFolders lists the folders inside `subfolder` of a mounted volume,
 // for picking a share subfolder (issue #184). The volume must be a known,
@@ -169,21 +209,26 @@ func (s *ShareService) ListVolumeFolders(mountPath, subfolder string) (*dto.Volu
 		return nil, shareDirectoryError("folder is not readable", full)
 	}
 	defer dir.Close()
-	entries, errR := dir.ReadDir(-1)
-	if errR != nil {
-		return nil, shareDirectoryError("folder is not readable", full)
-	}
 	result := &dto.VolumeFolders{MountPath: mountPath, Path: clean, Folders: []string{}}
-	for _, entry := range entries {
-		name := entry.Name()
-		if !entry.IsDir() || strings.HasPrefix(name, ".") || (clean == "" && name == "lost+found") {
-			continue
+	for !result.Truncated {
+		entries, errR := dir.ReadDir(listBatchSize)
+		for _, entry := range entries {
+			name := entry.Name()
+			if !entry.IsDir() || strings.HasPrefix(name, ".") || (clean == "" && name == "lost+found") {
+				continue
+			}
+			if len(result.Folders) == maxListedFolders {
+				result.Truncated = true
+				break
+			}
+			result.Folders = append(result.Folders, name)
 		}
-		if len(result.Folders) == maxListedFolders {
-			result.Truncated = true
+		if errors.Is(errR, io.EOF) {
 			break
 		}
-		result.Folders = append(result.Folders, name)
+		if errR != nil {
+			return nil, shareDirectoryError("folder is not readable", full)
+		}
 	}
 	slices.SortFunc(result.Folders, func(a, b string) int {
 		return strings.Compare(strings.ToLower(a), strings.ToLower(b))

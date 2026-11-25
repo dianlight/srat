@@ -28,7 +28,8 @@ available when `experimental_lab_mode` is enabled.
 4. Assign the users who may read or write the share.
 
 A missing folder is created with the mode and owner of the volume root, so it
-follows the same permissions as the rest of the volume.
+follows the same permissions as the rest of the volume. When the filesystem
+cannot give it them, the new folder is removed again and the share is refused.
 
 ## Rules
 

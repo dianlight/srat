@@ -95,7 +95,7 @@ export function SubfolderPicker({
   const newNameProblem = newName.trim() ? subfolderProblem(newName) : undefined;
   const addNewFolder = () => {
     const name = normalizeSubfolder(newName);
-    if (!name || newNameProblem) return;
+    if (!name.trim() || newNameProblem) return;
     goTo(path ? `${path}/${name}` : name, newFolders + name.split("/").length);
     setNewName("");
   };

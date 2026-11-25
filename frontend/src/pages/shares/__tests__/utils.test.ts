@@ -85,6 +85,9 @@ describe("shares utils", () => {
 		// 128 two-byte characters are 256 bytes, over the limit like on the server.
 		expect(subfolderProblem("é".repeat(128))).toMatch(/255 bytes/);
 		expect(subfolderProblem("pho\u0007tos")).toMatch(/control/);
+		expect(subfolderProblem("pho\u007ftos")).toMatch(/control/);
+		expect(subfolderProblem("pho\u0085tos")).toMatch(/control/);
+		expect(subfolderProblem("Fotky ěščř")).toBeUndefined();
 		expect(subfolderProblem(" photos")).toMatch(/space/);
 		expect(subfolderProblem("photos /2024")).toMatch(/space/);
 		expect(subfolderProblem("   ")).toMatch(/space/);

@@ -130,6 +130,43 @@ func TestResolveShareDirectoryReportsMkdirFailure(t *testing.T) {
 	requireShareValidationError(t, err)
 }
 
+// mockRefusedPermissionCopy makes chmod and chown fail without changing
+// anything, like a filesystem that refuses them.
+func mockRefusedPermissionCopy(t *testing.T) {
+	t.Helper()
+	previousChmod, previousLchown := rootChmod, rootLchown
+	rootChmod = func(*os.Root, string, fs.FileMode) error { return fs.ErrPermission }
+	rootLchown = func(*os.Root, string, int, int) error { return fs.ErrPermission }
+	t.Cleanup(func() { rootChmod, rootLchown = previousChmod, previousLchown })
+}
+
+func TestResolveShareDirectoryRemovesFolderWithoutVolumePermissions(t *testing.T) {
+	mockMountedVolume(t, true, nil)
+	mockRefusedPermissionCopy(t)
+	volume := t.TempDir()
+	// Mkdir never sets the sticky bit, and the refused chmod cannot add it.
+	require.NoError(t, os.Chmod(volume, 0o700|fs.ModeSticky))
+
+	_, err := resolveShareDirectory(volume, "photos/2024", true)
+
+	requireShareValidationError(t, err)
+	assert.NoDirExists(t, filepath.Join(volume, "photos"), "the incomplete folder is removed")
+}
+
+func TestResolveShareDirectoryAcceptsRefusedCopyWithMatchingResult(t *testing.T) {
+	// FAT-like: chmod and chown fail, but the new folder already has the
+	// mode and owner of the volume root.
+	mockMountedVolume(t, true, nil)
+	mockRefusedPermissionCopy(t)
+	volume := t.TempDir()
+	require.NoError(t, os.Chmod(volume, 0o700))
+
+	dir, err := resolveShareDirectory(volume, "photos", true)
+
+	require.NoError(t, err)
+	assert.DirExists(t, dir)
+}
+
 func TestSameDirectoryAsAny(t *testing.T) {
 	volume := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(volume, "real"), 0o755))
@@ -207,9 +244,9 @@ func TestListVolumeFoldersRefusals(t *testing.T) {
 }
 
 func TestListVolumeFoldersTruncates(t *testing.T) {
-	previous := maxListedFolders
-	maxListedFolders = 2
-	t.Cleanup(func() { maxListedFolders = previous })
+	previous, previousBatch := maxListedFolders, listBatchSize
+	maxListedFolders, listBatchSize = 2, 1
+	t.Cleanup(func() { maxListedFolders, listBatchSize = previous, previousBatch })
 	volume := t.TempDir()
 	for _, dir := range []string{"a", "b", "c"} {
 		require.NoError(t, os.Mkdir(filepath.Join(volume, dir), 0o755))
@@ -220,6 +257,23 @@ func TestListVolumeFoldersTruncates(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, listing.Folders, 2)
 	assert.True(t, listing.Truncated)
+}
+
+func TestListVolumeFoldersReadsInBatches(t *testing.T) {
+	previous := listBatchSize
+	listBatchSize = 2
+	t.Cleanup(func() { listBatchSize = previous })
+	volume := t.TempDir()
+	for _, dir := range []string{"e", "D", "c", "b", "a", ".hidden"} {
+		require.NoError(t, os.Mkdir(filepath.Join(volume, dir), 0o755))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(volume, "notes.txt"), []byte("x"), 0o600))
+
+	listing, err := folderTestService(t, volume, true).ListVolumeFolders(volume, "")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b", "c", "D", "e"}, listing.Folders)
+	assert.False(t, listing.Truncated)
 }
 
 func TestListVolumeFoldersUnreadable(t *testing.T) {

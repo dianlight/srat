@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/dianlight/srat/dbom"
 	"github.com/dianlight/srat/dto"
@@ -174,6 +175,25 @@ func (suite *ShareServiceSuite) TestVerifyShareSubfolder() {
 	missing := subfolderShare("sub-verify", "gone", volume)
 	suite.Require().NoError(suite.shareService.VerifyShare(&missing))
 	suite.False(missing.Status.IsValid)
+}
+
+// TestListSharesRechecksSwappedSubfolder: smb.conf and /etc/exports are built
+// from ListShares, which resolves every subfolder again, so a folder replaced
+// by a symlink out of the volume after the share was created is not published.
+func (suite *ShareServiceSuite) TestListSharesRechecksSwappedSubfolder() {
+	volume := suite.subfolderVolume("sub-swap")
+	_, err := suite.shareService.CreateShare(subfolderShare("sub-swap", "emperor", volume))
+	suite.Require().NoError(err)
+	folder := filepath.Join(volume.Path, "emperor")
+	suite.Require().NoError(os.Remove(folder))
+	suite.Require().NoError(os.Symlink(suite.T().TempDir(), folder))
+
+	shares, err := suite.shareService.ListShares()
+
+	suite.Require().NoError(err)
+	idx := slices.IndexFunc(shares, func(share dto.SharedResource) bool { return share.Name == "sub-swap" })
+	suite.Require().GreaterOrEqual(idx, 0)
+	suite.False(shares[idx].Status.IsValid, "a subfolder that leaves the volume is invalid")
 }
 
 func (suite *ShareServiceSuite) TestGetShareFromPathPrefersVolumeRootShare() {

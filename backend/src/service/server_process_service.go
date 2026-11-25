@@ -509,6 +509,8 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		return tconfig, errors.WithStack(errS)
 	}
 
+	// ListShares verifies every share now, so a subfolder that no longer
+	// resolves inside its volume is invalid and skipped below (issue #184).
 	sr, err := self.share_service.ListShares()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
@@ -917,7 +919,9 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 		return errors.WithStack(err)
 	}
 
-	// Get all shares from the database
+	// Get all shares from the database. ListShares verifies every share now,
+	// so a subfolder that no longer resolves inside its volume is invalid and
+	// skipped below (issue #184).
 	shares, err := self.share_service.ListShares()
 	if err != nil {
 		return errors.WithStack(err)
