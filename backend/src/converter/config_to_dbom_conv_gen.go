@@ -56,6 +56,9 @@ func (c *ConfigToDbomConverterImpl) ExportedShareToShare(source dbom.ExportedSha
 		target.Usage = string(source.Usage)
 	}
 	target.VetoFiles = c.datatypesJSONSliceToStringList(source.VetoFiles)
+	if source.Subfolder != "" {
+		target.Subfolder = source.Subfolder
+	}
 	if source.ForceUser != "" {
 		target.ForceUser = source.ForceUser
 	}
@@ -113,6 +116,9 @@ func (c *ConfigToDbomConverterImpl) ShareToExportedShareNoMountPointPath(source 
 	}
 	if source.Usage != "" {
 		target.Usage = dto.HAMountUsage(source.Usage)
+	}
+	if source.Subfolder != "" {
+		target.Subfolder = source.Subfolder
 	}
 	if source.Path != "" {
 		pString := source.Path

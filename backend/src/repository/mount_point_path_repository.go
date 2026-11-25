@@ -39,9 +39,15 @@ func NewMountPointPathRepository(db *gorm.DB) MountPointPathRepositoryInterface 
 }
 
 // FindByDeviceID loads all persisted mount rows for one partition device id.
+// ExportedShare is a has-one, yet subfolder shares let several shares use one
+// mount (issue #184). GORM keeps the last preloaded row, so ordering by
+// subfolder descending makes the volume root share ("") the one reported.
 func (r *mountPointPathRepository) FindByDeviceID(ctx context.Context, deviceID string) ([]dbom.MountPointPath, errors.E) {
 	rows, err := gorm.G[dbom.MountPointPath](r.db).
-		Preload("ExportedShare", nil).
+		Preload("ExportedShare", func(db gorm.PreloadBuilder) error {
+			db.Order("subfolder DESC, name DESC")
+			return nil
+		}).
 		Where(g.MountPointPath.DeviceId.Eq(deviceID)).
 		Find(ctx)
 	if err != nil {

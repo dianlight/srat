@@ -31,7 +31,7 @@ type ConfigToDtoConverter interface {
 	// g.overter:update target
 	// g.overter:ignore  Flags CustomFlags IsInvalid InvalidError Warnings Share IsToMountAtStartup
 	// goverter:ignore Flags CustomFlags InvalidError Warnings Share RefreshVersion Root
-	// goverter:ignore Partition
+	// goverter:ignore Partition IsHAMounted
 	// goverter:map Path IsMounted | github.com/dianlight/srat/internal/osutil:IsMounted
 	// goverter:map IsInvalid | falseConst
 	// goverter:map IsToMountAtStartup | truePConst

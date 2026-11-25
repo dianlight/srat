@@ -174,6 +174,16 @@ func isShareNFSExportable(ctx context.Context, share dto.SharedResource) bool {
 	return false
 }
 
+// resolveShareExportPath is the path a share is exported at over NFS: its
+// mount point, or the subfolder inside it (issue #184).
+func resolveShareExportPath(share dto.SharedResource) string {
+	mountPath := resolveActualMountPointPath(share)
+	if mountPath == "" {
+		return ""
+	}
+	return dto.ShareDirectory(mountPath, share.SubfolderOrRoot())
+}
+
 func resolveActualMountPointPath(share dto.SharedResource) string {
 	if share.MountPointData == nil {
 		return ""

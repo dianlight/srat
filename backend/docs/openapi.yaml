@@ -2160,6 +2160,10 @@ components:
             - "null"
         status:
           $ref: "#/components/schemas/SharedResourceStatus"
+        subfolder:
+          description: Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value.
+          maxLength: 1024
+          type: string
         timemachine:
           type: boolean
         timemachine_max_size:
@@ -2210,6 +2214,10 @@ components:
             - "null"
         status:
           $ref: "#/components/schemas/SharedResourceStatus"
+        subfolder:
+          description: Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value.
+          maxLength: 1024
+          type: string
         timemachine:
           type: boolean
         timemachine_max_size:

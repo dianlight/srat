@@ -12,17 +12,60 @@ import (
 )
 
 type ShareHandler struct {
-	apiContext   *dto.ContextState
-	shareService service.ShareServiceInterface
+	apiContext     *dto.ContextState
+	shareService   service.ShareServiceInterface
+	settingService service.SettingServiceInterface
 }
 
 func NewShareHandler(apiContext *dto.ContextState,
 	shareService service.ShareServiceInterface,
+	settingService service.SettingServiceInterface,
 ) *ShareHandler {
 	p := new(ShareHandler)
 	p.apiContext = apiContext
 	p.shareService = shareService
+	p.settingService = settingService
 	return p
+}
+
+// shareErrorMessage adds the reason carried in the error details (for example
+// why a subfolder was refused) to the error message shown to the user.
+func shareErrorMessage(err error) string {
+	details := errors.AllDetails(err)
+	message := err.Error()
+	if reason, ok := details["Message"].(string); ok && reason != "" {
+		message += ": " + reason
+	}
+	if path, ok := details["Path"].(string); ok && path != "" {
+		message += " (" + path + ")"
+	}
+	return message
+}
+
+// requireSubfolderLab rejects setting or changing a share subfolder unless
+// the share_subfolders lab feature is available, i.e. Lab Mode is on
+// (issue #184). current is the stored share, nil on create. A share that
+// already uses a subfolder stays editable when Lab Mode is off: dropping the
+// subfolder would widen it to the whole volume.
+func (self *ShareHandler) requireSubfolderLab(requested *string, current *dto.SharedResource) error {
+	if requested == nil {
+		return nil
+	}
+	subfolder, err := dto.CleanShareSubfolder(*requested)
+	if err != nil || subfolder == current.SubfolderOrRoot() {
+		return nil // invalid values are rejected by the share service (422)
+	}
+	settings, errL := self.settingService.Load()
+	if errL != nil {
+		return huma.Error500InternalServerError("Failed to read settings", errL)
+	}
+	if settings == nil || !settings.ExperimentalLabMode {
+		return huma.Error403Forbidden(
+			"Share subfolders require Lab Mode (set experimental_lab_mode=true in settings)",
+			dto.ErrorLabModeRequired,
+		)
+	}
+	return nil
 }
 
 func (self *ShareHandler) RegisterShareHandler(api huma.API) {
@@ -116,13 +159,19 @@ func (self *ShareHandler) CreateShare(ctx context.Context, input *struct {
 	Status int
 	Body   dto.SharedResource
 }, error) {
+	if err := self.requireSubfolderLab(input.Body.Subfolder, nil); err != nil {
+		return nil, err
+	}
 	createdShare, err := self.shareService.CreateShare(input.Body.SharedResource)
 	if err != nil {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		if errors.Is(err, dto.ErrorShareFolderInUse) {
+			return nil, huma.Error409Conflict(shareErrorMessage(err))
+		}
 		if errors.Is(err, dto.ErrorShareValidation) {
-			return nil, huma.Error422UnprocessableEntity(err.Error())
+			return nil, huma.Error422UnprocessableEntity(shareErrorMessage(err))
 		}
 		slog.ErrorContext(ctx, "Failed to create share", "share_name", input.Body.Name, "error", err)
 		return nil, errors.Wrapf(err, "failed to create share %s", input.Body.Name)
@@ -160,6 +209,18 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 	ShareName string                 `path:"share_name" maxLength:"128" example:"world" doc:"Name of the share"`
 	Body      SharedResourcePostData `required:"true"`
 }) (*struct{ Body dto.SharedResource }, error) {
+	if input.Body.Subfolder != nil {
+		current, err := self.shareService.GetShare(input.ShareName)
+		if err != nil {
+			if errors.Is(err, dto.ErrorShareNotFound) {
+				return nil, huma.Error404NotFound(err.Error())
+			}
+			return nil, errors.Wrapf(err, "failed to get share %s", input.ShareName)
+		}
+		if err := self.requireSubfolderLab(input.Body.Subfolder, current); err != nil {
+			return nil, err
+		}
+	}
 	updatedShare, err := self.shareService.UpdateShare(input.ShareName, input.Body.SharedResource)
 	if err != nil {
 		if errors.Is(err, dto.ErrorShareNotFound) {
@@ -168,8 +229,11 @@ func (self *ShareHandler) UpdateShare(ctx context.Context, input *struct {
 		if errors.Is(err, dto.ErrorShareAlreadyExists) {
 			return nil, huma.Error409Conflict(err.Error())
 		}
+		if errors.Is(err, dto.ErrorShareFolderInUse) {
+			return nil, huma.Error409Conflict(shareErrorMessage(err))
+		}
 		if errors.Is(err, dto.ErrorShareValidation) {
-			return nil, huma.Error422UnprocessableEntity(err.Error())
+			return nil, huma.Error422UnprocessableEntity(shareErrorMessage(err))
 		}
 		slog.ErrorContext(ctx, "Failed to update share", "share_name", input.ShareName, "error", err)
 		return nil, errors.Wrapf(err, "failed to update share %s", input.ShareName)

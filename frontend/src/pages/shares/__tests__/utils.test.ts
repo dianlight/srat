@@ -58,4 +58,41 @@ describe("shares utils", () => {
 			typeof fallbackIcon === "function" || typeof fallbackIcon === "object",
 		).toBe(true);
 	});
+
+	it("normalizes share subfolders (issue #184)", async () => {
+		const { normalizeSubfolder } = await import("../utils");
+
+		expect(normalizeSubfolder(undefined)).toBe("");
+		expect(normalizeSubfolder(null)).toBe("");
+		expect(normalizeSubfolder("  ")).toBe("");
+		expect(normalizeSubfolder(" photos/2024/ ")).toBe("photos/2024");
+	});
+
+	it("explains unacceptable share subfolders like the backend", async () => {
+		const { subfolderProblem } = await import("../utils");
+
+		for (const ok of ["", "emperor", "photos/2024", "..hidden/v1.2", "Rodina/Dovolená"]) {
+			expect(subfolderProblem(ok)).toBeUndefined();
+		}
+		expect(subfolderProblem("/etc")).toMatch(/leading \//);
+		expect(subfolderProblem("photos\\2024")).toMatch(/separate/);
+		expect(subfolderProblem("photos//2024")).toMatch(/empty/);
+		expect(subfolderProblem("../etc")).toMatch(/"\.\."/);
+		expect(subfolderProblem("./photos")).toMatch(/"\."/);
+		expect(subfolderProblem("a".repeat(256))).toMatch(/255/);
+		expect(subfolderProblem("pho\u0007tos")).toMatch(/control/);
+	});
+
+	it("lists the folders of a volume already used by other shares", async () => {
+		const { foldersInUse } = await import("../utils");
+		const shares = [
+			{ name: "DATA1", mount_point_data: { path: "/mnt/DATA1" } },
+			{ name: "EMPEROR", subfolder: "emperor/", mount_point_data: { path: "/mnt/DATA1" } },
+			{ name: "OTHER", subfolder: "x", mount_point_data: { path: "/mnt/OTHER" } },
+		];
+
+		expect(foldersInUse(shares, "/mnt/DATA1")).toEqual(new Set(["", "emperor"]));
+		expect(foldersInUse(shares, "/mnt/DATA1", "EMPEROR")).toEqual(new Set([""]));
+		expect(foldersInUse(shares, "/mnt/NONE")).toEqual(new Set());
+	});
 });

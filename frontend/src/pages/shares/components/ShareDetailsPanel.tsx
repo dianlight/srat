@@ -184,6 +184,21 @@ export function ShareDetailsPanel({
                     {mountData?.path || "N/A"}
                   </Typography>
                 </Grid>
+                {share.subfolder ? (
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
+                      Shared folder
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                      {`${mountData?.path ?? ""}/${share.subfolder}`}
+                    </Typography>
+                  </Grid>
+                ) : null}
                 <Grid size={{ xs: 12, sm: 6 }}>
                   <Typography
                     variant="subtitle2"

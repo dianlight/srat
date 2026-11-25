@@ -66,6 +66,16 @@ func TestResolveActualMountPointPath_PrefersMountedPartitionPath(t *testing.T) {
 	assert.Equal(t, mountedPath, resolveActualMountPointPath(share))
 }
 
+func TestResolveShareExportPathIncludesSubfolder(t *testing.T) {
+	share := dto.SharedResource{MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}}
+	assert.Equal(t, "/mnt/DATA1", resolveShareExportPath(share))
+
+	share.Subfolder = new("emperor")
+	assert.Equal(t, "/mnt/DATA1/emperor", resolveShareExportPath(share))
+
+	assert.Empty(t, resolveShareExportPath(dto.SharedResource{Subfolder: new("emperor")}))
+}
+
 func TestMatchPartitionWithDevName(t *testing.T) {
 	partition := &dto.Partition{
 		Id:               new("ata-test-part1"),

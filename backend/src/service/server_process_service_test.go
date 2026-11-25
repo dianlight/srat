@@ -1280,3 +1280,28 @@ func (suite *ResolveInterfaceIPv4sSuite) TestResolveInterfaceIPv4s_LinkLocalFilt
 	suite.Contains(result, "192.168.1.10")
 	suite.NotContains(result, "169.254.1.1", "link-local addresses should be filtered")
 }
+
+// TestCreateConfigStream_SubfolderSharePath checks that a subfolder share
+// (issue #184) exposes its folder while the volume root share keeps the root.
+func (suite *ServerProcessServiceSuite) TestCreateConfigStream_SubfolderSharePath() {
+	defer unixsamba.MockSambaVersion("4.23.0")()
+	suite.setupSettingsMocks()
+	users := []dto.User{{Username: "dianlight", IsAdmin: true}}
+	mock.When(suite.share_service.ListShares()).ThenReturn([]dto.SharedResource{
+		{Name: "DATA1", MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}, Users: users},
+		{Name: "EMPEROR", Subfolder: new("emperor"), MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}, Users: users},
+		{Name: "PHOTOS", Subfolder: new("Rodina/photos 2024"), MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}, Users: users},
+	}, nil)
+
+	stream, errE := suite.serverService.CreateSambaConfigStream()
+	suite.Require().NoError(errE)
+
+	sections := map[string]string{}
+	re := regexp.MustCompile(`(?m)^\[([^[]+)\]\n(?:^[^[].*\n+)+`)
+	for _, match := range re.FindAllStringSubmatch(string(*stream), -1) {
+		sections[match[1]] = match[0]
+	}
+	suite.Regexp(`(?m)^\s*path = /mnt/DATA1$`, sections["DATA1"])
+	suite.Regexp(`(?m)^\s*path = /mnt/DATA1/emperor$`, sections["EMPEROR"])
+	suite.Regexp(`(?m)^\s*path = /mnt/DATA1/Rodina/photos 2024$`, sections["PHOTOS"])
+}

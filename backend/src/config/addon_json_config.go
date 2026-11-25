@@ -22,6 +22,9 @@ type Share struct {
 	TimeMachineMaxSize *string  `json:"timemachine_max_size,omitempty"`
 	Usage              string   `json:"usage,omitempty"`
 	VetoFiles          []string `json:"veto_files,omitempty"`
+	// Subfolder is the folder inside the volume the share exposes, relative
+	// to Path (the mount point). Empty is the volume root (issue #184).
+	Subfolder string `json:"subfolder,omitempty"`
 	// ForceUser and ForceGroup carry the Samba "force user"/"force group"
 	// values resolved from the backing filesystem adapter. Empty means the
 	// corresponding smb.conf line is omitted so the authenticated Samba

@@ -1998,6 +1998,8 @@ export type SharedResource = {
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   status?: SharedResourceStatus;
+  /** Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value. */
+  subfolder?: string;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;
@@ -2014,6 +2016,8 @@ export type SharedResourcePostData = {
   recycle_bin_enabled?: boolean;
   ro_users?: User[] | null;
   status?: SharedResourceStatus;
+  /** Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value. */
+  subfolder?: string;
   timemachine?: boolean;
   timemachine_max_size?: string;
   usage?: Usage;

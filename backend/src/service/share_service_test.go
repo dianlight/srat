@@ -28,9 +28,10 @@ type ShareServiceSuite struct {
 	shareService service.ShareServiceInterface
 	userService  service.UserServiceInterface
 	//exported_share_repo repository.ExportedShareRepositoryInterface
-	app   *fxtest.App
-	db    *gorm.DB
-	disks *dto.DiskMap
+	app      *fxtest.App
+	db       *gorm.DB
+	disks    *dto.DiskMap
+	eventBus events.EventBusInterface
 }
 
 func TestShareServiceSuite(t *testing.T) {
@@ -85,6 +86,7 @@ func (suite *ShareServiceSuite) SetupTest() {
 		fx.Populate(&suite.userService),
 		fx.Populate(&suite.db),
 		fx.Populate(&suite.disks),
+		fx.Populate(&suite.eventBus),
 	)
 
 	mock.When(suite.userService.ListUsers()).ThenReturn([]dto.User{

@@ -293,6 +293,44 @@ func TestDiskMap_AddMountPointShare(t *testing.T) {
 	assert.Equal(t, "updatedshare", mp.Share.Name)
 }
 
+// TestDiskMap_AddMountPointShare_KeepsVolumeRootShare covers volumes split
+// into subfolder shares (issue #184): the mount point reports the share of
+// the volume root, whatever order the share events arrive in.
+func TestDiskMap_AddMountPointShare_KeepsVolumeRootShare(t *testing.T) {
+	diskID := "disk-subfolders"
+	partID := "part-subfolders"
+	path := "/mnt/DATA1"
+	parts := map[string]dto.Partition{partID: {Id: ptr(partID), DiskId: ptr(diskID), MountPointData: &map[string]dto.MountPointData{path: {Path: path}}}}
+	m := dto.NewDiskMap()
+	_ = m.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &parts})
+	partition := parts[partID]
+	share := func(name, subfolder string) *dto.SharedResource {
+		return &dto.SharedResource{Name: name, Subfolder: &subfolder, MountPointData: &dto.MountPointData{Path: path, Partition: &partition}}
+	}
+	shareName := func() string {
+		mp, ok := m.GetMountPoint(diskID, partID, path)
+		require.True(t, ok)
+		require.NotNil(t, mp.Share)
+		return mp.Share.Name
+	}
+
+	_, err := m.AddMountPointShare(share("emperor", "emperor"))
+	require.NoError(t, err)
+	assert.Equal(t, "emperor", shareName(), "a subfolder share fills an unshared mount point")
+
+	_, err = m.AddMountPointShare(share("data1", ""))
+	require.NoError(t, err)
+	assert.Equal(t, "data1", shareName(), "the volume root share replaces a subfolder share")
+
+	_, err = m.AddMountPointShare(share("pavel", "pavel"))
+	require.NoError(t, err)
+	assert.Equal(t, "data1", shareName(), "a subfolder share never replaces the volume root share")
+
+	_, err = m.AddMountPointShare(share("data1", "moved"))
+	require.NoError(t, err)
+	assert.Equal(t, "data1", shareName(), "the same share is always updated")
+}
+
 func TestDiskMap_AddMountPointShare_WithoutPartitionInfo(t *testing.T) {
 	diskID := "disk-search"
 	partID := "part-search"

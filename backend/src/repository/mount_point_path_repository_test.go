@@ -16,12 +16,14 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type MountPointPathRepositoryTestSuite struct {
 	suite.Suite
 	app  *fxtest.App
 	repo repository.MountPointPathRepositoryInterface
+	db   *gorm.DB
 	ctx  context.Context
 }
 
@@ -53,6 +55,7 @@ func (s *MountPointPathRepositoryTestSuite) SetupTest() {
 		s.app.RequireStop()
 	})
 	s.ctx = ctx
+	s.db = db
 	s.repo = repository.NewMountPointPathRepository(db)
 }
 
@@ -91,6 +94,29 @@ func (s *MountPointPathRepositoryTestSuite) TestFindByDeviceID() {
 	rows, err = s.repo.FindByDeviceID(s.ctx, "part-unknown")
 	s.Require().NoError(err)
 	s.Empty(rows)
+}
+
+// TestFindByDeviceID_ReportsVolumeRootShare covers a mount point carrying
+// several shares through subfolders (issue #184): the has-one ExportedShare
+// is the share of the volume root, whatever the share names.
+func (s *MountPointPathRepositoryTestSuite) TestFindByDeviceID_ReportsVolumeRootShare() {
+	s.seed()
+	path, root := "/mnt/repo-seed", "/"
+	for _, share := range []dbom.ExportedShare{
+		{Name: "a-emperor", Subfolder: "emperor"},
+		{Name: "m-volume-root"},
+		{Name: "z-pavel", Subfolder: "pavel"},
+	} {
+		share.MountPointDataPath, share.MountPointDataRoot = &path, &root
+		s.Require().NoError(s.db.Omit(clause.Associations).Create(&share).Error)
+	}
+
+	rows, err := s.repo.FindByDeviceID(s.ctx, "part-repo-seed")
+
+	s.Require().NoError(err)
+	s.Require().Len(rows, 1)
+	s.Require().NotNil(rows[0].ExportedShare)
+	s.Equal("m-volume-root", rows[0].ExportedShare.Name)
 }
 
 func (s *MountPointPathRepositoryTestSuite) TestUpsert_PreservesAbsentConfig() {

@@ -16,7 +16,7 @@ SRAT (SambaNAS Rest Administration Tool) is a system designed to provide a simpl
 
 2026.10.1 is the first stable release of SRAT. The generally available surface covers disks and partitionless volumes, mounts, Samba shares and users, the dashboard, Home Assistant integration, and SMART/health monitoring. Some features remain behind the `experimental_lab_mode` setting on a per-tier basis:
 
-- **Beta** — visible when `experimental_lab_mode` is enabled: HDIdle per-disk control, the smb.conf view, Use NFS for Home Assistant, SMB over QUIC, and addon-side mDNS registration.
+- **Beta** — visible when `experimental_lab_mode` is enabled: HDIdle per-disk control, the smb.conf view, Use NFS for Home Assistant, SMB over QUIC, addon-side mDNS registration, and share subfolders.
 - **Alpha** — Home Assistant custom-component tools (install/upgrade/uninstall of the SRAT custom component); excluded from release builds entirely, so not part of 2026.10.1.
 
 Legacy SambaNAS YAML configuration is retired progressively — SRAT is set to become the preferred way to configure and use this addon, eventually "retiring" the YAML configuration.
@@ -91,6 +91,7 @@ SRAT can be used to manage Samba shares, users, and configurations via a modern 
 
 - [Settings Documentation](docs/SETTINGS_DOCUMENTATION.md) - Complete reference for all SRAT settings
 - [SMB over QUIC](docs/SMB_OVER_QUIC.md) - Enhanced performance and security with QUIC transport protocol
+- [Share Subfolders](docs/SHARE_SUBFOLDERS.md) - Share a folder inside a volume, so one volume can carry several shares
 - [Telemetry Configuration](docs/TELEMETRY_CONFIGURATION.md) - Configure error reporting and monitoring
 - [Home Assistant Integration](docs/HOME_ASSISTANT_INTEGRATION.md) - Integration with Home Assistant
 - [Partitionless (raw) Disk Replication Guide](docs/replicate-partitionless-disk-macos.md) - Reproduce and validate the "disk without partitions" fix

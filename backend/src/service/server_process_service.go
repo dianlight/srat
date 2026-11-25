@@ -547,6 +547,13 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 			break
 		}
 	}
+	// A subfolder share (issue #184) exposes a folder inside its volume.
+	for name, cshare := range tconfig.Shares {
+		if cshare.Subfolder != "" {
+			cshare.Path = dto.ShareDirectory(cshare.Path, cshare.Subfolder)
+			tconfig.Shares[name] = cshare
+		}
+	}
 
 	// Issue #898: expose standard share names according to the configured
 	// mode (old, new, or both). Legacy names always resolve to the new
@@ -880,9 +887,11 @@ func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, di
 	return nil
 }
 
+// nfsExportsFile is where writeNFSConfig writes; tests use a temporary file.
+var nfsExportsFile = "/etc/exports"
+
 // writeNFSConfig writes the NFS exports configuration to /etc/exports
 func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
-	nfsExportsFile := "/etc/exports"
 	tlog.TraceContext(ctx, "Writing NFS exports configuration file", "file", nfsExportsFile)
 
 	hostname, err := self.host_service.GetHostName()
@@ -938,6 +947,8 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			tlog.WarnContext(ctx, "Skipping share with empty path", "name", share.Name)
 			continue
 		}
+		// A subfolder share (issue #184) exports only its folder.
+		path = dto.ShareDirectory(path, share.SubfolderOrRoot())
 
 		if share.MountPointData.Partition == nil {
 			enrichSharePartitionFromCache(&share, self.disks)

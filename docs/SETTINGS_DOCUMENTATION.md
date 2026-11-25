@@ -358,7 +358,8 @@ that determines its availability:
 - **Beta** — visible when the `experimental_lab_mode` setting is enabled, in
   any build. Currently: HDIdle per-disk control (`hdidle`), the smb.conf view
   (`smb_conf`), SMB over QUIC (`smb_over_quic`), Use NFS for Home Assistant
-  (`ha_use_nfs`), and add-on side mDNS registration (`addon_mdns`).
+  (`ha_use_nfs`), add-on side mDNS registration (`addon_mdns`), and share
+  subfolders (`share_subfolders`, see [Share Subfolders](SHARE_SUBFOLDERS.md)).
 - **Alpha** — development and prerelease builds only; completely unreachable
   in release (production) builds regardless of Lab Mode. Currently: Home
   Assistant custom-component tools (`ha_custom_component`).

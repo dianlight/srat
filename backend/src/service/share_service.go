@@ -153,7 +153,7 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 	}
 	unsubscribeMount := s.eventBus.OnMountPoint(func(ctx context.Context, event events.MountPointEvent) errors.E {
 		slog.InfoContext(ctx, "Received MountPointEvent", "type", event.Type, "mountpoint", event.MountPoint)
-		share, err := s.GetShareFromPath(event.MountPoint.Path)
+		shares, err := s.getSharesFromPath(event.MountPoint.Path)
 		if err != nil {
 			if !errors.Is(err, dto.ErrorShareNotFound) {
 				return err
@@ -187,14 +187,14 @@ func NewShareService(lc fx.Lifecycle, in ShareServiceParams) ShareServiceInterfa
 			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
 			return nil
 		}
-		if share == nil {
-			tlog.TraceContext(ctx, "No share found for mount point", "path", event.MountPoint.Path)
-			return nil
+		// A volume can carry several shares, one per subfolder (issue #184):
+		// all of them follow its mount state.
+		for i := range shares {
+			_ = s.eventBus.EmitShare(events.ShareEvent{
+				Type:  events.EventTypes.UPDATE,
+				Share: &shares[i], // Let subscribers fetch the share if needed
+			})
 		}
-		_ = s.eventBus.EmitShare(events.ShareEvent{
-			Type:  events.EventTypes.UPDATE,
-			Share: share, // Let subscribers fetch the share if needed
-		})
 		return nil
 	})
 
@@ -373,8 +373,53 @@ func validateShareData(share dto.SharedResource, requireMountData bool) errors.E
 	return nil
 }
 
+// normalizeShareSubfolder cleans the share's subfolder in place (issue #184).
+// A nil subfolder stays nil: on update it keeps the stored value.
+func normalizeShareSubfolder(share *dto.SharedResource) errors.E {
+	if share.Subfolder == nil {
+		return nil
+	}
+	clean, err := dto.CleanShareSubfolder(*share.Subfolder)
+	if err != nil {
+		return err
+	}
+	share.Subfolder = &clean
+	return nil
+}
+
+// validateShareFolder checks the directory a share is about to expose
+// (issue #184): no other active share may expose the same folder, and a
+// subfolder must resolve inside its mounted volume (it is created when
+// missing). Internal shares keep their fixed directory and are not checked
+// against other shares, so system provisioning can never be blocked.
+func (s *ShareService) validateShareFolder(excludeName, mountPath, subfolder string, usage dto.HAMountUsage) errors.E {
+	if usage == dto.UsageAsInternal {
+		if subfolder != "" {
+			return errors.WithDetails(dto.ErrorShareValidation, "Message", "internal shares cannot use a subfolder")
+		}
+		return nil
+	}
+	var others int64
+	if err := s.db.WithContext(s.ctx).Model(&dbom.ExportedShare{}).
+		Where("mount_point_data_path = ? AND subfolder = ? AND name <> ?", mountPath, subfolder, excludeName).
+		Count(&others).Error; err != nil {
+		return errors.Wrap(err, "failed to check whether the share folder is in use")
+	}
+	if others > 0 {
+		return errors.WithDetails(dto.ErrorShareFolderInUse, "Path", dto.ShareDirectory(mountPath, subfolder))
+	}
+	_, err := resolveShareDirectory(mountPath, subfolder, true)
+	return err
+}
+
 func (s *ShareService) CreateShare(share dto.SharedResource) (*dto.SharedResource, errors.E) {
 	if err := validateShareData(share, true); err != nil {
+		return nil, err
+	}
+	if err := normalizeShareSubfolder(&share); err != nil {
+		return nil, err
+	}
+	if err := s.validateShareFolder(share.Name, share.MountPointData.Path, share.SubfolderOrRoot(), share.Usage); err != nil {
 		return nil, err
 	}
 
@@ -454,6 +499,9 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	if err := validateShareData(share, false); err != nil {
 		return nil, err
 	}
+	if err := normalizeShareSubfolder(&share); err != nil {
+		return nil, err
+	}
 
 	dbShare, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
@@ -467,6 +515,10 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		return nil, errors.Wrap(err, "failed to get share")
 	}
 	originalName := dbShare.Name
+	originalPath, originalSubfolder := "", dbShare.Subfolder
+	if dbShare.MountPointDataPath != nil {
+		originalPath = *dbShare.MountPointDataPath
+	}
 
 	var conv converter.DtoToDbomConverterImpl
 	err = conv.SharedResourceToExportedShare(share, &dbShare)
@@ -476,6 +528,19 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 	updatedName := dbShare.Name
 	if dbShare.MountPointDataRoot != nil && *dbShare.MountPointDataRoot == "" {
 		dbShare.MountPointDataRoot = nil
+	}
+
+	// Only a changed folder is checked, so editing other settings of a share
+	// keeps working while its volume is unmounted.
+	updatedPath := originalPath
+	if dbShare.MountPointDataPath != nil {
+		updatedPath = *dbShare.MountPointDataPath
+	}
+	folderChanged := updatedPath != originalPath || dbShare.Subfolder != originalSubfolder
+	if folderChanged || (dbShare.Usage == dto.UsageAsInternal && dbShare.Subfolder != "") {
+		if err := s.validateShareFolder(originalName, updatedPath, dbShare.Subfolder, dbShare.Usage); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(dbShare.Users) == 0 {
@@ -521,7 +586,7 @@ func (s *ShareService) UpdateShare(name string, share dto.SharedResource) (*dto.
 		// (GuestOk, TimeMachine, RecycleBin) enable-only (issue #1191).
 		if err := tx.Model(&currentShare).
 			Omit("Users", "RoUsers").
-			Select("Name", "Disabled", "VetoFiles", "TimeMachine", "RecycleBin", "GuestOk", "TimeMachineMaxSize", "Usage", "MountPointDataPath", "MountPointDataRoot").
+			Select("Name", "Disabled", "VetoFiles", "TimeMachine", "RecycleBin", "GuestOk", "TimeMachineMaxSize", "Usage", "Subfolder", "MountPointDataPath", "MountPointDataRoot").
 			Updates(&dbShare).Error; err != nil {
 			return err
 		}
@@ -614,31 +679,46 @@ func (s *ShareService) DeleteShare(name string) errors.E {
 	return nil
 }
 
+// GetShareFromPath returns the share on a mount path. When subfolder shares
+// split the volume (issue #184), the share of the volume root wins.
 func (s *ShareService) GetShareFromPath(path string) (*dto.SharedResource, errors.E) {
-	share, err := gorm.G[dbom.ExportedShare](s.db).
+	shares, err := s.getSharesFromPath(path)
+	if err != nil {
+		return nil, err
+	}
+	return &shares[0], nil
+}
+
+// getSharesFromPath returns every share on a mount path, the volume root
+// share first, or dto.ErrorShareNotFound when there is none.
+func (s *ShareService) getSharesFromPath(path string) ([]dto.SharedResource, errors.E) {
+	rows, err := gorm.G[dbom.ExportedShare](s.db).
 		Preload("MountPointData", nil).
 		Preload("Users", nil).
 		Preload("RoUsers", nil).
-		Where(g.ExportedShare.MountPointDataPath.Eq(path)).First(s.ctx)
+		Where(g.ExportedShare.MountPointDataPath.Eq(path)).
+		Order("subfolder, name").
+		Find(s.ctx)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, errors.WithStack(dto.ErrorShareNotFound)
-		}
-		return nil, errors.Wrap(err, "failed to get share by mount path")
+		return nil, errors.Wrap(err, "failed to get shares by mount path")
+	}
+	if len(rows) == 0 {
+		return nil, errors.WithStack(dto.ErrorShareNotFound)
 	}
 	var conv converter.DtoToDbomConverterImpl
-	dtoShare, errS := conv.ExportedShareToSharedResource(share)
-	if errS != nil {
-		return nil, errors.Wrap(errS, "failed to convert share")
+	shares := make([]dto.SharedResource, 0, len(rows))
+	for _, row := range rows {
+		dtoShare, errS := conv.ExportedShareToSharedResource(row)
+		if errS != nil {
+			return nil, errors.Wrap(errS, "failed to convert share")
+		}
+		if err := s.VerifyShare(&dtoShare); err != nil {
+			slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
+		}
+		s.annotateStandardShareHidden(&dtoShare)
+		shares = append(shares, dtoShare)
 	}
-
-	if err := s.VerifyShare(&dtoShare); err != nil {
-		slog.Warn("Share verification failed", "share", dtoShare.Name, "err", err)
-	}
-
-	s.annotateStandardShareHidden(&dtoShare)
-
-	return &dtoShare, nil
+	return shares, nil
 }
 
 // GetSharesByDeviceID returns every share whose mount row belongs to a device.
@@ -994,6 +1074,19 @@ func (s *ShareService) VerifyShare(share *dto.SharedResource) errors.E {
 				"path", share.MountPointData.Path)
 			share.Status.IsValid = false
 			return nil
+		}
+
+		// Subfolder share (issue #184) whose folder is gone or now points
+		// outside the volume: never fall back to exposing the volume root.
+		if subfolder := share.SubfolderOrRoot(); subfolder != "" {
+			if _, err := resolveShareDirectory(share.MountPointData.Path, subfolder, false); err != nil {
+				slog.Warn("Share subfolder is not usable",
+					"share", share.Name,
+					"subfolder", subfolder,
+					"err", err)
+				share.Status.IsValid = false
+				return nil
+			}
 		}
 	}
 

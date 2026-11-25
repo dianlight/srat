@@ -6,6 +6,8 @@
 
 ### ✨ Features
 
+- **Share subfolders (Lab)**: A share can expose a folder inside its volume instead of the whole volume, so one volume can carry several shares, each with its own users, for example one private folder per person on a single data disk. Missing folders are created with the volume root's permissions; folders outside the volume (including through symlinks) and two shares on the same folder are refused. ([#184](https://github.com/dianlight/srat/issues/184))
+
 ### 🐛 Bug Fixes
 
 ### 🏗 Chore

@@ -24,9 +24,12 @@ var ExportedShare = struct {
 	GuestOk            field.Bool
 	TimeMachineMaxSize field.String
 	Usage              field.Struct[dto.HAMountUsage]
+	Subfolder          field.String
 	MountPointDataPath field.String
 	MountPointDataRoot field.String
 	MountPointData     field.Struct[dbom.MountPointPath]
+	ForceUser          field.String
+	ForceGroup         field.String
 }{
 	Name:               field.String{}.WithColumn("name"),
 	CreatedAt:          field.Time{}.WithColumn("created_at"),
@@ -41,7 +44,10 @@ var ExportedShare = struct {
 	GuestOk:            field.Bool{}.WithColumn("guest_ok"),
 	TimeMachineMaxSize: field.String{}.WithColumn("time_machine_max_size"),
 	Usage:              field.Struct[dto.HAMountUsage]{}.WithName("Usage"),
+	Subfolder:          field.String{}.WithColumn("subfolder"),
 	MountPointDataPath: field.String{}.WithColumn("mount_point_data_path"),
 	MountPointDataRoot: field.String{}.WithColumn("mount_point_data_root"),
 	MountPointData:     field.Struct[dbom.MountPointPath]{}.WithName("MountPointData"),
+	ForceUser:          field.String{}.WithColumn("force_user"),
+	ForceGroup:         field.String{}.WithColumn("force_group"),
 }

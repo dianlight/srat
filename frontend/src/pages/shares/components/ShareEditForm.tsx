@@ -1,6 +1,7 @@
 /* eslint-disable */
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
 import {
   Box,
   Button,
@@ -17,7 +18,7 @@ import {
 } from "@mui/material";
 import { filesize } from "filesize";
 import { MuiChipsInput } from "mui-chips-input";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import {
   AutocompleteElement,
@@ -26,6 +27,7 @@ import {
   TextFieldElement,
 } from "react-hook-form-mui";
 
+import { useLabFeatures } from "../../../hooks/useLabFeatures";
 import { useVolume } from "../../../hooks/volumeHook";
 import default_json from "../../../json/default_config.json";
 import {
@@ -39,10 +41,13 @@ import {
 import type { ShareEditProps } from "../types";
 import {
   casingCycleOrder,
+  foldersInUse,
   getCasingIcon,
   getPathBaseName,
   isValidVetoFileEntry,
+  normalizeSubfolder,
   sanitizeAndUppercaseShareName,
+  subfolderProblem,
   toCamelCase,
   toKebabCase,
 } from "../utils";
@@ -58,6 +63,7 @@ interface ShareEditFormProps {
   testOverrides?: {
     useGetApiUsersQuery?: typeof useGetApiUsersQuery;
     useVolume?: typeof useVolume;
+    useLabFeatures?: typeof useLabFeatures;
   };
 }
 
@@ -74,8 +80,18 @@ export function ShareEditForm({
   const useUsersQuery =
     testOverrides?.useGetApiUsersQuery ?? useGetApiUsersQuery;
   const useVolumeHook = testOverrides?.useVolume ?? useVolume;
+  const useLabFeaturesHook = testOverrides?.useLabFeatures ?? useLabFeatures;
   const { data: users, isLoading: usLoading } = useUsersQuery();
   const { disks: volumes, isLoading: vlLoading } = useVolumeHook();
+  // Share subfolders (issue #184): a share can expose a folder inside its
+  // volume, so one volume can carry several shares. Lab feature.
+  const { isAvailable: isLabFeatureAvailable } = useLabFeaturesHook();
+  const subfoldersAvailable = isLabFeatureAvailable("share_subfolders");
+  const storedSubfolder = normalizeSubfolder(shareData?.subfolder);
+  const otherShares = useMemo(
+    () => (shares ? Object.values(shares) : []),
+    [shares],
+  );
   const [editName, setEditName] = useState(shareData?.org_name === undefined);
   const [activeCasingIndex, setActiveCasingIndex] = useState(0);
 
@@ -118,6 +134,7 @@ export function ShareEditForm({
               })
             : "MAX"),
         usage: shareData?.usage || Usage.None,
+        subfolder: storedSubfolder,
         veto_files: shareData?.veto_files || [],
         disabled: shareData?.disabled,
       },
@@ -157,18 +174,25 @@ export function ShareEditForm({
 
   //setEditName(shareData?.org_name === undefined);
 
-  // Effect to auto-populate share name if empty when a volume is selected
+  // Effect to auto-populate share name if empty when a volume is selected.
+  // The name follows the subfolder (issue #184) while it is still the
+  // suggestion, so a name typed by the user is never overwritten.
   const currentShareName = watch("name");
+  const currentSubfolder = normalizeSubfolder(watch("subfolder"));
+  const lastSuggestedName = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (
-      (!currentShareName || currentShareName.trim() === "") &&
-      selectedMountPointData &&
-      selectedMountPointData.path
-    ) {
-      const baseName = getPathBaseName(selectedMountPointData.path);
+    const nameIsSuggestion =
+      !currentShareName ||
+      currentShareName.trim() === "" ||
+      currentShareName === lastSuggestedName.current;
+    if (nameIsSuggestion && selectedMountPointData && selectedMountPointData.path) {
+      const baseName = getPathBaseName(
+        currentSubfolder || selectedMountPointData.path,
+      );
       if (baseName) {
         const suggestedName = sanitizeAndUppercaseShareName(baseName);
+        lastSuggestedName.current = suggestedName;
         if (currentShareName !== suggestedName) {
           setValue("name", suggestedName, {
             shouldValidate: true,
@@ -178,7 +202,7 @@ export function ShareEditForm({
         }
       }
     }
-  }, [selectedMountPointData, currentShareName, setValue]);
+  }, [selectedMountPointData, currentShareName, currentSubfolder, setValue]);
 
   const handleCycleCasing = () => {
     const currentName = watch("name");
@@ -303,7 +327,9 @@ export function ShareEditForm({
                       return option.path === value?.path;
                     },
                     getOptionDisabled: (option) => {
-                      if (!shares || !option.path) {
+                      // With share subfolders a shared volume can carry
+                      // more shares; the Subfolder field checks the folder.
+                      if (!shares || !option.path || subfoldersAvailable) {
                         return false;
                       }
 
@@ -355,6 +381,55 @@ export function ShareEditForm({
               />
             </Grid>
           )}
+
+          {watch("usage") !== Usage.Internal &&
+            (subfoldersAvailable || storedSubfolder !== "") && (
+              <Grid size={{ xs: 12 }}>
+                <TextFieldElement
+                  size="small"
+                  fullWidth
+                  name="subfolder"
+                  label={
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      component="span"
+                      sx={{ alignItems: "center" }}
+                    >
+                      <span>Subfolder</span>
+                      <ScienceOutlinedIcon color="warning" fontSize="small" />
+                    </Stack>
+                  }
+                  control={control}
+                  disabled={isDisabled || !subfoldersAvailable}
+                  helperText={
+                    subfoldersAvailable
+                      ? "Folder inside the volume to share, e.g. emperor or photos/2024. Created if missing. Leave empty to share the whole volume."
+                      : "Turn on Lab Mode to change the subfolder."
+                  }
+                  rules={{
+                    validate: (value?: string) => {
+                      const problem = subfolderProblem(value);
+                      if (problem) return problem;
+                      const volumePath = getValues("mount_point_data")?.path;
+                      if (
+                        volumePath &&
+                        foldersInUse(
+                          otherShares,
+                          volumePath,
+                          shareData?.org_name,
+                        ).has(normalizeSubfolder(value))
+                      ) {
+                        return normalizeSubfolder(value) === ""
+                          ? "Another share already exposes this whole volume: enter a subfolder"
+                          : "Another share already exposes this folder";
+                      }
+                      return true;
+                    },
+                  }}
+                />
+              </Grid>
+            )}
 
           <Grid size={{ xs: 12 }}>
             <Controller

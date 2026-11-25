@@ -903,6 +903,28 @@ func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_Exportable
 	suite.Equal("test", *captured.Path, "NFS mount should set the share path")
 }
 
+// TestNetworkMountShare_UseNfsTrue_SubfolderShare checks that Home Assistant
+// mounts the folder of a subfolder share (issue #184), matching its NFS export.
+func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_SubfolderShare() {
+	settingService := suite.newNfsMountTestApp()
+
+	useNfs := true
+	mock.When(settingService.Load()).ThenReturn(&dto.Settings{HAUseNFS: &useNfs}, nil)
+
+	mountCaptor := mock.Captor[mount.Mount]()
+	mock.When(suite.mountClient.CreateMountWithResponse(mock.Any[context.Context](), mountCaptor.Capture())).
+		ThenReturn(&mount.CreateMountResponse{HTTPResponse: &http.Response{StatusCode: 200}, Body: []byte(`{"result":"ok"}`)}, nil)
+
+	share := shareWithExportableFS(true)
+	share.Subfolder = new("Rodina/photos")
+	err := suite.supervisorService.NetworkMountShare(context.Background(), share)
+
+	suite.Require().NoError(err)
+	captured := mountCaptor.Last()
+	suite.Require().NotNil(captured.Path)
+	suite.Equal("test/Rodina/photos", *captured.Path, "NFS mount should point at the share subfolder")
+}
+
 // TestNetworkMountShare_UseNfsTrue_NonExportableFS checks that useNfs=true falls back to CIFS
 // when the partition filesystem is not NFS-exportable.
 func (suite *SupervisorServiceSuite) TestNetworkMountShare_UseNfsTrue_NonExportableFS() {

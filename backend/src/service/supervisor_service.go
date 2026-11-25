@@ -319,7 +319,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		rmount.Server = &self.state.AddonIpAddress
 
 		if *useNfs && isShareNFSExportable(ctx, share) {
-			nfsPath := resolveActualMountPointPath(share)
+			nfsPath := resolveShareExportPath(share)
 			if nfsPath == "" {
 				nfsPath = share.Name
 			}
@@ -389,7 +389,7 @@ func (self *SupervisorService) networkMountShareWithRetry(ctx context.Context, s
 		rmount.Name = &mountName
 		rmount.Share = &share.Name
 		if *useNfs && isShareNFSExportable(ctx, share) {
-			nfsPath := resolveActualMountPointPath(share)
+			nfsPath := resolveShareExportPath(share)
 			if nfsPath == "" {
 				nfsPath = share.Name
 			}
