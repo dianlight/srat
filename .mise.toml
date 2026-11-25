@@ -19,7 +19,9 @@ vale = "3.28.1"
 markdownlint-cli2 = "0.24.2"
 "npm:doctoc" = "2.5.0"
 "npm:@fission-ai/openspec" = "1.17.0"
-bun = "1.4.5"
+# Stable 1.4.5 does not ship the built-in `bun lint`; keep the canary channel until it does.
+# The npm backend is used because the core plugin builds a non-existent `bun-vcanary` release URL.
+"npm:bun" = "canary"
 jq = "1.8.2"
 pkl = "0.33.1"
 biome = "2.4.15"
