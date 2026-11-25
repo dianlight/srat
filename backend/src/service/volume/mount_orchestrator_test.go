@@ -258,6 +258,56 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_HAManagedByPathOrCacheRejec
 	s.Zero(s.mounter.mountCalls)
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_HAUsagePathAfterUnmountSucceeds() {
+	restore := osutil.MockMountInfo("")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-ha-reuse", "part-ha-reuse", deviceFile)
+	s.Require().NoError(s.disks.AddOrUpdateMountPoint("disk-ha-reuse", "part-ha-reuse", dto.MountPointData{
+		Path:        "/media/srat_probe_unmounted",
+		DeviceId:    "part-ha-reuse",
+		IsMounted:   false,
+		IsHAMounted: false,
+		Type:        "ADDON",
+		Flags:       &dto.MountFlags{},
+		CustomFlags: &dto.MountFlags{},
+	}))
+
+	md := &dto.MountPointData{
+		Path:     "/media/srat_probe_unmounted",
+		Root:     "/",
+		DeviceId: "part-ha-reuse",
+		Flags:    &dto.MountFlags{},
+	}
+	err := s.orchestrator.MountVolume(md)
+	s.Require().NoError(err, "a stale HA-usage path must be mountable once HA has unmounted it")
+	s.Equal(1, s.mounter.mountCalls)
+}
+
+func (s *MountOrchestratorTestSuite) TestMountVolume_ActiveHAMountWithoutCacheFlagRejected() {
+	restore := osutil.MockMountInfo("1217 819 0:52 / /media/srat_probe_active rw,relatime - ext4 /dev/sda8 rw\n")
+	s.T().Cleanup(restore)
+
+	tmpDir := s.T().TempDir()
+	deviceFile := filepath.Join(tmpDir, "device.img")
+	s.Require().NoError(os.WriteFile(deviceFile, []byte("test"), 0o600))
+	s.seedDiskWithPartition("disk-ha-active", "part-ha-active", deviceFile)
+
+	md := &dto.MountPointData{
+		Path:     "/media/srat_probe_active",
+		Root:     "/",
+		DeviceId: "part-ha-active",
+		Flags:    &dto.MountFlags{},
+	}
+	err := s.orchestrator.MountVolume(md)
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorHAManagedVolume, "a live HA mount must stay rejected even without a cache flag")
+	s.Zero(s.mounter.mountCalls)
+}
+
 func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_NotFound() {
 	got, err := s.orchestrator.PatchMountPointSettings("/", "/mnt/orch-missing", dto.MountPointData{})
 	s.Require().Error(err)
