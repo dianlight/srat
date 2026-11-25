@@ -168,11 +168,19 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	// Home Assistant owns the mount lifecycle for its local disks (2026.11+
-	// storage). SRAT must never mount over an HA-managed path. The flag is
-	// read-only on the wire, so also derive it from the path and the cache.
-	haManaged := md.IsHAMounted || IsHAManagedMountPath(md.Path)
+	// storage). HA ownership is runtime state, not a property of the path:
+	// a persisted HA-usage path must become mountable again once HA has
+	// unmounted it and the refresh cleared the cached flag (#1658).
+	haManaged := md.IsHAMounted
 	if !haManaged {
 		if mp, ok := o.disks.GetMountPointByPath(md.Path); ok && mp.IsHAMounted {
+			haManaged = true
+		}
+	}
+	// A live HA mount may not have reached the cache yet. The OS mount table
+	// is authoritative for whether HA still owns an HA-usage path.
+	if !haManaged && IsHAManagedMountPath(md.Path) {
+		if mounted, err := osutil.IsMounted(md.Path); err == nil && mounted {
 			haManaged = true
 		}
 	}
@@ -249,7 +257,7 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	// covers direct MountVolume callers with a non-retryable error so the
 	// failure is not recorded as a mount failure nor reported to Sentry
 	// as one.
-	if ShouldSkipAutomount(md) {
+	if shouldSkipMountRequest(md) {
 		return errors.WithDetails(dto.ErrorInvalidParameter,
 			"DeviceId", md.DeviceId,
 			"Path", md.Path,
@@ -558,6 +566,22 @@ func automountFSType(md *dto.MountPointData) string {
 		return strings.TrimSpace(*md.Partition.FsType)
 	}
 	return ""
+}
+
+// shouldSkipMountRequest gates explicit MountVolume requests. It deliberately
+// does not reuse the path-prefix part of ShouldSkipAutomount: udev-driven
+// automount stays conservative and skips HA-usage paths, but an explicit user
+// request must be able to reuse such a path after HA unmounts the volume
+// (#1658). Active HA mounts are already rejected by MountVolume's runtime
+// ownership check.
+func shouldSkipMountRequest(md *dto.MountPointData) bool {
+	if md == nil {
+		return true
+	}
+	if IsSystemMountPath(md.Path) {
+		return true
+	}
+	return strings.EqualFold(automountFSType(md), "native")
 }
 
 // ShouldSkipAutomount reports whether an automount attempt must be skipped
