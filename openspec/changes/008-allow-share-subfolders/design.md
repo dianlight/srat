@@ -30,6 +30,7 @@ Share creation currently resolves the Samba share path directly from the mounted
 - `VerifyShare` marks a share whose folder is missing or escapes the volume invalid, which drops it from `smb.conf` instead of exposing the volume root.
 - Mount events update every share on the volume. The volume reports the root share when there is one (deterministic preload order and disk-cache rule).
 - Render the resolved path in `smb.conf`, NFS exports and HA NFS mounts; the config converter keeps `Path` = mount point and `Subfolder` separate so legacy config import stays symmetric.
+- The UI picks the subfolder with a folder browser backed by `GET /api/shares/folders`: it lists one folder level of a known, mounted volume through the same resolver, skips hidden folders, symlinks and the root `lost+found`, and caps a listing at 1000 entries.
 - Lab gating lives in the API handler (like HDIdle): a new or changed subfolder needs Lab Mode (403 otherwise); keeping an existing one never does.
 
 ## Risks / Trade-offs

@@ -138,3 +138,94 @@ func TestIsWithin(t *testing.T) {
 	assert.False(t, isWithin("/mnt/DATA1", "/mnt/DATA10"))
 	assert.False(t, isWithin("/mnt/DATA1", "/etc"))
 }
+
+// folderTestService returns a ShareService that knows `volume` as a mount
+// point, mounted or not.
+func folderTestService(t *testing.T, volume string, mounted bool) *ShareService {
+	t.Helper()
+	diskID, partID := "disk-folders", "part-folders"
+	disks := dto.NewDiskMap()
+	require.NoError(t, disks.AddOrUpdate(&dto.Disk{Id: &diskID, Partitions: &map[string]dto.Partition{
+		partID: {Id: &partID, DiskId: &diskID},
+	}}))
+	require.NoError(t, disks.AddOrUpdateMountPoint(diskID, partID, dto.MountPointData{Path: volume, IsMounted: mounted}))
+	return &ShareService{disks: disks}
+}
+
+func TestListVolumeFolders(t *testing.T) {
+	volume := t.TempDir()
+	for _, dir := range []string{"Rodina/photos", "emperor", ".recycle", "lost+found", "Rodina/lost+found"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(volume, dir), 0o755))
+	}
+	require.NoError(t, os.WriteFile(filepath.Join(volume, "notes.txt"), []byte("x"), 0o600))
+	require.NoError(t, os.Symlink("emperor", filepath.Join(volume, "link")))
+	s := folderTestService(t, volume, true)
+
+	root, err := s.ListVolumeFolders(volume, "")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"emperor", "Rodina"}, root.Folders, "sorted, no files, hidden folders, symlinks or root lost+found")
+	assert.Equal(t, volume, root.MountPath)
+	assert.Empty(t, root.Path)
+	assert.False(t, root.Truncated)
+
+	nested, err := s.ListVolumeFolders(volume, " Rodina/ ")
+	require.NoError(t, err)
+	assert.Equal(t, "Rodina", nested.Path)
+	assert.Equal(t, []string{"lost+found", "photos"}, nested.Folders, "lost+found is only hidden at the volume root")
+
+	empty, err := s.ListVolumeFolders(volume, "Rodina/photos")
+	require.NoError(t, err)
+	assert.Empty(t, empty.Folders)
+	assert.NotNil(t, empty.Folders)
+}
+
+func TestListVolumeFoldersRefusals(t *testing.T) {
+	volume := t.TempDir()
+	outside := t.TempDir()
+	require.NoError(t, os.Symlink(outside, filepath.Join(volume, "escape")))
+	s := folderTestService(t, volume, true)
+
+	_, err := s.ListVolumeFolders(volume, "../etc")
+	requireShareValidationError(t, err)
+	_, err = s.ListVolumeFolders(volume, "escape")
+	requireShareValidationError(t, err)
+	_, err = s.ListVolumeFolders(volume, "missing")
+	requireShareValidationError(t, err)
+
+	_, err = s.ListVolumeFolders("/mnt/unknown", "")
+	assert.True(t, errors.Is(err, dto.ErrorNotFound), "unknown volume, got %v", err)
+
+	unmounted := folderTestService(t, volume, false)
+	_, err = unmounted.ListVolumeFolders(volume, "")
+	assert.True(t, errors.Is(err, dto.ErrorNotFound), "unmounted volume, got %v", err)
+}
+
+func TestListVolumeFoldersTruncates(t *testing.T) {
+	previous := maxListedFolders
+	maxListedFolders = 2
+	t.Cleanup(func() { maxListedFolders = previous })
+	volume := t.TempDir()
+	for _, dir := range []string{"a", "b", "c"} {
+		require.NoError(t, os.Mkdir(filepath.Join(volume, dir), 0o755))
+	}
+
+	listing, err := folderTestService(t, volume, true).ListVolumeFolders(volume, "")
+
+	require.NoError(t, err)
+	assert.Len(t, listing.Folders, 2)
+	assert.True(t, listing.Truncated)
+}
+
+func TestListVolumeFoldersUnreadable(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads any directory")
+	}
+	volume := t.TempDir()
+	locked := filepath.Join(volume, "locked")
+	require.NoError(t, os.Mkdir(locked, 0o000))
+	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+
+	_, err := folderTestService(t, volume, true).ListVolumeFolders(volume, "locked")
+
+	requireShareValidationError(t, err)
+}

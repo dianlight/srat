@@ -625,6 +625,19 @@ const injectedRtkApi = api
         query: () => ({ url: `/api/shares` }),
         providesTags: ["share"],
       }),
+      getApiSharesFolders: build.query<
+        GetApiSharesFoldersApiResponse,
+        GetApiSharesFoldersApiArg
+      >({
+        query: (queryArg) => ({
+          url: `/api/shares/folders`,
+          params: {
+            mount_path: queryArg.mountPath,
+            path: queryArg.path,
+          },
+        }),
+        providesTags: ["share"],
+      }),
       getApiStatus: build.query<GetApiStatusApiResponse, GetApiStatusApiArg>({
         query: () => ({ url: `/api/status` }),
         providesTags: ["system"],
@@ -1136,6 +1149,14 @@ export type GetApiSharesApiResponse =
   | /** status 200 OK */ (SharedResource[] | null)
   | /** status default Error */ ErrorModel;
 export type GetApiSharesApiArg = void;
+export type GetApiSharesFoldersApiResponse =
+  /** status 200 OK */ VolumeFolders | /** status default Error */ ErrorModel;
+export type GetApiSharesFoldersApiArg = {
+  /** Mount point of the volume */
+  mountPath: string;
+  /** Folder to list, relative to the mount point; empty is the volume root */
+  path?: string;
+};
 export type GetApiStatusApiResponse = /** status 200 OK */
   | boolean
   | /** status default Error */ ErrorModel;
@@ -2025,6 +2046,18 @@ export type SharedResourcePostData = {
   veto_files?: string[];
   [key: string]: unknown;
 };
+export type VolumeFolders = {
+  /** A URL to the JSON Schema for this object. */
+  $schema?: string;
+  /** Names of the folders inside it, sorted */
+  folders: string[];
+  /** Mount point of the volume */
+  mount_path: string;
+  /** Folder that was listed, relative to the mount point; empty is the volume root */
+  path: string;
+  /** True when there were more folders than returned */
+  truncated: boolean;
+};
 export type BinaryAsset = {
   browser_download_url?: string;
   digest?: string;
@@ -2300,6 +2333,7 @@ export const {
   usePutApiShareByShareNameDisableMutation,
   usePutApiShareByShareNameEnableMutation,
   useGetApiSharesQuery,
+  useGetApiSharesFoldersQuery,
   useGetApiStatusQuery,
   useGetApiTelemetryInternetConnectionQuery,
   useGetApiTelemetryModesQuery,

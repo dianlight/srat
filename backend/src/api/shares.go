@@ -55,6 +55,12 @@ func (self *ShareHandler) requireSubfolderLab(requested *string, current *dto.Sh
 	if err != nil || subfolder == current.SubfolderOrRoot() {
 		return nil // invalid values are rejected by the share service (422)
 	}
+	return self.requireLabMode()
+}
+
+// requireLabMode returns 403 unless experimental_lab_mode is on, which makes
+// the share_subfolders beta lab feature available.
+func (self *ShareHandler) requireLabMode() error {
 	settings, errL := self.settingService.Load()
 	if errL != nil {
 		return huma.Error500InternalServerError("Failed to read settings", errL)
@@ -68,8 +74,32 @@ func (self *ShareHandler) requireSubfolderLab(requested *string, current *dto.Sh
 	return nil
 }
 
+// ListVolumeFolders lists the folders inside a folder of a mounted volume, so
+// the UI can browse for a share subfolder (issue #184). Lab feature.
+func (self *ShareHandler) ListVolumeFolders(ctx context.Context, input *struct {
+	MountPath string `query:"mount_path" required:"true" doc:"Mount point of the volume"`
+	Path      string `query:"path" maxLength:"1024" doc:"Folder to list, relative to the mount point; empty is the volume root"`
+}) (*struct{ Body dto.VolumeFolders }, error) {
+	if err := self.requireLabMode(); err != nil {
+		return nil, err
+	}
+	folders, err := self.shareService.ListVolumeFolders(input.MountPath, input.Path)
+	if err != nil {
+		if errors.Is(err, dto.ErrorNotFound) {
+			return nil, huma.Error404NotFound(shareErrorMessage(err))
+		}
+		if errors.Is(err, dto.ErrorShareValidation) {
+			return nil, huma.Error422UnprocessableEntity(shareErrorMessage(err))
+		}
+		slog.ErrorContext(ctx, "Failed to list volume folders", "mount_path", input.MountPath, "error", err)
+		return nil, errors.Wrap(err, "failed to list volume folders")
+	}
+	return &struct{ Body dto.VolumeFolders }{Body: *folders}, nil
+}
+
 func (self *ShareHandler) RegisterShareHandler(api huma.API) {
 	huma.Get(api, "/shares", self.ListShares, huma.OperationTags("share"))
+	huma.Get(api, "/shares/folders", self.ListVolumeFolders, huma.OperationTags("share"))
 	huma.Get(api, "/share/{share_name}", self.GetShare, huma.OperationTags("share"))
 	huma.Post(api, "/share", self.CreateShare, huma.OperationTags("share"))
 	huma.Put(api, "/share/{share_name}", self.UpdateShare, huma.OperationTags("share"))

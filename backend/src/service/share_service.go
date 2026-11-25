@@ -99,6 +99,7 @@ type ShareServiceInterface interface {
 	SetShareFromPathEnabled(path string, enabled bool) (*dto.SharedResource, errors.E)
 	//NotifyClient()
 	VerifyShare(share *dto.SharedResource) errors.E
+	ListVolumeFolders(mountPath, subfolder string) (*dto.VolumeFolders, errors.E)
 	SetSupervisorService(s SupervisorServiceInterface)
 }
 

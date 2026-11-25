@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -97,6 +98,49 @@ func mkdirLike(dir string, rootInfo fs.FileInfo) errors.E {
 		}
 	}
 	return nil
+}
+
+// maxListedFolders caps one folder listing; the UI filters within it.
+var maxListedFolders = 1000
+
+// ListVolumeFolders lists the folders inside `subfolder` of a mounted volume,
+// for picking a share subfolder (issue #184). The volume must be a known,
+// mounted mount point, and the listed folder resolves through the same
+// containment checks as share directories, so nothing outside the volume is
+// ever listed. Hidden folders and the volume root's lost+found are skipped;
+// symlinks are not listed.
+func (s *ShareService) ListVolumeFolders(mountPath, subfolder string) (*dto.VolumeFolders, errors.E) {
+	if mp, ok := s.disks.GetMountPointByPath(mountPath); !ok || mp == nil || !mp.IsMounted || mp.IsInvalid {
+		return nil, errors.WithDetails(dto.ErrorNotFound, "Message", "volume is not mounted", "Path", mountPath)
+	}
+	clean, err := dto.CleanShareSubfolder(subfolder)
+	if err != nil {
+		return nil, err
+	}
+	dir, err := resolveShareDirectory(mountPath, clean, false)
+	if err != nil {
+		return nil, err
+	}
+	entries, errR := os.ReadDir(dir)
+	if errR != nil {
+		return nil, shareDirectoryError("folder is not readable", dir)
+	}
+	result := &dto.VolumeFolders{MountPath: mountPath, Path: clean, Folders: []string{}}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !entry.IsDir() || strings.HasPrefix(name, ".") || (clean == "" && name == "lost+found") {
+			continue
+		}
+		if len(result.Folders) == maxListedFolders {
+			result.Truncated = true
+			break
+		}
+		result.Folders = append(result.Folders, name)
+	}
+	slices.SortFunc(result.Folders, func(a, b string) int {
+		return strings.Compare(strings.ToLower(a), strings.ToLower(b))
+	})
+	return result, nil
 }
 
 // isWithin reports whether path is root or inside it. Both must be clean.

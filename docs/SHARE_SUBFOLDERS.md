@@ -21,8 +21,10 @@ available when `experimental_lab_mode` is enabled.
 1. Enable Lab Mode in **Settings**.
 2. Create a share and pick a volume. With subfolders available, volumes that
    already carry a share can be selected too.
-3. Enter the **Subfolder**, for example `alice` or `photos/2024`. Leave it
-   empty to share the whole volume.
+3. Pick the **Subfolder**: the folder button opens a browser of the volume's
+   folders, where you click through folders, filter them by name, or name a
+   new folder. You can also type the path, for example `alice` or
+   `photos/2024`. Leave it empty to share the whole volume.
 4. Assign the users who may read or write the share.
 
 A missing folder is created with the mode and owner of the volume root, so it
@@ -77,9 +79,17 @@ root when there is one.
 }
 ```
 
+`GET /api/shares/folders?mount_path=/mnt/DATA1&path=photos` lists the folders
+inside a folder of a mounted volume (`path` empty is the volume root), for the
+folder browser. Hidden folders, the volume root's `lost+found` and symlinks are
+left out, at most 1000 folders are returned (`truncated` tells when there were
+more), and the same containment rules apply.
+
 Errors:
 
-- `403` — a new or changed subfolder while Lab Mode is off.
+- `403` — a new or changed subfolder, or a folder listing, while Lab Mode is
+  off.
+- `404` — the folder listing names a volume that is not mounted.
 - `409` — another share already exposes the folder.
 - `422` — the subfolder is invalid, points outside the volume, or cannot be
   created; the message explains why.

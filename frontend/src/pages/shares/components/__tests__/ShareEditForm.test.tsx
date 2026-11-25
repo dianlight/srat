@@ -48,6 +48,7 @@ describe("ShareEditForm component", () => {
       useVolume: () => volumeResult,
       useGetApiUsersQuery: () => usersResult,
       useLabFeatures: () => ({ features: [], isAvailable: () => false, isLoading: false }),
+      useGetApiSharesFoldersQuery: () => ({ data: undefined, isFetching: false, error: undefined }),
     } as const;
 
     return { overrides };
@@ -270,6 +271,7 @@ describe("ShareEditForm component", () => {
       useVolume: () => volumeResult,
       useGetApiUsersQuery: () => usersResult,
       useLabFeatures: () => ({ features: [], isAvailable: () => false, isLoading: false }),
+      useGetApiSharesFoldersQuery: () => ({ data: undefined, isFetching: false, error: undefined }),
     } as const;
 
     const React = await import("react");
@@ -520,5 +522,48 @@ describe("ShareEditForm component", () => {
     expect(subfolder.value).toBe("emperor");
     expect(subfolder.disabled).toBe(true);
     expect(screen.getByText(/Turn on Lab Mode to change the subfolder/i)).toBeTruthy();
+  }, 60000);
+
+  it("fills the Subfolder field from the folder browser", async () => {
+    const React = await import("react");
+    const { render, screen, within } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Usage } = await import("../../../../store/sratApi");
+    const { ShareEditForm } =
+      // @ts-expect-error - Query param fetches isolated module instance
+      await import("../ShareEditForm?share-edit-form-subfolder-browse");
+
+    const listings: Record<string, string[]> = { "": ["emperor", "Rodina"], Rodina: ["photos"] };
+    const useGetApiSharesFoldersQuery = (arg: { mountPath: string; path?: string }, options?: { skip?: boolean }) =>
+      options?.skip
+        ? { data: undefined, isFetching: false, error: undefined }
+        : {
+            data: { mount_path: arg.mountPath, path: arg.path ?? "", folders: listings[arg.path ?? ""] ?? [], truncated: false },
+            isFetching: false,
+            error: undefined,
+          };
+
+    render(
+      React.createElement(ShareEditForm as any, {
+        shareData: {
+          name: "PHOTOS",
+          usage: Usage.None,
+          mount_point_data: { path: "/mnt/free", is_mounted: true, is_write_supported: true },
+        },
+        shares: {},
+        onSubmit: () => {},
+        testOverrides: { ...withSubfolders(true), useGetApiSharesFoldersQuery },
+      }),
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /browse folders/i }));
+    const dialog = await screen.findByRole("dialog", { name: /choose a folder/i });
+    await user.click(within(dialog).getByRole("button", { name: "Rodina" }));
+    await user.click(within(dialog).getByRole("button", { name: "photos" }));
+    await user.click(within(dialog).getByRole("button", { name: 'Use "photos"' }));
+
+    const subfolder = (await screen.findByLabelText(/Subfolder/i)) as HTMLInputElement;
+    expect(subfolder.value).toBe("Rodina/photos");
   }, 60000);
 });

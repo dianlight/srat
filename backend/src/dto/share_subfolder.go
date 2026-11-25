@@ -59,6 +59,15 @@ func ShareDirectory(mountPath, subfolder string) string {
 	return filepath.Join(mountPath, subfolder)
 }
 
+// VolumeFolders lists the folders directly inside a folder of a volume, for
+// picking a share subfolder.
+type VolumeFolders struct {
+	MountPath string   `json:"mount_path" doc:"Mount point of the volume"`
+	Path      string   `json:"path" doc:"Folder that was listed, relative to the mount point; empty is the volume root"`
+	Folders   []string `json:"folders" nullable:"false" doc:"Names of the folders inside it, sorted"`
+	Truncated bool     `json:"truncated" doc:"True when there were more folders than returned"`
+}
+
 // SubfolderOrRoot returns the share's subfolder, or "" (the volume root)
 // when none is set.
 func (s *SharedResource) SubfolderOrRoot() string {

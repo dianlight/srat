@@ -17,6 +17,7 @@
 - [x] 3.1 Emit the resolved path in `smb.conf`, NFS exports and HA NFS mounts — verified via config stream, NFS exports and supervisor tests
 - [x] 3.2 Register the `share_subfolders` beta lab feature and gate new or changed subfolders in the share API (403) — verified via API handler tests
 - [x] 3.3 Add the lab-gated "Subfolder" input, allow shared volumes when subfolders are available, show the shared folder in share details — verified via component tests
+- [x] 3.4 Folder browser for the subfolder: `GET /api/shares/folders` (lab-gated, mounted volumes only, same containment checks) and a picker dialog to click through, filter or name a new folder — verified via service, API and component tests
 
 ## 4. Tests, API Surface, and Documentation
 

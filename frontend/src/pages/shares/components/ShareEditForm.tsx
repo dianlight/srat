@@ -1,4 +1,5 @@
 /* eslint-disable */
+import FolderOpenOutlinedIcon from "@mui/icons-material/FolderOpenOutlined";
 import ModeEditIcon from "@mui/icons-material/ModeEdit";
 import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
@@ -35,10 +36,12 @@ import {
   type SharedResource,
   Time_machine_support,
   Usage,
+  type useGetApiSharesFoldersQuery,
   useGetApiUsersQuery,
   type User,
 } from "../../../store/sratApi";
 import type { ShareEditProps } from "../types";
+import { SubfolderPicker } from "./SubfolderPicker";
 import {
   casingCycleOrder,
   foldersInUse,
@@ -64,6 +67,7 @@ interface ShareEditFormProps {
     useGetApiUsersQuery?: typeof useGetApiUsersQuery;
     useVolume?: typeof useVolume;
     useLabFeatures?: typeof useLabFeatures;
+    useGetApiSharesFoldersQuery?: typeof useGetApiSharesFoldersQuery;
   };
 }
 
@@ -88,6 +92,7 @@ export function ShareEditForm({
   const { isAvailable: isLabFeatureAvailable } = useLabFeaturesHook();
   const subfoldersAvailable = isLabFeatureAvailable("share_subfolders");
   const storedSubfolder = normalizeSubfolder(shareData?.subfolder);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const otherShares = useMemo(
     () => (shares ? Object.values(shares) : []),
     [shares],
@@ -404,9 +409,32 @@ export function ShareEditForm({
                   disabled={isDisabled || !subfoldersAvailable}
                   helperText={
                     subfoldersAvailable
-                      ? "Folder inside the volume to share, e.g. emperor or photos/2024. Created if missing. Leave empty to share the whole volume."
+                      ? "Folder inside the volume to share, e.g. emperor or photos/2024. Browse to pick one; a new folder is created when you save. Leave empty to share the whole volume."
                       : "Turn on Lab Mode to change the subfolder."
                   }
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <Tooltip title="Browse the folders of the volume">
+                            <span>
+                              <IconButton
+                                aria-label="browse folders"
+                                disabled={
+                                  isDisabled ||
+                                  !subfoldersAvailable ||
+                                  !selectedMountPointData?.path
+                                }
+                                onClick={() => setPickerOpen(true)}
+                              >
+                                <FolderOpenOutlinedIcon />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
                   rules={{
                     validate: (value?: string) => {
                       const problem = subfolderProblem(value);
@@ -427,6 +455,20 @@ export function ShareEditForm({
                       return true;
                     },
                   }}
+                />
+                <SubfolderPicker
+                  open={pickerOpen}
+                  mountPath={selectedMountPointData?.path}
+                  volumeLabel={selectedMountPointData?.disk_label}
+                  initialPath={getValues("subfolder")}
+                  onSelect={(subfolder) =>
+                    setValue("subfolder", subfolder, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    })
+                  }
+                  onClose={() => setPickerOpen(false)}
+                  testOverrides={testOverrides}
                 />
               </Grid>
             )}

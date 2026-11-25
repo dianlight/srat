@@ -66,6 +66,10 @@ func (s *mediaRecoveryShareServiceStub) VerifyShare(*dto.SharedResource) errors.
 	return nil
 }
 
+func (s *mediaRecoveryShareServiceStub) ListVolumeFolders(string, string) (*dto.VolumeFolders, errors.E) {
+	return nil, nil
+}
+
 func (s *mediaRecoveryShareServiceStub) SetSupervisorService(SupervisorServiceInterface) {
 }
 

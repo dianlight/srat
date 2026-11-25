@@ -1532,3 +1532,48 @@ func (suite *ShareHandlerSuite) TestUpdateShareFolderInUseReturnsConflict() {
 	suite.Equal(http.StatusConflict, resp.Code)
 	suite.Contains(resp.Body.String(), "/mnt/DATA1/emperor")
 }
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersRequiresLabMode() {
+	suite.labMode(false)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares/folders?mount_path=/mnt/DATA1")
+
+	suite.Equal(http.StatusForbidden, resp.Code)
+	mock.Verify(suite.mockShareService, matchers.Times(0)).ListVolumeFolders(mock.Any[string](), mock.Any[string]())
+}
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersSuccess() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("Rodina"))).
+		ThenReturn(&dto.VolumeFolders{MountPath: "/mnt/DATA1", Path: "Rodina", Folders: []string{"photos"}}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares/folders?mount_path=/mnt/DATA1&path=Rodina")
+
+	suite.Require().Equal(http.StatusOK, resp.Code)
+	var result dto.VolumeFolders
+	suite.Require().NoError(json.Unmarshal(resp.Body.Bytes(), &result))
+	suite.Equal([]string{"photos"}, result.Folders)
+	suite.Equal("Rodina", result.Path)
+}
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersErrors() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/gone"), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorNotFound, "Message", "volume is not mounted"))
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("escape"))).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorShareValidation, "Message", "subfolder points outside the volume"))
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("broken"))).
+		ThenReturn(nil, errors.New("disk on fire"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	suite.Equal(http.StatusNotFound, api.Get("/shares/folders?mount_path=/mnt/gone").Code)
+	invalid := api.Get("/shares/folders?mount_path=/mnt/DATA1&path=escape")
+	suite.Equal(http.StatusUnprocessableEntity, invalid.Code)
+	suite.Contains(invalid.Body.String(), "points outside the volume")
+	suite.Equal(http.StatusInternalServerError, api.Get("/shares/folders?mount_path=/mnt/DATA1&path=broken").Code)
+}
