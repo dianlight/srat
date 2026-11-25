@@ -1,12 +1,9 @@
 ---
 name: test-remote-environment
-description: Test on the Homeassitant Dev envoronment (test-case driven)
+description: Test on the Homeassitant Dev remote envoronment (test-case driven)
 argument-hint: "Describe what to test and whether custom component interaction
   is needed (e.g., 'test share creation flow, include custom component: yes').
   Selected test cases will be proposed before execution."
-disable-model-invocation: true
-metadata:
-  opencode/autoinvoke: false
 ---
 
 # Test Remote Environment
