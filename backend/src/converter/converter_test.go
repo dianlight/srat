@@ -3,6 +3,7 @@ package converter
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -865,9 +866,12 @@ func TestResolveFSType_FallsBackToKernelProbeWhenProberFails(t *testing.T) {
 	t.Cleanup(func() { SetFilesystemProber(nil) })
 
 	// A failing prober must not fabricate a fstype; the kernel magic probe
-	// fallback decides the final value (empty for unknown filesystems).
-	assert.Empty(t, resolveFSType("/dev/sdc1"))
-	assert.Equal(t, []string{"/dev/sdc1"}, prober.calls)
+	// fallback decides the final value. Use a controlled missing path so the
+	// assertion never depends on block devices attached to the host.
+	missingDevice := filepath.Join(t.TempDir(), "missing-block-device")
+
+	assert.Empty(t, resolveFSType(missingDevice))
+	assert.Equal(t, []string{missingDevice}, prober.calls)
 }
 
 func TestMountPointsToMountPointDatas_UsesProberFSType(t *testing.T) {

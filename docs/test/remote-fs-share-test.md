@@ -6,8 +6,8 @@ Addon slug: local_sambanas2
 
 ## Environment
 
-- Admin Samba password: overnice (from `samba_users` table)
-- Test users created: fsuser1, fsuser2, fsuser3 (password: `changeme`)
+- Admin Samba password: stored in `samba_users`; value intentionally not documented here
+- Test users created: fsuser1, fsuser2, fsuser3 (credentials intentionally not documented here)
   - fsuser1, fsuser2: read/write on test shares
   - fsuser3: read-only on test shares
 - `leave_front_door_open`: true (API unauthenticated)
@@ -68,5 +68,5 @@ For each testable FS type:
 
 ## Notes
 
-- Test users fsuser1/fsuser2/fsuser3 left in database (password: `changeme`) for future runs.
+- Test users fsuser1/fsuser2/fsuser3 left in database for future runs; rotate or delete their credentials through the secure process before reusing the environment.
 - Test partitions reformatted; original data on those partitions was destroyed (test volumes only).

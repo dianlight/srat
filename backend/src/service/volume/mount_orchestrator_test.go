@@ -133,6 +133,22 @@ func (s *MountOrchestratorTestSuite) TestMountVolume_ForcesVolumesRefresh() {
 	s.Zero(s.mounter.mountCalls)
 }
 
+func (s *MountOrchestratorTestSuite) TestMountVolume_DoesNotRefreshWhenDeviceIsCached() {
+	s.seedDiskWithPartition("disk-cached", "part-cached", "/dev/not-used")
+	s.volumesRefreshCalls = 0
+
+	err := s.orchestrator.MountVolume(&dto.MountPointData{
+		Path:     "/mnt/cached",
+		Root:     "/",
+		DeviceId: "part-cached",
+		FSType:   new("native"),
+	})
+	s.Require().Error(err)
+	s.ErrorIs(err, dto.ErrorInvalidParameter)
+	s.Zero(s.volumesRefreshCalls, "a cached device must not trigger a recursive hardware refresh")
+	s.Zero(s.mounter.mountCalls)
+}
+
 func (s *MountOrchestratorTestSuite) TestMountVolume_VolumesRefreshErrorTolerated() {
 	s.orchestrator = volume.NewMountOrchestrator(volume.OrchestratorParams{
 		Ctx:        s.ctx,

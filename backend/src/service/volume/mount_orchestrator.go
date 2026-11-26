@@ -167,16 +167,6 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		)
 	}
 
-	// Force a hardware re-enumeration before mounting: right after an addon
-	// restart the disk cache can still be empty and udev events may not have
-	// re-populated it yet. Enumeration errors are ignored so the mount
-	// request is still attempted with whatever data is available.
-	if o.volumes != nil {
-		if _, errVolumes := o.volumes(); errVolumes != nil {
-			slog.DebugContext(o.ctx, "MountVolume: volumes refresh failed, continuing with cached data", "error", errVolumes)
-		}
-	}
-
 	// Home Assistant owns the mount lifecycle for its local disks (2026.11+
 	// storage). HA ownership is runtime state, not a property of the path:
 	// a persisted HA-usage path must become mountable again once HA has
@@ -232,15 +222,32 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	if md.Partition == nil || md.Partition.Id == nil || *md.Partition.Id == "" {
-		for _, disk := range o.disks.Snapshot() {
-			if disk.Partitions == nil {
-				continue
-			}
-			for _, part := range *disk.Partitions {
-				if *part.Id == md.DeviceId {
-					md.Partition = &part
-					break
+		findPartition := func() *dto.Partition {
+			for _, disk := range o.disks.Snapshot() {
+				if disk.Partitions == nil {
+					continue
 				}
+				for _, part := range *disk.Partitions {
+					if part.Id != nil && *part.Id == md.DeviceId {
+						return &part
+					}
+				}
+			}
+			return nil
+		}
+
+		if part := findPartition(); part != nil {
+			md.Partition = part
+		} else if o.volumes != nil {
+			// Refresh only when the requested device is missing from a
+			// populated cache. Refreshing every mount request would recurse
+			// when an event-driven automount calls MountVolume. Errors are
+			// ignored so the request is still attempted with cached data.
+			if _, errVolumes := o.volumes(); errVolumes != nil {
+				slog.DebugContext(o.ctx, "MountVolume: volumes refresh failed, continuing with cached data", "error", errVolumes)
+			}
+			if part := findPartition(); part != nil {
+				md.Partition = part
 			}
 		}
 	}

@@ -500,6 +500,47 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceInvalid() {
 	suite.Equal("Source device does not exist on the system", details["Message"])
 }
 
+// A newly connected partition must be discovered by the mount refresh even
+// when another disk is already cached: GetVolumesData alone skips enumeration
+// for a populated cache.
+func (suite *VolumeServiceTestSuite) TestMountVolume_ForcesEnumerationWithPopulatedCache() {
+	cachedDisk := dto.Disk{
+		Id: new("disk-a"),
+		Partitions: &map[string]dto.Partition{
+			"part-a": {Id: new("part-a"), DiskId: new("disk-a"), DevicePath: new("/dev/loop-a")},
+		},
+	}
+	newDisk := dto.Disk{
+		Id: new("disk-b"),
+		Partitions: &map[string]dto.Partition{
+			"part-b": {Id: new("part-b"), DiskId: new("disk-b"), DevicePath: new("/dev/srat-missing-device")},
+		},
+	}
+	hwSnapshot := map[string]dto.Disk{"disk-a": cachedDisk}
+	hardwareReads := 0
+	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenAnswer(matchers.Answer(func(args []any) []any {
+		hardwareReads++
+		return []any{hwSnapshot, nil}
+	}))
+
+	_, errVolumes := suite.volumeService.GetVolumesData()
+	suite.Require().NoError(errVolumes)
+	suite.Equal(1, hardwareReads)
+
+	hwSnapshot = map[string]dto.Disk{"disk-a": cachedDisk, "disk-b": newDisk}
+	err := suite.volumeService.MountVolume(&dto.MountPointData{
+		Path:     "/mnt/srat-new-device",
+		Root:     "/",
+		DeviceId: "part-b",
+		// "native" is rejected after partition discovery but before any
+		// mount(2), so this test never touches the host filesystem.
+		FSType: new("native"),
+	})
+	suite.Require().Error(err)
+	suite.NotErrorIs(err, dto.ErrorDeviceNotFound, "mount refresh must discover the newly connected partition")
+	suite.GreaterOrEqual(hardwareReads, 2, "MountVolume must force hardware enumeration")
+}
+
 func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {
 	// Note: The converter step might prevent this if Path is required,
 	// but testing the service logic defensively.

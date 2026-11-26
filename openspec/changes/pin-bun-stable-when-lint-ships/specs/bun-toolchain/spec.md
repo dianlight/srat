@@ -54,7 +54,7 @@ After migration, the lint hook and CI toolchain SHALL work across supported plat
 
 #### Scenario: Lint hook works after migration
 
-- **WHEN** `hk run bun-lint` is invoked on macOS or Linux
+- **WHEN** `hk check --all --step bun-lint` is invoked on macOS or Linux
 - **THEN** the built-in `bun lint` runs and the check completes without a canary channel
 
 #### Scenario: Build workflow works after migration
