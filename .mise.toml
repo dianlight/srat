@@ -7,30 +7,10 @@ config_roots = ["frontend", "backend", "custom_components", "oauth_broker"]
 npm.package_manager = "bun"
 # npm.bun = true
 env_shell_expand = true
-# Disable mise-versions host: its cached GitHub release metadata goes stale for
-# the mutable `canary` tag (rebuilt on every bun commit), causing checksum
-# mismatches. Fetch release metadata directly from api.github.com instead.
-# NOTE: this forces mise to call api.github.com directly, so CI must provide
-# MISE_GITHUB_TOKEN (see workflow-level env in .github/workflows/*.yml) or
-# installs hit the 60/hour anonymous limit.
-use_versions_host = false
-# Keep release metadata (incl. the canary asset digest) fresh: the default cache
-# (up to ~23h) goes stale whenever bun rebuilds the canary asset in place.
-fetch_remote_versions_cache = "5m"
 # libc = "musl"
 
 [settings.python]
 compile = false
-
-# Bun must stay named `bun`: `npm.package_manager = "bun"` and the `[deps.bun]`
-# entries in frontend/oauth_broker resolve the package manager by that name, and
-# mise only orders it before the `npm:` tools when it finds it. Declaring it as
-# `"github:oven-sh/bun"` breaks that lookup ("bun may be required but was not
-# found") and every `npm:` install fails on a cold cache. The GitHub backend is
-# still needed because `bun lint`/`bun fmt` (and the `--hash` lint flag) are
-# canary-only.
-[tool_alias]
-bun = "github:oven-sh/bun"
 
 [tools]
 go = "1.27.4"
@@ -39,7 +19,7 @@ vale = "3.28.1"
 markdownlint-cli2 = "0.24.2"
 "npm:doctoc" = "2.5.0"
 "npm:@fission-ai/openspec" = "1.17.0"
-bun = "canary"
+bun = "1.4.5"
 jq = "1.8.2"
 pkl = "0.33.1"
 biome = "2.4.15"

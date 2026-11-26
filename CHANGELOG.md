@@ -12,7 +12,7 @@
 
 ### 🏗 Chore
 
-- **Bun canary toolchain**: Tracks the Bun canary channel because stable Bun 1.4.5 lacks the built-in `bun lint`, which made `mise run //frontend:lint` recurse and blocked `mise run //backend:build`.
+- **Bun 1.4.5**: Upgrades the toolchain to stable Bun 1.4.5 and drops the canary-only install workarounds, so local and CI installs use the normal release channel.
 
 ## 2026.11.0
 

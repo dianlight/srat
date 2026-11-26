@@ -501,8 +501,9 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_DeviceInvalid() {
 }
 
 // A newly connected partition must be discovered by the mount refresh even
-// when another disk is already cached: GetVolumesData alone skips enumeration
-// for a populated cache.
+// when another disk is already cached and the hardware snapshot is stale:
+// GetVolumesData alone skips enumeration for a populated cache, and
+// GetHardwareInfo serves its 30-minute cache unless it is invalidated.
 func (suite *VolumeServiceTestSuite) TestMountVolume_ForcesEnumerationWithPopulatedCache() {
 	cachedDisk := dto.Disk{
 		Id: new("disk-a"),
@@ -516,18 +517,21 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_ForcesEnumerationWithPopula
 			"part-b": {Id: new("part-b"), DiskId: new("disk-b"), DevicePath: new("/dev/srat-missing-device")},
 		},
 	}
-	hwSnapshot := map[string]dto.Disk{"disk-a": cachedDisk}
+	staleSnapshot := map[string]dto.Disk{"disk-a": cachedDisk}
+	freshSnapshot := map[string]dto.Disk{"disk-a": cachedDisk, "disk-b": newDisk}
 	hardwareReads := 0
 	mock.When(suite.mockHardwareClient.GetHardwareInfo()).ThenAnswer(matchers.Answer(func(args []any) []any {
 		hardwareReads++
-		return []any{hwSnapshot, nil}
+		if hardwareReads == 1 {
+			return []any{staleSnapshot, nil}
+		}
+		return []any{freshSnapshot, nil}
 	}))
 
 	_, errVolumes := suite.volumeService.GetVolumesData()
 	suite.Require().NoError(errVolumes)
 	suite.Equal(1, hardwareReads)
 
-	hwSnapshot = map[string]dto.Disk{"disk-a": cachedDisk, "disk-b": newDisk}
 	err := suite.volumeService.MountVolume(&dto.MountPointData{
 		Path:     "/mnt/srat-new-device",
 		Root:     "/",
@@ -537,8 +541,9 @@ func (suite *VolumeServiceTestSuite) TestMountVolume_ForcesEnumerationWithPopula
 		FSType: new("native"),
 	})
 	suite.Require().Error(err)
-	suite.NotErrorIs(err, dto.ErrorDeviceNotFound, "mount refresh must discover the newly connected partition")
+	suite.NotErrorIs(err, dto.ErrorDeviceNotFound, "mount refresh must invalidate the stale hardware snapshot")
 	suite.GreaterOrEqual(hardwareReads, 2, "MountVolume must force hardware enumeration")
+	mock.Verify(suite.mockHardwareClient, matchers.Times(1)).InvalidateHardwareInfo()
 }
 
 func (suite *VolumeServiceTestSuite) TestMountVolume_PathEmpty() {

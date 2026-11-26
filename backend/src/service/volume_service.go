@@ -125,8 +125,12 @@ func NewVolumeService(
 		// A mount request for a device missing from a populated cache must
 		// still discover hardware that arrived after startup. GetVolumesData
 		// only enumerates when the cache is empty, so use the forced refresh
-		// path for that case.
+		// path for that case. The hardware snapshot has its own cache, so it
+		// must be invalidated or the refresh can rebuild from stale data.
 		Volumes: func() ([]*dto.Disk, errors.E) {
+			if p.hardwareClient != nil {
+				p.hardwareClient.InvalidateHardwareInfo()
+			}
 			if err := p.getVolumesData(); err != nil {
 				return nil, err
 			}
@@ -310,13 +314,7 @@ func (s *VolumeService) GetVolumesData() ([]*dto.Disk, errors.E) {
 			slog.WarnContext(s.ctx, "Failed to reconcile mount table on volumes read", "err", err)
 		}
 	}
-	// Null check: return an empty slice instead of null when no disks are
-	// present (e.g. right after a restart), so API consumers can rely on a
-	// non-null response instead of treating null as "no data".
-	if disks := s.disks.All(); disks != nil {
-		return disks, nil
-	}
-	return []*dto.Disk{}, nil
+	return s.disks.All(), nil
 }
 
 // getVolumesData retrieves and synchronizes volume data with caching and concurrency control.
