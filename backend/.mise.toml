@@ -20,9 +20,7 @@ run = [
   "go -C src mod vendor",
   "go -C src mod tidy",
 ]
-depends_post = [
-    { task = "patch" },
-]
+depends_post = [{ task = "patch" }]
 
 [tasks.build]
 tools = { zig = "0.15.2" }
@@ -39,21 +37,23 @@ arg "<gist_token>" help="GitHub Gist token" env="GIST_TOKEN"
 '''
 depends = [
   { task = "patch" },
-  { task = "metadata",args = ['--version={{usage.version | default(value=env.VERSION)}}'] },
+  { task = "metadata", args = [
+    '--version={{usage.version | default(value=env.VERSION)}}',
+  ] },
 ]
 #env = { _.file = "/tmp/.env.tmp" }
 run = [
-    '''
+  '''
       # Frontend and custom component builds only run for the static (default) variant.
       if [ -z "$usage_zig" ] && [ -z "$usage_cgo" ]; then
         mise //frontend:build:static --version ${usage_version?} src/web/static
         mise //custom_components:package-hacs -- --output ../backend/src/internal/assets/srat.zip --version ${usage_version?}
       fi
     ''',
-    'echo "Building ${usage_version?} for architecture ${usage_arch?}..."',
-    'mkdir -p dist/${usage_arch?} || :',
-    'touch dist/${usage_arch?}/.keep',
-    '''
+  'echo "Building ${usage_version?} for architecture ${usage_arch?}..."',
+  'mkdir -p dist/${usage_arch?} || :',
+  'touch dist/${usage_arch?}/.keep',
+  '''
       set +x +e
       CGO_CFLAGS='-DELF_METADATA="{\"version\":\"v'"${usage_version?}"'\"}"'
       GOOS=linux
@@ -120,7 +120,7 @@ run = [
         ln -sf srat-server-static dist/${usage_arch?}/srat-server
       fi
     ''',
-    '''
+  '''
       set +x
       if [ -n "$usage_zig" ] || [ -n "$usage_cgo" ]; then
         echo "⚠ Static-linkage check skipped for dynamic variant build (--zig or --cgo flag set)"
@@ -140,7 +140,7 @@ run = [
         if [ "$all_static" = "false" ]; then exit 1; fi
       fi
     ''',
-    '''
+  '''
       # Version verification only for static builds (uses srat-server-static)
       if [ -z "$usage_zig" ] && [ -z "$usage_cgo" ]; then
         echo "Verifying embedded version in dist/${usage_arch?}/srat-server-static..."
@@ -157,21 +157,25 @@ run = [
           echo "⚠ Warning: Could not extract version from binary: $EMBEDDED_VERSION"
         fi
       fi
-    '''
+    ''',
 ]
 sources = ["src/**/*.go"]
-outputs = ["dist/*/srat-server", "dist/*/srat-server-static", "dist/*/srat-server-musl", "dist/*/srat-server-glib", "dist/*/srat-cli"]
+outputs = [
+  "dist/*/srat-server",
+  "dist/*/srat-server-static",
+  "dist/*/srat-server-musl",
+  "dist/*/srat-server-glib",
+  "dist/*/srat-cli",
+]
 quiet = true
 
 [tasks."build:remote"]
-description = "Build the project for remote deployment and rsync binaries to HOMEASSISTANT_IP. Supports three server variants: static (default, CGO disabled), musl (dynamic via zig), and glib (dynamic via CGO+gcc). For static, both srat-cli and srat-server-static are deployed. For musl/glib, only the server variant binary is deployed (srat-cli is always static and does not need redeployment for dynamic-only updates)."
+description = "Build the project for remote deployment and rsync binaries to HOMEASSISTANT_IP. Supports three server variants: musl (default, dynamic via zig), static (CGO disabled), and glib (dynamic via CGO+gcc). For static, both srat-cli and srat-server-static are deployed. For musl/glib, only the server variant binary is deployed (srat-cli is always static and does not need redeployment for dynamic-only updates)."
 usage = '''
 flag "--version <version>" help="Build version"  env="VERSION"
-flag "--variant <variant>" help="Server variant to build and deploy: static (default), musl, or glib" default="static"
+flag "--variant <variant>" help="Server variant to build and deploy: musl (default), static, or glib" default="musl"
 '''
-depends = [
-   { task = "clean" },
-]
+depends = [{ task = "clean" }]
 run = [
   '''
     set -euo pipefail
@@ -254,7 +258,7 @@ run = [
     esac
 
     echo "Binaries deployed to upgrade directory. File watcher will detect and apply update automatically."
-  '''
+  ''',
 ]
 #quiet = true
 
@@ -331,12 +335,8 @@ quiet = true
 
 [tasks.patch]
 description = "Ensure vendored dependencies are pristine. Re-runs 'go mod vendor' so src/vendor always matches go.mod/go.sum. Per-patch blocks for future upstream fixes go here (see git history for the retired hd-idle/goenums examples); keep patches out of vendor whenever an in-tree alternative exists."
-depends = [
-    { task = "vendor:check" },
-]
-depends_post = [
-    { task = "format:tidy" },
-]
+depends = [{ task = "vendor:check" }]
+depends_post = [{ task = "format:tidy" }]
 run = """
 	set +x -e;
 	echo "Vendoring dependencies...";
@@ -353,29 +353,23 @@ run = "go -C src mod tidy"
 quiet = true
 
 [tasks.format]
-alias = ["fmt","lint"]
-depends = [
-    { task = "patch" },
-]
-depends_post = [
-    { task = "security" },
-]
+alias = ["fmt", "lint"]
+depends = [{ task = "patch" }]
+depends_post = [{ task = "security" }]
 run = [
-	{ task = "format:tidy" },
-	"go -C src vet ./... ",
-	"go tool -C src  testifylint --fix ./... ",
-	"go -C src fmt ./..."
+  { task = "format:tidy" },
+  "go -C src vet ./... ",
+  "go tool -C src  testifylint --fix ./... ",
+  "go -C src fmt ./...",
 ]
 quiet = true
 
 [tasks.test]
-depends = [
-    { task = "patch" },
-]
+depends = [{ task = "patch" }]
 run = [
-	"go -C src tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./...",
-	"go -C src tool cover -func=coverage.out | grep total: | awk '{print \"Total coverage: \" $3}'",
-  "git restore test/data/image.dmg"
+  "go -C src tool gotest -p 1 -failfast  -timeout 120s -tags embedallowed_no  -coverprofile=coverage.out -cover ./...",
+  "go -C src tool cover -func=coverage.out | grep total: | awk '{print \"Total coverage: \" $3}'",
+  "git restore test/data/image.dmg",
 ]
 quiet = true
 
@@ -383,13 +377,13 @@ quiet = true
 usage = '''
 flag "--version [version]" help="Build version"
 '''
-run =[
-	'echo "Generating metadata constants ${usage_version:?}..."',
+run = [
+  'echo "Generating metadata constants ${usage_version:?}..."',
   'echo "// Code generated by mise task; DO NOT EDIT." > src/config/metadata_constants.go',
-	'echo "//go:build !cgo || !linux" >> src/config/metadata_constants.go',
-	'echo "" >> src/config/metadata_constants.go',
-	'echo "package config" >> src/config/metadata_constants.go',
-	'echo "const MetadataJSON = \"SRAT_METADATA:{\\\"version\\\": \\\"v${usage_version:?}\\\"}\"" >> src/config/metadata_constants.go',
+  'echo "//go:build !cgo || !linux" >> src/config/metadata_constants.go',
+  'echo "" >> src/config/metadata_constants.go',
+  'echo "package config" >> src/config/metadata_constants.go',
+  'echo "const MetadataJSON = \"SRAT_METADATA:{\\\"version\\\": \\\"v${usage_version:?}\\\"}\"" >> src/config/metadata_constants.go',
 ]
 outputs = ["src/config/metadata_constants.go"]
 hide = true
@@ -398,14 +392,14 @@ quiet = true
 [tasks.security]
 run = [
   "go run -C src golang.org/x/vuln/cmd/govulncheck@latest ./...",
-  "cd src; gosec -exclude-generated -severity high -confidence high ./..."
+  "cd src; gosec -exclude-generated -severity high -confidence high ./...",
 ]
 
 [tasks."generate:openapi"]
 alias = ["gen:openapi"]
 run = [
-   "go run -C src ./cmd/srat-openapi -out ../docs",
-   "mise x npm:@redocly/cli@2.34.0 -- redocly lint ./docs/openapi.yaml"
+  "go run -C src ./cmd/srat-openapi -out ../docs",
+  "mise x npm:@redocly/cli@2.34.0 -- redocly lint ./docs/openapi.yaml",
 ]
 sources = ["src/**/*.go"]
 outputs = ["docs/openapi.yaml"]
@@ -423,28 +417,17 @@ run = [
   "oapi-codegen -config cfg.yaml  -package apps -o apps/client.gen.go apps.yaml",
   "oapi-codegen -config cfg.yaml  -package resolution -o resolution/client.gen.go resolution.yaml",
   "oapi-codegen -config cfg.yaml  -package root -o root/client.gen.go root.yaml",
-  "oapi-codegen -config cfg.yaml  -package discovery -o discovery/client.gen.go discovery.yaml"
+  "oapi-codegen -config cfg.yaml  -package discovery -o discovery/client.gen.go discovery.yaml",
 ]
-sources = [
-  "*.yaml"
-  ]
-outputs = [
-  "**/client.gen.go",
-  ]
+sources = ["*.yaml"]
+outputs = ["**/client.gen.go"]
 
 [tasks.generate]
 alias = ["gen"]
 run = "go generate -C src ./..."
-depends_post = [
-    { task = "generate:openapi" },
-]
-sources = [
-  "src/**/*.go"
-  ]
-outputs = [
-  "src/dbom/g/**/*.go",
-  "src/dto/**/*_enums.go",
-  ]
+depends_post = [{ task = "generate:openapi" }]
+sources = ["src/**/*.go"]
+outputs = ["src/dbom/g/**/*.go", "src/dto/**/*_enums.go"]
 
 [tasks.golangci-lint]
 run = "cd src && golangci-lint run --fix"
