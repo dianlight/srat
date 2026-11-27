@@ -153,16 +153,17 @@ This manifest drives Steps 1–8. Each case is executed sequentially following i
 Run in the `backend/` terminal (background, it may take a minute):
 
 ```bash
-mise //backend:build:remote
+mise //backend:build:remote --variant musl
 ```
 
+- `--variant musl` is now the default in `backend/.mise.toml`; pass it explicitly to make the intent visible. The s6 launcher runs `srat-server-musl` whenever it exists, so static-only deploys install but never execute.
 - This cross-compiles for `amd64`, then `rsync`s the binaries into `/addon_configs/local_sambanas2/upgrade/` on the HA host.
 - Wait for the message `Remote build and deployment completed.` before proceeding.
 - If `HOMEASSISTANT_IP` is not set, ask the user or check `.env`/shell profile.
 - Pre-deploy checks (fail fast before building):
   - Running binary version (ground truth is the `telemetry configured ... version=` boot line, NOT `ha apps info` which shows the addon package version). The develop updater refuses builds that semver-compare older — rebuild with a newer `-dev` version when needed.
   - `leave_front_door_open` addon option: when `true` the `-addon` flag is omitted so SecureMode is off (CORS/WS stay permissive, HA middleware skipped) — know which mode you are smoke-testing.
-  - Preferred variant: the s6 launcher runs musl when present, so `static`-only deploys never execute; use `--variant musl` (or also deploy musl) on this host.
+  - `GIST_TOKEN` must be non-empty in the build environment. A binary built with an empty `config.GistToken` starts, calls `log.Fatalf("Failed to create GitHub client: %v", err)` in `backend/src/internal/appsetup/appsetup.go`, and exits 1; s6 then halts the add-on. Supply the token through the secret card (or an approved local env) before building, and verify the add-on stays started after deployment.
 
 ### Step 1a — Confirm the new binary actually executes (MANDATORY)
 

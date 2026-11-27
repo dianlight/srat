@@ -8,6 +8,8 @@
 
 ### 🐛 Bug Fixes
 
+- **NTFS and exFAT partitions detected without udev data**: the hardware→DTO converter now resolves the filesystem type through the adapter signature table (NTFS/exFAT boot sector OEM ID), which the kernel magic table does not cover. USB partitions whose Supervisor device entry carries no `ID_FS_TYPE` no longer show an empty filesystem type with `canMount: false`. ([srat#1513](https://github.com/dianlight/srat/issues/1513), [srat#1514](https://github.com/dianlight/srat/pull/1514))
+
 ### 🏗 Chore
 
 - **Bun 1.4.5**: Upgrades the toolchain to stable Bun 1.4.5 and drops the canary-only install workarounds, so local and CI installs use the normal release channel.

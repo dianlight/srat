@@ -149,6 +149,7 @@ func NewHardwareService(
 		sysBlockBasePath:    "/sys/block",
 		fsProbeFunc:         newFSProbeFunc(fsProber),
 	}
+	converter.SetFilesystemProber(fsProber)
 	unsubscribe := eventBus.OnHomeAssistant(func(ctx context.Context, hae events.HomeAssistantEvent) errors.E {
 		if hae.Type == events.EventTypes.START {
 			tlog.DebugContext(ctx, "Home Assistant started event received, invalidating hardware info cache")

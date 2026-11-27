@@ -122,8 +122,21 @@ func NewVolumeService(
 		ProtectedMode: func() bool {
 			return in.State.ProtectedMode
 		},
+		// A mount request for a device missing from a populated cache must
+		// still discover hardware that arrived after startup. GetVolumesData
+		// only enumerates when the cache is empty, so use the forced refresh
+		// path for that case. The hardware snapshot has its own cache, so it
+		// must be invalidated or the refresh can rebuild from stale data.
 		Volumes: func() ([]*dto.Disk, errors.E) {
-			return p.GetVolumesData()
+			if p.hardwareClient != nil {
+				p.hardwareClient.InvalidateHardwareInfo()
+			}
+			if err := p.getVolumesData(); err != nil {
+				// Keep the last known snapshot so callers can still resolve
+				// cached partitions while the refresh error is reported.
+				return p.disks.All(), err
+			}
+			return p.disks.All(), nil
 		},
 		ResetAfter: 5 * time.Minute,
 	})

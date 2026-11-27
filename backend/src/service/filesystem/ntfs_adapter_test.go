@@ -131,6 +131,22 @@ func (suite *NtfsAdapterTestSuite) TestIsSupported() {
 	suite.Empty(support.MissingTools)
 }
 
+// TestIsDeviceSupportedWithSignature verifies the NTFS adapter recognises a
+// boot sector carrying the NTFS OEM magic, which the kernel magic table
+// (mount.FSFromBlock) does not list among its detectable filesystems
+// (srat#1513).
+func (suite *NtfsAdapterTestSuite) TestIsDeviceSupportedWithSignature() {
+	signatures := suite.adapter.GetFsSignatureMagic()
+	suite.NotEmpty(signatures)
+
+	signature := signatures[0]
+	path := createTempDeviceWithMagic(suite.T(), signature.Offset, signature.Magic)
+
+	supported, err := suite.adapter.IsDeviceSupported(suite.ctx, path)
+	suite.NoError(err)
+	suite.True(supported)
+}
+
 func (suite *NtfsAdapterTestSuite) TestGetState_MountedWithoutCachedState_AssumesClean() {
 	device := "/dev/sda1"
 

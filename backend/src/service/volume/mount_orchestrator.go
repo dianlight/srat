@@ -222,15 +222,32 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 	}
 
 	if md.Partition == nil || md.Partition.Id == nil || *md.Partition.Id == "" {
-		for _, disk := range o.disks.Snapshot() {
-			if disk.Partitions == nil {
-				continue
-			}
-			for _, part := range *disk.Partitions {
-				if *part.Id == md.DeviceId {
-					md.Partition = &part
-					break
+		findPartition := func() *dto.Partition {
+			for _, disk := range o.disks.Snapshot() {
+				if disk.Partitions == nil {
+					continue
 				}
+				for _, part := range *disk.Partitions {
+					if part.Id != nil && *part.Id == md.DeviceId {
+						return &part
+					}
+				}
+			}
+			return nil
+		}
+
+		if part := findPartition(); part != nil {
+			md.Partition = part
+		} else if o.volumes != nil {
+			// Refresh only when the requested device is missing from a
+			// populated cache. Refreshing every mount request would recurse
+			// when an event-driven automount calls MountVolume. Errors are
+			// ignored so the request is still attempted with cached data.
+			if _, errVolumes := o.volumes(); errVolumes != nil {
+				slog.DebugContext(o.ctx, "MountVolume: volumes refresh failed, continuing with cached data", "error", errVolumes)
+			}
+			if part := findPartition(); part != nil {
+				md.Partition = part
 			}
 		}
 	}
@@ -317,8 +334,9 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 		// User-provided flags win on name collision so explicit configuration
 		// is never overridden by defaults.
 		effectiveFlags := *md.Flags
-		if md.FSType != nil && *md.FSType != "" {
-			if defaults, defaultsErr := o.fs.GetDefaultMountFlags(*md.FSType); defaultsErr == nil && len(defaults) > 0 {
+		effectiveFSType := automountFSType(md)
+		if effectiveFSType != "" {
+			if defaults, defaultsErr := o.fs.GetDefaultMountFlags(effectiveFSType); defaultsErr == nil && len(defaults) > 0 {
 				present := make(map[string]struct{}, len(effectiveFlags))
 				for _, f := range effectiveFlags {
 					present[strings.ToLower(strings.TrimSpace(f.Name))] = struct{}{}
@@ -329,10 +347,10 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 					}
 				}
 				if len(effectiveFlags) != len(*md.Flags) {
-					slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "defaults", defaults)
+					slog.DebugContext(o.ctx, "Applying filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", effectiveFSType, "defaults", defaults)
 				}
 			} else if defaultsErr != nil {
-				slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", *md.FSType, "err", defaultsErr)
+				slog.WarnContext(o.ctx, "Failed to resolve filesystem default mount flags", "device", md.DeviceId, "path", md.Path, "fstype", effectiveFSType, "err", defaultsErr)
 			}
 		}
 
@@ -346,10 +364,11 @@ func (o *MountOrchestrator) MountVolume(md *dto.MountPointData) errors.E {
 			)
 		}
 
-		mountFsType := ""
-		if md.FSType != nil {
-			mountFsType = *md.FSType
-		}
+		// Resolve the effective fstype the same way automount does: a missing
+		// request fstype must fall back to the partition's detected fs_type so
+		// adapter-detected filesystems (exfat, ntfs) are not passed to the
+		// mounter as "auto" (u-root's magic probe cannot detect them).
+		mountFsType := automountFSType(md)
 
 		// Final validation: ensure DevicePath exists on the OS before
 		// delegating to the mount manager. (The nil/empty check already
@@ -613,16 +632,16 @@ func (o *MountOrchestrator) PatchMountPointSettings(root string, path string, pa
 	}
 
 	currentDto := dto.MountPointData{}
-	// The converter uses the volume cache only to resolve the partition from
-	// the DeviceId; on load failure pass nil so the fallback cache-update path
-	// below still keeps the persisted state consistent.
+	// The converter uses the volume snapshot only to resolve the partition
+	// from the DeviceId. Keep the snapshot even when the refresh fails so the
+	// resolved Partition and the cache update stay consistent with the row
+	// that was just written.
 	var disksContext []*dto.Disk
 	if o.volumes != nil {
-		refreshed, errVolumes := o.volumes()
+		var errVolumes errors.E
+		disksContext, errVolumes = o.volumes()
 		if errVolumes != nil {
-			slog.WarnContext(o.ctx, "PatchMountPointSettings: failed to load volumes data for partition resolution", "err", errVolumes)
-		} else {
-			disksContext = refreshed
+			slog.WarnContext(o.ctx, "PatchMountPointSettings: failed to refresh volumes data for partition resolution", "err", errVolumes)
 		}
 	}
 	if convErr := o.conv.MountPointPathToMountPointData(dbMountData, &currentDto, disksContext); convErr != nil {
