@@ -632,16 +632,16 @@ func (o *MountOrchestrator) PatchMountPointSettings(root string, path string, pa
 	}
 
 	currentDto := dto.MountPointData{}
-	// The converter uses the volume cache only to resolve the partition from
-	// the DeviceId; on load failure pass nil so the fallback cache-update path
-	// below still keeps the persisted state consistent.
+	// The converter uses the volume snapshot only to resolve the partition
+	// from the DeviceId. Keep the snapshot even when the refresh fails so the
+	// resolved Partition and the cache update stay consistent with the row
+	// that was just written.
 	var disksContext []*dto.Disk
 	if o.volumes != nil {
-		refreshed, errVolumes := o.volumes()
+		var errVolumes errors.E
+		disksContext, errVolumes = o.volumes()
 		if errVolumes != nil {
-			slog.WarnContext(o.ctx, "PatchMountPointSettings: failed to load volumes data for partition resolution", "err", errVolumes)
-		} else {
-			disksContext = refreshed
+			slog.WarnContext(o.ctx, "PatchMountPointSettings: failed to refresh volumes data for partition resolution", "err", errVolumes)
 		}
 	}
 	if convErr := o.conv.MountPointPathToMountPointData(dbMountData, &currentDto, disksContext); convErr != nil {

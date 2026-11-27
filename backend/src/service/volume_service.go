@@ -132,7 +132,9 @@ func NewVolumeService(
 				p.hardwareClient.InvalidateHardwareInfo()
 			}
 			if err := p.getVolumesData(); err != nil {
-				return nil, err
+				// Keep the last known snapshot so callers can still resolve
+				// cached partitions while the refresh error is reported.
+				return p.disks.All(), err
 			}
 			return p.disks.All(), nil
 		},

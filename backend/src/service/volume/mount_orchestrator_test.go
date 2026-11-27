@@ -850,14 +850,90 @@ func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_VolumesError() 
 		Mounter: s.mounter, EventBus: s.eventBus, Repo: s.mountRepoIf,
 		ProtectedMode: func() bool { return false },
 		Volumes: func() ([]*dto.Disk, errors.E) {
-			return nil, errors.New("volumes unavailable")
+			return s.disks.All(), errors.New("volumes unavailable")
 		},
 	})
 
+	var emitted []events.MountPointEvent
+	unsub := s.eventBus.OnMountPoint(func(_ context.Context, event events.MountPointEvent) errors.E {
+		emitted = append(emitted, event)
+		return nil
+	})
+	defer unsub()
+
 	startup := true
 	got, err := s.orchestrator.PatchMountPointSettings("/", "/mnt/orch-ve", dto.MountPointData{IsToMountAtStartup: &startup})
-	s.Require().NoError(err, "volumes failure must degrade to the fallback path, not fail")
+	s.Require().NoError(err, "volumes failure must still use the cached snapshot, not fail")
 	s.Require().NotNil(got)
+	s.Require().NotNil(got.Partition, "cached partitions must still resolve when refresh fails")
+	s.Require().NotNil(got.Partition.Id)
+	s.Equal("part-orch-ve", *got.Partition.Id)
+	s.Require().NotNil(got.Partition.DiskId)
+	s.Equal("disk-orch-ve", *got.Partition.DiskId)
+
+	cached, ok := s.disks.GetMountPointByPath("/mnt/orch-ve")
+	s.Require().True(ok, "cache must receive the patched mount point")
+	s.Require().NotNil(cached.IsToMountAtStartup)
+	s.True(*cached.IsToMountAtStartup)
+
+	s.Require().Len(emitted, 1)
+	s.Require().NotNil(emitted[0].MountPoint)
+	s.Require().NotNil(emitted[0].MountPoint.Partition, "emitted event must retain cached partition context")
+}
+
+func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_FallbackCacheWithoutPartitionReference() {
+	const path = "/mnt/orch-fb2"
+	diskID, partID := "disk-orch-fb2", "part-orch-fb2"
+	mountPoint := dto.MountPointData{
+		Path: path, DeviceId: partID,
+		Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}
+	mountPoints := map[string]dto.MountPointData{path: mountPoint}
+	parts := map[string]dto.Partition{
+		partID: {
+			Id: new(partID), DiskId: new(diskID), DevicePath: new("/dev/sdzfb2"),
+			MountPointData: &mountPoints,
+		},
+	}
+	s.Require().NoError(s.disks.AddOrUpdate(&dto.Disk{Id: new(diskID), Partitions: &parts}))
+	s.Require().NoError(s.repo.Persist(&dto.MountPointData{
+		Path: path, Root: "/", DeviceId: "part-orch-unknown-fb2",
+		Type: "ADDON", Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}))
+
+	startup := true
+	got, err := s.orchestrator.PatchMountPointSettings("/", path, dto.MountPointData{IsToMountAtStartup: &startup})
+	s.Require().NoError(err)
+	s.Require().NotNil(got)
+
+	cached, ok := s.disks.GetMountPointByPath(path)
+	s.Require().True(ok)
+	s.Require().NotNil(cached.IsToMountAtStartup)
+	s.True(*cached.IsToMountAtStartup)
+	s.Require().NotNil(cached.Partition, "fallback update must associate the cached partition")
+}
+
+func (s *MountOrchestratorTestSuite) TestPatchMountPointSettings_PreservesHAMountedFlag() {
+	const path = "/mnt/orch-ha"
+	s.seedDiskWithPartition("disk-orch-ha", "part-orch-ha", "/dev/sdzha")
+	s.Require().NoError(s.disks.AddOrUpdateMountPoint("disk-orch-ha", "part-orch-ha", dto.MountPointData{
+		Path: path, DeviceId: "part-orch-ha", IsHAMounted: true,
+		Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}))
+	s.Require().NoError(s.repo.Persist(&dto.MountPointData{
+		Path: path, Root: "/", DeviceId: "part-orch-ha",
+		Type: "ADDON", Flags: &dto.MountFlags{}, CustomFlags: &dto.MountFlags{},
+	}))
+
+	startup := true
+	got, err := s.orchestrator.PatchMountPointSettings("/", path, dto.MountPointData{IsToMountAtStartup: &startup})
+	s.Require().NoError(err)
+	s.Require().NotNil(got)
+	s.True(got.IsHAMounted, "runtime-only HA ownership must survive a settings patch")
+
+	cached, ok := s.disks.GetMountPointByPath(path)
+	s.Require().True(ok)
+	s.True(cached.IsHAMounted)
 }
 
 type blockingCoalesceMounter struct {
