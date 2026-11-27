@@ -20,6 +20,14 @@ This document describes the required Samba configuration for robust Time Machine
 
 macOS 15+ (Tahoe) introduces stricter SMB protocol and signing requirements for Time Machine backups. Samba servers must be configured with the correct `fruit:*` and signing options to ensure reliable operation.
 
+The generated configuration loads `acl_xattr catia fruit streams_xattr` for ordinary non-FAT shares as well as eligible Time Machine shares. Samba requires `fruit` to be stacked with `streams_xattr`; `fruit:metadata = stream` delegates Finder metadata to that module. Resource forks continue to use AppleDouble files (`fruit:resource = file`). Share-level `vfs objects` replaces the global list, so enabling the recycle bin must preserve the complete stack and append `recycle` as a separate module.
+
+**FAT limitation:** Shares identified as `exfat`, `vfat`, or `msdos` retain the previous `acl_xattr catia fruit` stack and do not receive `streams_xattr`, because these filesystems cannot store its user xattrs. That existing stack does not provide a complete supported Apple metadata path; this change does not fix Apple metadata handling on FAT shares. Neither `fruit:resource = file` nor switching to `fruit:metadata = netatalk` provides an xattr-free Finder metadata backend. Time Machine remains excluded on these filesystems.
+
+The generator keeps `fruit:aapl = yes` globally and retains `fruit` on every share. Removing `fruit` only from FAT shares would introduce mixed Apple/non-Apple shares: Samba negotiates AAPL on the first tree connection, making support depend on connection order. Disabling AAPL server-wide would also remove the FULLSYNC capability needed by Time Machine. A complete FAT solution therefore needs a separate design and client validation; this bounded fix avoids changing that server-wide behavior.
+
+The existing Time Machine exclusion list is separate from the FAT exception: `f2fs` can support user xattrs, and `fuseblk` identifies a driver rather than a single filesystem capability. Both receive the complete Apple module stack without enabling Time Machine. The generator does not probe mount-level xattr support; these and other drivers still need working user xattrs. Configuration tests do not verify live SMB transfers, especially through another SMB mount, and do not establish a fix for Finder error -43.
+
 ## Required Global smb.conf Options
 
 Set these in the `[global]` section:
@@ -93,5 +101,7 @@ Set these in the Time Machine share section (for example, `[TimeMachineBackup]`)
 ## References
 
 - [Samba vfs_fruit(8) man page](https://www.samba.org/samba/docs/current/man-html/vfs_fruit.8.html)
+- [Samba vfs_streams_xattr(8) man page](https://www.samba.org/samba/docs/current/man-html/vfs_streams_xattr.8.html)
+- [Linux F2FS mount options](https://docs.kernel.org/filesystems/f2fs.html#mount-options)
 - [Samba Wiki: Configure Samba to Work Better with Mac OS X](https://wiki.samba.org/index.php/Configure_Samba_to_Work_Better_with_Mac_OS_X)
 - [Apple: About Time Machine](https://support.apple.com/en-us/HT201250)
