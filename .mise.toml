@@ -34,7 +34,7 @@ shfmt = "3.14.1"
 # CI run; Renovate keeps these updated via lock-file-maintenance.
 "go:golang.org/x/tools/gopls" = "0.24.0"
 gh = "2.105.0"
-hk = "2.13.0"
+hk = "2.14.0"
 yamllint = "1.38.0"
 # opencode = "latest"
 # copilot-cli = "latest"
