@@ -2160,6 +2160,10 @@ components:
             - "null"
         status:
           $ref: "#/components/schemas/SharedResourceStatus"
+        subfolder:
+          description: Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value.
+          maxLength: 1024
+          type: string
         timemachine:
           type: boolean
         timemachine_max_size:
@@ -2210,6 +2214,10 @@ components:
             - "null"
         status:
           $ref: "#/components/schemas/SharedResourceStatus"
+        subfolder:
+          description: Folder inside the volume exposed by the share, relative to the mount point. Empty means the volume root. Omit on update to keep the current value.
+          maxLength: 1024
+          type: string
         timemachine:
           type: boolean
         timemachine_max_size:
@@ -2577,6 +2585,36 @@ components:
         - creation_time
         - local_address
         - remote_address
+      type: object
+    VolumeFolders:
+      additionalProperties: false
+      properties:
+        $schema:
+          description: A URL to the JSON Schema for this object.
+          examples:
+            - https://example.com/schemas/VolumeFolders.json
+          format: uri
+          readOnly: true
+          type: string
+        folders:
+          description: Names of the folders inside it, sorted
+          items:
+            type: string
+          type: array
+        mount_path:
+          description: Mount point of the volume
+          type: string
+        path:
+          description: Folder that was listed, relative to the mount point; empty is the volume root
+          type: string
+        truncated:
+          description: True when there were more folders than returned
+          type: boolean
+      required:
+        - mount_path
+        - path
+        - folders
+        - truncated
       type: object
     Welcome:
       additionalProperties: false
@@ -6483,6 +6521,65 @@ paths:
             X-Trace-Id:
               $ref: "#/components/headers/X-Trace-Id"
       summary: List API shares
+      tags:
+        - share
+  /api/shares/folders:
+    get:
+      operationId: get-api-shares-folders
+      parameters:
+        - description: Mount point of the volume
+          explode: false
+          in: query
+          name: mount_path
+          required: true
+          schema:
+            description: Mount point of the volume
+            type: string
+        - description: Folder to list, relative to the mount point; empty is the volume root
+          explode: false
+          in: query
+          name: path
+          schema:
+            description: Folder to list, relative to the mount point; empty is the volume root
+            maxLength: 1024
+            type: string
+        - $ref: "#/components/parameters/X-Trace-Id"
+        - $ref: "#/components/parameters/X-Span-Id"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VolumeFolders"
+          description: OK
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        4xx:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+        default:
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ErrorModel"
+          description: Error
+          headers:
+            X-Span-Id:
+              $ref: "#/components/headers/X-Span-Id"
+            X-Trace-Id:
+              $ref: "#/components/headers/X-Trace-Id"
+      summary: Get API shares folders
       tags:
         - share
   /api/status:

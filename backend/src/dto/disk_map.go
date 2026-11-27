@@ -457,6 +457,8 @@ func (m *DiskMap) GetMountPointsForPartition(diskID, partitionID string) []*Moun
 }
 
 // AddMountPointShare sets the Share field on the mount point.
+// When subfolder shares split the volume (issue #184), the share of the
+// volume root is kept over a subfolder share.
 // Extracts diskID, partitionID, and path from the share's MountPointData.
 // If partition info is nil in the share, searches existing mount points for the partition.
 // Returns an error if the share, mount point data, or disk/partition is not found.
@@ -539,6 +541,11 @@ func (m *DiskMap) AddMountPointShare(share *SharedResource) (*Disk, error) {
 		return nil, errors.WithDetails(ErrorNotFound, "Message", "mount point not found", "DiskId", diskID, "PartitionId", partitionID, "Path", path)
 	}
 
+	keepRootShare := mp.Share != nil && mp.Share.Name != share.Name &&
+		mp.Share.SubfolderOrRoot() == "" && share.SubfolderOrRoot() != ""
+	if keepRootShare {
+		return d, nil
+	}
 	mp.Share = share
 	(*part.MountPointData)[path] = mp
 	(*d.Partitions)[partitionID] = part

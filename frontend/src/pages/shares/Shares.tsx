@@ -15,6 +15,7 @@ import { toast } from "react-toastify";
 import { PreviewDialog } from "../../components/PreviewDialog";
 import { ResizableSplitView } from "../../components/ResizableSplitView";
 import { useShare } from "../../hooks/shareHook";
+import { useLabFeatures } from "../../hooks/useLabFeatures";
 import { useVolume } from "../../hooks/volumeHook";
 import { addMessage } from "../../store/errorSlice";
 import { type LocationState, TabIDs } from "../../store/locationState";
@@ -49,6 +50,9 @@ export function Shares() {
   const navigate = useNavigate();
   const { shares, isLoading } = useShare();
   const { disks: volumes, isLoading: vlLoading } = useVolume();
+  // Share subfolders (issue #184) let an already shared volume carry more shares.
+  const { isAvailable: isLabFeatureAvailable } = useLabFeatures();
+  const subfoldersAvailable = isLabFeatureAvailable("share_subfolders");
   const [selectedShareKey, setSelectedShareKey] = useState<string | undefined>(
     () => localStorage.getItem("shares.selectedShareKey") || undefined,
   );
@@ -111,7 +115,7 @@ export function Shares() {
               mpd?.is_mounted &&
               mpd.path &&
               mpd.root &&
-              !sharedPaths.has(mpd.path)
+              (subfoldersAvailable || !sharedPaths.has(mpd.path))
             ) {
               return true; // Found a selectable, unshared, mounted mount point
             }
@@ -120,7 +124,7 @@ export function Shares() {
       }
     }
     return false; // No suitable mount points found
-  }, [volumes, shares, vlLoading, isLoading]);
+  }, [volumes, shares, vlLoading, isLoading, subfoldersAvailable]);
 
   // Persist selection and expanded groups to localStorage
   useEffect(() => {

@@ -6,6 +6,8 @@
 
 ### ✨ Features
 
+- **Share subfolders (Lab)**: A share can expose a folder inside its volume instead of the whole volume, so one volume can carry several shares, each with its own users, for example one private folder per person on a single data disk. The folder is picked with a browser of the volume's folders (filter by name, or name a new one). Missing folders are created with the volume root's permissions; folders outside the volume (including through symlinks) and two shares on the same folder are refused. ([#184](https://github.com/dianlight/srat/issues/184))
+
 ### 🐛 Bug Fixes
 
 - **NTFS and exFAT partitions detected without udev data**: the hardware→DTO converter now resolves the filesystem type through the adapter signature table (NTFS/exFAT boot sector OEM ID), which the kernel magic table does not cover. USB partitions whose Supervisor device entry carries no `ID_FS_TYPE` no longer show an empty filesystem type with `canMount: false`. ([srat#1513](https://github.com/dianlight/srat/issues/1513), [srat#1514](https://github.com/dianlight/srat/pull/1514))

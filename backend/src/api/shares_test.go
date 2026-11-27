@@ -27,6 +27,7 @@ type ShareHandlerSuite struct {
 	handler          *api.ShareHandler
 	dirtyService     service.DirtyDataServiceInterface
 	mockShareService service.ShareServiceInterface
+	mockSettings     service.SettingServiceInterface
 	ctx              context.Context
 	cancel           context.CancelFunc
 }
@@ -42,6 +43,7 @@ func (suite *ShareHandlerSuite) SetupTest() {
 			service.NewDirtyDataService,
 			events.NewEventBus,
 			mock.Mock[service.ShareServiceInterface],
+			mock.Mock[service.SettingServiceInterface],
 			func() *dto.ContextState {
 				return &dto.ContextState{
 					ReadOnlyMode:    false,
@@ -54,6 +56,7 @@ func (suite *ShareHandlerSuite) SetupTest() {
 		fx.Populate(&suite.handler),
 		fx.Populate(&suite.dirtyService),
 		fx.Populate(&suite.mockShareService),
+		fx.Populate(&suite.mockSettings),
 		fx.Populate(&suite.ctx),
 		fx.Populate(&suite.cancel),
 	)
@@ -1382,4 +1385,195 @@ func (suite *ShareHandlerSuite) TestUpdateShareWithExFATVolume() {
 
 func TestShareHandlerSuite(t *testing.T) {
 	suite.Run(t, new(ShareHandlerSuite))
+}
+
+// Share subfolders (issue #184) are a Lab feature: setting or changing one
+// needs experimental_lab_mode, keeping an existing one never does.
+
+func (suite *ShareHandlerSuite) labMode(on bool) {
+	mock.When(suite.mockSettings.Load()).ThenReturn(&dto.Settings{ExperimentalLabMode: on}, nil)
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareSubfolderRequiresLabMode() {
+	suite.labMode(false)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "emperor", Subfolder: new("emperor")})
+
+	suite.Equal(http.StatusForbidden, resp.Code)
+	mock.Verify(suite.mockShareService, matchers.Times(0)).CreateShare(mock.Any[dto.SharedResource]())
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareSubfolderWithLabMode() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).
+		ThenReturn(&dto.SharedResource{Name: "emperor", Subfolder: new("emperor")}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "emperor", Subfolder: new("emperor")})
+
+	suite.Require().Equal(http.StatusCreated, resp.Code)
+	var result dto.SharedResource
+	suite.Require().NoError(json.Unmarshal(resp.Body.Bytes(), &result))
+	suite.Equal("emperor", result.SubfolderOrRoot())
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareVolumeRootNeedsNoLabMode() {
+	suite.labMode(false)
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).
+		ThenReturn(&dto.SharedResource{Name: "data1"}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "data1", Subfolder: new("")})
+
+	suite.Equal(http.StatusCreated, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareSubfolderSettingsError() {
+	mock.When(suite.mockSettings.Load()).ThenReturn(nil, errors.New("settings unavailable"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "emperor", Subfolder: new("emperor")})
+
+	suite.Equal(http.StatusInternalServerError, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareFolderInUseReturnsConflict() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorShareFolderInUse, "Path", "/mnt/DATA1/emperor"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "emperor2", Subfolder: new("emperor")})
+
+	suite.Equal(http.StatusConflict, resp.Code)
+	suite.Contains(resp.Body.String(), "/mnt/DATA1/emperor")
+}
+
+func (suite *ShareHandlerSuite) TestCreateShareInvalidSubfolderExplainsWhy() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.CreateShare(mock.Any[dto.SharedResource]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorShareValidation, "Message", "subfolder points outside the volume"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Post("/share", dto.SharedResource{Name: "escape", Subfolder: new("link")})
+
+	suite.Equal(http.StatusUnprocessableEntity, resp.Code)
+	suite.Contains(resp.Body.String(), "subfolder points outside the volume")
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareKeepingSubfolderNeedsNoLabMode() {
+	suite.labMode(false)
+	mock.When(suite.mockShareService.GetShare(mock.Exact("emperor"))).
+		ThenReturn(&dto.SharedResource{Name: "emperor", Subfolder: new("emperor")}, nil)
+	mock.When(suite.mockShareService.UpdateShare(mock.Exact("emperor"), mock.Any[dto.SharedResource]())).
+		ThenReturn(&dto.SharedResource{Name: "emperor", Subfolder: new("emperor")}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Put("/share/emperor", dto.SharedResource{Name: "emperor", Subfolder: new("emperor/"), GuestOk: new(true)})
+
+	suite.Equal(http.StatusOK, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareChangingSubfolderRequiresLabMode() {
+	suite.labMode(false)
+	mock.When(suite.mockShareService.GetShare(mock.Exact("emperor"))).
+		ThenReturn(&dto.SharedResource{Name: "emperor", Subfolder: new("emperor")}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	// Clearing the subfolder would widen the share to the whole volume.
+	resp := api.Put("/share/emperor", dto.SharedResource{Name: "emperor", Subfolder: new("")})
+
+	suite.Equal(http.StatusForbidden, resp.Code)
+	mock.Verify(suite.mockShareService, matchers.Times(0)).UpdateShare(mock.Any[string](), mock.Any[dto.SharedResource]())
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareSubfolderShareNotFound() {
+	mock.When(suite.mockShareService.GetShare(mock.Exact("ghost"))).
+		ThenReturn(nil, errors.WithStack(dto.ErrorShareNotFound))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Put("/share/ghost", dto.SharedResource{Name: "ghost", Subfolder: new("ghost")})
+
+	suite.Equal(http.StatusNotFound, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareSubfolderLookupError() {
+	mock.When(suite.mockShareService.GetShare(mock.Exact("broken"))).
+		ThenReturn(nil, errors.New("database locked"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Put("/share/broken", dto.SharedResource{Name: "broken", Subfolder: new("broken")})
+
+	suite.Equal(http.StatusInternalServerError, resp.Code)
+}
+
+func (suite *ShareHandlerSuite) TestUpdateShareFolderInUseReturnsConflict() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.GetShare(mock.Exact("pavel"))).
+		ThenReturn(&dto.SharedResource{Name: "pavel", Subfolder: new("pavel")}, nil)
+	mock.When(suite.mockShareService.UpdateShare(mock.Exact("pavel"), mock.Any[dto.SharedResource]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorShareFolderInUse, "Path", "/mnt/DATA1/emperor"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Put("/share/pavel", dto.SharedResource{Name: "pavel", Subfolder: new("emperor")})
+
+	suite.Equal(http.StatusConflict, resp.Code)
+	suite.Contains(resp.Body.String(), "/mnt/DATA1/emperor")
+}
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersRequiresLabMode() {
+	suite.labMode(false)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares/folders?mount_path=/mnt/DATA1")
+
+	suite.Equal(http.StatusForbidden, resp.Code)
+	mock.Verify(suite.mockShareService, matchers.Times(0)).ListVolumeFolders(mock.Any[string](), mock.Any[string]())
+}
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersSuccess() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("Rodina"))).
+		ThenReturn(&dto.VolumeFolders{MountPath: "/mnt/DATA1", Path: "Rodina", Folders: []string{"photos"}}, nil)
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	resp := api.Get("/shares/folders?mount_path=/mnt/DATA1&path=Rodina")
+
+	suite.Require().Equal(http.StatusOK, resp.Code)
+	var result dto.VolumeFolders
+	suite.Require().NoError(json.Unmarshal(resp.Body.Bytes(), &result))
+	suite.Equal([]string{"photos"}, result.Folders)
+	suite.Equal("Rodina", result.Path)
+}
+
+func (suite *ShareHandlerSuite) TestListVolumeFoldersErrors() {
+	suite.labMode(true)
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/gone"), mock.Any[string]())).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorNotFound, "Message", "volume is not mounted"))
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("escape"))).
+		ThenReturn(nil, errors.WithDetails(dto.ErrorShareValidation, "Message", "subfolder points outside the volume"))
+	mock.When(suite.mockShareService.ListVolumeFolders(mock.Exact("/mnt/DATA1"), mock.Exact("broken"))).
+		ThenReturn(nil, errors.New("disk on fire"))
+	_, api := humatest.New(suite.T())
+	suite.handler.RegisterShareHandler(api)
+
+	suite.Equal(http.StatusNotFound, api.Get("/shares/folders?mount_path=/mnt/gone").Code)
+	invalid := api.Get("/shares/folders?mount_path=/mnt/DATA1&path=escape")
+	suite.Equal(http.StatusUnprocessableEntity, invalid.Code)
+	suite.Contains(invalid.Body.String(), "points outside the volume")
+	suite.Equal(http.StatusInternalServerError, api.Get("/shares/folders?mount_path=/mnt/DATA1&path=broken").Code)
 }

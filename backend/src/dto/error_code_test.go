@@ -54,6 +54,11 @@ func TestErrorCodes(t *testing.T) {
 			expectedMsg: "Share already exists",
 		},
 		{
+			name:        "ErrorShareFolderInUse",
+			err:         ErrorShareFolderInUse,
+			expectedMsg: "Another share already exposes this folder",
+		},
+		{
 			name:        "ErrorAlreadyMounted",
 			err:         ErrorAlreadyMounted,
 			expectedMsg: "Already mounted",

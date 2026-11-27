@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"log/slog"
 	"net"
@@ -508,6 +509,8 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		return tconfig, errors.WithStack(errS)
 	}
 
+	// ListShares verifies every share now, so a subfolder that no longer
+	// resolves inside its volume is invalid and skipped below (issue #184).
 	sr, err := self.share_service.ListShares()
 	if err != nil {
 		return tconfig, errors.WithStack(err)
@@ -545,6 +548,13 @@ func (self *ServerService) jSONFromDatabase() (tconfig config.Config, err errors
 		if cshare.Usage == "media" {
 			tconfig.Medialibrary.Enable = true
 			break
+		}
+	}
+	// A subfolder share (issue #184) exposes a folder inside its volume.
+	for name, cshare := range tconfig.Shares {
+		if cshare.Subfolder != "" {
+			cshare.Path = dto.ShareDirectory(cshare.Path, cshare.Subfolder)
+			tconfig.Shares[name] = cshare
 		}
 	}
 
@@ -725,7 +735,8 @@ func (self *ServerService) recoverMediaUsageSymlinks(ctx context.Context, linkRo
 			continue
 		}
 
-		targetPath := share.MountPointData.Path
+		// A subfolder share (issue #184) links only its folder.
+		targetPath := dto.ShareDirectory(share.MountPointData.Path, share.SubfolderOrRoot())
 		if !filepath.IsAbs(targetPath) {
 			slog.WarnContext(ctx, "Skipping media symlink recovery for non-absolute mount path", "share", share.Name, "target", targetPath)
 			continue
@@ -880,9 +891,27 @@ func (self *ServerService) writeConfigsAndRestartServers(ctx context.Context, di
 	return nil
 }
 
+// nfsExportsFile is where writeNFSConfig writes; tests use a temporary file.
+var nfsExportsFile = "/etc/exports"
+
+// exportsPath escapes a path for /etc/exports: whitespace, control
+// characters, backslash, '#' and '"' become octal escapes such as \040,
+// as described in exports(5), so a folder like "Italie 2025" stays one entry.
+func exportsPath(p string) string {
+	var b strings.Builder
+	for i := 0; i < len(p); i++ {
+		c := p[i]
+		if c <= ' ' || c == '\\' || c == '#' || c == '"' || c == 0x7f {
+			fmt.Fprintf(&b, "\\%03o", c)
+			continue
+		}
+		b.WriteByte(c)
+	}
+	return b.String()
+}
+
 // writeNFSConfig writes the NFS exports configuration to /etc/exports
 func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
-	nfsExportsFile := "/etc/exports"
 	tlog.TraceContext(ctx, "Writing NFS exports configuration file", "file", nfsExportsFile)
 
 	hostname, err := self.host_service.GetHostName()
@@ -890,7 +919,9 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 		return errors.WithStack(err)
 	}
 
-	// Get all shares from the database
+	// Get all shares from the database. ListShares verifies every share now,
+	// so a subfolder that no longer resolves inside its volume is invalid and
+	// skipped below (issue #184).
 	shares, err := self.share_service.ListShares()
 	if err != nil {
 		return errors.WithStack(err)
@@ -938,6 +969,8 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			tlog.WarnContext(ctx, "Skipping share with empty path", "name", share.Name)
 			continue
 		}
+		// A subfolder share (issue #184) exports only its folder.
+		path = dto.ShareDirectory(path, share.SubfolderOrRoot())
 
 		if share.MountPointData.Partition == nil {
 			enrichSharePartitionFromCache(&share, self.disks)
@@ -948,11 +981,17 @@ func (self *ServerService) writeNFSConfig(ctx context.Context) errors.E {
 			// Generate NFS export entry
 			// Format: /path/to/share *(rw,sync,no_subtree_check,no_root_squash,fsid=X)
 			// Using fsid based on share index to ensure unique identification
-			exportsContent.WriteString(path)
+			exportsContent.WriteString(exportsPath(path))
 			exportsContent.WriteString(" ")
 			exportsContent.WriteString(hostname)
 			//exportsContent.WriteString("172.30.32.0/24") // Allow access from local network and hostname for cluster compatibility
-			exportsContent.WriteString("(rw,sync,no_subtree_check,no_root_squash")
+			if share.SubfolderOrRoot() != "" {
+				// A subfolder export must not hand out file handles for the
+				// rest of the volume (issue #184).
+				exportsContent.WriteString("(rw,sync,subtree_check,no_root_squash")
+			} else {
+				exportsContent.WriteString("(rw,sync,no_subtree_check,no_root_squash")
+			}
 			// fsid need to be a UUID valid format
 			//exportsContent.WriteString(",fsid=")
 			//exportsContent.WriteString(strings.ReplaceAll(share.MountPointData.DeviceId, "-", ""))

@@ -58,4 +58,51 @@ describe("shares utils", () => {
 			typeof fallbackIcon === "function" || typeof fallbackIcon === "object",
 		).toBe(true);
 	});
+
+	it("normalizes share subfolders (issue #184)", async () => {
+		const { normalizeSubfolder } = await import("../utils");
+
+		expect(normalizeSubfolder(undefined)).toBe("");
+		expect(normalizeSubfolder(null)).toBe("");
+		expect(normalizeSubfolder("photos/2024/")).toBe("photos/2024");
+		// Names are never trimmed: a space can be part of a folder name.
+		expect(normalizeSubfolder("Italie 2025")).toBe("Italie 2025");
+	});
+
+	it("explains unacceptable share subfolders like the backend", async () => {
+		const { subfolderProblem } = await import("../utils");
+
+		for (const ok of ["", "emperor", "photos/2024/", "..hidden/v1.2", "Rodina/Dovolená", "Italie 2025", "a".repeat(255)]) {
+			expect(subfolderProblem(ok)).toBeUndefined();
+		}
+		expect(subfolderProblem("/etc")).toMatch(/leading \//);
+		expect(subfolderProblem("/")).toMatch(/leading \//);
+		expect(subfolderProblem("photos\\2024")).toMatch(/separate/);
+		expect(subfolderProblem("photos//2024")).toMatch(/empty/);
+		expect(subfolderProblem("../etc")).toMatch(/"\.\."/);
+		expect(subfolderProblem("./photos")).toMatch(/"\."/);
+		expect(subfolderProblem("a".repeat(256))).toMatch(/255 bytes/);
+		// 128 two-byte characters are 256 bytes, over the limit like on the server.
+		expect(subfolderProblem("é".repeat(128))).toMatch(/255 bytes/);
+		expect(subfolderProblem("pho\u0007tos")).toMatch(/control/);
+		expect(subfolderProblem("pho\u007ftos")).toMatch(/control/);
+		expect(subfolderProblem("pho\u0085tos")).toMatch(/control/);
+		expect(subfolderProblem("Fotky ěščř")).toBeUndefined();
+		expect(subfolderProblem(" photos")).toMatch(/space/);
+		expect(subfolderProblem("photos /2024")).toMatch(/space/);
+		expect(subfolderProblem("   ")).toMatch(/space/);
+	});
+
+	it("lists the folders of a volume already used by other shares", async () => {
+		const { foldersInUse } = await import("../utils");
+		const shares = [
+			{ name: "DATA1", mount_point_data: { path: "/mnt/DATA1" } },
+			{ name: "EMPEROR", subfolder: "emperor/", mount_point_data: { path: "/mnt/DATA1" } },
+			{ name: "OTHER", subfolder: "x", mount_point_data: { path: "/mnt/OTHER" } },
+		];
+
+		expect(foldersInUse(shares, "/mnt/DATA1")).toEqual(new Set(["", "emperor"]));
+		expect(foldersInUse(shares, "/mnt/DATA1", "EMPEROR")).toEqual(new Set([""]));
+		expect(foldersInUse(shares, "/mnt/NONE")).toEqual(new Set());
+	});
 });

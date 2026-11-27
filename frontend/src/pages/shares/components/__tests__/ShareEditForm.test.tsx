@@ -47,6 +47,8 @@ describe("ShareEditForm component", () => {
     const overrides = {
       useVolume: () => volumeResult,
       useGetApiUsersQuery: () => usersResult,
+      useLabFeatures: () => ({ features: [], isAvailable: () => false, isLoading: false }),
+      useGetApiSharesFoldersQuery: () => ({ data: undefined, isFetching: false, error: undefined }),
     } as const;
 
     return { overrides };
@@ -268,6 +270,8 @@ describe("ShareEditForm component", () => {
     const overrides = {
       useVolume: () => volumeResult,
       useGetApiUsersQuery: () => usersResult,
+      useLabFeatures: () => ({ features: [], isAvailable: () => false, isLoading: false }),
+      useGetApiSharesFoldersQuery: () => ({ data: undefined, isFetching: false, error: undefined }),
     } as const;
 
     const React = await import("react");
@@ -394,5 +398,172 @@ describe("ShareEditForm component", () => {
     expect(
       screen.getByText(/Usage is managed by Home Assistant/i),
     ).toBeTruthy();
+  }, 60000);
+
+  // Share subfolders (issue #184) are a Lab feature.
+  const withSubfolders = (available: boolean) => {
+    const { overrides } = setupCommonOverrides();
+    return {
+      ...overrides,
+      useLabFeatures: () => ({
+        features: [],
+        isAvailable: (key: string) => available && key === "share_subfolders",
+        isLoading: false,
+      }),
+    };
+  };
+
+  it("hides the Subfolder field without the share_subfolders lab feature", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Usage } = await import("../../../../store/sratApi");
+    const { ShareEditForm } =
+      // @ts-expect-error - Query param fetches isolated module instance
+      await import("../ShareEditForm?share-edit-form-subfolder-hidden");
+
+    render(
+      React.createElement(ShareEditForm as any, {
+        shareData: {
+          name: "NoLab",
+          usage: Usage.None,
+          mount_point_data: { path: "/mnt/free", is_mounted: true, is_write_supported: true },
+        },
+        shares: {},
+        onSubmit: () => {},
+        testOverrides: withSubfolders(false),
+      }),
+    );
+
+    await screen.findAllByLabelText(/Share Name/i);
+    expect(screen.queryByLabelText(/Subfolder/i)).toBeNull();
+  }, 60000);
+
+  it("shares a folder of an already shared volume and refuses a folder in use", async () => {
+    const React = await import("react");
+    const { render, screen, waitFor } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Usage } = await import("../../../../store/sratApi");
+    const { ShareEditForm } =
+      // @ts-expect-error - Query param fetches isolated module instance
+      await import("../ShareEditForm?share-edit-form-subfolder-create");
+
+    const handleSubmit = vi.fn(() => {});
+    render(
+      React.createElement(ShareEditForm as any, {
+        shareData: {
+          name: "EMPEROR",
+          usage: Usage.None,
+          mount_point_data: { path: "/mnt/free", is_mounted: true, is_write_supported: true },
+        },
+        shares: {
+          FREE: { name: "FREE", mount_point_data: { path: "/mnt/free" } },
+          PAVEL: { name: "PAVEL", subfolder: "pavel", mount_point_data: { path: "/mnt/free" } },
+        },
+        onSubmit: handleSubmit,
+        testOverrides: withSubfolders(true),
+      }),
+    );
+
+    const user = userEvent.setup();
+    const submitButton = await screen.findByRole("button", { name: /create/i });
+
+    // The volume root is taken by FREE: a subfolder is required.
+    await user.click(submitButton);
+    await waitFor(() =>
+      expect(screen.getByText(/already exposes this whole volume/i)).toBeTruthy(),
+    );
+
+    const subfolder = await screen.findByLabelText(/Subfolder/i);
+    await user.type(subfolder, "pavel");
+    await user.click(submitButton);
+    await waitFor(() =>
+      expect(screen.getByText(/already exposes this folder/i)).toBeTruthy(),
+    );
+
+    await user.clear(subfolder);
+    await user.type(subfolder, "../etc");
+    await user.click(submitButton);
+    await waitFor(() => expect(screen.getByText(/are not allowed/i)).toBeTruthy());
+    expect(handleSubmit).not.toHaveBeenCalled();
+
+    await user.clear(subfolder);
+    await user.type(subfolder, "emperor");
+    await user.click(submitButton);
+    await waitFor(() => expect(handleSubmit).toHaveBeenCalled());
+    const submission = (handleSubmit.mock.calls as any[])[0]?.[0];
+    expect(submission?.subfolder).toBe("emperor");
+    expect(submission?.mount_point_data?.path).toBe("/mnt/free");
+  }, 60000);
+
+  it("shows a stored subfolder read-only when Lab Mode is off", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Usage } = await import("../../../../store/sratApi");
+    const { ShareEditForm } =
+      // @ts-expect-error - Query param fetches isolated module instance
+      await import("../ShareEditForm?share-edit-form-subfolder-readonly");
+
+    render(
+      React.createElement(ShareEditForm as any, {
+        shareData: {
+          org_name: "EMPEROR",
+          name: "EMPEROR",
+          usage: Usage.None,
+          subfolder: "emperor",
+          mount_point_data: { path: "/mnt/free", is_mounted: true, is_write_supported: true },
+        },
+        shares: {},
+        onSubmit: () => {},
+        testOverrides: withSubfolders(false),
+      }),
+    );
+
+    const subfolder = (await screen.findByLabelText(/Subfolder/i)) as HTMLInputElement;
+    expect(subfolder.value).toBe("emperor");
+    expect(subfolder.disabled).toBe(true);
+    expect(screen.getByText(/Turn on Lab Mode to change the subfolder/i)).toBeTruthy();
+  }, 60000);
+
+  it("fills the Subfolder field from the folder browser", async () => {
+    const React = await import("react");
+    const { render, screen, within } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Usage } = await import("../../../../store/sratApi");
+    const { ShareEditForm } =
+      // @ts-expect-error - Query param fetches isolated module instance
+      await import("../ShareEditForm?share-edit-form-subfolder-browse");
+
+    const listings: Record<string, string[]> = { "": ["emperor", "Rodina"], Rodina: ["photos"] };
+    const useGetApiSharesFoldersQuery = (arg: { mountPath: string; path?: string }, options?: { skip?: boolean }) =>
+      options?.skip
+        ? { data: undefined, isFetching: false, error: undefined }
+        : {
+            data: { mount_path: arg.mountPath, path: arg.path ?? "", folders: listings[arg.path ?? ""] ?? [], truncated: false },
+            isFetching: false,
+            error: undefined,
+          };
+
+    render(
+      React.createElement(ShareEditForm as any, {
+        shareData: {
+          name: "PHOTOS",
+          usage: Usage.None,
+          mount_point_data: { path: "/mnt/free", is_mounted: true, is_write_supported: true },
+        },
+        shares: {},
+        onSubmit: () => {},
+        testOverrides: { ...withSubfolders(true), useGetApiSharesFoldersQuery },
+      }),
+    );
+
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole("button", { name: /browse folders/i }));
+    const dialog = await screen.findByRole("dialog", { name: /choose a folder/i });
+    await user.click(within(dialog).getByRole("button", { name: "Rodina" }));
+    await user.click(within(dialog).getByRole("button", { name: "photos" }));
+    await user.click(within(dialog).getByRole("button", { name: 'Use "photos"' }));
+
+    const subfolder = (await screen.findByLabelText(/Subfolder/i)) as HTMLInputElement;
+    expect(subfolder.value).toBe("Rodina/photos");
   }, 60000);
 });

@@ -18,6 +18,6 @@ type HaSupervisorToDto interface {
 	// goverter:skipCopySameType
 	// goverter:map Name Share
 	// goverter:map Usage Usage | hAMountUsageToMountUsage
-	// goverter:ignore Password Path Port ReadOnly Server State Type Username
+	// goverter:ignore Device Filesystem Password Path Port ReadOnly Server State Type UserPath Username Uuid
 	SharedResourceToMount(source dto.SharedResource, target *mount.Mount) error
 }

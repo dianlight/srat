@@ -22,6 +22,9 @@ type ExportedShare struct {
 	GuestOk            bool `gorm:"default:false"`
 	TimeMachineMaxSize string
 	Usage              dto.HAMountUsage
+	// Subfolder is the folder inside the volume the share exposes, relative
+	// to the mount point; empty is the volume root (issue #184).
+	Subfolder          string `gorm:"not null;default:''"`
 	MountPointDataPath *string
 	MountPointDataRoot *string
 	MountPointData     MountPointPath `gorm:"foreignKey:MountPointDataPath,MountPointDataRoot;references:Path,Root"`

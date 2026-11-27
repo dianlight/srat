@@ -214,4 +214,32 @@ describe("ShareDetailsPanel", () => {
 
         expect(await screen.findByText("Managed by Home Assistant")).toBeTruthy();
     });
+
+    // A share whose subfolder disappeared is invalid (issue #184): it must
+    // stay editable so another folder can be picked.
+    it("keeps the edit button usable for an invalid share", async () => {
+        const React = await import("react");
+        const { render, screen } = await import("@testing-library/react");
+        const userEvent = (await import("@testing-library/user-event")).default;
+        // @ts-expect-error - Query param ensures fresh module instance for mocks
+        const { ShareDetailsPanel } = await import("../components/ShareDetailsPanel?share-details-invalid-edit");
+
+        const share = buildShare();
+        share.subfolder = "gone";
+        share.status = { is_valid: false, is_ha_mounted: false, is_hidden: false };
+        let editClicks = 0;
+
+        render(
+            React.createElement(ShareDetailsPanel as any, {
+                share,
+                shareKey: "documents",
+                onEditClick: () => { editClicks += 1; },
+            })
+        );
+
+        expect(await screen.findByText("Invalid Mount Point Data")).toBeTruthy();
+        const user = userEvent.setup();
+        await user.click(screen.getAllByTestId("EditIcon")[0] as any);
+        expect(editClicks).toBe(1);
+    });
 });

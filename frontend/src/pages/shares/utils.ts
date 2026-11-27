@@ -87,3 +87,58 @@ export const getCasingIcon = (
 ): OverridableComponent<SvgIconTypeMap<Record<string, never>, "svg">> => {
   return casingStyleToIconMap[style] || KeyboardCapslockIcon; // Default to UPPERCASE icon if not found
 };
+
+// Share subfolders (issue #184) mirror the backend rules in
+// dto.CleanShareSubfolder, so the form can explain a refusal before saving.
+
+// normalizeSubfolder returns the canonical form of a subfolder: without a
+// trailing "/". Names are never trimmed (a space can be part of a folder
+// name). An empty string is the volume root.
+export function normalizeSubfolder(subfolder?: string | null): string {
+  return (subfolder ?? "").replace(/\/$/, "");
+}
+
+const utf8 = new TextEncoder();
+
+// subfolderProblem explains why a subfolder is not acceptable, or returns
+// undefined when it is.
+export function subfolderProblem(subfolder?: string | null): string | undefined {
+  const raw = subfolder ?? "";
+  if (raw === "") return undefined;
+  if (raw.startsWith("/"))
+    return "Use a folder inside the volume, without a leading /";
+  if (raw.includes("\\")) return 'Use "/" to separate folders';
+  for (const segment of normalizeSubfolder(raw).split("/")) {
+    if (segment === "") return "Folder names cannot be empty";
+    if (segment === "." || segment === "..")
+      return 'Folder names "." and ".." are not allowed';
+    if (utf8.encode(segment).length > 255)
+      return "Folder names can have 255 bytes at most";
+    // C0, DEL and C1 controls, like Go's unicode.IsControl in the backend.
+    const isControl = (char: string) => {
+      const code = char.charCodeAt(0);
+      return code < 0x20 || (code >= 0x7f && code <= 0x9f);
+    };
+    if ([...segment].some(isControl))
+      return "Folder names cannot contain control characters";
+    if (segment.trim() !== segment)
+      return "Folder names cannot start or end with a space";
+  }
+  return undefined;
+}
+
+// foldersInUse lists the folders of a volume already exposed by shares other
+// than `exceptShare` ("" is the volume root).
+export function foldersInUse(
+  shares: Iterable<{ name?: string; subfolder?: string; mount_point_data?: { path?: string } }>,
+  volumePath: string,
+  exceptShare?: string,
+): Set<string> {
+  const folders = new Set<string>();
+  for (const share of shares) {
+    if (share.mount_point_data?.path !== volumePath) continue;
+    if (exceptShare !== undefined && share.name === exceptShare) continue;
+    folders.add(normalizeSubfolder(share.subfolder));
+  }
+  return folders;
+}

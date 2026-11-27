@@ -53,6 +53,9 @@ func NewLabFeatureRegistry() *LabFeatureRegistry {
 		{Key: "addon_mdns", Name: "Addon-side mDNS registration",
 			Description: "Zeroconf mDNS registration of the Samba service directly from the addon.",
 			Status:      StatusBeta},
+		{Key: "share_subfolders", Name: "Share subfolders",
+			Description: "Share a folder inside a volume instead of the whole volume, so one volume can carry several shares, each with its own users.",
+			Status:      StatusBeta},
 	}
 	m := make(map[string]LabFeature, len(entries))
 	for _, f := range entries {

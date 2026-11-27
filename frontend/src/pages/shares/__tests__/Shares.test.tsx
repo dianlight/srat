@@ -154,6 +154,14 @@ vi.mock("../../../hooks/volumeHook", () => ({
   }),
 }));
 
+vi.mock("../../../hooks/useLabFeatures", () => ({
+  useLabFeatures: () => ({
+    features: [],
+    isAvailable: () => false,
+    isLoading: false,
+  }),
+}));
+
 vi.mock("../../../store/wsApi", () => ({
   wsApi: {
     reducerPath: "wsApi",

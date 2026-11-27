@@ -260,6 +260,7 @@ export const customHandlers: RequestHandler[] = [
 			{ key: "ha_custom_component", name: "Home Assistant custom component tools", description: "Install, upgrade and uninstall the SRAT custom component.", status: Status2.Alpha, available: true },
 			{ key: "smb_over_quic", name: "SMB over QUIC", description: "Expose SMB shares over the QUIC transport.", status: Status2.Beta, available: true },
 			{ key: "addon_mdns", name: "Add-on side mDNS registration", description: "Zeroconf mDNS registration of the Samba service.", status: Status2.Beta, available: true },
+			{ key: "share_subfolders", name: "Share subfolders", description: "Share a folder inside a volume instead of the whole volume.", status: Status2.Beta, available: true },
 		];
 		return HttpResponse.json(labFeatures);
 	}),

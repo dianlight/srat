@@ -66,6 +66,16 @@ func TestResolveActualMountPointPath_PrefersMountedPartitionPath(t *testing.T) {
 	assert.Equal(t, mountedPath, resolveActualMountPointPath(share))
 }
 
+func TestResolveShareExportPathIncludesSubfolder(t *testing.T) {
+	share := dto.SharedResource{MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}}
+	assert.Equal(t, "/mnt/DATA1", resolveShareExportPath(share))
+
+	share.Subfolder = new("emperor")
+	assert.Equal(t, "/mnt/DATA1/emperor", resolveShareExportPath(share))
+
+	assert.Empty(t, resolveShareExportPath(dto.SharedResource{Subfolder: new("emperor")}))
+}
+
 func TestMatchPartitionWithDevName(t *testing.T) {
 	partition := &dto.Partition{
 		Id:               new("ata-test-part1"),
@@ -239,4 +249,14 @@ func TestEnrichExportedShareForceUserGroup_RealFilesystemService(t *testing.T) {
 	enrichExportedShareForceUserGroup(&unknown, &dto.MountPointData{FSType: new("weirdfs")}, prober)
 	assert.Equal(t, "root", unknown.ForceUser)
 	assert.Equal(t, "root", unknown.ForceGroup)
+}
+
+func TestHANFSMountPath(t *testing.T) {
+	share := dto.SharedResource{Name: "EMPEROR", MountPointData: &dto.MountPointData{Path: "/mnt/DATA1"}}
+	assert.Equal(t, "DATA1", haNFSMountPath(share))
+
+	share.Subfolder = new("emperor")
+	assert.Equal(t, "DATA1/emperor", haNFSMountPath(share))
+
+	assert.Equal(t, "NOPATH", haNFSMountPath(dto.SharedResource{Name: "NOPATH"}), "falls back to the share name")
 }

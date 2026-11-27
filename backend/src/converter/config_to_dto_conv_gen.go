@@ -119,6 +119,8 @@ func (c *ConfigToDtoConverterImpl) ShareToSharedResource(source config.Share, co
 			dtoSharedResource.VetoFiles[j] = source.VetoFiles[j]
 		}
 	}
+	pString := source.Subfolder
+	dtoSharedResource.Subfolder = &pString
 	pDtoMountPointData, err := c.ShareToMountPointData(source)
 	if err != nil {
 		return dtoSharedResource, err
@@ -182,6 +184,9 @@ func (c *ConfigToDtoConverterImpl) SharedResourceToShare(source dto.SharedResour
 		for k := 0; k < len(source.VetoFiles); k++ {
 			target.VetoFiles[k] = source.VetoFiles[k]
 		}
+	}
+	if source.Subfolder != nil {
+		target.Subfolder = *source.Subfolder
 	}
 	return nil
 }

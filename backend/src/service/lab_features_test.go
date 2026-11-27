@@ -35,7 +35,7 @@ func TestLabFeatureRegistryAllReturnsEveryFeature(t *testing.T) {
 	r := service.NewLabFeatureRegistry()
 
 	all := r.All()
-	require.Len(t, all, 6)
+	require.Len(t, all, 7)
 
 	keys := make(map[string]service.LabFeatureStatus, len(all))
 	for _, f := range all {
@@ -47,6 +47,7 @@ func TestLabFeatureRegistryAllReturnsEveryFeature(t *testing.T) {
 	require.Equal(t, service.StatusAlpha, keys["ha_custom_component"])
 	require.Equal(t, service.StatusBeta, keys["smb_over_quic"])
 	require.Equal(t, service.StatusBeta, keys["addon_mdns"])
+	require.Equal(t, service.StatusBeta, keys["share_subfolders"])
 }
 
 type stubLabSettingLoader struct {
