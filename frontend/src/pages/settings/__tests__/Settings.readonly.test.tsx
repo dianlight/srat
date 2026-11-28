@@ -1,10 +1,10 @@
+import { createTestStore, getMswServer } from "/test/testing";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestStore, getMswServer } from "/test/testing";
 
 const { wsStateRef } = vi.hoisted(() => {
   const wsStateRef = {
@@ -26,7 +26,9 @@ vi.mock("../../../store/wsApi", () => ({
     util: {
       resetApiState: () => ({ type: "wsApi/resetApiState" }),
     },
-    middleware: () => (next: (action: unknown) => unknown) => (action: unknown) => next(action),
+    middleware:
+      () => (next: (action: unknown) => unknown) => (action: unknown) =>
+        next(action),
   },
   useGetServerEventsQuery: () => ({
     data: wsStateRef.current,
@@ -116,8 +118,12 @@ describe("Settings read_only gating", () => {
     expect(hostInputs[0]).toBeDisabled();
     const wgInputs = screen.getAllByLabelText(/workgroup/i);
     expect(wgInputs[0]).toBeDisabled();
-    expect(screen.getByRole("switch", { name: /local master/i })).toBeDisabled();
-    expect(screen.getByRole("switch", { name: /experimental lab mode/i })).toBeDisabled();
+    expect(
+      screen.getByRole("switch", { name: /local master/i }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("switch", { name: /experimental lab mode/i }),
+    ).toBeDisabled();
 
     // bottom bar stays disabled even if we try to mutate (form disabled prevents dirty)
     expect(screen.getByRole("button", { name: /^reset$/i })).toBeDisabled();
@@ -131,9 +137,13 @@ describe("Settings read_only gating", () => {
       .find((el) => el != null);
     expect(devicesLabel).toBeTruthy();
     await user.click(devicesLabel as HTMLElement);
-    expect(await screen.findByRole("heading", { name: /^devices$/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /^devices$/i }),
+    ).toBeInTheDocument();
     // bind all interfaces checkbox may be rendered as checkbox, not switch - check both
-    const bindAll = screen.queryByLabelText(/bind all interfaces/i) ?? screen.queryByRole("checkbox", { name: /bind all interfaces/i });
+    const bindAll =
+      screen.queryByLabelText(/bind all interfaces/i) ??
+      screen.queryByRole("checkbox", { name: /bind all interfaces/i });
     expect(bindAll).toBeDisabled();
   });
 
@@ -173,5 +183,39 @@ describe("Settings read_only gating", () => {
     );
     await screen.findByPlaceholderText("Search settings...");
     expect(screen.getAllByLabelText(/hostname/i)[0]).toBeEnabled();
+  });
+
+  it("keeps reset and apply disabled and never fires PUT /api/settings when read_only is true", async () => {
+    wsStateRef.current = {
+      hello: { read_only: true, build_version: "2026.1.0", message: "mock" },
+    } as unknown as Record<string, unknown>;
+
+    const server = getMswServer();
+    const putSpy = vi.fn();
+    server.use(
+      http.put(/.*\/api\/settings$/, () => {
+        putSpy();
+        return HttpResponse.json({
+          hostname: "homeassistant",
+          workgroup: "WORKGROUP",
+          telemetry_mode: "Disabled",
+          bind_all_interfaces: true,
+          interfaces: [],
+        });
+      }),
+    );
+
+    await renderSettings();
+
+    await screen.findAllByLabelText(/hostname/i);
+    expect(screen.getAllByLabelText(/hostname/i)[0]).toBeDisabled();
+    const applyButton = screen.getByRole("button", { name: /^apply$/i });
+    expect(applyButton).toBeDisabled();
+    expect(screen.getByRole("button", { name: /^reset$/i })).toBeDisabled();
+
+    // Clicking Apply while read-only must be a no-op: no PUT /api/settings.
+    // The disabled gate blocks the submit path entirely; the MSW PUT spy
+    // guards against any request still slipping through.
+    expect(putSpy).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
+
 import IssueCard from "../../components/IssueCard";
 import { useLabFeatures } from "../../hooks/useLabFeatures";
 import { useSentryTelemetry } from "../../hooks/useSentryTelemetry";
@@ -18,18 +19,36 @@ import { TabIDs } from "../../store/locationState";
 import {
   type Partition,
   type Problem,
+  sratApi,
   Status,
   useDeleteApiProblemsByProblemKeyMutation,
   useGetApiProblemsQuery,
   usePutApiProblemsByProblemKeyMutation,
 } from "../../store/sratApi";
+import { useAppDispatch } from "../../store/store";
 import { useGetServerEventsQuery } from "../../store/wsApi";
 import { TourEvents, TourEventTypes } from "../../utils/TourEvents";
 import { ActionableItemsList } from "./components/ActionableItemsList";
 import {
   describeProblemActionFailure,
+  dismissProblemToast,
+  getAuthoritativeProblem,
+  getLocalProblemIgnore,
+  getProblemIgnoreOverride,
+  isInactiveProblem,
+  isProblemIgnoreOverrideActive,
+  isProblemResponse,
+  mergeLiveProblems,
   type ProblemAction,
+  type ProblemIgnoreOverride,
+  problemToastId,
+  reconcileProblemIgnoreMutationResult,
   resolveReenableTarget,
+  restoreProblemIgnoreOverride,
+  setLocalProblemIgnore,
+  showProblemToast,
+  useProblemIgnoreOverrides,
+  useReconcileProblemIgnoreOverrides,
 } from "./problemActionError";
 
 export function DashboardActions() {
@@ -43,6 +62,9 @@ export function DashboardActions() {
   const { isAvailable: labFeatureAvailable } = useLabFeatures();
   const customComponentLabActive = labFeatureAvailable("ha_custom_component");
   const { reportError } = useSentryTelemetry();
+  const dispatch = useAppDispatch();
+  const ignoreOverrides = useProblemIgnoreOverrides();
+  useReconcileProblemIgnoreOverrides(problems, evdata?.problem);
 
   // #1360: parse RTK rejections detail-first (detail, then message, then
   // status) and report serialized { problemKey, status, detail } context so
@@ -69,7 +91,50 @@ export function DashboardActions() {
     toast.error(failure.toastMessage);
   }
 
-  const mergedProblems = useMemo(() => {
+  function patchProblemCache(problemKey: string, problem: Problem): void {
+    dispatch(
+      sratApi.util.updateQueryData("getApiProblems", undefined, (draft) => {
+        if (!Array.isArray(draft)) return;
+        const target = draft.find((p) => p?.problem_key === problemKey);
+        if (target) {
+          Object.assign(target, problem);
+        }
+      }),
+    );
+  }
+
+  function applyMutationResult(response: unknown): void {
+    if (!isProblemResponse(response)) {
+      return;
+    }
+    // Update the REST cache first: App/NotificationCenter suppress stale WS
+    // payloads with this server-sourced response once the override is cleared.
+    patchProblemCache(response.problem_key, response);
+    reconcileProblemIgnoreMutationResult(response);
+  }
+
+  function rollbackProblemAction(
+    problemKey: string,
+    requestedIgnored: boolean,
+    previousProblem: Problem,
+    previousOverride: ProblemIgnoreOverride | null | undefined,
+  ): void {
+    if (getLocalProblemIgnore(problemKey) !== requestedIgnored) {
+      return;
+    }
+    restoreProblemIgnoreOverride(problemKey, previousOverride);
+    patchProblemCache(problemKey, previousProblem);
+
+    const shouldShowToast =
+      !isInactiveProblem(previousProblem) && previousOverride?.ignored !== true;
+    if (shouldShowToast) {
+      showProblemToast(previousProblem);
+    } else {
+      dismissProblemToast(problemToastId(problemKey));
+    }
+  }
+
+  const serverMergedProblems = useMemo(() => {
     const baseProblems = Array.isArray(problems) ? problems : [];
 
     const isSuppressed = (problemKey?: string | null) =>
@@ -103,14 +168,30 @@ export function DashboardActions() {
       );
     }
 
-    if (existingIndex < 0) {
-      return [incomingProblem, ...visibleBase];
-    }
-
-    return visibleBase.map((problem, index) =>
-      index === existingIndex ? incomingProblem : problem,
-    );
+    return mergeLiveProblems(visibleBase, incomingProblem);
   }, [problems, evdata?.problem, customComponentLabActive]);
+
+  // Locally requested ignore/re-enable state wins only while it disagrees with
+  // a stale server snapshot. Once REST/WS confirms the click the override is
+  // cleared and the card follows the authoritative problem state.
+  const mergedProblems = useMemo(() => {
+    if (ignoreOverrides.size === 0) {
+      return serverMergedProblems;
+    }
+    return serverMergedProblems.map((problem) => {
+      const override = problem?.problem_key
+        ? ignoreOverrides.get(problem.problem_key)
+        : undefined;
+      if (!isProblemIgnoreOverrideActive(override, problem)) {
+        return problem;
+      }
+      return {
+        ...problem,
+        ignored: override?.ignored === true,
+        status: override?.ignored ? Status.Ignored : Status.Created,
+      };
+    });
+  }, [serverMergedProblems, ignoreOverrides]);
 
   useEffect(() => {
     const handleDashboardStep3 = () => {
@@ -188,17 +269,28 @@ export function DashboardActions() {
       console.error("Cannot ignore problem without problem_key", issue);
       return;
     }
-    upsertProblem({
-      problemKey: key,
-      problem: {
-        ...issue,
-        problem_key: key,
-        ignored: true,
-        status: Status.Ignored,
-      },
-    })
+    const previousProblem =
+      getAuthoritativeProblem(problems, evdata?.problem, key) ?? issue;
+    const previousOverride = getProblemIgnoreOverride(key);
+    const optimisticProblem: Problem = {
+      ...previousProblem,
+      problem_key: key,
+      ignored: true,
+      status: Status.Ignored,
+    };
+    // Optimistically dismiss the toast immediately so the badge drops
+    // and the card is hidden before the WS event reconciles.
+    dismissProblemToast(problemToastId(key));
+    setLocalProblemIgnore(key, true, previousProblem.updated_at);
+    // Keep the REST cache authoritative until the mutation succeeds. The local
+    // override hides the card/toast meanwhile; a failed PUT can then roll back
+    // the override without the reconciler mistaking our optimistic cache patch
+    // for a server confirmation.
+    void upsertProblem({ problemKey: key, problem: optimisticProblem })
       .unwrap()
+      .then(applyMutationResult)
       .catch((err) => {
+        rollbackProblemAction(key, true, previousProblem, previousOverride);
         reportProblemActionFailure("ignore", key, err);
       });
   }
@@ -209,15 +301,23 @@ export function DashboardActions() {
     if (typeof id !== "string") {
       return;
     }
-    const target = resolveReenableTarget(mergedProblems, id);
+    const target = resolveReenableTarget(serverMergedProblems, id);
     if (target.type === "upsert") {
-      const issue = target.issue;
-      upsertProblem({
-        problemKey: issue.problem_key,
-        problem: { ...issue, ignored: false, status: Status.Created },
-      })
+      const previousProblem =
+        getAuthoritativeProblem(problems, evdata?.problem, id) ?? target.issue;
+      const previousOverride = getProblemIgnoreOverride(id);
+      const optimisticProblem: Problem = {
+        ...previousProblem,
+        problem_key: id,
+        ignored: false,
+        status: Status.Created,
+      };
+      setLocalProblemIgnore(id, false, previousProblem.updated_at);
+      void upsertProblem({ problemKey: id, problem: optimisticProblem })
         .unwrap()
+        .then(applyMutationResult)
         .catch((err) => {
+          rollbackProblemAction(id, false, previousProblem, previousOverride);
           reportProblemActionFailure("re-enable", id, err);
         });
     } else {

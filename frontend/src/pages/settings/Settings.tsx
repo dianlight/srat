@@ -25,6 +25,7 @@ import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { InView } from "react-intersection-observer";
+
 import { useOpenWizard } from "../../components/wizard/SetupWizard";
 import { TabIDs } from "../../store/locationState";
 import {
@@ -100,9 +101,15 @@ export function Settings() {
     disabled: readOnly,
   });
   const { handleSubmit, reset, formState } = methods;
+  const isSubmitting = formState.isSubmitting;
   const [update, _updateResponse] = usePutApiSettingsMutation();
 
   function handleCommit(data: ApiSettings) {
+    // Read-only mode: never issue writes to the backend, even if a submit
+    // path bypasses the disabled button gates.
+    if (readOnly) {
+      return;
+    }
     if (process.env.NODE_ENV !== "production")
       console.debug("Settings commit:", data);
     update({ settings: data })
@@ -421,7 +428,7 @@ export function Settings() {
                       keepFieldsRef: true,
                     })
                   }
-                  disabled={!formState.isDirty}
+                  disabled={readOnly || !formState.isDirty}
                   variant="outlined"
                   fullWidth={true}
                 >
@@ -430,7 +437,7 @@ export function Settings() {
                 <Button
                   type="submit"
                   form="settingsform"
-                  disabled={!formState.isDirty}
+                  disabled={readOnly || !formState.isDirty || isSubmitting}
                   variant="contained"
                   color="success"
                   fullWidth={true}

@@ -23,7 +23,15 @@ import Card from "@mui/material/Card";
 import { isValidElement, type ReactNode, useMemo, useState } from "react";
 import { Slide, ToastContainer } from "react-toastify";
 import { useNotificationCenter } from "react-toastify/addons/use-notification-center";
-import type { ErrorModel, Problem } from "../store/sratApi";
+
+import {
+  isInactiveProblem,
+  isProblemIgnoreOverrideActive,
+  mergeLiveProblems,
+  useProblemIgnoreOverrides,
+  useReconcileProblemIgnoreOverrides,
+} from "../pages/dashboard/problemActionError";
+import type { ErrorModel } from "../store/sratApi";
 import { Status, useGetApiProblemsQuery } from "../store/sratApi";
 import { useGetServerEventsQuery } from "../store/wsApi";
 import { FontAwesomeSvgIcon } from "./FontAwesomeSvgIcon";
@@ -32,13 +40,6 @@ interface Data {
   exclude: boolean;
   error?: unknown;
 }
-
-const INACTIVE_PROBLEM_STATUSES: ReadonlySet<string> = new Set([
-  Status.Ignored,
-  Status.Dismissed,
-  Status.Fixed,
-  Status.Deleted,
-]);
 
 export function isIgnoredProblemError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) {
@@ -54,14 +55,6 @@ export function getProblemKey(error: unknown): string | undefined {
   }
   const key = (error as { problem_key?: unknown }).problem_key;
   return typeof key === "string" && key.length > 0 ? key : undefined;
-}
-
-function isInactiveProblemState(
-  problem: Pick<Problem, "ignored" | "status">,
-): boolean {
-  return (
-    problem.ignored === true || INACTIVE_PROBLEM_STATUSES.has(problem.status)
-  );
 }
 
 export function NotificationCenter() {
@@ -94,27 +87,33 @@ export function NotificationCenter() {
   // event — the same merge DashboardActions uses for cards.
   const { data: problems } = useGetApiProblemsQuery();
   const { data: evdata } = useGetServerEventsQuery();
+  const ignoreOverrides = useProblemIgnoreOverrides();
+  useReconcileProblemIgnoreOverrides(problems, evdata?.problem);
   const inactiveProblemKeys = useMemo(() => {
     const states = new Map<string, boolean>();
-    const baseProblems = Array.isArray(problems) ? problems : [];
-    for (const problem of baseProblems) {
-      if (problem?.problem_key) {
-        states.set(problem.problem_key, isInactiveProblemState(problem));
+    const serverProblems = mergeLiveProblems(problems, evdata?.problem);
+    for (const problem of serverProblems) {
+      if (problem.problem_key) {
+        states.set(problem.problem_key, isInactiveProblem(problem));
       }
     }
-    // The live WS event overlays the cached REST list (same merge rule as
-    // DashboardActions cards): a fresh active event clears a stale ignored
-    // snapshot, and vice versa.
-    const liveProblem = evdata?.problem;
-    if (liveProblem?.problem_key) {
-      states.set(liveProblem.problem_key, isInactiveProblemState(liveProblem));
+    // Local ignore/re-enable wins only while the REST/WS snapshot is stale.
+    // A matching or newer server state clears the override and makes the
+    // badge follow the authoritative problem state.
+    for (const [key, override] of ignoreOverrides) {
+      const serverProblem = serverProblems.find(
+        (problem) => problem.problem_key === key,
+      );
+      if (isProblemIgnoreOverrideActive(override, serverProblem)) {
+        states.set(key, override.ignored);
+      }
     }
     return new Set(
       [...states.entries()]
         .filter(([, inactive]) => inactive)
         .map(([key]) => key),
     );
-  }, [problems, evdata?.problem]);
+  }, [problems, evdata?.problem, ignoreOverrides]);
   const visibleNotifications = notifications.filter((n) => {
     if (isIgnoredProblemError(n.data?.error)) {
       return false;

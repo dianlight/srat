@@ -1,17 +1,71 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { type Problem, Severity, Status } from "../../../store/sratApi";
 import { normalizeSentryExtras } from "../../../utils/sentrySerialize";
 import {
+  clearLocalProblemIgnore,
   describeProblemActionFailure,
+  dismissProblemToast,
+  getLocalProblemIgnore,
+  getProblemIgnoreOverride,
+  isInactiveProblem,
+  isProblemIgnoreOverrideActive,
   isRetryableProblemStatus,
+  mergeLiveProblems,
+  problemToastId,
+  reconcileProblemIgnoreFromServer,
+  reconcileProblemIgnoreMutationResult,
   resolveReenableTarget,
+  setLocalProblemIgnore,
+  subscribeProblemIgnoreOverrides,
 } from "../problemActionError";
 
+const { toastDismissMock } = vi.hoisted(() => ({
+  toastDismissMock: vi.fn(),
+}));
+
+vi.mock("react-toastify", () => ({
+  toast: {
+    dismiss: (...args: unknown[]) => toastDismissMock(...args),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    update: vi.fn(),
+    isActive: vi.fn(() => false),
+  },
+}));
+
+function makeProblem(overrides: Partial<Problem> = {}): Problem {
+  return {
+    id: 1,
+    problem_key: "protected_mode",
+    title: "Addon in Protected Mode",
+    description: "Protection mode is on",
+    severity: Severity.Warning,
+    status: Status.Created,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ignored: false,
+    repeating: 1,
+    ...overrides,
+  };
+}
+
 describe("describeProblemActionFailure (#1360)", () => {
+  beforeEach(() => {
+    clearLocalProblemIgnore("protected_mode");
+    toastDismissMock.mockClear();
+  });
+
   it("prefers backend detail over message and status", () => {
-    const failure = describeProblemActionFailure("dismiss", "addon_config_changed", {
-      status: 500,
-      data: { detail: "device busy", message: "other", status: 500 },
-    });
+    const failure = describeProblemActionFailure(
+      "dismiss",
+      "addon_config_changed",
+      {
+        status: 500,
+        data: { detail: "device busy", message: "other", status: 500 },
+      },
+    );
     expect(failure.problemKey).toBe("addon_config_changed");
     expect(failure.status).toBe(500);
     expect(failure.detail).toContain("device busy");
@@ -22,18 +76,26 @@ describe("describeProblemActionFailure (#1360)", () => {
   });
 
   it("falls back to message then status", () => {
-    const fromMessage = describeProblemActionFailure("ignore", "protected_mode", {
-      status: 400,
-      data: { message: "validation failed" },
-    });
+    const fromMessage = describeProblemActionFailure(
+      "ignore",
+      "protected_mode",
+      {
+        status: 400,
+        data: { message: "validation failed" },
+      },
+    );
     expect(fromMessage.detail).toContain("validation failed");
     expect(fromMessage.retryable).toBe(false);
     expect(fromMessage.toastMessage).not.toContain("Retrying may help");
 
-    const fromStatus = describeProblemActionFailure("re-enable", "protected_mode", {
-      status: 404,
-      data: {},
-    });
+    const fromStatus = describeProblemActionFailure(
+      "re-enable",
+      "protected_mode",
+      {
+        status: 404,
+        data: {},
+      },
+    );
     expect(fromStatus.status).toBe(404);
     expect(fromStatus.detail).toContain("404");
   });
@@ -69,19 +131,27 @@ describe("describeProblemActionFailure (#1360)", () => {
   });
 
   it("marks numeric-string statuses retryable with a toast hint", () => {
-    const failure = describeProblemActionFailure("dismiss", "addon_config_changed", {
-      status: "503",
-      data: { detail: "slow backend" },
-    });
+    const failure = describeProblemActionFailure(
+      "dismiss",
+      "addon_config_changed",
+      {
+        status: "503",
+        data: { detail: "slow backend" },
+      },
+    );
     expect(failure.retryable).toBe(true);
     expect(failure.toastMessage).toContain("Retrying may help");
   });
 
   it("produces Sentry-safe extras without [Object] placeholders", () => {
-    const failure = describeProblemActionFailure("dismiss", "addon_config_changed", {
-      status: 500,
-      data: { detail: "dismiss boom" },
-    });
+    const failure = describeProblemActionFailure(
+      "dismiss",
+      "addon_config_changed",
+      {
+        status: 500,
+        data: { detail: "dismiss boom" },
+      },
+    );
     const normalized = normalizeSentryExtras({
       problemKey: failure.problemKey,
       status: failure.status,
@@ -104,8 +174,125 @@ describe("describeProblemActionFailure (#1360)", () => {
       type: "dismiss",
     });
     expect(resolveReenableTarget([], "gone")).toEqual({ type: "dismiss" });
+    expect(resolveReenableTarget([{ problem_key: "" } as never], "")).toEqual({
+      type: "dismiss",
+    });
+  });
+
+  it("uses the stable problem toast id when dismissing", () => {
+    const toastId = problemToastId("protected_mode");
+    expect(toastId).toBe("problem-protected_mode");
+
+    dismissProblemToast(toastId);
+    expect(toastDismissMock).toHaveBeenCalledWith("problem-protected_mode");
+  });
+
+  it("tracks local ignore overrides and notifies subscribers", () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeProblemIgnoreOverrides(listener);
+
+    setLocalProblemIgnore("protected_mode", true);
+    expect(getLocalProblemIgnore("protected_mode")).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    setLocalProblemIgnore("protected_mode", false);
+    expect(getLocalProblemIgnore("protected_mode")).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    clearLocalProblemIgnore("protected_mode");
+    expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+    unsubscribe();
+  });
+
+  it("keeps a local ignore over a stale active WS snapshot", () => {
+    setLocalProblemIgnore("protected_mode", true, "2026-01-02T00:00:00Z");
+    const staleActive = makeProblem({
+      updated_at: "2026-01-01T00:00:00Z",
+      ignored: false,
+      status: Status.Created,
+    });
+
     expect(
-      resolveReenableTarget([{ problem_key: "" } as never], ""),
-    ).toEqual({ type: "dismiss" });
+      isProblemIgnoreOverrideActive(
+        getProblemIgnoreOverride("protected_mode"),
+        staleActive,
+      ),
+    ).toBe(true);
+
+    reconcileProblemIgnoreFromServer([], staleActive);
+    expect(getLocalProblemIgnore("protected_mode")).toBe(true);
+  });
+
+  it("clears an override when a server snapshot is newer or matches the click", () => {
+    setLocalProblemIgnore("protected_mode", true, "2026-01-01T00:00:00Z");
+    reconcileProblemIgnoreFromServer(
+      [],
+      makeProblem({
+        updated_at: "2026-01-02T00:00:00Z",
+        ignored: false,
+        status: Status.Created,
+      }),
+    );
+    expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+
+    setLocalProblemIgnore("protected_mode", false, "2026-01-02T00:00:00Z");
+    reconcileProblemIgnoreFromServer(
+      [
+        makeProblem({
+          updated_at: "2026-01-02T00:00:00Z",
+          ignored: false,
+          status: Status.Created,
+        }),
+      ],
+      undefined,
+    );
+    expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+  });
+
+  it("clears an override from a successful mutation response", () => {
+    setLocalProblemIgnore("protected_mode", true, "2026-01-01T00:00:00Z");
+    const cleared = reconcileProblemIgnoreMutationResult(
+      makeProblem({
+        updated_at: "2026-01-02T00:00:00Z",
+        ignored: true,
+        status: Status.Ignored,
+      }),
+    );
+
+    expect(cleared).toBe(true);
+    expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+  });
+
+  it("ignores older WS payloads when merging with REST state", () => {
+    const ignoredServerState = makeProblem({
+      updated_at: "2026-01-03T00:00:00Z",
+      ignored: true,
+      status: Status.Ignored,
+    });
+    const staleActiveEvent = makeProblem({
+      updated_at: "2026-01-01T00:00:00Z",
+      ignored: false,
+      status: Status.Created,
+    });
+
+    expect(mergeLiveProblems([ignoredServerState], staleActiveEvent)).toEqual([
+      ignoredServerState,
+    ]);
+  });
+
+  it("recognizes inactive problem states", () => {
+    expect(isInactiveProblem({ ignored: true, status: Status.Created })).toBe(
+      true,
+    );
+    expect(isInactiveProblem({ ignored: false, status: Status.Ignored })).toBe(
+      true,
+    );
+    expect(isInactiveProblem({ ignored: false, status: Status.Fixed })).toBe(
+      true,
+    );
+    expect(isInactiveProblem({ ignored: false, status: Status.Updated })).toBe(
+      false,
+    );
+    expect(isInactiveProblem(null)).toBe(false);
   });
 });

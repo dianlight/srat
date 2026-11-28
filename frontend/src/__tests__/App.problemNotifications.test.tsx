@@ -1,10 +1,16 @@
 /* eslint-disable */
+import { createTestStore, getMswServer } from "/test/testing";
 import { render, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import React from "react";
 import { Provider } from "react-redux";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createTestStore, getMswServer } from "/test/testing";
+
+import {
+  clearLocalProblemIgnore,
+  getLocalProblemIgnore,
+  setLocalProblemIgnore,
+} from "../pages/dashboard/problemActionError";
 
 const {
   toastErrorMock,
@@ -68,7 +74,9 @@ vi.mock("../store/wsApi", () => ({
     util: {
       resetApiState: () => ({ type: "wsApi/resetApiState" }),
     },
-    middleware: () => (next: (action: unknown) => unknown) => (action: unknown) => next(action),
+    middleware:
+      () => (next: (action: unknown) => unknown) => (action: unknown) =>
+        next(action),
   },
   useGetServerEventsQuery: () => ({
     data: wsStateRef.current,
@@ -157,6 +165,7 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     wsStateRef.current = { heartbeat: { alive: true } };
     labFeatureAvailableRef.value = true;
     activeToasts.clear();
+    clearLocalProblemIgnore("protected_mode");
     toastErrorMock.mockClear();
     toastWarnMock.mockClear();
     toastInfoMock.mockClear();
@@ -172,15 +181,25 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     }
     const server = getMswServer();
     server.use(
-      http.get(/\/api\/settings\/app-config/, () => HttpResponse.json({ requires_restart: false })),
-      http.get(/\/api\/command_output/, () => HttpResponse.json({ message: "not found" }, { status: 404 })),
+      http.get(/\/api\/settings\/app-config/, () =>
+        HttpResponse.json({ requires_restart: false }),
+      ),
+      http.get(/\/api\/command_output/, () =>
+        HttpResponse.json({ message: "not found" }, { status: 404 }),
+      ),
       http.get(/\/api\/settings$/, () => HttpResponse.json({})),
       http.get(/\/api\/users$/, () => HttpResponse.json([])),
       http.get(/\/api\/volumes$/, () => HttpResponse.json([])),
-      http.get(/\/api\/hostname$/, () => HttpResponse.json({ hostname: "localhost" })),
+      http.get(/\/api\/hostname$/, () =>
+        HttpResponse.json({ hostname: "localhost" }),
+      ),
       http.get(/\/api\/nics$/, () => HttpResponse.json([])),
-      http.get(/\/api\/telemetry\/internet-connection$/, () => HttpResponse.json({ connected: false })),
-      http.get(/\/api\/health$/, () => HttpResponse.json({ status: "ok", dirty_tracking: {} })),
+      http.get(/\/api\/telemetry\/internet-connection$/, () =>
+        HttpResponse.json({ connected: false }),
+      ),
+      http.get(/\/api\/health$/, () =>
+        HttpResponse.json({ status: "ok", dirty_tracking: {} }),
+      ),
     );
   });
 
@@ -212,9 +231,15 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastWarnMock.mock.calls.length).toBe(1);
     });
-    const firstCallArgs = toastWarnMock.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const firstCallArgs = toastWarnMock.mock.calls[0] as unknown as [
+      string,
+      Record<string, unknown>,
+    ];
     expect(firstCallArgs[0]).toBe(problem.title);
-    expect(firstCallArgs[1]).toHaveProperty("toastId", "problem-custom_component_missing");
+    expect(firstCallArgs[1]).toHaveProperty(
+      "toastId",
+      "problem-custom_component_missing",
+    );
 
     // Replay same problem with identical dedup key (same updated_at, status, severity) - WS reconnect replay
     wsStateRef.current = {
@@ -279,8 +304,14 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     // Make toast appear active so next emission triggers update path
     toastIsActiveMock.mockReturnValue(true);
 
-    const updatedProblem = makeProblem({ updated_at: "2026-01-01T01:00:00Z", title: "Custom component missing - updated" });
-    wsStateRef.current = { heartbeat: { alive: true }, problem: updatedProblem };
+    const updatedProblem = makeProblem({
+      updated_at: "2026-01-01T01:00:00Z",
+      title: "Custom component missing - updated",
+    });
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: updatedProblem,
+    };
     rerender(
       <Provider store={store}>
         <App />
@@ -290,7 +321,10 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastUpdateMock.mock.calls.length).toBe(1);
     });
-    const updateArgs = toastUpdateMock.mock.calls[0] as unknown as [string, Record<string, unknown>];
+    const updateArgs = toastUpdateMock.mock.calls[0] as unknown as [
+      string,
+      Record<string, unknown>,
+    ];
     expect(updateArgs[0]).toBe("problem-custom_component_missing");
     expect(updateArgs[1]).toHaveProperty("render", updatedProblem.title);
     // No new toast should have been created
@@ -306,7 +340,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       </Provider>,
     );
 
-    const errorProblem = makeProblem({ problem_key: "disk_error", severity: "error", title: "Disk error" });
+    const errorProblem = makeProblem({
+      problem_key: "disk_error",
+      severity: "error",
+      title: "Disk error",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: errorProblem };
     rerender(
       <Provider store={store}>
@@ -316,9 +354,15 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastErrorMock.mock.calls.length).toBe(1);
     });
-    expect((toastErrorMock.mock.calls[0] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-disk_error");
+    expect(
+      (toastErrorMock.mock.calls[0] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-disk_error");
 
-    const infoProblem = makeProblem({ problem_key: "info_note", severity: "info", title: "Info note" });
+    const infoProblem = makeProblem({
+      problem_key: "info_note",
+      severity: "info",
+      title: "Info note",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: infoProblem };
     rerender(
       <Provider store={store}>
@@ -328,7 +372,9 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastInfoMock.mock.calls.length).toBe(1);
     });
-    expect((toastInfoMock.mock.calls[0] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-info_note");
+    expect(
+      (toastInfoMock.mock.calls[0] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-info_note");
   });
 
   it("dismisses toast when problem status becomes Dismissed and allows re-creation", async () => {
@@ -351,7 +397,10 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       expect(toastWarnMock.mock.calls.length).toBe(1);
     });
 
-    const dismissed = makeProblem({ status: "dismissed", updated_at: "2026-01-02T00:00:00Z" });
+    const dismissed = makeProblem({
+      status: "dismissed",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: dismissed };
     rerender(
       <Provider store={store}>
@@ -362,11 +411,16 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastDismissMock.mock.calls.length).toBe(1);
     });
-    expect(toastDismissMock.mock.calls[0]).toEqual(["problem-custom_component_missing"]);
+    expect(toastDismissMock.mock.calls[0]).toEqual([
+      "problem-custom_component_missing",
+    ]);
 
     // After dismiss, same problem_key with created status should create a new toast (regression check for map cleanup)
     toastIsActiveMock.mockReturnValue(false);
-    const recreated = makeProblem({ status: "created", updated_at: "2026-01-03T00:00:00Z" });
+    const recreated = makeProblem({
+      status: "created",
+      updated_at: "2026-01-03T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: recreated };
     rerender(
       <Provider store={store}>
@@ -377,7 +431,151 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastWarnMock.mock.calls.length).toBe(2);
     });
-    expect((toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-custom_component_missing");
+    expect(
+      (toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-custom_component_missing");
+  });
+
+  it("honors a local ignore override and re-creates the toast on re-enable", async () => {
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    const { rerender } = render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    const problem = makeProblem({
+      problem_key: "protected_mode",
+      title: "Addon in Protected Mode",
+    });
+    wsStateRef.current = { heartbeat: { alive: true }, problem };
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+    await waitFor(() => {
+      expect(toastWarnMock.mock.calls.length).toBe(1);
+    });
+
+    // Ignore clicked in the dashboard: App must dismiss immediately even
+    // though the WS snapshot is still active.
+    setLocalProblemIgnore("protected_mode", true);
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+    await waitFor(() => {
+      expect(toastDismissMock).toHaveBeenCalledWith("problem-protected_mode");
+    });
+    expect(getUnreadCount()).toBe(0);
+
+    // Re-enable restores the toast without waiting for a fresh WS event.
+    setLocalProblemIgnore("protected_mode", false);
+    rerender(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+    await waitFor(() => {
+      expect(toastWarnMock.mock.calls.length).toBe(2);
+    });
+    expect(getUnreadCount()).toBe(1);
+    const reenabled = toastWarnMock.mock.calls[1] as unknown as [
+      string,
+      { toastId: string; data: { error: Record<string, unknown> } },
+    ];
+    expect(reenabled[1].toastId).toBe("problem-protected_mode");
+    expect(reenabled[1].data.error).toMatchObject({
+      problem_key: "protected_mode",
+      ignored: false,
+      status: "created",
+    });
+    clearLocalProblemIgnore("protected_mode");
+  });
+
+  it("recreates the toast when REST re-enables after a local ignore", async () => {
+    const server = getMswServer();
+    server.use(
+      http.get(/\/api\/problems$/, () =>
+        HttpResponse.json([
+          makeProblem({
+            problem_key: "protected_mode",
+            title: "Addon in Protected Mode",
+            updated_at: "2026-01-02T00:00:00Z",
+          }),
+        ]),
+      ),
+    );
+    setLocalProblemIgnore("protected_mode", true, "2026-01-01T00:00:00Z");
+
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({
+        problem_key: "protected_mode",
+        title: "Addon in Protected Mode",
+        updated_at: "2026-01-01T00:00:00Z",
+      }),
+    };
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+    });
+    await waitFor(() => {
+      expect(toastWarnMock.mock.calls.length).toBe(1);
+    });
+    expect(getUnreadCount()).toBe(1);
+  });
+
+  it("dismisses the toast when REST re-ignores after a local re-enable", async () => {
+    const server = getMswServer();
+    server.use(
+      http.get(/\/api\/problems$/, () =>
+        HttpResponse.json([
+          makeProblem({
+            problem_key: "protected_mode",
+            title: "Addon in Protected Mode",
+            ignored: true,
+            status: "ignored",
+            updated_at: "2026-01-02T00:00:00Z",
+          }),
+        ]),
+      ),
+    );
+    setLocalProblemIgnore("protected_mode", false, "2026-01-01T00:00:00Z");
+
+    const { App } = await import("../App");
+    const store = await createTestStore();
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({
+        problem_key: "protected_mode",
+        title: "Addon in Protected Mode",
+        updated_at: "2026-01-01T00:00:00Z",
+      }),
+    };
+    render(
+      <Provider store={store}>
+        <App />
+      </Provider>,
+    );
+
+    await waitFor(() => {
+      expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
+    });
+    await waitFor(() => {
+      expect(toastDismissMock).toHaveBeenCalledWith("problem-protected_mode");
+    });
+    expect(getUnreadCount()).toBe(0);
   });
 
   it("dismisses toast for Deleted and Fixed statuses and dedups Deletes", async () => {
@@ -389,7 +587,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       </Provider>,
     );
 
-    const base = makeProblem({ problem_key: "vol_missing", status: "created", updated_at: "2026-01-01T00:00:00Z" });
+    const base = makeProblem({
+      problem_key: "vol_missing",
+      status: "created",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: base };
     rerender(
       <Provider store={store}>
@@ -401,7 +603,14 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     });
 
     // Deleted
-    wsStateRef.current = { heartbeat: { alive: true }, problem: makeProblem({ problem_key: "vol_missing", status: "deleted", updated_at: "2026-01-02T00:00:00Z" }) };
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({
+        problem_key: "vol_missing",
+        status: "deleted",
+        updated_at: "2026-01-02T00:00:00Z",
+      }),
+    };
     rerender(
       <Provider store={store}>
         <App />
@@ -413,7 +622,14 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     expect(toastDismissMock.mock.calls[0]).toEqual(["problem-vol_missing"]);
 
     // Fixed
-    wsStateRef.current = { heartbeat: { alive: true }, problem: makeProblem({ problem_key: "vol_missing", status: "fixed", updated_at: "2026-01-03T00:00:00Z" }) };
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({
+        problem_key: "vol_missing",
+        status: "fixed",
+        updated_at: "2026-01-03T00:00:00Z",
+      }),
+    };
     rerender(
       <Provider store={store}>
         <App />
@@ -425,7 +641,14 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     expect(toastDismissMock.mock.calls[1]).toEqual(["problem-vol_missing"]);
 
     // Duplicate Deleted replay should not create extra dismiss calls beyond dedup? Actually dismiss is idempotent - each distinct deleted event will dismiss, but map already cleared. Verify second identical Deleted still calls dismiss (idempotent, not creating new toast)
-    wsStateRef.current = { heartbeat: { alive: true }, problem: makeProblem({ problem_key: "vol_missing", status: "deleted", updated_at: "2026-01-03T00:00:00Z" }) };
+    wsStateRef.current = {
+      heartbeat: { alive: true },
+      problem: makeProblem({
+        problem_key: "vol_missing",
+        status: "deleted",
+        updated_at: "2026-01-03T00:00:00Z",
+      }),
+    };
     rerender(
       <Provider store={store}>
         <App />
@@ -467,8 +690,12 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastWarnMock.mock.calls.length).toBe(2);
     });
-    expect((toastWarnMock.mock.calls[0] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-p1");
-    expect((toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-p2");
+    expect(
+      (toastWarnMock.mock.calls[0] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-p1");
+    expect(
+      (toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-p2");
   });
 
   it("does not resurrect toast on WS reconnect replay of an already-dismissed problem", async () => {
@@ -480,7 +707,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       </Provider>,
     );
 
-    const problem = makeProblem({ problem_key: "reconnect_dismissed", status: "created", updated_at: "2026-01-01T00:00:00Z" });
+    const problem = makeProblem({
+      problem_key: "reconnect_dismissed",
+      status: "created",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem };
     rerender(
       <Provider store={store}>
@@ -492,7 +723,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       expect(toastWarnMock.mock.calls.length).toBe(1);
     });
 
-    const dismissed = makeProblem({ problem_key: "reconnect_dismissed", status: "dismissed", updated_at: "2026-01-02T00:00:00Z" });
+    const dismissed = makeProblem({
+      problem_key: "reconnect_dismissed",
+      status: "dismissed",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: dismissed };
     rerender(
       <Provider store={store}>
@@ -503,7 +738,9 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastDismissMock.mock.calls.length).toBe(1);
     });
-    expect(toastDismissMock.mock.calls[0]).toEqual(["problem-reconnect_dismissed"]);
+    expect(toastDismissMock.mock.calls[0]).toEqual([
+      "problem-reconnect_dismissed",
+    ]);
     expect(toastWarnMock.mock.calls.length).toBe(1);
 
     const unreadAfterDismiss = getUnreadCount();
@@ -553,7 +790,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
 
     // Even after many dismissed replays, a new created problem with same key should still be able to resurrect correctly (not permanently blocked)
     toastIsActiveMock.mockReturnValue(false);
-    const recreated = makeProblem({ problem_key: "reconnect_dismissed", status: "created", updated_at: "2026-01-03T00:00:00Z" });
+    const recreated = makeProblem({
+      problem_key: "reconnect_dismissed",
+      status: "created",
+      updated_at: "2026-01-03T00:00:00Z",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem: recreated };
     rerender(
       <Provider store={store}>
@@ -564,11 +805,12 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     await waitFor(() => {
       expect(toastWarnMock.mock.calls.length).toBe(2);
     });
-    expect((toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1]).toHaveProperty("toastId", "problem-reconnect_dismissed");
+    expect(
+      (toastWarnMock.mock.calls[1] as [string, Record<string, unknown>])[1],
+    ).toHaveProperty("toastId", "problem-reconnect_dismissed");
     // unreadCount must be 1 after resurrecting the same key (badge shows the new active problem)
     expect(getUnreadCount()).toBe(1);
   });
-
 
   it.each(["deleted", "fixed"] as const)(
     "does not resurrect toast on WS reconnect replay of already-%s problem - unreadCount stays 0",
@@ -582,7 +824,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       );
 
       const problemKey = `reconnect_${terminalStatus}`;
-      const problem = makeProblem({ problem_key: problemKey, status: "created", updated_at: "2026-01-01T00:00:00Z" });
+      const problem = makeProblem({
+        problem_key: problemKey,
+        status: "created",
+        updated_at: "2026-01-01T00:00:00Z",
+      });
       wsStateRef.current = { heartbeat: { alive: true }, problem };
       rerender(
         <Provider store={store}>
@@ -595,7 +841,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       });
       expect(getUnreadCount()).toBe(1);
 
-      const terminal = makeProblem({ problem_key: problemKey, status: terminalStatus, updated_at: "2026-01-02T00:00:00Z" });
+      const terminal = makeProblem({
+        problem_key: problemKey,
+        status: terminalStatus,
+        updated_at: "2026-01-02T00:00:00Z",
+      });
       wsStateRef.current = { heartbeat: { alive: true }, problem: terminal };
       rerender(
         <Provider store={store}>
@@ -641,7 +891,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
 
       // Recreation after terminal replays should still work
       toastIsActiveMock.mockReturnValue(false);
-      const recreated = makeProblem({ problem_key: problemKey, status: "created", updated_at: "2026-01-03T00:00:00Z" });
+      const recreated = makeProblem({
+        problem_key: problemKey,
+        status: "created",
+        updated_at: "2026-01-03T00:00:00Z",
+      });
       wsStateRef.current = { heartbeat: { alive: true }, problem: recreated };
       rerender(
         <Provider store={store}>
@@ -686,7 +940,11 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
     // Non-custom problems still notify while the lab surface is hidden.
     wsStateRef.current = {
       heartbeat: { alive: true },
-      problem: makeProblem({ problem_key: "disk_error", severity: "error", title: "Disk error" }),
+      problem: makeProblem({
+        problem_key: "disk_error",
+        severity: "error",
+        title: "Disk error",
+      }),
     };
     rerender(
       <Provider store={store}>
@@ -708,7 +966,10 @@ describe("App problem notifications - toastId dedup and dismiss", () => {
       </Provider>,
     );
 
-    const problem = makeProblem({ problem_key: "protected_mode", status: "created" });
+    const problem = makeProblem({
+      problem_key: "protected_mode",
+      status: "created",
+    });
     wsStateRef.current = { heartbeat: { alive: true }, problem };
     rerender(
       <Provider store={store}>

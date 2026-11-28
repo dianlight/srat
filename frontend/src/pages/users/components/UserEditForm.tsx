@@ -13,6 +13,7 @@ import {
   PasswordElement,
   TextFieldElement,
 } from "react-hook-form-mui";
+
 import type { UsersProps } from "../types";
 
 interface UserEditFormProps {
@@ -39,21 +40,26 @@ export function UserEditForm({
   const isNewUser = userData?.doCreate === true;
   const isAdmin = userData?.is_admin === true;
 
+  // Derive complete defaults from userData instead of using RHF's `values`
+  // prop: `values` replaces _defaultValues with a possibly partial object,
+  // which makes registered fields look dirty on mount (noticeable in StrictMode).
+  const formDefaultValues: UsersProps = {
+    username: userData?.username ?? "",
+    password: userData?.password ?? "",
+    "password-repeat": "",
+    is_admin: userData?.is_admin ?? false,
+    doCreate: userData?.doCreate ?? false,
+    rw_shares: userData?.rw_shares ?? [],
+    ro_shares: userData?.ro_shares ?? [],
+  };
+
   const {
     control,
     handleSubmit,
     watch,
     formState: { isDirty },
   } = useForm<UsersProps>({
-    defaultValues: {
-      username: "",
-      password: "",
-      is_admin: false,
-      doCreate: false,
-      rw_shares: [],
-      ro_shares: [],
-    },
-    values: userData,
+    defaultValues: formDefaultValues,
     mode: "onChange",
   });
   const selectedRwShares = watch("rw_shares") || [];
@@ -62,6 +68,15 @@ export function UserEditForm({
   const hiddenShareNames = new Set(hiddenShares);
   const disabledShareNames = new Set(disabledShares);
   const isShareDisabled = (share: string) => disabledShareNames.has(share);
+
+  // MUI only suppresses Enter when a valid option is highlighted. When every
+  // filtered option is disabled (or the list is empty), Enter would otherwise
+  // bubble up and submit the whole form from inside a share field.
+  const preventEnterSubmit = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+    }
+  };
   // Enforce the standard_share_names preference inside the form as well:
   // hidden old/new internal names are never offered as options.
   const visibleShares = availableShares.filter(
@@ -101,7 +116,11 @@ export function UserEditForm({
       <li key={key} {...optionProps}>
         <Typography
           variant="body2"
-          color={optionDisabled ? "text.disabled" : "default"}
+          sx={
+            optionDisabled
+              ? { color: "text.disabled", opacity: 0.7 }
+              : undefined
+          }
         >
           {optionDisabled ? `${option} (disabled)` : option}
         </Typography>
@@ -245,6 +264,8 @@ export function UserEditForm({
                 disabled,
                 size: "small",
                 limitTags: 5,
+                autoHighlight: true,
+                onKeyDown: preventEnterSubmit,
                 getOptionDisabled: (option) =>
                   selectedRoShares.includes(option),
                 renderOption: renderShareOption,
@@ -278,6 +299,8 @@ export function UserEditForm({
                 disabled,
                 size: "small",
                 limitTags: 5,
+                autoHighlight: true,
+                onKeyDown: preventEnterSubmit,
                 getOptionDisabled: (option) =>
                   selectedRwShares.includes(option),
                 renderOption: renderShareOption,

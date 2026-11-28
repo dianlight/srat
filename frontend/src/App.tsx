@@ -8,6 +8,7 @@ import {
 import Container from "@mui/material/Container";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
+
 import {
   CommandOutputDialog,
   CommandOutputToastContent,
@@ -23,14 +24,24 @@ import {
 import { useLabFeatures } from "./hooks/useLabFeatures";
 import { useSetupWizard } from "./hooks/useSetupWizard";
 import {
+  dismissProblemToast,
+  getAuthoritativeProblem,
+  isInactiveProblem,
+  isProblemIgnoreOverrideActive,
+  problemToastId,
+  showProblemToast,
+  useProblemIgnoreOverrides,
+  useReconcileProblemIgnoreOverrides,
+} from "./pages/dashboard/problemActionError";
+import {
   type CommandExecutionSnapshot,
   type CommandOutputLineSnapshot,
   type CommandStartedNotification,
   type CommandTerminatedNotification,
-  Severity,
-  Status,
   sratApi,
+  Status,
   Update_process_state,
+  useGetApiProblemsQuery,
   useGetApiSettingsAppConfigQuery,
   usePutApiRestartMutation,
 } from "./store/sratApi";
@@ -81,9 +92,12 @@ export function App() {
   const [isRestartingAddon, setIsRestartingAddon] = useState(false);
   const mainArea = useRef<HTMLDivElement>(null);
   const { data: evdata, isLoading, error: herror } = useGetServerEventsQuery();
+  const { data: problems } = useGetApiProblemsQuery();
   const { data: appConfigResponse } = useGetApiSettingsAppConfigQuery();
   const [restartAddon] = usePutApiRestartMutation();
   const { isAvailable: labFeatureAvailable } = useLabFeatures();
+  const ignoreOverrides = useProblemIgnoreOverrides();
+  useReconcileProblemIgnoreOverrides(problems, evdata?.problem);
   const { shouldShow: shouldShowWizard, dismiss: dismissWizard } =
     useSetupWizard();
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -388,65 +402,53 @@ export function App() {
   ]);
 
   useEffect(() => {
-    const problem = evdata?.problem;
-    if (!problem?.problem_key) {
+    const wsProblem = evdata?.problem;
+    if (!wsProblem?.problem_key) {
       return;
     }
-    const toastId = `problem-${problem.problem_key}`;
+    const key = wsProblem.problem_key;
+    const toastId = problemToastId(key);
+    // REST is the authoritative baseline for stale WS payloads; a newer WS
+    // event still wins through the shared merge helper.
+    const problem =
+      getAuthoritativeProblem(problems, wsProblem, key) ?? wsProblem;
+    const override = ignoreOverrides.get(key);
+    const localIgnored = isProblemIgnoreOverrideActive(override, problem)
+      ? override?.ignored
+      : undefined;
     // Suppress custom-component notify when the ha_custom_component alpha
     // lab feature is not active (lab mode off or omitted from production
     // builds). Dismiss any stale toast so nothing lingers.
     if (
-      problem.problem_key.startsWith("custom_component_") &&
+      key.startsWith("custom_component_") &&
       !labFeatureAvailable("ha_custom_component")
     ) {
-      toast.dismiss(toastId);
-      problemToastSeenRef.current.delete(problem.problem_key);
+      dismissProblemToast(toastId);
+      problemToastSeenRef.current.delete(key);
       return;
     }
-    const isDismissed =
-      problem.status === Status.Dismissed ||
-      problem.status === Status.Deleted ||
-      problem.status === Status.Fixed ||
-      problem.status === Status.Ignored ||
-      problem.ignored === true;
-    if (isDismissed) {
-      toast.dismiss(toastId);
-      problemToastSeenRef.current.delete(problem.problem_key);
+    if (
+      localIgnored === true ||
+      (localIgnored === undefined && isInactiveProblem(problem))
+    ) {
+      dismissProblemToast(toastId);
+      problemToastSeenRef.current.delete(key);
       return;
     }
-    const lastSeen = problemToastSeenRef.current.get(problem.problem_key);
-    const dedupKey = `${problem.updated_at ?? ""}:${problem.status}:${problem.severity}`;
+    // A re-enable can land before a fresh active WS event. Keep the toast
+    // active locally instead of trusting a stale ignored event payload.
+    const effectiveProblem =
+      localIgnored === false && isInactiveProblem(problem)
+        ? { ...problem, ignored: false, status: Status.Created }
+        : problem;
+    const lastSeen = problemToastSeenRef.current.get(key);
+    const dedupKey = `${effectiveProblem.updated_at ?? ""}:${effectiveProblem.status}:${effectiveProblem.severity}`;
     if (lastSeen === dedupKey) {
       return;
     }
-    problemToastSeenRef.current.set(problem.problem_key, dedupKey);
-    const content = problem.title || problem.description || problem.problem_key;
-    const isError =
-      problem.severity === Severity.Error ||
-      problem.severity === Severity.Critical;
-    const isWarning = problem.severity === Severity.Warning;
-    const toastFn = isError ? toast.error : isWarning ? toast.warn : toast.info;
-    if (
-      typeof (toast as unknown as { isActive?: (id: string) => boolean })
-        .isActive === "function" &&
-      (toast as unknown as { isActive: (id: string) => boolean }).isActive(
-        toastId,
-      )
-    ) {
-      toast.update(toastId, {
-        render: content,
-        data: { error: problem, exclude: false },
-        type: isError ? "error" : isWarning ? "warning" : "info",
-      } as unknown as Parameters<typeof toast.update>[1]);
-    } else {
-      (toastFn as (msg: string, opts?: unknown) => void)(content, {
-        toastId,
-        data: { error: problem, exclude: false },
-        autoClose: false,
-      } as unknown as Record<string, unknown>);
-    }
-  }, [evdata?.problem, labFeatureAvailable]);
+    problemToastSeenRef.current.set(key, dedupKey);
+    showProblemToast(effectiveProblem);
+  }, [evdata?.problem, problems, labFeatureAvailable, ignoreOverrides]);
 
   const selectedCommandSession =
     commandDialogExecutionId === null

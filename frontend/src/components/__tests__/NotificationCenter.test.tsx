@@ -1,454 +1,668 @@
 /* eslint-disable */
-import { ThemeProvider, createTheme } from "@mui/material/styles";
-import { screen } from "@testing-library/react";
+import { renderWithTestStore } from "/test/testing";
+import { createTheme, ThemeProvider } from "@mui/material/styles";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithTestStore } from "/test/testing";
+
+import {
+  clearLocalProblemIgnore,
+  getLocalProblemIgnore,
+  setLocalProblemIgnore,
+} from "../../pages/dashboard/problemActionError";
+import { type Problem, Severity, Status } from "../../store/sratApi";
 
 const { mockNotificationCenterState } = vi.hoisted(() => {
-    const mockNotificationCenterState = {
-        notifications: [] as Array<any>,
-        unreadCount: 0,
-        clear: () => { },
-        markAllAsRead: () => { },
-        remove: () => { },
-        markAsRead: () => { },
-    };
-    return { mockNotificationCenterState };
+  const mockNotificationCenterState = {
+    notifications: [] as Array<Record<string, unknown>>,
+    unreadCount: 0,
+    clear: () => {},
+    markAllAsRead: () => {},
+    remove: () => {},
+    markAsRead: () => {},
+  };
+  return { mockNotificationCenterState };
 });
 
 const { mockProblemsRef, mockServerEventRef } = vi.hoisted(() => {
-    const mockProblemsRef = { current: undefined as Array<any> | undefined };
-    const mockServerEventRef = { current: undefined as Record<string, unknown> | undefined };
-    return { mockProblemsRef, mockServerEventRef };
+  const mockProblemsRef = {
+    current: undefined as Array<Record<string, unknown>> | undefined,
+  };
+  const mockServerEventRef = {
+    current: undefined as Record<string, unknown> | undefined,
+  };
+  return { mockProblemsRef, mockServerEventRef };
 });
 
 vi.mock("react-toastify/addons/use-notification-center", () => ({
-    useNotificationCenter: () => mockNotificationCenterState,
+  useNotificationCenter: () => mockNotificationCenterState,
 }));
 
 vi.mock("../../store/sratApi", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../../store/sratApi")>();
-    return {
-        ...actual,
-        useGetApiProblemsQuery: () => ({ data: mockProblemsRef.current }),
-    };
+  const actual = await importOriginal<typeof import("../../store/sratApi")>();
+  return {
+    ...actual,
+    useGetApiProblemsQuery: () => ({ data: mockProblemsRef.current }),
+  };
 });
 
 vi.mock("../../store/wsApi", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("../../store/wsApi")>();
-    return {
-        ...actual,
-        useGetServerEventsQuery: () => ({ data: mockServerEventRef.current }),
-    };
+  const actual = await importOriginal<typeof import("../../store/wsApi")>();
+  return {
+    ...actual,
+    useGetServerEventsQuery: () => ({ data: mockServerEventRef.current }),
+  };
 });
 
+function makeProblem(overrides: Partial<Problem> = {}): Problem {
+  return {
+    id: 1,
+    problem_key: "protected_mode",
+    title: "Addon in Protected Mode",
+    description: "Protection mode is on",
+    severity: Severity.Warning,
+    status: Status.Created,
+    created_at: "2026-01-01T00:00:00Z",
+    updated_at: "2026-01-01T00:00:00Z",
+    ignored: false,
+    repeating: 1,
+    ...overrides,
+  };
+}
+
 describe("NotificationCenter Component", () => {
-    beforeEach(() => {
-        if (localStorage && typeof localStorage.clear === 'function') {
-            localStorage.clear();
-        }
-        mockNotificationCenterState.notifications = [];
-        mockNotificationCenterState.unreadCount = 0;
-        mockProblemsRef.current = undefined;
-        mockServerEventRef.current = undefined;
-        // Clear DOM before each test
-        document.body.innerHTML = '';
-    });
+  beforeEach(() => {
+    if (localStorage && typeof localStorage.clear === "function") {
+      localStorage.clear();
+    }
+    clearLocalProblemIgnore("protected_mode");
+    mockNotificationCenterState.notifications = [];
+    mockNotificationCenterState.unreadCount = 0;
+    mockProblemsRef.current = undefined;
+    mockServerEventRef.current = undefined;
+    // Clear DOM before each test
+    document.body.innerHTML = "";
+  });
 
-    async function renderNotificationCenter() {
-        const { NotificationCenter } = await import("../NotificationCenter");
-        const theme = createTheme();
+  async function renderNotificationCenter() {
+    const { NotificationCenter } = await import("../NotificationCenter");
+    const theme = createTheme();
 
-        const result = await renderWithTestStore(
-            React.createElement(
-                ThemeProvider,
-                { theme },
-                React.createElement(NotificationCenter as any)
-            )
-        );
+    const result = await renderWithTestStore(
+      React.createElement(
+        ThemeProvider,
+        { theme },
+        React.createElement(NotificationCenter),
+      ),
+    );
 
-        return { ...result, screen };
+    return { ...result, screen };
+  }
+
+  it("renders notification center icon button", async () => {
+    await renderNotificationCenter();
+
+    // Check that the notification button is rendered
+    const notificationButtons = screen.queryAllByRole("button");
+    expect(notificationButtons.length).toBeGreaterThanOrEqual(1);
+
+    // Look for notification icon - check component renders without errors
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("opens popover when notification button is clicked", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Find and click the notification button
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+
+      // Check if popover opened (look for notifications text)
+      expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("displays notification count badge", async () => {
+    await renderNotificationCenter();
+
+    // Look for badge element - check component renders without errors
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("handles show read notifications toggle", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Open the popover first
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+
+      // Look for toggle switch
+      const switches = screen.queryAllByRole("checkbox");
+      const firstSwitch = switches[0];
+      if (switches.length > 0 && firstSwitch) {
+        await user.click(firstSwitch);
+      }
     }
 
-    it("renders notification center icon button", async () => {
-        await renderNotificationCenter();
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
 
-        // Check that the notification button is rendered
-        const notificationButtons = screen.queryAllByRole("button");
-        expect(notificationButtons.length).toBeGreaterThanOrEqual(1);
+  it("renders notification list when popover is open", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
 
-        // Look for notification icon - check component renders without errors
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+    // Open the popover
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+
+      // Check for notification list container - component renders without errors
+      expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it("shows React notification content instead of object placeholders", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "toast-1",
+        createdAt: Date.now(),
+        read: false,
+        type: "error",
+        content: React.createElement("span", null, "Detailed command failure"),
+        data: { exclude: false },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    const notificationButton = screen.getAllByRole("button")[0];
+    await user.click(notificationButton!);
+
+    expect(screen.queryByText("Detailed command failure")).toBeTruthy();
+    expect(screen.queryByText("[object Object]")).toBeNull();
+  });
+
+  it("handles notification actions (clear, mark as read)", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Open the popover
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+
+      // Look for action buttons (clear, mark as read)
+      const actionButtons = screen.queryAllByRole("button");
+      expect(actionButtons.length).toBeGreaterThanOrEqual(1);
+
+      // Try to click action buttons if they exist
+      const thirdButton = actionButtons[2];
+      if (actionButtons.length > 2 && thirdButton) {
+        await user.click(thirdButton); // Try clicking clear or mark as read
+      }
+    }
+  });
+
+  it("displays tooltips on hover", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Test tooltip on main notification button
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.hover(notificationButton);
+      await user.unhover(notificationButton);
+    }
+
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("handles color scheme changes", async () => {
+    await renderNotificationCenter();
+
+    // The component should render without errors regardless of color scheme
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("converts severity levels correctly", async () => {
+    await renderNotificationCenter();
+
+    // Test that the component renders (severity conversion is internal)
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("renders ToastContainer with correct configuration", async () => {
+    await renderNotificationCenter();
+
+    // Look for toast container elements - check component renders without errors
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("handles popover close correctly", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Open and close the popover
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+      // Clicking outside or pressing escape should close popover
+      await user.keyboard("{Escape}");
+    }
+
+    expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
+  });
+
+  it("handles disabled action buttons correctly", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    // Open the popover
+    const notificationButton = screen.queryByRole("button");
+    if (notificationButton) {
+      await user.click(notificationButton);
+
+      // Look for disabled buttons (when no notifications)
+      const allButtons = screen.queryAllByRole("button");
+      const disabledButtons = allButtons.filter((button) =>
+        button.hasAttribute("disabled"),
+      );
+      expect(disabledButtons.length).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("toggles the filter label between Unread and All", async () => {
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    const notificationButton = screen.getAllByRole("button")[0];
+    await user.click(notificationButton!);
+
+    expect(screen.getByText("Unread")).toBeTruthy();
+
+    // The FormControlLabel associates the switch with the "Unread" label
+    const toggle = screen.getByLabelText("Unread");
+    await user.click(toggle);
+
+    expect(screen.getByText("All")).toBeTruthy();
+    expect(screen.queryByText("Unread")).toBeNull();
+  });
+
+  it("removes a notification and marks it as read via the action buttons", async () => {
+    mockNotificationCenterState.remove = vi.fn();
+    mockNotificationCenterState.markAsRead = vi.fn();
+    mockNotificationCenterState.notifications = [
+      {
+        id: "toast-1",
+        createdAt: Date.now(),
+        read: false,
+        type: "info",
+        content: React.createElement("span", null, "Test notification"),
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    const notificationButton = screen.getAllByRole("button")[0];
+    await user.click(notificationButton!);
+
+    expect(screen.getByText("Test notification")).toBeTruthy();
+
+    // An unread notification renders two action buttons: remove then mark-as-read
+    const actionButtons = screen.getAllByLabelText("close");
+    expect(actionButtons).toHaveLength(2);
+
+    await user.click(actionButtons[0]);
+    expect(mockNotificationCenterState.remove).toHaveBeenCalledWith("toast-1");
+
+    await user.click(actionButtons[1]);
+    expect(mockNotificationCenterState.markAsRead).toHaveBeenCalledWith(
+      "toast-1",
+    );
+  });
+
+  it("excludes ignored problems from badge count even with stale unreadCount", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: true,
+            status: "ignored",
+          },
+        },
+      },
+    ];
+    // Simulate stale hook state: badge must derive from notifications, not this value
+    mockNotificationCenterState.unreadCount = 1;
+
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).toBeNull();
+  });
+
+  it("counts active problems and hides ignored entries in the list", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: true,
+            status: "ignored",
+          },
+        },
+      },
+      {
+        id: "problem-active",
+        createdAt: Date.now(),
+        read: false,
+        type: "error",
+        content: "Active problem",
+        data: {
+          exclude: false,
+          error: { problem_key: "other", ignored: false, status: "created" },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 2;
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).not.toBeNull();
+
+    const notificationButton = screen.getAllByRole("button")[0];
+    await user.click(notificationButton!);
+
+    expect(screen.getByText("Active problem")).toBeTruthy();
+    expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+  });
+
+  it("classifies ignored problem payloads", async () => {
+    const { isIgnoredProblemError } = await import("../NotificationCenter");
+
+    expect(isIgnoredProblemError({ ignored: true, status: "created" })).toBe(
+      true,
+    );
+    expect(isIgnoredProblemError({ ignored: false, status: "ignored" })).toBe(
+      true,
+    );
+    expect(isIgnoredProblemError({ ignored: false, status: "created" })).toBe(
+      false,
+    );
+    expect(isIgnoredProblemError(undefined)).toBe(false);
+    expect(isIgnoredProblemError(null)).toBe(false);
+  });
+
+  it("excludes stale active payloads once the server marks the key ignored", async () => {
+    // Regression for issue 1239: toast.dismiss() leaves the notification
+    // entry with its original active snapshot (ignored:false). The badge
+    // must follow live server state, not the stale payload.
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [
+      { problem_key: "protected_mode", ignored: true, status: "ignored" },
+    ];
+
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).toBeNull();
+  });
+
+  it("excludes fixed problems from badge and list via live server state", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "error",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockServerEventRef.current = {
+      problem: {
+        problem_key: "protected_mode",
+        ignored: false,
+        status: "fixed",
+      },
+    };
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).toBeNull();
+
+    const notificationButton = screen.getAllByRole("button")[0];
+    await user.click(notificationButton!);
+
+    expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+  });
+
+  it("lets a fresh active WS event override a stale ignored REST snapshot", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [
+      { problem_key: "protected_mode", ignored: true, status: "ignored" },
+    ];
+    mockServerEventRef.current = {
+      problem: {
+        problem_key: "protected_mode",
+        ignored: false,
+        status: "created",
+      },
+    };
+
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).not.toBeNull();
+  });
+
+  it("drops the badge immediately when a local ignore overrides stale active server data", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [
+      { problem_key: "protected_mode", ignored: false, status: "created" },
+    ];
+    mockServerEventRef.current = {
+      problem: {
+        problem_key: "protected_mode",
+        ignored: false,
+        status: "created",
+      },
+    };
+    setLocalProblemIgnore("protected_mode", true);
+
+    await renderNotificationCenter();
+
+    expect(screen.queryByText("1")).toBeNull();
+  });
+
+  it("removes the ignored entry from the open bell popover", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [makeProblem()];
+    mockServerEventRef.current = { problem: makeProblem() };
+    setLocalProblemIgnore("protected_mode", true);
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+    await user.click(screen.getAllByRole("button")[0]!);
+
+    expect(screen.queryByText("1")).toBeNull();
+    expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+  });
+
+  it("restores badge and bell entry when REST re-enables after a local ignore", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [
+      makeProblem({ updated_at: "2026-01-02T00:00:00Z" }),
+    ];
+    mockServerEventRef.current = {
+      problem: makeProblem({ updated_at: "2026-01-01T00:00:00Z" }),
+    };
+    setLocalProblemIgnore("protected_mode", true, "2026-01-01T00:00:00Z");
+
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+    await user.click(screen.getAllByRole("button")[0]!);
+
+    await waitFor(() => {
+      expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
     });
+    expect(screen.queryByText("1")).not.toBeNull();
+    expect(screen.getByText("Addon in Protected Mode")).toBeTruthy();
+  });
 
-    it("opens popover when notification button is clicked", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
+  it("hides badge and bell entry when REST re-ignores after a local re-enable", async () => {
+    mockNotificationCenterState.notifications = [
+      {
+        id: "problem-protected_mode",
+        createdAt: Date.now(),
+        read: false,
+        type: "warning",
+        content: "Addon in Protected Mode",
+        data: {
+          exclude: false,
+          error: {
+            problem_key: "protected_mode",
+            ignored: false,
+            status: "created",
+          },
+        },
+      },
+    ];
+    mockNotificationCenterState.unreadCount = 1;
+    mockProblemsRef.current = [
+      makeProblem({
+        ignored: true,
+        status: Status.Ignored,
+        updated_at: "2026-01-02T00:00:00Z",
+      }),
+    ];
+    mockServerEventRef.current = {
+      problem: makeProblem({ updated_at: "2026-01-01T00:00:00Z" }),
+    };
+    setLocalProblemIgnore("protected_mode", false, "2026-01-01T00:00:00Z");
 
-        // Find and click the notification button
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
+    const user = userEvent.setup();
+    await renderNotificationCenter();
+    await user.click(screen.getAllByRole("button")[0]!);
 
-            // Check if popover opened (look for notifications text)
-            expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-        }
+    await waitFor(() => {
+      expect(getLocalProblemIgnore("protected_mode")).toBeUndefined();
     });
-
-    it("displays notification count badge", async () => {
-        await renderNotificationCenter();
-
-        // Look for badge element - check component renders without errors
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("handles show read notifications toggle", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Open the popover first
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
-
-            // Look for toggle switch
-            const switches = screen.queryAllByRole("checkbox");
-            const firstSwitch = switches[0];
-            if (switches.length > 0 && firstSwitch) {
-                await user.click(firstSwitch);
-            }
-        }
-
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("renders notification list when popover is open", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Open the popover
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
-
-            // Check for notification list container - component renders without errors
-            expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-        }
-    });
-
-    it("shows React notification content instead of object placeholders", async () => {
-        mockNotificationCenterState.notifications = [
-            {
-                id: "toast-1",
-                createdAt: Date.now(),
-                read: false,
-                type: "error",
-                content: React.createElement("span", null, "Detailed command failure"),
-                data: { exclude: false },
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 1;
-
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        const notificationButton = screen.getAllByRole("button")[0];
-        await user.click(notificationButton!);
-
-        expect(screen.queryByText("Detailed command failure")).toBeTruthy();
-        expect(screen.queryByText("[object Object]")).toBeNull();
-    });
-
-    it("handles notification actions (clear, mark as read)", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Open the popover
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
-
-            // Look for action buttons (clear, mark as read)
-            const actionButtons = screen.queryAllByRole("button");
-            expect(actionButtons.length).toBeGreaterThanOrEqual(1);
-
-            // Try to click action buttons if they exist
-            const thirdButton = actionButtons[2];
-            if (actionButtons.length > 2 && thirdButton) {
-                await user.click(thirdButton); // Try clicking clear or mark as read
-            }
-        }
-    });
-
-    it("displays tooltips on hover", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Test tooltip on main notification button
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.hover(notificationButton);
-            await user.unhover(notificationButton);
-        }
-
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("handles color scheme changes", async () => {
-        await renderNotificationCenter();
-
-        // The component should render without errors regardless of color scheme
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("converts severity levels correctly", async () => {
-        await renderNotificationCenter();
-
-        // Test that the component renders (severity conversion is internal)
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("renders ToastContainer with correct configuration", async () => {
-        await renderNotificationCenter();
-
-        // Look for toast container elements - check component renders without errors
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("handles popover close correctly", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Open and close the popover
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
-            // Clicking outside or pressing escape should close popover
-            await user.keyboard('{Escape}');
-        }
-
-        expect(document.body.innerHTML.trim().length).toBeGreaterThan(0);
-    });
-
-    it("handles disabled action buttons correctly", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        // Open the popover
-        const notificationButton = screen.queryByRole("button");
-        if (notificationButton) {
-            await user.click(notificationButton);
-
-            // Look for disabled buttons (when no notifications)
-            const allButtons = screen.queryAllByRole("button");
-            const disabledButtons = allButtons.filter(button => button.hasAttribute('disabled'));
-            expect(disabledButtons.length).toBeGreaterThanOrEqual(0);
-        }
-    });
-
-    it("toggles the filter label between Unread and All", async () => {
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        const notificationButton = screen.getAllByRole("button")[0];
-        await user.click(notificationButton!);
-
-        expect(screen.getByText("Unread")).toBeTruthy();
-
-        // The FormControlLabel associates the switch with the "Unread" label
-        const toggle = screen.getByLabelText("Unread");
-        await user.click(toggle);
-
-        expect(screen.getByText("All")).toBeTruthy();
-        expect(screen.queryByText("Unread")).toBeNull();
-    });
-
-    it("removes a notification and marks it as read via the action buttons", async () => {
-        mockNotificationCenterState.remove = vi.fn();
-        mockNotificationCenterState.markAsRead = vi.fn();
-        mockNotificationCenterState.notifications = [
-            {
-                id: "toast-1",
-                createdAt: Date.now(),
-                read: false,
-                type: "info",
-                content: React.createElement("span", null, "Test notification"),
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 1;
-
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        const notificationButton = screen.getAllByRole("button")[0];
-        await user.click(notificationButton!);
-
-        expect(screen.getByText("Test notification")).toBeTruthy();
-
-        // An unread notification renders two action buttons: remove then mark-as-read
-        const actionButtons = screen.getAllByLabelText("close");
-        expect(actionButtons).toHaveLength(2);
-
-        await user.click(actionButtons[0]);
-        expect(mockNotificationCenterState.remove).toHaveBeenCalledWith("toast-1");
-
-        await user.click(actionButtons[1]);
-        expect(mockNotificationCenterState.markAsRead).toHaveBeenCalledWith("toast-1");
-    });
-
-    it("excludes ignored problems from badge count even with stale unreadCount", async () => {
-        mockNotificationCenterState.notifications = [
-            {
-                id: "problem-protected_mode",
-                createdAt: Date.now(),
-                read: false,
-                type: "warning",
-                content: "Addon in Protected Mode",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "protected_mode", ignored: true, status: "ignored" },
-                },
-            },
-        ];
-        // Simulate stale hook state: badge must derive from notifications, not this value
-        mockNotificationCenterState.unreadCount = 1;
-
-        await renderNotificationCenter();
-
-        expect(screen.queryByText("1")).toBeNull();
-    });
-
-    it("counts active problems and hides ignored entries in the list", async () => {
-        mockNotificationCenterState.notifications = [
-            {
-                id: "problem-protected_mode",
-                createdAt: Date.now(),
-                read: false,
-                type: "warning",
-                content: "Addon in Protected Mode",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "protected_mode", ignored: true, status: "ignored" },
-                },
-            },
-            {
-                id: "problem-active",
-                createdAt: Date.now(),
-                read: false,
-                type: "error",
-                content: "Active problem",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "other", ignored: false, status: "created" },
-                },
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 2;
-
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        expect(screen.queryByText("1")).not.toBeNull();
-
-        const notificationButton = screen.getAllByRole("button")[0];
-        await user.click(notificationButton!);
-
-        expect(screen.getByText("Active problem")).toBeTruthy();
-        expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
-    });
-
-    it("classifies ignored problem payloads", async () => {
-        const { isIgnoredProblemError } = await import("../NotificationCenter");
-
-        expect(isIgnoredProblemError({ ignored: true, status: "created" })).toBe(true);
-        expect(isIgnoredProblemError({ ignored: false, status: "ignored" })).toBe(true);
-        expect(isIgnoredProblemError({ ignored: false, status: "created" })).toBe(false);
-        expect(isIgnoredProblemError(undefined)).toBe(false);
-        expect(isIgnoredProblemError(null)).toBe(false);
-    });
-
-    it("excludes stale active payloads once the server marks the key ignored", async () => {
-        // Regression for issue 1239: toast.dismiss() leaves the notification
-        // entry with its original active snapshot (ignored:false). The badge
-        // must follow live server state, not the stale payload.
-        mockNotificationCenterState.notifications = [
-            {
-                id: "problem-protected_mode",
-                createdAt: Date.now(),
-                read: false,
-                type: "warning",
-                content: "Addon in Protected Mode",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
-                },
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 1;
-        mockProblemsRef.current = [
-            { problem_key: "protected_mode", ignored: true, status: "ignored" },
-        ];
-
-        await renderNotificationCenter();
-
-        expect(screen.queryByText("1")).toBeNull();
-    });
-
-    it("excludes fixed problems from badge and list via live server state", async () => {        mockNotificationCenterState.notifications = [
-            {
-                id: "problem-protected_mode",
-                createdAt: Date.now(),
-                read: false,
-                type: "error",
-                content: "Addon in Protected Mode",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
-                },
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 1;
-        mockServerEventRef.current = {
-            problem: { problem_key: "protected_mode", ignored: false, status: "fixed" },
-        };
-
-        const user = userEvent.setup();
-        await renderNotificationCenter();
-
-        expect(screen.queryByText("1")).toBeNull();
-
-        const notificationButton = screen.getAllByRole("button")[0];
-        await user.click(notificationButton!);
-
-        expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
-    });
-
-    it("lets a fresh active WS event override a stale ignored REST snapshot", async () => {
-        mockNotificationCenterState.notifications = [
-            {
-                id: "problem-protected_mode",
-                createdAt: Date.now(),
-                read: false,
-                type: "warning",
-                content: "Addon in Protected Mode",
-                data: {
-                    exclude: false,
-                    error: { problem_key: "protected_mode", ignored: false, status: "created" },
-                },
-            },
-        ];
-        mockNotificationCenterState.unreadCount = 1;
-        mockProblemsRef.current = [
-            { problem_key: "protected_mode", ignored: true, status: "ignored" },
-        ];
-        mockServerEventRef.current = {
-            problem: { problem_key: "protected_mode", ignored: false, status: "created" },
-        };
-
-        await renderNotificationCenter();
-
-        expect(screen.queryByText("1")).not.toBeNull();
-    });
+    expect(screen.queryByText("1")).toBeNull();
+    expect(screen.queryByText("Addon in Protected Mode")).toBeNull();
+  });
 });
