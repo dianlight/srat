@@ -7,3 +7,4 @@
 - 2026-09-24: Prop-count gates should count call-site JSX attributes; deprecated flat optionals per issue migration notes keep legacy tests green without violating the gate.
 - 2026-09-24: Mount-hook seam that works: hook owns when (finally/clear timing, toast, confirm retry), parent owns what via onCleared callback; setError root as optional param keeps toast-only behavior default.
 - 2026-09-24: volumes test scope green baseline: 186 files-scoped tests; full touched-area scope 202 with dashboard metrics plus ActionableItems.
+- 2026-11-28: Remote verification environment changes must use the addon's own setting (`leave_front_door_open` / "Disable SRAT Authentication") instead of patching the live s6 `run` script; if a host patch is the only option, inform the user and get confirmation first (user correction).
