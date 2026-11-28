@@ -13,8 +13,9 @@ sortImports = true
 sortPackageJson = true
 
 [lint]
-# Replaces Biome as the linter. `bun lint` is available in stable Bun 1.4.5
-# (see https://bun.com/docs/lint).
+# Replaces Biome as the linter. `bun lint` is canary-only as of Bun 1.4.5
+# (see https://github.com/oven-sh/bun/blob/main/docs/lint/index.mdx); install
+# with `bun upgrade --canary` until the next stable release ships it.
 # Rules below mirror Biome's recommended set; `react/no-array-index-key`
 # is intentionally omitted (not enforceable without eslint-plugin-react).
 categories = { suspicious = "warn", perf = "warn" }

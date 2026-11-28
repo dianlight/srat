@@ -14,9 +14,9 @@ local linters = new Mapping<String, Step> {
         dir = "custom_components"
     }
 
-    // `bun lint` replaces Biome as the linter (stable since Bun 1.4.5). It
-    // reads frontend/eslint.config.js natively, including the custom
-    // srat/registered-test-id rule, so ESLint no longer runs separately.
+    // `bun lint` replaces Biome as the linter (canary-only until a stable
+    // Bun ships it). It reads frontend/eslint.config.js natively, including
+    // the custom srat/registered-test-id rule, so ESLint no longer runs separately.
     ["bun-lint"] {
         glob = "**/*.{js,jsx,ts,tsx}"
         check = "bun lint --no-script"
