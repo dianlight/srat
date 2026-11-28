@@ -379,13 +379,15 @@ export function requestUnmountVolume(args: {
   unmount: UnmountTrigger;
   partition: Partition;
   force?: boolean;
+  mountPointData?: MountPointData;
   isSelected: boolean;
   onCleared: () => void;
 }): void {
   const { confirm, unmount, partition, isSelected, onCleared } = args;
   const force = args.force ?? false;
   console.debug("Umount Request", partition, "Force:", force);
-  const mountData = Object.values(partition.mount_point_data || {})[0];
+  const mountData =
+    args.mountPointData ?? Object.values(partition.mount_point_data || {})[0];
   if (!mountData?.path) {
     toast.error("Cannot unmount: Missing mount point path.");
     console.error("Missing mount path for partition:", partition);
@@ -455,12 +457,20 @@ export function requestAutomountToggle(args: {
   patchSettings: PatchSettingsTrigger;
   readOnly: boolean;
   partition: Partition;
+  mountPointData?: MountPointData;
 }): void {
   const { patchSettings, readOnly, partition } = args;
   if (readOnly) return;
   console.debug("Toggling automount for partition:", partition);
   const partitionName = decodeEscapeSequence(partition.name || "this volume");
-  const mountEntries = Object.entries(partition.mount_point_data || {});
+  const allMountEntries = Object.entries(partition.mount_point_data || {});
+  // A selected mount point scopes the toggle to that entry; without one,
+  // preserve the legacy behavior of toggling every mount point together.
+  const mountEntries = args.mountPointData?.path
+    ? allMountEntries.filter(
+        ([, entry]) => entry.path === args.mountPointData?.path,
+      )
+    : allMountEntries;
   if (mountEntries.length === 0) return;
   // Fire one PATCH per mount point and aggregate the results so a
   // multi-mount partition produces a single summary toast instead of

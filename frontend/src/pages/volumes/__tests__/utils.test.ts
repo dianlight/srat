@@ -17,460 +17,544 @@ vi.mock("@sentry/react", () => ({
 }));
 
 describe("volumes utils", () => {
-	it("decodeEscapeSequence decodes hex sequences", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		// Test hex sequence
-		const result = decodeEscapeSequence("test\\x20value");
-		expect(result).toBe("test value"); // \x20 is space
-	});
-
-	it("decodeEscapeSequence handles regular strings", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		const result = decodeEscapeSequence("regular_string");
-		expect(result).toBe("regular_string");
-	});
-
-	it("decodeEscapeSequence handles empty string", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		const result = decodeEscapeSequence("");
-		expect(result).toBe("");
-	});
-
-	it("decodeEscapeSequence handles multiple escape sequences", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		const result = decodeEscapeSequence("test\\x20value\\x20here");
-		expect(result).toContain("test");
-		expect(result).toContain("value");
-	});
-
-	it("decodeEscapeSequence handles non-string input", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		const result = decodeEscapeSequence(null);
-		expect(result).toBe("");
-	});
-
-	it("decodeEscapeSequence handles hex escape with uppercase", async () => {
-		const { decodeEscapeSequence } = await import("../utils");
-
-		const result = decodeEscapeSequence("test\\x41"); // A
-		expect(result).toBe("testA");
-	});
-
-	it("getFilesystemLabelValidation validates labels against the provided regex", async () => {
-		const { getFilesystemLabelValidation } = await import("../utils");
-
-		const invalidResult = getFilesystemLabelValidation(
-			"bad-label!",
-			"^[A-Z0-9]{1,5}$",
-		);
-		expect(invalidResult.isValid).toBe(false);
-		expect(invalidResult.helperText).toContain(
-			"Accepted format: ^[A-Z0-9]{1,5}$",
-		);
-
-		const validResult = getFilesystemLabelValidation(
-			"DATA",
-			"^[A-Z0-9]{1,5}$",
-		);
-		expect(validResult.isValid).toBe(true);
-		expect(validResult.helperText).toContain(
-			"Accepted format: ^[A-Z0-9]{1,5}$",
-		);
-	});
-
-	it("getFilesystemLabelValidation allows an empty optional label", async () => {
-		const { getFilesystemLabelValidation } = await import("../utils");
-
-		const result = getFilesystemLabelValidation(
-			"",
-			"^[A-Z0-9]{1,5}$",
-			true,
-		);
-		expect(result.isValid).toBe(true);
-		expect(result.helperText).toContain(
-			"Accepted format: ^[A-Z0-9]{1,5}$",
-		);
-	});
-
-	it("isSynthesizedWholeDiskPartition matches a whole-disk entry with a detected filesystem", async () => {
-		const { isSynthesizedWholeDiskPartition } = await import("../utils");
-
-		const disk = { legacy_device_name: "sdd" } as any;
-		const wholeDiskWithFs = {
-			legacy_device_name: "sdd",
-			fs_type: "vfat",
-		} as any;
-		expect(isSynthesizedWholeDiskPartition(disk, wholeDiskWithFs)).toBe(true);
-	});
-
-	it("isSynthesizedWholeDiskPartition does not match a real partition with a numeric suffix", async () => {
-		const { isSynthesizedWholeDiskPartition } = await import("../utils");
-
-		const disk = { legacy_device_name: "sdd" } as any;
-		const realPartition = {
-			legacy_device_name: "sdd1",
-			fs_type: "vfat",
-		} as any;
-		expect(isSynthesizedWholeDiskPartition(disk, realPartition)).toBe(false);
-	});
-
-	it("getRealPartitions excludes whole-disk entries even when a filesystem is detected", async () => {
-		const { getRealPartitions } = await import("../utils");
-
-		const disk = {
-			legacy_device_name: "sdd",
-			partitions: {
-				"usb-General_UDisk-0:0": {
-					id: "usb-General_UDisk-0:0",
-					legacy_device_name: "sdd",
-					fs_type: "vfat",
-				},
-				"usb-General_UDisk-0:1": {
-					id: "usb-General_UDisk-0:1",
-					legacy_device_name: "sdd1",
-					fs_type: "ext4",
-				},
-			},
-		} as any;
-
-		const real = getRealPartitions(disk);
-		expect(real).toHaveLength(1);
-		expect(real[0].legacy_device_name).toBe("sdd1");
-	});
-
-	it("extractSuggestedMountPath finds the hint in 406 detail lines", async () => {
-		const { extractSuggestedMountPath } = await import("../utils");
-
-		expect(
-			extractSuggestedMountPath({
-				detail:
-					"Message: path contains invalid characters\nSuggestedPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1\nPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1\n",
-			}),
-		).toBe("/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1");
-	});
-
-	it("extractSuggestedMountPath returns undefined without a hint", async () => {
-		const { extractSuggestedMountPath } = await import("../utils");
-
-		expect(extractSuggestedMountPath({ detail: "Invalid Parameter" })).toBeUndefined();
-		expect(extractSuggestedMountPath(null)).toBeUndefined();
-		expect(
-			extractSuggestedMountPath({
-				errors: [{ message: "SuggestedPath: /mnt/fixed_path" }],
-			}),
-		).toBe("/mnt/fixed_path");
-	});
-
-	afterEach(() => {
-		vi.restoreAllMocks();
-	});
-
-	it("getDiskIdentifier prefers stable ids over the fallback index", async () => {
-		const { getDiskIdentifier } = await import("../utils");
-
-		const disk = {
-			id: "sda-1234",
-			legacy_device_name: "sda",
-			device_path: "/dev/sda",
-			serial: "SERIAL",
-		} as any;
-		expect(getDiskIdentifier(disk, 0)).toBe("sda-1234");
-	});
-
-	it("getDiskIdentifier falls back through legacy name, device path, serial", async () => {
-		const { getDiskIdentifier } = await import("../utils");
-
-		expect(
-			getDiskIdentifier({ legacy_device_name: "sdb" } as any, 0),
-		).toBe("sdb");
-		expect(
-			getDiskIdentifier({ device_path: "/dev/sdc" } as any, 0),
-		).toBe("/dev/sdc");
-		expect(getDiskIdentifier({ serial: "SN-X" } as any, 0)).toBe("SN-X");
-	});
-
-	it("getDiskIdentifier warns and uses the index key when no stable id exists", async () => {
-		const { getDiskIdentifier } = await import("../utils");
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-		expect(getDiskIdentifier({} as any, 3)).toBe("disk-3");
-		expect(warnSpy).toHaveBeenCalledTimes(1);
-		expect(warnSpy.mock.calls[0][0]).toContain('"disk-3"');
-	});
-
-	it("getPartitionIdentifier prefers stable ids and the map key", async () => {
-		const { getPartitionIdentifier } = await import("../utils");
-
-		const partition = {
-			id: "part-abc",
-			uuid: "uuid-1",
-			device_path: "/dev/sda1",
-		} as any;
-		expect(getPartitionIdentifier("disk-1", partition, "key1", 0)).toBe(
-			"disk-1::part-abc",
-		);
-		// Falls back to the object key before the index.
-		expect(
-			getPartitionIdentifier("disk-1", {} as any, "key1", 0),
-		).toBe("disk-1::key1");
-	});
-
-	it("getPartitionIdentifier warns and uses the index key when nothing stable exists", async () => {
-		const { getPartitionIdentifier } = await import("../utils");
-		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-		expect(getPartitionIdentifier("disk-1", {} as any, undefined, 2)).toBe(
-			"disk-1::part-2",
-		);
-		expect(warnSpy).toHaveBeenCalledTimes(1);
-		expect(warnSpy.mock.calls[0][0]).toContain('"part-2"');
-	});
-
-	it("identifiers stay stable across snapshot reordering", async () => {
-		const { getDiskIdentifier, getPartitionIdentifier } = await import(
-			"../utils"
-		);
-
-		const disks = [
-			{
-				id: "disk-a",
-				legacy_device_name: "sda",
-				partitions: {
-					p1: { id: "part-1", legacy_device_name: "sda1" },
-					p2: { id: "part-2", legacy_device_name: "sda2" },
-				},
-			},
-			{
-				id: "disk-b",
-				legacy_device_name: "sdb",
-				partitions: {
-					p3: { id: "part-3", legacy_device_name: "sdb1" },
-				},
-			},
-		] as any;
-
-		const before = disks.map((disk, diskIndex) => ({
-			diskId: getDiskIdentifier(disk, diskIndex),
-			partitionIds: Object.entries(disk.partitions).map(
-				([key, partition], partIndex) =>
-					getPartitionIdentifier(
-						getDiskIdentifier(disk, diskIndex),
-						partition as any,
-						key,
-						partIndex,
-					),
-			),
-		}));
-
-		// Reverse the snapshot order — identifiers must not change because
-		// they are derived from stable ids, not array positions.
-		const reordered = [...disks].reverse();
-		const after = reordered.map((disk, diskIndex) => ({
-			diskId: getDiskIdentifier(disk, diskIndex),
-			partitionIds: Object.entries(disk.partitions).map(
-				([key, partition], partIndex) =>
-					getPartitionIdentifier(
-						getDiskIdentifier(disk, diskIndex),
-						partition as any,
-						key,
-						partIndex,
-					),
-			),
-		}));
-
-		// Key by disk id: each disk must keep its identifiers no matter where
-		// it appears in the snapshot.
-		const idsByDisk = (list: typeof before) =>
-			Object.fromEntries(list.map((entry) => [entry.diskId, entry.partitionIds]));
-		expect(idsByDisk(after)).toEqual(idsByDisk(before));
-	});
-
-	describe("parseVolumeApiError (#1344)", () => {
-		it("prefers backend detail over message and status", async () => {
-			const { parseVolumeApiError } = await import("../utils");
-
-			expect(
-				parseVolumeApiError({
-					status: 406,
-					data: { detail: "device busy", message: "other", status: 406 },
-				}),
-			).toMatchObject({ message: "device busy", code: 406, detail: "device busy" });
-		});
-
-		it("falls back to message, nested errors, then status", async () => {
-			const { parseVolumeApiError } = await import("../utils");
-
-			expect(parseVolumeApiError({ status: 500, data: { message: "boom" } }).message).toBe("boom");
-			expect(
-				parseVolumeApiError({
-					status: 500,
-					data: { errors: [{ message: "nested boom" }] },
-				}).message,
-			).toBe("nested boom");
-			expect(parseVolumeApiError({ status: 500, data: {} }).message).toBe("500");
-			expect(parseVolumeApiError({ status: 500 }).message).toBe("500");
-			expect(parseVolumeApiError(undefined).message).toBe("Unknown error");
-		});
-
-		it("treats whitespace-only detail as empty", async () => {
-			const { parseVolumeApiError } = await import("../utils");
-
-			const parsed = parseVolumeApiError({
-				status: 406,
-				data: { detail: "   ", message: "device busy" },
-			});
-			expect(parsed.detail).toBeUndefined();
-			expect(parsed.message).toBe("device busy");
-		});
-	});
-
-	describe("serializeErrorForSentry (#1344)", () => {
-		it("keeps detail/message without [Object] placeholders", async () => {
-			const { serializeErrorForSentry } = await import("../utils");
-
-			const serialized = serializeErrorForSentry({
-				status: 406,
-				data: { detail: "device busy" },
-			});
-			expect(serialized.message).toBe("device busy");
-			expect(JSON.stringify(serialized)).not.toContain("[Object]");
-		});
-
-		it("handles circular, Error, array, and deep payloads", async () => {
-			const { serializeErrorForSentry } = await import("../utils");
-
-			const circular: Record<string, unknown> = { detail: "busy" };
-			circular.self = circular;
-			expect(
-				(serializeErrorForSentry({ status: 500, data: circular }) as any)
-					.error.data.self,
-			).toBe("[circular]");
-
-			const withCause = new Error("wrapped");
-			(withCause as { cause?: unknown }).cause = { status: 500 };
-			const serialized = serializeErrorForSentry(withCause) as any;
-			expect(serialized.error.name).toBe("Error");
-
-			const nested = serializeErrorForSentry({
-				status: 500,
-				data: { errors: [{ message: "nested boom" }], tags: ["a", "b"] },
-			}) as any;
-			expect(nested.message).toBe("nested boom");
-			expect(nested.error.data.tags).toEqual(["a", "b"]);
-
-			const deep = { detail: "x" } as Record<string, unknown>;
-			let cursor = deep;
-			for (let i = 0; i < 6; i++) {
-				const next: Record<string, unknown> = {};
-				cursor.nested = next;
-				cursor = next;
-			}
-			expect(
-				JSON.stringify(serializeErrorForSentry({ data: deep })),
-			).toContain("[truncated]");
-		});
-
-		it("ignores nested entries without a usable message", async () => {
-			const { parseVolumeApiError } = await import("../utils");
-
-			expect(
-				parseVolumeApiError({
-					status: 500,
-					data: { errors: [{ foo: 1 }, "nope", null] },
-				}).message,
-			).toBe("500");
-		});
-
-		it("preserves plain Error and RTK fetch-error messages", async () => {
-			const { parseVolumeApiError } = await import("../utils");
-
-			expect(parseVolumeApiError(new Error("device busy")).message).toBe(
-				"device busy",
-			);
-			const fetchError = parseVolumeApiError({
-				status: "FETCH_ERROR",
-				error: "Failed to fetch",
-			});
-			expect(fetchError.message).toBe("Failed to fetch");
-			expect(fetchError.code).toBe("FETCH_ERROR");
-		});
-	});
-
-	describe("requestUnmountVolume (#1344)", () => {
-		it("toasts backend detail with code and reports to Sentry with context", async () => {
-			const { toast } = await import("react-toastify");
-			const Sentry = await import("@sentry/react");
-			const { requestUnmountVolume } = await import("../utils");
-
-			const toastError = toast.error as unknown as ReturnType<typeof vi.fn>;
-			const addBreadcrumb = Sentry.addBreadcrumb as unknown as ReturnType<typeof vi.fn>;
-			const captureException = Sentry.captureException as unknown as ReturnType<typeof vi.fn>;
-			vi.mocked(toastError).mockClear();
-			vi.mocked(addBreadcrumb).mockClear();
-			vi.mocked(captureException).mockClear();
-
-			const rtkError = { status: 406, data: { detail: "device busy" } };
-			const partition = {
-				id: "part-1",
-				name: "data",
-				legacy_device_name: "sdb1",
-				mount_point_data: { mp0: { path: "/mnt/data" } },
-			} as any;
-
-			requestUnmountVolume({
-				confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
-				unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
-				partition,
-				force: true,
-				isSelected: false,
-				onCleared: () => undefined,
-			});
-
-			await vi.waitFor(() => {
-				expect(toastError).toHaveBeenCalledTimes(1);
-			});
-			expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain("device busy");
-			expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain("406");
-			expect(addBreadcrumb).toHaveBeenCalledWith(
-				expect.objectContaining({
-					category: "volume.unmount",
-					level: "error",
-				}),
-			);
-			expect(vi.mocked(addBreadcrumb).mock.calls[0][0]).toMatchObject({
-				data: expect.objectContaining({ mountPath: "/mnt/data", force: true }),
-			});
-			expect(captureException).toHaveBeenCalledTimes(1);
-			const [sentryError, hint] = vi.mocked(captureException).mock.calls[0];
-			expect((sentryError as Error).message).toContain("device busy");
-			expect(JSON.stringify(hint)).toContain("/mnt/data");
-			// #1354: console must log the Error first so the console→Sentry
-			// forwarder titles on the backend detail, not a bare label.
-			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-			try {
-				requestUnmountVolume({
-					confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
-					unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
-					partition,
-					force: true,
-					isSelected: false,
-					onCleared: () => undefined,
-				});
-				await vi.waitFor(() => {
-					expect(consoleSpy).toHaveBeenCalled();
-				});
-				const firstArg = consoleSpy.mock.calls[0]?.[0];
-				expect(firstArg).toBeInstanceOf(Error);
-				expect((firstArg as Error).message).toContain("device busy");
-			} finally {
-				consoleSpy.mockRestore();
-			}
-		});
-	});
+  it("decodeEscapeSequence decodes hex sequences", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    // Test hex sequence
+    const result = decodeEscapeSequence("test\\x20value");
+    expect(result).toBe("test value"); // \x20 is space
+  });
+
+  it("decodeEscapeSequence handles regular strings", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    const result = decodeEscapeSequence("regular_string");
+    expect(result).toBe("regular_string");
+  });
+
+  it("decodeEscapeSequence handles empty string", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    const result = decodeEscapeSequence("");
+    expect(result).toBe("");
+  });
+
+  it("decodeEscapeSequence handles multiple escape sequences", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    const result = decodeEscapeSequence("test\\x20value\\x20here");
+    expect(result).toContain("test");
+    expect(result).toContain("value");
+  });
+
+  it("decodeEscapeSequence handles non-string input", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    const result = decodeEscapeSequence(null);
+    expect(result).toBe("");
+  });
+
+  it("decodeEscapeSequence handles hex escape with uppercase", async () => {
+    const { decodeEscapeSequence } = await import("../utils");
+
+    const result = decodeEscapeSequence("test\\x41"); // A
+    expect(result).toBe("testA");
+  });
+
+  it("getFilesystemLabelValidation validates labels against the provided regex", async () => {
+    const { getFilesystemLabelValidation } = await import("../utils");
+
+    const invalidResult = getFilesystemLabelValidation(
+      "bad-label!",
+      "^[A-Z0-9]{1,5}$",
+    );
+    expect(invalidResult.isValid).toBe(false);
+    expect(invalidResult.helperText).toContain(
+      "Accepted format: ^[A-Z0-9]{1,5}$",
+    );
+
+    const validResult = getFilesystemLabelValidation("DATA", "^[A-Z0-9]{1,5}$");
+    expect(validResult.isValid).toBe(true);
+    expect(validResult.helperText).toContain(
+      "Accepted format: ^[A-Z0-9]{1,5}$",
+    );
+  });
+
+  it("getFilesystemLabelValidation allows an empty optional label", async () => {
+    const { getFilesystemLabelValidation } = await import("../utils");
+
+    const result = getFilesystemLabelValidation("", "^[A-Z0-9]{1,5}$", true);
+    expect(result.isValid).toBe(true);
+    expect(result.helperText).toContain("Accepted format: ^[A-Z0-9]{1,5}$");
+  });
+
+  it("isSynthesizedWholeDiskPartition matches a whole-disk entry with a detected filesystem", async () => {
+    const { isSynthesizedWholeDiskPartition } = await import("../utils");
+
+    const disk = { legacy_device_name: "sdd" } as any;
+    const wholeDiskWithFs = {
+      legacy_device_name: "sdd",
+      fs_type: "vfat",
+    } as any;
+    expect(isSynthesizedWholeDiskPartition(disk, wholeDiskWithFs)).toBe(true);
+  });
+
+  it("isSynthesizedWholeDiskPartition does not match a real partition with a numeric suffix", async () => {
+    const { isSynthesizedWholeDiskPartition } = await import("../utils");
+
+    const disk = { legacy_device_name: "sdd" } as any;
+    const realPartition = {
+      legacy_device_name: "sdd1",
+      fs_type: "vfat",
+    } as any;
+    expect(isSynthesizedWholeDiskPartition(disk, realPartition)).toBe(false);
+  });
+
+  it("getRealPartitions excludes whole-disk entries even when a filesystem is detected", async () => {
+    const { getRealPartitions } = await import("../utils");
+
+    const disk = {
+      legacy_device_name: "sdd",
+      partitions: {
+        "usb-General_UDisk-0:0": {
+          id: "usb-General_UDisk-0:0",
+          legacy_device_name: "sdd",
+          fs_type: "vfat",
+        },
+        "usb-General_UDisk-0:1": {
+          id: "usb-General_UDisk-0:1",
+          legacy_device_name: "sdd1",
+          fs_type: "ext4",
+        },
+      },
+    } as any;
+
+    const real = getRealPartitions(disk);
+    expect(real).toHaveLength(1);
+    expect(real[0].legacy_device_name).toBe("sdd1");
+  });
+
+  it("extractSuggestedMountPath finds the hint in 406 detail lines", async () => {
+    const { extractSuggestedMountPath } = await import("../utils");
+
+    expect(
+      extractSuggestedMountPath({
+        detail:
+          "Message: path contains invalid characters\nSuggestedPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1\nPath: /mnt/usb-General_USB_Flash_Disk_0111607137301461-0:0-part1\n",
+      }),
+    ).toBe("/mnt/usb-General_USB_Flash_Disk_0111607137301461-0_0-part1");
+  });
+
+  it("extractSuggestedMountPath returns undefined without a hint", async () => {
+    const { extractSuggestedMountPath } = await import("../utils");
+
+    expect(
+      extractSuggestedMountPath({ detail: "Invalid Parameter" }),
+    ).toBeUndefined();
+    expect(extractSuggestedMountPath(null)).toBeUndefined();
+    expect(
+      extractSuggestedMountPath({
+        errors: [{ message: "SuggestedPath: /mnt/fixed_path" }],
+      }),
+    ).toBe("/mnt/fixed_path");
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("getDiskIdentifier prefers stable ids over the fallback index", async () => {
+    const { getDiskIdentifier } = await import("../utils");
+
+    const disk = {
+      id: "sda-1234",
+      legacy_device_name: "sda",
+      device_path: "/dev/sda",
+      serial: "SERIAL",
+    } as any;
+    expect(getDiskIdentifier(disk, 0)).toBe("sda-1234");
+  });
+
+  it("getDiskIdentifier falls back through legacy name, device path, serial", async () => {
+    const { getDiskIdentifier } = await import("../utils");
+
+    expect(getDiskIdentifier({ legacy_device_name: "sdb" } as any, 0)).toBe(
+      "sdb",
+    );
+    expect(getDiskIdentifier({ device_path: "/dev/sdc" } as any, 0)).toBe(
+      "/dev/sdc",
+    );
+    expect(getDiskIdentifier({ serial: "SN-X" } as any, 0)).toBe("SN-X");
+  });
+
+  it("getDiskIdentifier warns and uses the index key when no stable id exists", async () => {
+    const { getDiskIdentifier } = await import("../utils");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(getDiskIdentifier({} as any, 3)).toBe("disk-3");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain('"disk-3"');
+  });
+
+  it("getPartitionIdentifier prefers stable ids and the map key", async () => {
+    const { getPartitionIdentifier } = await import("../utils");
+
+    const partition = {
+      id: "part-abc",
+      uuid: "uuid-1",
+      device_path: "/dev/sda1",
+    } as any;
+    expect(getPartitionIdentifier("disk-1", partition, "key1", 0)).toBe(
+      "disk-1::part-abc",
+    );
+    // Falls back to the object key before the index.
+    expect(getPartitionIdentifier("disk-1", {} as any, "key1", 0)).toBe(
+      "disk-1::key1",
+    );
+  });
+
+  it("getPartitionIdentifier warns and uses the index key when nothing stable exists", async () => {
+    const { getPartitionIdentifier } = await import("../utils");
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    expect(getPartitionIdentifier("disk-1", {} as any, undefined, 2)).toBe(
+      "disk-1::part-2",
+    );
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toContain('"part-2"');
+  });
+
+  it("identifiers stay stable across snapshot reordering", async () => {
+    const { getDiskIdentifier, getPartitionIdentifier } =
+      await import("../utils");
+
+    const disks = [
+      {
+        id: "disk-a",
+        legacy_device_name: "sda",
+        partitions: {
+          p1: { id: "part-1", legacy_device_name: "sda1" },
+          p2: { id: "part-2", legacy_device_name: "sda2" },
+        },
+      },
+      {
+        id: "disk-b",
+        legacy_device_name: "sdb",
+        partitions: {
+          p3: { id: "part-3", legacy_device_name: "sdb1" },
+        },
+      },
+    ] as any;
+
+    const before = disks.map((disk, diskIndex) => ({
+      diskId: getDiskIdentifier(disk, diskIndex),
+      partitionIds: Object.entries(disk.partitions).map(
+        ([key, partition], partIndex) =>
+          getPartitionIdentifier(
+            getDiskIdentifier(disk, diskIndex),
+            partition as any,
+            key,
+            partIndex,
+          ),
+      ),
+    }));
+
+    // Reverse the snapshot order — identifiers must not change because
+    // they are derived from stable ids, not array positions.
+    const reordered = [...disks].reverse();
+    const after = reordered.map((disk, diskIndex) => ({
+      diskId: getDiskIdentifier(disk, diskIndex),
+      partitionIds: Object.entries(disk.partitions).map(
+        ([key, partition], partIndex) =>
+          getPartitionIdentifier(
+            getDiskIdentifier(disk, diskIndex),
+            partition as any,
+            key,
+            partIndex,
+          ),
+      ),
+    }));
+
+    // Key by disk id: each disk must keep its identifiers no matter where
+    // it appears in the snapshot.
+    const idsByDisk = (list: typeof before) =>
+      Object.fromEntries(
+        list.map((entry) => [entry.diskId, entry.partitionIds]),
+      );
+    expect(idsByDisk(after)).toEqual(idsByDisk(before));
+  });
+
+  describe("parseVolumeApiError (#1344)", () => {
+    it("prefers backend detail over message and status", async () => {
+      const { parseVolumeApiError } = await import("../utils");
+
+      expect(
+        parseVolumeApiError({
+          status: 406,
+          data: { detail: "device busy", message: "other", status: 406 },
+        }),
+      ).toMatchObject({
+        message: "device busy",
+        code: 406,
+        detail: "device busy",
+      });
+    });
+
+    it("falls back to message, nested errors, then status", async () => {
+      const { parseVolumeApiError } = await import("../utils");
+
+      expect(
+        parseVolumeApiError({ status: 500, data: { message: "boom" } }).message,
+      ).toBe("boom");
+      expect(
+        parseVolumeApiError({
+          status: 500,
+          data: { errors: [{ message: "nested boom" }] },
+        }).message,
+      ).toBe("nested boom");
+      expect(parseVolumeApiError({ status: 500, data: {} }).message).toBe(
+        "500",
+      );
+      expect(parseVolumeApiError({ status: 500 }).message).toBe("500");
+      expect(parseVolumeApiError(undefined).message).toBe("Unknown error");
+    });
+
+    it("treats whitespace-only detail as empty", async () => {
+      const { parseVolumeApiError } = await import("../utils");
+
+      const parsed = parseVolumeApiError({
+        status: 406,
+        data: { detail: "   ", message: "device busy" },
+      });
+      expect(parsed.detail).toBeUndefined();
+      expect(parsed.message).toBe("device busy");
+    });
+  });
+
+  describe("serializeErrorForSentry (#1344)", () => {
+    it("keeps detail/message without [Object] placeholders", async () => {
+      const { serializeErrorForSentry } = await import("../utils");
+
+      const serialized = serializeErrorForSentry({
+        status: 406,
+        data: { detail: "device busy" },
+      });
+      expect(serialized.message).toBe("device busy");
+      expect(JSON.stringify(serialized)).not.toContain("[Object]");
+    });
+
+    it("handles circular, Error, array, and deep payloads", async () => {
+      const { serializeErrorForSentry } = await import("../utils");
+
+      const circular: Record<string, unknown> = { detail: "busy" };
+      circular.self = circular;
+      expect(
+        (serializeErrorForSentry({ status: 500, data: circular }) as any).error
+          .data.self,
+      ).toBe("[circular]");
+
+      const withCause = new Error("wrapped");
+      (withCause as { cause?: unknown }).cause = { status: 500 };
+      const serialized = serializeErrorForSentry(withCause) as any;
+      expect(serialized.error.name).toBe("Error");
+
+      const nested = serializeErrorForSentry({
+        status: 500,
+        data: { errors: [{ message: "nested boom" }], tags: ["a", "b"] },
+      }) as any;
+      expect(nested.message).toBe("nested boom");
+      expect(nested.error.data.tags).toEqual(["a", "b"]);
+
+      const deep = { detail: "x" } as Record<string, unknown>;
+      let cursor = deep;
+      for (let i = 0; i < 6; i++) {
+        const next: Record<string, unknown> = {};
+        cursor.nested = next;
+        cursor = next;
+      }
+      expect(JSON.stringify(serializeErrorForSentry({ data: deep }))).toContain(
+        "[truncated]",
+      );
+    });
+
+    it("ignores nested entries without a usable message", async () => {
+      const { parseVolumeApiError } = await import("../utils");
+
+      expect(
+        parseVolumeApiError({
+          status: 500,
+          data: { errors: [{ foo: 1 }, "nope", null] },
+        }).message,
+      ).toBe("500");
+    });
+
+    it("preserves plain Error and RTK fetch-error messages", async () => {
+      const { parseVolumeApiError } = await import("../utils");
+
+      expect(parseVolumeApiError(new Error("device busy")).message).toBe(
+        "device busy",
+      );
+      const fetchError = parseVolumeApiError({
+        status: "FETCH_ERROR",
+        error: "Failed to fetch",
+      });
+      expect(fetchError.message).toBe("Failed to fetch");
+      expect(fetchError.code).toBe("FETCH_ERROR");
+    });
+  });
+
+  describe("requestUnmountVolume (#1344)", () => {
+    it("toasts backend detail with code and reports to Sentry with context", async () => {
+      const { toast } = await import("react-toastify");
+      const Sentry = await import("@sentry/react");
+      const { requestUnmountVolume } = await import("../utils");
+
+      const toastError = toast.error as unknown as ReturnType<typeof vi.fn>;
+      const addBreadcrumb = Sentry.addBreadcrumb as unknown as ReturnType<
+        typeof vi.fn
+      >;
+      const captureException = Sentry.captureException as unknown as ReturnType<
+        typeof vi.fn
+      >;
+      vi.mocked(toastError).mockClear();
+      vi.mocked(addBreadcrumb).mockClear();
+      vi.mocked(captureException).mockClear();
+
+      const rtkError = { status: 406, data: { detail: "device busy" } };
+      const partition = {
+        id: "part-1",
+        name: "data",
+        legacy_device_name: "sdb1",
+        mount_point_data: { mp0: { path: "/mnt/data" } },
+      } as any;
+
+      requestUnmountVolume({
+        confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
+        unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
+        partition,
+        force: true,
+        isSelected: false,
+        onCleared: () => undefined,
+      });
+
+      await vi.waitFor(() => {
+        expect(toastError).toHaveBeenCalledTimes(1);
+      });
+      expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain(
+        "device busy",
+      );
+      expect(String(vi.mocked(toastError).mock.calls[0][0])).toContain("406");
+      expect(addBreadcrumb).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: "volume.unmount",
+          level: "error",
+        }),
+      );
+      expect(vi.mocked(addBreadcrumb).mock.calls[0][0]).toMatchObject({
+        data: expect.objectContaining({ mountPath: "/mnt/data", force: true }),
+      });
+      expect(captureException).toHaveBeenCalledTimes(1);
+      const [sentryError, hint] = vi.mocked(captureException).mock.calls[0];
+      expect((sentryError as Error).message).toContain("device busy");
+      expect(JSON.stringify(hint)).toContain("/mnt/data");
+      // #1354: console must log the Error first so the console→Sentry
+      // forwarder titles on the backend detail, not a bare label.
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      try {
+        requestUnmountVolume({
+          confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
+          unmount: (() => ({ unwrap: () => Promise.reject(rtkError) })) as any,
+          partition,
+          force: true,
+          isSelected: false,
+          onCleared: () => undefined,
+        });
+        await vi.waitFor(() => {
+          expect(consoleSpy).toHaveBeenCalled();
+        });
+        const firstArg = consoleSpy.mock.calls[0]?.[0];
+        expect(firstArg).toBeInstanceOf(Error);
+        expect((firstArg as Error).message).toContain("device busy");
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    });
+
+    it("uses the selected mount point instead of the first entry (#1674)", async () => {
+      const { toast } = await import("react-toastify");
+      const { requestUnmountVolume } = await import("../utils");
+      vi.mocked(toast.info).mockClear();
+
+      const unmount = vi.fn(() => ({ unwrap: () => Promise.resolve({}) }));
+      const partition = {
+        id: "part-multi",
+        name: "multi",
+        legacy_device_name: "sdb1",
+        mount_point_data: {
+          first: { path: "/mnt/one" },
+          second: { path: "/mnt/two" },
+        },
+      } as any;
+
+      requestUnmountVolume({
+        confirm: (() => Promise.resolve({ reason: "confirm" })) as any,
+        unmount: unmount as any,
+        partition,
+        mountPointData: partition.mount_point_data.second,
+        isSelected: false,
+        onCleared: () => undefined,
+      });
+
+      await vi.waitFor(() => {
+        expect(unmount).toHaveBeenCalledTimes(1);
+      });
+      expect(unmount).toHaveBeenCalledWith({
+        mountPath: "/mnt/two",
+        force: false,
+      });
+    });
+  });
+
+  describe("requestAutomountToggle (#1674)", () => {
+    it("toggles only the selected mount point on a multi-mount partition", async () => {
+      const { toast } = await import("react-toastify");
+      const { requestAutomountToggle } = await import("../utils");
+      vi.mocked(toast.info).mockClear();
+
+      const patchedPaths: string[] = [];
+      const patchSettings = vi.fn((args: any) => {
+        patchedPaths.push(args.patchMountPointData.path);
+        return { unwrap: () => Promise.resolve({}) };
+      });
+      const selected = {
+        path: "/mnt/two",
+        is_mounted: true,
+        type: "HOST",
+        is_to_mount_at_startup: false,
+      } as any;
+      const partition = {
+        id: "part-multi",
+        name: "multi",
+        mount_point_data: {
+          first: { path: "/mnt/one", is_to_mount_at_startup: false },
+          second: selected,
+        },
+      } as any;
+
+      requestAutomountToggle({
+        patchSettings: patchSettings as any,
+        readOnly: false,
+        partition,
+        mountPointData: selected,
+      });
+
+      await vi.waitFor(() => {
+        expect(toast.info).toHaveBeenCalledTimes(1);
+      });
+      expect(patchSettings).toHaveBeenCalledTimes(1);
+      expect(patchedPaths).toEqual(["/mnt/two"]);
+    });
+  });
 });
-

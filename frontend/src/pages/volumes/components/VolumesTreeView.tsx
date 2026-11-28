@@ -36,11 +36,21 @@ export interface TreeSelection {
 }
 
 export interface TreeActions {
-  onToggleAutomount: (partition: Partition) => void;
-  onMount: (partition: Partition) => void;
-  onUnmount: (partition: Partition, force: boolean) => void;
-  onCreateShare: (partition: Partition) => void;
-  onGoToShare: (partition: Partition) => void;
+  onToggleAutomount: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
+  onCreateShare: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;
@@ -69,11 +79,21 @@ interface VolumesTreeViewProps {
   // Selection handlers
   onDiskSelect?: (disk: Disk) => void;
   onPartitionSelect?: (disk: Disk, partition: Partition) => void;
-  onToggleAutomount?: (partition: Partition) => void;
-  onMount?: (partition: Partition) => void;
-  onUnmount?: (partition: Partition, force: boolean) => void;
-  onCreateShare?: (partition: Partition) => void;
-  onGoToShare?: (partition: Partition) => void;
+  onToggleAutomount?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount?: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount?: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
+  onCreateShare?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onGoToShare?: (partition: Partition, mountPointData?: MountPointData) => void;
   onCheckFilesystem?: (partition: Partition) => void;
   onSetFilesystemLabel?: (partition: Partition) => void;
   onFormatPartition?: (partition: Partition) => void;
@@ -314,6 +334,7 @@ export function VolumesTreeView(props: VolumesTreeViewProps) {
                 <PartitionActions
                   partition={partition}
                   protected_mode={protectedMode}
+                  mountPointDataSelection={mpd}
                   onToggleAutomount={onToggleAutomount}
                   onMount={onMount}
                   onUnmount={onUnmount}
@@ -363,9 +384,13 @@ export function VolumesTreeView(props: VolumesTreeViewProps) {
       if (mpd.is_ha_mounted === true && mpd.is_mounted !== true) {
         return false;
       }
-      // HA owns the mount lifecycle: hide addon-side mount points.
+      // HA owns the mount lifecycle for unmounted addon-side rows. A genuinely
+      // mounted SRAT/addon entry is kept so mixed-ownership partitions still
+      // expose its per-mount actions (#1674).
       if (
         hasHAMounted &&
+        mpd.is_ha_mounted !== true &&
+        mpd.is_mounted !== true &&
         (mpd.type === "ADDON" || (mpd.path || key).startsWith("/mnt/"))
       ) {
         return false;

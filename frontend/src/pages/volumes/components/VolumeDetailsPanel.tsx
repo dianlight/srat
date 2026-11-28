@@ -34,9 +34,16 @@ import { PartitionInformationCard } from "./PartitionInformationCard";
 import { SmartStatusPanel } from "./SmartStatusPanel";
 
 export interface DetailsActions {
-  onToggleAutomount?: (partition: Partition) => void;
-  onMount?: (partition: Partition) => void;
-  onUnmount?: (partition: Partition, force: boolean) => void;
+  onToggleAutomount?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount?: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount?: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare?: (
     partition: Partition,
     mountPointData?: MountPointData,
@@ -55,9 +62,16 @@ interface VolumeDetailsPanelProps {
   // keep working. New code must use disk/partition/actions.
   protectedMode?: boolean;
   readOnly?: boolean;
-  onToggleAutomount?: (partition: Partition) => void;
-  onMount?: (partition: Partition) => void;
-  onUnmount?: (partition: Partition, force: boolean) => void;
+  onToggleAutomount?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount?: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount?: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare?: (
     partition: Partition,
     mountPointData?: MountPointData,
