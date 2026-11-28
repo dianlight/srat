@@ -6,9 +6,18 @@ import { getPartitionActionItems } from "../components/PartitionActionItems";
 export interface UsePartitionActionsParams {
   partition?: Partition;
   protectedMode: boolean;
-  onToggleAutomount?: (partition: Partition) => void;
-  onMount?: (partition: Partition) => void;
-  onUnmount?: (partition: Partition, force: boolean) => void;
+  // Selected mount point for a multi-mount partition (tree leaf / details row).
+  mountPointDataSelection?: MountPointData;
+  onToggleAutomount?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount?: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount?: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare?: (
     partition: Partition,
     mountPointData?: MountPointData,
@@ -22,6 +31,7 @@ export interface UsePartitionActionsParams {
 export function usePartitionActions({
   partition,
   protectedMode,
+  mountPointDataSelection,
   onToggleAutomount,
   onMount,
   onUnmount,
@@ -45,6 +55,7 @@ export function usePartitionActions({
     return getPartitionActionItems({
       partition,
       protectedMode,
+      mountPointDataSelection,
       onToggleAutomount,
       onMount,
       onUnmount,
@@ -57,6 +68,7 @@ export function usePartitionActions({
   }, [
     partition,
     protectedMode,
+    mountPointDataSelection,
     onToggleAutomount,
     onMount,
     onUnmount,

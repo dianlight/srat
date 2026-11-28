@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("PartitionActions component", () => {
   const createMatchMedia = (matches: boolean) => () =>
@@ -1331,5 +1331,105 @@ describe("PartitionActions component", () => {
     // The shared class must match the small size used by MUI icons.
     const sharedClass = iconClasses.values().next().value ?? "";
     expect(sharedClass).toContain("MuiSvgIcon-fontSizeSmall");
+  });
+
+  it("scopes actions to the selected mount point on a multi-mount partition", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { PartitionActions } = await import("../PartitionActions");
+
+    const user = userEvent.setup();
+    const selectedMountPoint = {
+      path: "/mnt/two",
+      is_mounted: true,
+      is_write_supported: true,
+    };
+    const onUnmount = vi.fn();
+    const partition = buildPartition({
+      mount_point_data: [
+        {
+          path: "/mnt/one",
+          is_mounted: true,
+          is_write_supported: true,
+        },
+        selectedMountPoint,
+      ],
+    });
+
+    render(
+      React.createElement(PartitionActions as any, {
+        partition,
+        protected_mode: false,
+        mountPointDataSelection: selectedMountPoint,
+        onToggleAutomount: () => {},
+        onMount: () => {},
+        onUnmount,
+        onCreateShare: () => {},
+        onGoToShare: () => {},
+      }),
+    );
+
+    const unmountButton = screen.getByLabelText(/^unmount partition$/i);
+    await user.click(unmountButton);
+
+    expect(onUnmount).toHaveBeenCalledWith(
+      partition,
+      false,
+      selectedMountPoint,
+    );
+    expect(screen.queryByLabelText(/^mount partition$/i)).toBeNull();
+  });
+
+  it("keeps HA and addon actions separate for mixed-ownership partitions", async () => {
+    const React = await import("react");
+    const { cleanup, render, screen } = await import("@testing-library/react");
+    const { PartitionActions } = await import("../PartitionActions");
+
+    const haMountPoint = {
+      path: "/media/ha_disk",
+      is_mounted: true,
+      is_ha_mounted: true,
+      share: null,
+    };
+    const addonMountPoint = {
+      path: "/mnt/addon_disk",
+      is_mounted: true,
+      is_write_supported: true,
+    };
+    const partition = buildPartition({
+      host_mount_point_data: [{ path: "/mnt/data/supervisor/media/disk" }],
+      mount_point_data: [haMountPoint, addonMountPoint],
+    });
+    const onCreateShare = vi.fn();
+    const onUnmount = vi.fn();
+    const props = {
+      partition,
+      protected_mode: false,
+      onToggleAutomount: () => {},
+      onMount: () => {},
+      onUnmount,
+      onCreateShare,
+      onGoToShare: () => {},
+    };
+
+    render(
+      React.createElement(PartitionActions as any, {
+        ...props,
+        mountPointDataSelection: haMountPoint,
+      }),
+    );
+    expect(screen.getByLabelText(/^create share$/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/^unmount partition$/i)).toBeNull();
+    expect(onCreateShare).toHaveBeenCalledTimes(0);
+    cleanup();
+
+    render(
+      React.createElement(PartitionActions as any, {
+        ...props,
+        mountPointDataSelection: addonMountPoint,
+      }),
+    );
+    expect(screen.getByLabelText(/^unmount partition$/i)).toBeTruthy();
   });
 });

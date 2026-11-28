@@ -835,4 +835,158 @@ describe("VolumesTreeView Component", () => {
     expect(screen.queryByText("/media/srat_test_disk")).toBeNull();
     expect(screen.queryByText("/mnt/usbtest")).toBeNull();
   });
+
+  it("keeps mixed HA/addon mount leaves with scoped actions (#1674)", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const userEvent = (await import("@testing-library/user-event")).default;
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier, getPartitionIdentifier } =
+      await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const user = userEvent.setup();
+    const onUnmount = vi.fn();
+    const haMountPoint = {
+      path: "/media/ha_mixed",
+      is_mounted: true,
+      is_write_supported: true,
+      is_ha_mounted: true,
+      share: null,
+    };
+    const addonMountPoint = {
+      path: "/mnt/addon_mixed",
+      is_mounted: true,
+      is_write_supported: true,
+      share: { name: "MIXED", disabled: false },
+    };
+    const partition = {
+      id: "part-mixed",
+      name: "Mixed Ownership",
+      fs_type: "ext4",
+      host_mount_point_data: {
+        host: { path: "/mnt/data/supervisor/media/mixed" },
+      },
+      mount_point_data: {
+        "/media/ha_mixed": haMountPoint,
+        "/mnt/addon_mixed": addonMountPoint,
+      },
+    };
+    const disks = [
+      {
+        id: "disk-mixed",
+        model: "Mixed Disk",
+        partitions: { "part-mixed": partition },
+      },
+    ];
+    const diskIdentifier = getDiskIdentifier(disks[0] as any, 0);
+    const partitionIdentifier = getPartitionIdentifier(
+      diskIdentifier,
+      partition as any,
+      "part-mixed",
+      0,
+    );
+
+    render(
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier, partitionIdentifier],
+            onUnmount,
+          }),
+        ),
+      }),
+    );
+
+    expect(await screen.findByText("Mixed Ownership")).toBeTruthy();
+    expect(screen.getByText("/media/ha_mixed")).toBeTruthy();
+    expect(screen.getByText("/mnt/addon_mixed")).toBeTruthy();
+    expect(screen.getAllByLabelText(/^create share$/i)).toHaveLength(1);
+
+    const unmountButton = screen.getByLabelText(/^unmount partition$/i);
+    await user.click(unmountButton);
+    expect(onUnmount).toHaveBeenCalledWith(partition, false, addonMountPoint);
+  });
+
+  it("keeps one parent row and stable leaves across mount transitions (#1674)", async () => {
+    const React = await import("react");
+    const { render, screen } = await import("@testing-library/react");
+    const { Provider } = await import("react-redux");
+    const { VolumesTreeView } = await import("../VolumesTreeView");
+    const { getDiskIdentifier, getPartitionIdentifier } =
+      await import("../../utils");
+    const { createTestStore } = await import("/test/testing");
+
+    const store = await createTestStore();
+    const makeDisks = (firstMounted: boolean) => {
+      const partition = {
+        id: "part-stable",
+        name: "Stable Partition",
+        fs_type: "ext4",
+        mount_point_data: {
+          "/mnt/stable-a": {
+            path: "/mnt/stable-a",
+            is_mounted: firstMounted,
+            is_write_supported: true,
+          },
+          "/mnt/stable-b": {
+            path: "/mnt/stable-b",
+            is_mounted: true,
+            is_write_supported: true,
+          },
+        },
+      };
+      return {
+        partition,
+        disks: [
+          {
+            id: "disk-stable",
+            model: "Stable Disk",
+            partitions: { "part-stable": partition },
+          },
+        ],
+      };
+    };
+
+    const initial = makeDisks(true);
+    const diskIdentifier = getDiskIdentifier(initial.disks[0] as any, 0);
+    const partitionIdentifier = getPartitionIdentifier(
+      diskIdentifier,
+      initial.partition as any,
+      "part-stable",
+      0,
+    );
+    const renderTree = (disks: unknown[]) =>
+      React.createElement(Provider, {
+        store,
+        children: React.createElement(
+          VolumesTreeView as any,
+          createBaseProps({
+            disks,
+            expandedItems: [diskIdentifier, partitionIdentifier],
+          }),
+        ),
+      });
+
+    const { rerender } = render(renderTree(initial.disks));
+
+    expect(await screen.findByText("Stable Partition")).toBeTruthy();
+    expect(screen.getAllByText("Stable Partition")).toHaveLength(1);
+    expect(screen.getAllByText("/mnt/stable-a")).toHaveLength(1);
+    expect(screen.getAllByText("/mnt/stable-b")).toHaveLength(1);
+    expect(screen.queryAllByLabelText(/^mount partition$/i)).toHaveLength(0);
+
+    rerender(renderTree(makeDisks(false).disks));
+
+    expect(screen.getAllByText("Stable Partition")).toHaveLength(1);
+    expect(screen.getAllByText("/mnt/stable-a")).toHaveLength(1);
+    expect(screen.getAllByText("/mnt/stable-b")).toHaveLength(1);
+    expect(screen.getAllByText(/2 mountpoint\(s\)/i)).toHaveLength(1);
+    expect(screen.getAllByLabelText(/^mount partition$/i)).toHaveLength(1);
+  });
 });

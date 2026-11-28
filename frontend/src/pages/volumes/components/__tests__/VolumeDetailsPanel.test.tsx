@@ -1,116 +1,120 @@
 /* eslint-disable */
-import { cleanup, render, screen } from "@testing-library/react";
-import userEvent, { PointerEventsCheckLevel } from "@testing-library/user-event";
+import { createTestStore, getMswServer } from "/test/testing";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ComponentProps } from "react";
 import { Provider } from "react-redux";
 import { BrowserRouter } from "react-router";
-import { createTestStore, getMswServer } from "/test/testing";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
 import { type Partition } from "../../../../store/sratApi";
 import { VolumeDetailsPanel } from "../VolumeDetailsPanel";
 
 interface RenderOptions {
-    seedStore?: (store: any) => void;
+  seedStore?: (store: any) => void;
 }
 
 const baseDisk = {
-    id: "disk-1",
-    model: "Samsung SSD",
-    vendor: "Samsung",
-    size: 1_000_000_000,
-    removable: false,
-    connection_bus: "usb",
-    partitions: {},
+  id: "disk-1",
+  model: "Samsung SSD",
+  vendor: "Samsung",
+  size: 1_000_000_000,
+  removable: false,
+  connection_bus: "usb",
+  partitions: {},
 };
 
-const createPartition = (overrides: Record<string, unknown> = {}): Partition => (({
+const createPartition = (overrides: Record<string, unknown> = {}): Partition =>
+  ({
     id: "part-1",
     name: "data-1",
     fs_type: "ext4",
     size: 500_000_000,
     mount_point_data: {},
-    ...overrides
-}) as Partition);
+    ...overrides,
+  }) as Partition;
 
 const renderPanel = async (
-    props: ComponentProps<typeof VolumeDetailsPanel>,
-    options?: RenderOptions,
+  props: ComponentProps<typeof VolumeDetailsPanel>,
+  options?: RenderOptions,
 ) => {
-    const store = await createTestStore();
-    if (options?.seedStore) {
-        options.seedStore(store);
-    }
+  const store = await createTestStore();
+  if (options?.seedStore) {
+    options.seedStore(store);
+  }
 
-    return {
-        store,
-        ...render(
-            <Provider store={store}>
-                <BrowserRouter>
-                    <VolumeDetailsPanel {...props} />
-                </BrowserRouter>
-            </Provider>,
-        ),
-    };
+  return {
+    store,
+    ...render(
+      <Provider store={store}>
+        <BrowserRouter>
+          <VolumeDetailsPanel {...props} />
+        </BrowserRouter>
+      </Provider>,
+    ),
+  };
 };
 
 describe("VolumeDetailsPanel", () => {
-    beforeEach(() => {
-        localStorage.clear();
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows placeholder when nothing is selected", async () => {
+    await renderPanel({});
+
+    expect(
+      await screen.findByText(/select a partition from the tree/i),
+    ).toBeTruthy();
+  });
+
+  it("renders disk and partition sections", async () => {
+    const partition = createPartition({
+      mount_point_data: {
+        "/mnt/data": {
+          path: "/mnt/data",
+          fstype: "ext4",
+          is_mounted: false,
+        },
+      },
     });
 
-    afterEach(() => {
-        cleanup();
-    });
+    await renderPanel({ disk: baseDisk as any, partition });
 
-    it("shows placeholder when nothing is selected", async () => {
-        await renderPanel({});
+    expect(await screen.findByText("Disk Information")).toBeTruthy();
+    expect(screen.getByText("Partition Information")).toBeTruthy();
+    expect(screen.getByText(/partition id/i)).toBeTruthy();
+  });
 
-        expect(
-            await screen.findByText(/select a partition from the tree/i),
-        ).toBeTruthy();
-    });
+  it("toggles disk details expansion", async () => {
+    const user = userEvent.setup();
+    await renderPanel({ disk: baseDisk as any, partition: createPartition() });
 
-    it("renders disk and partition sections", async () => {
-        const partition = createPartition({
-            mount_point_data: {
-                "/mnt/data": {
-                    path: "/mnt/data",
-                    fstype: "ext4",
-                    is_mounted: false,
-                },
-            },
-        });
+    expect(screen.queryByText(/^Vendor$/)).toBeNull();
 
-        await renderPanel({ disk: baseDisk as any, partition });
+    await user.click(screen.getByRole("button", { name: /show more/i }));
 
-        expect(await screen.findByText("Disk Information")).toBeTruthy();
-        expect(screen.getByText("Partition Information")).toBeTruthy();
-        expect(screen.getByText(/partition id/i)).toBeTruthy();
-    });
+    expect(screen.getByText(/^Vendor$/)).toBeTruthy();
+    expect(screen.getByText("Samsung")).toBeTruthy();
+  });
 
-    it("toggles disk details expansion", async () => {
-        const user = userEvent.setup();
-        await renderPanel({ disk: baseDisk as any, partition: createPartition() });
+  it("opens preview dialog from disk preview button", async () => {
+    const user = userEvent.setup();
+    await renderPanel({ disk: baseDisk as any, partition: createPartition() });
 
-        expect(screen.queryByText(/^Vendor$/)).toBeNull();
+    await user.click(screen.getByRole("button", { name: /disk preview/i }));
 
-        await user.click(screen.getByRole("button", { name: /show more/i }));
-
-        expect(screen.getByText(/^Vendor$/)).toBeTruthy();
-        expect(screen.getByText("Samsung")).toBeTruthy();
-    });
-
-    it("opens preview dialog from disk preview button", async () => {
-        const user = userEvent.setup();
-        await renderPanel({ disk: baseDisk as any, partition: createPartition() });
-
-        await user.click(screen.getByRole("button", { name: /disk preview/i }));
-
-        expect(await screen.findByRole("dialog")).toBeTruthy();
-        expect(screen.getByText(/Disk: Samsung SSD/i)).toBeTruthy();
-    });
-    /*
+    expect(await screen.findByRole("dialog")).toBeTruthy();
+    expect(screen.getByText(/Disk: Samsung SSD/i)).toBeTruthy();
+  });
+  /*
         it("shows clean filesystem tooltip details", async () => {
             const user = userEvent.setup();
             const partition = createPartition({
@@ -158,7 +162,7 @@ describe("VolumeDetailsPanel", () => {
             expect(within(tooltip).getByText(/2026-02-10/i)).toBeTruthy();
         });
     */
-    /*
+  /*
      it("shows error filesystem tooltip", async () => {
          const user = userEvent.setup();
          const partition = createPartition({
@@ -238,294 +242,354 @@ describe("VolumeDetailsPanel", () => {
          expect(within(tooltip).getByText(/no filesystem status available/i)).toBeTruthy();
      });
  */
-    it("renders mount settings when exactly one mount point is mounted", async () => {
-        const partition = createPartition({
-            mount_point_data: {
-                "/mnt/data": {
-                    path: "/mnt/data",
-                    fstype: "ext4",
-                    is_mounted: true,
-                    is_to_mount_at_startup: true,
-                    is_write_supported: false,
-                    flags: [{ name: "uid", value: "1000" }],
-                    custom_flags: [{ name: "compress", value: "zstd" }],
-                },
-            },
-        });
-
-        await renderPanel({ disk: baseDisk as any, partition });
-
-        expect(await screen.findByText("Mount Settings")).toBeTruthy();
-        expect(screen.getByText(/automatic mount/i)).toBeTruthy();
-        expect(screen.getByText(/filesystem-specific mount flags/i)).toBeTruthy();
-        expect(screen.getByText(/write support/i)).toBeTruthy();
+  it("renders mount settings when exactly one mount point is mounted", async () => {
+    const partition = createPartition({
+      mount_point_data: {
+        "/mnt/data": {
+          path: "/mnt/data",
+          fstype: "ext4",
+          is_mounted: true,
+          is_to_mount_at_startup: true,
+          is_write_supported: false,
+          flags: [{ name: "uid", value: "1000" }],
+          custom_flags: [{ name: "compress", value: "zstd" }],
+        },
+      },
     });
 
-    it("renders mount action and triggers callback", async () => {
-        const user = userEvent.setup();
-        const onMount = vi.fn(() => undefined);
+    await renderPanel({ disk: baseDisk as any, partition });
 
-        await renderPanel({
-            disk: baseDisk as any,
-            partition: createPartition({ mount_point_data: {} }),
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount,
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
+    expect(await screen.findByText("Mount Settings")).toBeTruthy();
+    expect(screen.getByText(/automatic mount/i)).toBeTruthy();
+    expect(screen.getByText(/filesystem-specific mount flags/i)).toBeTruthy();
+    expect(screen.getByText(/write support/i)).toBeTruthy();
+  });
 
-        const mountButton = await screen.findByRole("button", {
-            name: /mount partition/i,
-        });
-        await user.click(mountButton);
+  it("renders mount action and triggers callback", async () => {
+    const user = userEvent.setup();
+    const onMount = vi.fn(() => undefined);
 
-        expect(onMount).toHaveBeenCalledTimes(1);
+    await renderPanel({
+      disk: baseDisk as any,
+      partition: createPartition({ mount_point_data: {} }),
+      onToggleAutomount: vi.fn(() => undefined),
+      onMount,
+      onUnmount: vi.fn(() => undefined),
+      onCreateShare: vi.fn(() => undefined),
+      onGoToShare: vi.fn(() => undefined),
     });
 
-    it("lays out partition action buttons in a responsive grid", async () => {
-        await renderPanel({
-            disk: baseDisk as any,
-            partition: createPartition({
-                mount_point_data: {},
-                filesystem_info: {
-                    support: {
-                        canCheck: true,
-                        canSetLabel: true,
-                        canFormat: true,
-                    },
-                },
-            }),
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount: vi.fn(() => undefined),
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
+    const mountButton = await screen.findByRole("button", {
+      name: /mount partition/i,
+    });
+    await user.click(mountButton);
 
-        const actionsHeading = await screen.findByText(/^Actions$/);
-        expect(actionsHeading).toBeTruthy();
-        const actionsContainer = screen.getByTestId("partition-actions-grid");
+    expect(onMount).toHaveBeenCalledTimes(1);
+  });
 
-        expect(actionsContainer).toBeTruthy();
-        expect(getComputedStyle(actionsContainer).display).toBe("grid");
+  it("lays out partition action buttons in a responsive grid", async () => {
+    await renderPanel({
+      disk: baseDisk as any,
+      partition: createPartition({
+        mount_point_data: {},
+        filesystem_info: {
+          support: {
+            canCheck: true,
+            canSetLabel: true,
+            canFormat: true,
+          },
+        },
+      }),
+      onToggleAutomount: vi.fn(() => undefined),
+      onMount: vi.fn(() => undefined),
+      onUnmount: vi.fn(() => undefined),
+      onCreateShare: vi.fn(() => undefined),
+      onGoToShare: vi.fn(() => undefined),
     });
 
-    it("disables partition actions in read-only mode and shows tooltip", async () => {
-        const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never });
+    const actionsHeading = await screen.findByText(/^Actions$/);
+    expect(actionsHeading).toBeTruthy();
+    const actionsContainer = screen.getByTestId("partition-actions-grid");
 
-        await renderPanel({
-            disk: baseDisk as any,
-            partition: createPartition({ mount_point_data: {} }),
-            readOnly: true,
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount: vi.fn(() => undefined),
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
+    expect(actionsContainer).toBeTruthy();
+    expect(getComputedStyle(actionsContainer).display).toBe("grid");
+  });
 
-        const mountButton = await screen.findByRole("button", {
-            name: /mount partition/i,
-        });
-        expect((mountButton as HTMLButtonElement).disabled).toBe(true);
-
-        await user.hover(mountButton);
-
-        expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
+  it("disables partition actions in read-only mode and shows tooltip", async () => {
+    const user = userEvent.setup({
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
     });
 
-    it("disables SMART self-test actions in read-only mode", async () => {
-        // F6 regression: SmartStatusPanel must receive the panel's readOnly
-        // prop so a read-only user cannot start/abort SMART self-tests.
-        // A deterministic smart-test payload (no test running) ensures the
-        // only thing disabling "Start Test" is read-only mode.
-        getMswServer().use(
-            http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
-                HttpResponse.json({
-                    disk_id: "disk-1",
-                    running: false,
-                    status: "idle",
-                    percent_complete: 0,
-                    test_type: "none",
-                }),
-            ),
-        );
-
-        const smartDisk = {
-            ...baseDisk,
-            smart_info: { supported: true },
-        };
-
-        await renderPanel({ disk: smartDisk as any, readOnly: true });
-
-        const startTest = await screen.findByRole("button", {
-            name: /start test/i,
-        });
-        expect((startTest as HTMLButtonElement).disabled).toBe(true);
+    await renderPanel({
+      disk: baseDisk as any,
+      partition: createPartition({ mount_point_data: {} }),
+      readOnly: true,
+      onToggleAutomount: vi.fn(() => undefined),
+      onMount: vi.fn(() => undefined),
+      onUnmount: vi.fn(() => undefined),
+      onCreateShare: vi.fn(() => undefined),
+      onGoToShare: vi.fn(() => undefined),
     });
 
-    it("keeps SMART self-test actions enabled when not read-only", async () => {
-        getMswServer().use(
-            http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
-                HttpResponse.json({
-                    disk_id: "disk-1",
-                    running: false,
-                    status: "idle",
-                    percent_complete: 0,
-                    test_type: "none",
-                }),
-            ),
-        );
+    const mountButton = await screen.findByRole("button", {
+      name: /mount partition/i,
+    });
+    expect((mountButton as HTMLButtonElement).disabled).toBe(true);
 
-        const smartDisk = {
-            ...baseDisk,
-            smart_info: { supported: true },
-        };
+    await user.hover(mountButton);
 
-        await renderPanel({ disk: smartDisk as any });
+    expect(await screen.findByText(/read-only mode enabled/i)).toBeTruthy();
+  });
 
-        const startTest = await screen.findByRole("button", {
-            name: /start test/i,
-        });
-        expect((startTest as HTMLButtonElement).disabled).toBe(false);
+  it("disables SMART self-test actions in read-only mode", async () => {
+    // F6 regression: SmartStatusPanel must receive the panel's readOnly
+    // prop so a read-only user cannot start/abort SMART self-tests.
+    // A deterministic smart-test payload (no test running) ensures the
+    // only thing disabling "Start Test" is read-only mode.
+    getMswServer().use(
+      http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
+        HttpResponse.json({
+          disk_id: "disk-1",
+          running: false,
+          status: "idle",
+          percent_complete: 0,
+          test_type: "none",
+        }),
+      ),
+    );
+
+    const smartDisk = {
+      ...baseDisk,
+      smart_info: { supported: true },
+    };
+
+    await renderPanel({ disk: smartDisk as any, readOnly: true });
+
+    const startTest = await screen.findByRole("button", {
+      name: /start test/i,
+    });
+    expect((startTest as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("keeps SMART self-test actions enabled when not read-only", async () => {
+    getMswServer().use(
+      http.get(/\/api\/disk\/[^/]+\/smart\/test/, () =>
+        HttpResponse.json({
+          disk_id: "disk-1",
+          running: false,
+          status: "idle",
+          percent_complete: 0,
+          test_type: "none",
+        }),
+      ),
+    );
+
+    const smartDisk = {
+      ...baseDisk,
+      smart_info: { supported: true },
+    };
+
+    await renderPanel({ disk: smartDisk as any });
+
+    const startTest = await screen.findByRole("button", {
+      name: /start test/i,
+    });
+    expect((startTest as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("hides actions for hassos partitions", async () => {
+    await renderPanel({
+      disk: baseDisk as any,
+      partition: createPartition({ name: "hassos-data" }),
+      onToggleAutomount: vi.fn(() => undefined),
+      onMount: vi.fn(() => undefined),
+      onUnmount: vi.fn(() => undefined),
+      onCreateShare: vi.fn(() => undefined),
+      onGoToShare: vi.fn(() => undefined),
     });
 
-    it("hides actions for hassos partitions", async () => {
-        await renderPanel({
-            disk: baseDisk as any,
-            partition: createPartition({ name: "hassos-data" }),
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount: vi.fn(() => undefined),
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
+    expect(screen.queryByText(/^Actions$/)).toBeNull();
+  });
 
-        expect(screen.queryByText(/^Actions$/)).toBeNull();
+  it("shows raw disk badge when the disk has no partitions", async () => {
+    await renderPanel({ disk: baseDisk as any });
+
+    expect(
+      await screen.findByText("Raw disk (no partition table)"),
+    ).toBeTruthy();
+  });
+
+  it("shows raw disk badge when the only partition is a synthesized whole-disk entry", async () => {
+    // Task 044: a disk without a partition table gets a synthesized
+    // whole-disk partition with no filesystem type so it stays actionable.
+    // It is not a real partition and must not be counted as one.
+    const disk = {
+      ...baseDisk,
+      legacy_device_name: "sdc",
+      partitions: {
+        "usb-General_USB_Flash_Disk_0111607137301461-0:0": createPartition({
+          id: "usb-General_USB_Flash_Disk_0111607137301461-0:0",
+          legacy_device_name: "sdc",
+          fs_type: null,
+          mount_point_data: {},
+        }),
+      },
+    };
+
+    await renderPanel({ disk: disk as any });
+
+    expect(
+      await screen.findByText("Raw disk (no partition table)"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+  });
+
+  it("shows raw disk badge for a whole-disk filesystem partition", async () => {
+    // Task 044: a superfloppy filesystem written directly to the disk
+    // (e.g. vfat) with no partition table is still a whole-disk entry and
+    // must be reported as a raw disk, not counted as a partition.
+    const disk = {
+      ...baseDisk,
+      legacy_device_name: "sdd",
+      partitions: {
+        "usb-General_UDisk-0:0": createPartition({
+          id: "usb-General_UDisk-0:0",
+          legacy_device_name: "sdd",
+          fs_type: "vfat",
+          mount_point_data: {},
+        }),
+      },
+    };
+
+    await renderPanel({ disk: disk as any });
+
+    expect(
+      await screen.findByText("Raw disk (no partition table)"),
+    ).toBeTruthy();
+    expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+  });
+
+  it("counts a real partition with a numeric suffix as a partition", async () => {
+    const disk = {
+      ...baseDisk,
+      legacy_device_name: "sdd",
+      partitions: {
+        "usb-General_UDisk-0:1": createPartition({
+          id: "usb-General_UDisk-0:1",
+          legacy_device_name: "sdd1",
+          fs_type: "vfat",
+          mount_point_data: {},
+        }),
+      },
+    };
+
+    await renderPanel({ disk: disk as any });
+
+    expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
+  });
+
+  it("renders the raw disk filesystem card for a whole-disk partition", async () => {
+    const wholeDiskPartition = createPartition({
+      id: "part-sde",
+      legacy_device_name: "sde",
+      mount_point_data: {},
+    });
+    const disk = {
+      ...baseDisk,
+      legacy_device_name: "sde",
+      partitions: { "part-sde": wholeDiskPartition },
+    };
+
+    await renderPanel({
+      disk: disk as any,
+      onToggleAutomount: vi.fn(() => undefined),
+      onMount: vi.fn(() => undefined),
+      onUnmount: vi.fn(() => undefined),
+      onCreateShare: vi.fn(() => undefined),
+      onGoToShare: vi.fn(() => undefined),
     });
 
-    it("shows raw disk badge when the disk has no partitions", async () => {
-        await renderPanel({ disk: baseDisk as any });
-
-        expect(
-            await screen.findByText("Raw disk (no partition table)"),
-        ).toBeTruthy();
+    expect(
+      await screen.findByText("Raw Disk Filesystem Information"),
+    ).toBeTruthy();
+    expect(screen.queryByText("Partition Information")).toBeNull();
+  });
+  it("renders the Managed by Home Assistant chip and hides Mount Settings for an HA-managed partition", async () => {
+    const partition = createPartition({
+      mount_point_data: {
+        "/share/usb": {
+          path: "/share/usb",
+          fstype: "ext4",
+          is_mounted: true,
+          is_ha_mounted: true,
+        },
+      },
     });
 
-    it("shows raw disk badge when the only partition is a synthesized whole-disk entry", async () => {
-        // Task 044: a disk without a partition table gets a synthesized
-        // whole-disk partition with no filesystem type so it stays actionable.
-        // It is not a real partition and must not be counted as one.
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sdc",
-            partitions: {
-                "usb-General_USB_Flash_Disk_0111607137301461-0:0": createPartition({
-                    id: "usb-General_USB_Flash_Disk_0111607137301461-0:0",
-                    legacy_device_name: "sdc",
-                    fs_type: null,
-                    mount_point_data: {},
-                }),
-            },
-        };
+    await renderPanel({ disk: baseDisk as any, partition });
 
-        await renderPanel({ disk: disk as any });
+    expect(await screen.findByText("Managed by Home Assistant")).toBeTruthy();
+    expect(screen.queryByText("Mount Settings")).toBeNull();
+  });
 
-        expect(
-            await screen.findByText("Raw disk (no partition table)"),
-        ).toBeTruthy();
-        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
+  it("lists unmounted mount points with scoped actions (#1674)", async () => {
+    const originalMatchMedia = window.matchMedia;
+    (window as any).matchMedia = () => ({
+      matches: false,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+      onchange: null,
+      media: "",
     });
 
-    it("shows raw disk badge for a whole-disk filesystem partition", async () => {
-        // Task 044: a superfloppy filesystem written directly to the disk
-        // (e.g. vfat) with no partition table is still a whole-disk entry and
-        // must be reported as a raw disk, not counted as a partition.
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sdd",
-            partitions: {
-                "usb-General_UDisk-0:0": createPartition({
-                    id: "usb-General_UDisk-0:0",
-                    legacy_device_name: "sdd",
-                    fs_type: "vfat",
-                    mount_point_data: {},
-                }),
-            },
-        };
+    try {
+      const user = userEvent.setup();
+      const onMount = vi.fn();
+      const firstMountPoint = {
+        path: "/mnt/fstest-a",
+        is_mounted: false,
+        is_write_supported: true,
+      };
+      const secondMountPoint = {
+        path: "/mnt/fstest-b",
+        is_mounted: false,
+        is_write_supported: true,
+      };
+      const partition = createPartition({
+        name: "FSTESTNTFS",
+        fs_type: "ntfs",
+        mount_point_data: {
+          "/mnt/fstest-a": firstMountPoint,
+          "/mnt/fstest-b": secondMountPoint,
+        },
+      });
 
-        await renderPanel({ disk: disk as any });
+      await renderPanel({
+        disk: baseDisk as any,
+        partition,
+        onToggleAutomount: vi.fn(() => undefined),
+        onMount,
+        onUnmount: vi.fn(() => undefined),
+        onCreateShare: vi.fn(() => undefined),
+        onGoToShare: vi.fn(() => undefined),
+      });
 
-        expect(
-            await screen.findByText("Raw disk (no partition table)"),
-        ).toBeTruthy();
-        expect(screen.queryByText(/1 Partition\(s\)/)).toBeNull();
-    });
+      expect(await screen.findByText(/^Mount Points$/)).toBeTruthy();
 
-    it("counts a real partition with a numeric suffix as a partition", async () => {
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sdd",
-            partitions: {
-                "usb-General_UDisk-0:1": createPartition({
-                    id: "usb-General_UDisk-0:1",
-                    legacy_device_name: "sdd1",
-                    fs_type: "vfat",
-                    mount_point_data: {},
-                }),
-            },
-        };
+      const secondRow = screen.getByRole("listitem", {
+        name: /^Mount point \/mnt\/fstest-b$/i,
+      });
+      expect(within(secondRow).getByText("/mnt/fstest-b")).toBeTruthy();
+      expect(screen.getAllByText("Not Mounted").length).toBeGreaterThan(0);
 
-        await renderPanel({ disk: disk as any });
-
-        expect(await screen.findByText("1 Partition(s)")).toBeTruthy();
-    });
-
-    it("renders the raw disk filesystem card for a whole-disk partition", async () => {
-        const wholeDiskPartition = createPartition({
-            id: "part-sde",
-            legacy_device_name: "sde",
-            mount_point_data: {},
-        });
-        const disk = {
-            ...baseDisk,
-            legacy_device_name: "sde",
-            partitions: { "part-sde": wholeDiskPartition },
-        };
-
-        await renderPanel({
-            disk: disk as any,
-            onToggleAutomount: vi.fn(() => undefined),
-            onMount: vi.fn(() => undefined),
-            onUnmount: vi.fn(() => undefined),
-            onCreateShare: vi.fn(() => undefined),
-            onGoToShare: vi.fn(() => undefined),
-        });
-
-        expect(
-            await screen.findByText("Raw Disk Filesystem Information"),
-        ).toBeTruthy();
-        expect(screen.queryByText("Partition Information")).toBeNull();
-    });
-    it("renders the Managed by Home Assistant chip and hides Mount Settings for an HA-managed partition", async () => {
-        const partition = createPartition({
-            mount_point_data: {
-                "/share/usb": {
-                    path: "/share/usb",
-                    fstype: "ext4",
-                    is_mounted: true,
-                    is_ha_mounted: true,
-                },
-            },
-        });
-
-        await renderPanel({ disk: baseDisk as any, partition });
-
-        expect(
-            await screen.findByText("Managed by Home Assistant"),
-        ).toBeTruthy();
-        expect(screen.queryByText("Mount Settings")).toBeNull();
-    });
-
+      await user.click(within(secondRow).getByLabelText(/^mount partition$/i));
+      expect(onMount).toHaveBeenCalledWith(partition, secondMountPoint);
+      expect(screen.queryByTestId("partition-actions-grid")).toBeNull();
+    } finally {
+      (window as any).matchMedia = originalMatchMedia;
+    }
+  });
 });
