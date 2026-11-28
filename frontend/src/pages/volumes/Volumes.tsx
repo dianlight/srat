@@ -109,22 +109,31 @@ export function Volumes({ initialDisks }: { initialDisks?: Disk[] } = {}) {
     mountPointData?: MountPointData,
   ) => navigateToShare(navigate, partition, mountPointData);
 
-  function onSubmitUmountVolume(partition: Partition, force = false) {
+  function onSubmitUmountVolume(
+    partition: Partition,
+    force = false,
+    mountPointData?: MountPointData,
+  ) {
     requestUnmountVolume({
       confirm,
       unmount: umountVolume,
       partition,
       force,
+      mountPointData,
       isSelected: sel.selectedPartition?.id === partition.id,
       onCleared: sel.clearSelection,
     });
   }
 
-  function handleToggleAutomount(partition: Partition) {
+  function handleToggleAutomount(
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) {
     requestAutomountToggle({
       patchSettings: patchMountSettings,
       readOnly: evdata?.hello?.read_only === true,
       partition,
+      mountPointData,
     });
   }
 

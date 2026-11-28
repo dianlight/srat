@@ -28,15 +28,23 @@ import {
 } from "../../../store/sratApi";
 import { decodeEscapeSequence } from "../../../utils/decodeEscapeSequence";
 import { usePartitionActions } from "../hooks/usePartitionActions";
+import { PartitionActions } from "./PartitionActions";
 
 interface PartitionInformationCardProps {
   partition: Partition;
   title?: string;
   protectedMode?: boolean;
   readOnly?: boolean;
-  onToggleAutomount?: (partition: Partition) => void;
-  onMount?: (partition: Partition) => void;
-  onUnmount?: (partition: Partition, force: boolean) => void;
+  onToggleAutomount?: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount?: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount?: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare?: (
     partition: Partition,
     mountPointData?: MountPointData,
@@ -156,6 +164,35 @@ export function PartitionInformationCard({
     onSetFilesystemLabel,
     onFormatPartition,
   });
+
+  const renderMountPointChip = (mpd: MountPointData) => {
+    const badges: string[] = [];
+    if (mpd?.is_to_mount_at_startup) {
+      badges.push("Auto-mount");
+    }
+    if (!mpd.is_write_supported) {
+      badges.push("Read-Only");
+    }
+    const label =
+      badges.length > 0 ? `${mpd.path} • ${badges.join(" • ")}` : mpd.path;
+
+    return (
+      <Chip
+        key={mpd.path}
+        label={label}
+        size="small"
+        variant="outlined"
+        color={
+          !mpd.is_write_supported
+            ? "secondary"
+            : mpd?.is_to_mount_at_startup
+              ? "primary"
+              : "default"
+        }
+        sx={{ fontFamily: "monospace" }}
+      />
+    );
+  };
 
   const readOnlyActionTooltip = "Read-only mode enabled. Actions are disabled.";
 
@@ -436,60 +473,80 @@ export function PartitionInformationCard({
                   </Typography>
                 </Grid>
               )}
-              {/* Host Mount Information */}
-              {mpds.length > 0 && (
-                <Grid size={{ xs: 12 }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    Mount Point{mpds.length > 1 ? "s" : ""}
-                  </Typography>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      flexWrap: "wrap",
-                      gap: 1,
-                      mt: 0.5,
-                    }}
-                  >
-                    {mpds.map((mpd) => {
-                      const badges: string[] = [];
-                      if (mpd?.is_to_mount_at_startup) {
-                        badges.push("Auto-mount");
-                      }
-                      if (!mpd.is_write_supported) {
-                        badges.push("Read-Only");
-                      }
-                      const label =
-                        badges.length > 0
-                          ? `${mpd.path} • ${badges.join(" • ")}`
-                          : mpd.path;
-
-                      return (
-                        <Chip
-                          key={mpd.path}
-                          label={label}
-                          size="small"
-                          variant="outlined"
-                          color={
-                            !mpd.is_write_supported
-                              ? "secondary"
-                              : mpd?.is_to_mount_at_startup
-                                ? "primary"
-                                : "default"
-                          }
-                          sx={{ fontFamily: "monospace" }}
-                        />
-                      );
-                    })}
-                  </Stack>
-                </Grid>
-              )}
             </>
+          )}
+
+          {/* Mount points are listed even when none is currently mounted. */}
+          {mpds.length > 0 && (
+            <Grid size={{ xs: 12 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
+                Mount Point{mpds.length > 1 ? "s" : ""}
+              </Typography>
+              {mpds.length === 1 ? (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    flexWrap: "wrap",
+                    gap: 1,
+                    mt: 0.5,
+                  }}
+                >
+                  {mpds.map(renderMountPointChip)}
+                </Stack>
+              ) : (
+                <Stack
+                  component="ul"
+                  sx={{
+                    listStyle: "none",
+                    p: 0,
+                    m: 0,
+                    mt: 0.5,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.5,
+                  }}
+                >
+                  {mpds.map((mpd) => (
+                    <Stack
+                      component="li"
+                      key={mpd.path}
+                      aria-label={`Mount point ${mpd.path}`}
+                      direction="row"
+                      spacing={1}
+                      sx={{ alignItems: "center", minWidth: 0 }}
+                    >
+                      {renderMountPointChip(mpd)}
+                      {!readOnly &&
+                        onToggleAutomount &&
+                        onMount &&
+                        onUnmount &&
+                        onCreateShare &&
+                        onGoToShare && (
+                          <PartitionActions
+                            partition={partition}
+                            protected_mode={protectedMode}
+                            mountPointDataSelection={mpd}
+                            onToggleAutomount={onToggleAutomount}
+                            onMount={onMount}
+                            onUnmount={onUnmount}
+                            onCreateShare={onCreateShare}
+                            onGoToShare={onGoToShare}
+                            onCheckFilesystem={onCheckFilesystem}
+                            onSetFilesystemLabel={onSetFilesystemLabel}
+                            onFormatPartition={onFormatPartition}
+                          />
+                        )}
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
+            </Grid>
           )}
 
           {/* Host Mount Information */}

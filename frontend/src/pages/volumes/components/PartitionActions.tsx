@@ -32,9 +32,17 @@ import type { PartitionActionKey } from "./PartitionActionItems";
 interface PartitionActionsProps {
   partition: Partition;
   protected_mode: boolean;
-  onToggleAutomount: (partition: Partition) => void;
-  onMount: (partition: Partition) => void;
-  onUnmount: (partition: Partition, force: boolean) => void;
+  mountPointDataSelection?: MountPointData;
+  onToggleAutomount: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare: (
     partition: Partition,
     mountPointData?: MountPointData,
@@ -48,6 +56,7 @@ interface PartitionActionsProps {
 export function PartitionActions({
   partition,
   protected_mode,
+  mountPointDataSelection,
   onToggleAutomount,
   onMount,
   onUnmount,
@@ -75,6 +84,7 @@ export function PartitionActions({
   const actionItems = usePartitionActions({
     partition,
     protectedMode: protected_mode,
+    mountPointDataSelection,
     onToggleAutomount,
     onMount,
     onUnmount,

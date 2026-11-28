@@ -30,9 +30,19 @@ export interface PartitionActionItem {
 export interface PartitionActionOptions {
   partition: Partition;
   protectedMode: boolean;
-  onToggleAutomount: (partition: Partition) => void;
-  onMount: (partition: Partition) => void;
-  onUnmount: (partition: Partition, force: boolean) => void;
+  // When set, actions are scoped to one mount point of a multi-mount
+  // partition (tree leaf / details-panel mount-point row).
+  mountPointDataSelection?: MountPointData;
+  onToggleAutomount: (
+    partition: Partition,
+    mountPointData?: MountPointData,
+  ) => void;
+  onMount: (partition: Partition, mountPointData?: MountPointData) => void;
+  onUnmount: (
+    partition: Partition,
+    force: boolean,
+    mountPointData?: MountPointData,
+  ) => void;
   onCreateShare: (
     partition: Partition,
     mountPointData?: MountPointData,
@@ -46,6 +56,7 @@ export interface PartitionActionOptions {
 export function getPartitionActionItems({
   partition,
   protectedMode,
+  mountPointDataSelection,
   onToggleAutomount,
   onMount,
   onUnmount,
@@ -68,17 +79,34 @@ export function getPartitionActionItems({
       ),
   );
 
-  // Home Assistant owns the mount lifecycle for its local disks (2026.11+
-  // storage): no mount/unmount/automount/format/label actions. A share on the
-  // volume can still be created or opened from here.
+  // A tree leaf or a details-panel mount-point row passes its own entry so
+  // actions stay scoped to it. Without a selection, keep the legacy behavior
+  // of hiding partition-level actions for ambiguous multi-mount partitions.
+  const selectedMpd = mountPointDataSelection as MountPointData | undefined;
+  const hasHAMountedEntry = liveEntries.some(
+    (entry) => (entry as MountPointData)?.is_ha_mounted,
+  );
+  const scopedAddonMpd =
+    selectedMpd && hasHAMountedEntry && !selectedMpd.is_ha_mounted
+      ? selectedMpd
+      : undefined;
+
+  // Home Assistant owns the mount lifecycle for its HA-mounted entries
+  // (2026.11+ storage): no mount/unmount/automount/format/label actions there.
+  // A share on the volume can still be created or opened from here.
   //
   // This branch MUST run before the host_mount_point_data guard below: an
   // HA-managed disk always surfaces its host-namespace mount under
   // host_mount_point_data (e.g. /mnt/data/supervisor/media/<name>), and that
   // guard would otherwise return null first and hide the only supported
-  // action (Create Share / Go to Share).
-  const haMpd = liveEntries.find(
-    (entry) => (entry as MountPointData)?.is_ha_mounted,
+  // action (Create Share / Go to Share). When an addon entry is explicitly
+  // selected on a mixed-ownership partition, it keeps its own actions.
+  const haMpd = (
+    selectedMpd
+      ? selectedMpd.is_ha_mounted
+        ? selectedMpd
+        : undefined
+      : liveEntries.find((entry) => (entry as MountPointData)?.is_ha_mounted)
   ) as MountPointData | undefined;
 
   if (protectedMode || partition.name?.startsWith("hassos-")) {
@@ -107,9 +135,11 @@ export function getPartitionActionItems({
     ];
   }
 
+  const hasHostMount =
+    Object.values(partition.host_mount_point_data || {}).length > 0;
   if (
-    Object.values(partition.host_mount_point_data || {}).length > 0 ||
-    liveEntries.length > 1
+    (hasHostMount && !scopedAddonMpd) ||
+    (liveEntries.length > 1 && !selectedMpd)
   ) {
     return null;
   }
@@ -121,7 +151,8 @@ export function getPartitionActionItems({
   const liveMpd = (liveEntries[0] ?? mountEntries[0]) as MountPointData;
   // Fall back to the legacy first-key lookup when the map is non-empty but
   // the live pick is missing (keeps array-shaped test fixtures working).
-  const mpd = liveMpd ?? (mountPointData[keys[0]] as MountPointData);
+  const mpd =
+    selectedMpd ?? liveMpd ?? (mountPointData[keys[0]] as MountPointData);
   const isMounted = mpd?.is_mounted;
   const hasEnabledShare = mpd?.share && mpd?.share.disabled === false;
   const hasShare = mpd?.share !== null && mpd?.share !== undefined;
@@ -133,14 +164,14 @@ export function getPartitionActionItems({
         key: "disable-automount",
         title: "Disable automatic mount",
         color: "primary",
-        onClick: () => onToggleAutomount(partition),
+        onClick: () => onToggleAutomount(partition, mpd),
       });
     } else {
       actionItems.push({
         key: "enable-automount",
         title: "Enable automatic mount",
         color: "primary",
-        onClick: () => onToggleAutomount(partition),
+        onClick: () => onToggleAutomount(partition, mpd),
       });
     }
   }
@@ -150,7 +181,7 @@ export function getPartitionActionItems({
       key: "mount",
       title: "Mount Partition",
       color: undefined,
-      onClick: () => onMount(partition),
+      onClick: () => onMount(partition, mpd),
     });
   } else {
     if (hasShare) {
@@ -158,7 +189,7 @@ export function getPartitionActionItems({
         key: "go-to-share",
         title: "Go to Share",
         color: undefined,
-        onClick: () => onGoToShare(partition),
+        onClick: () => onGoToShare(partition, mpd),
       });
     }
 
@@ -169,13 +200,13 @@ export function getPartitionActionItems({
       key: "unmount",
       title: "Unmount Partition",
       color: undefined,
-      onClick: () => onUnmount(partition, false),
+      onClick: () => onUnmount(partition, false, mpd),
     });
     actionItems.push({
       key: "force-unmount",
       title: "Force Unmount Partition",
       color: "warning",
-      onClick: () => onUnmount(partition, true),
+      onClick: () => onUnmount(partition, true, mpd),
     });
 
     if (!hasShare && mpd.path?.startsWith("/mnt/")) {
@@ -183,7 +214,7 @@ export function getPartitionActionItems({
         key: "create-share",
         title: "Create Share",
         color: "success",
-        onClick: () => onCreateShare(partition),
+        onClick: () => onCreateShare(partition, mpd),
       });
     }
   }
